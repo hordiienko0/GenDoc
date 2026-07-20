@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
+using GenDoc.Native;
 using GenDoc.ViewModels.Login;
 
 namespace GenDoc.Views.Login;
@@ -11,6 +12,7 @@ public partial class LoginWindow : Window
     public LoginWindow(LoginViewModel viewModel)
     {
         InitializeComponent();
+        DwmHelper.EnableDarkTitleBar(this);
         _viewModel = viewModel;
         DataContext = _viewModel;
         _viewModel.RequestClose += OnRequestClose;

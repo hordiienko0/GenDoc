@@ -1,0 +1,51 @@
+<UserControl x:Class="GenDoc.Views.Recipients.RecipientsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="0,0,0,22">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Особовий склад" FontSize="22" FontWeight="SemiBold"/>
+                <TextBlock Text="{Binding CountLabel}" Foreground="{StaticResource TextSecondaryBrush}"
+                           FontSize="13.5" Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                         Width="320" Tag="Пошук за ПІБ, званням, підрозділом…"/>
+                <Button Content="+ Додати запис" Command="{Binding AddCommand}" Margin="10,0,0,0"/>
+            </StackPanel>
+        </Grid>
+
+        <Border Grid.Row="1" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1" CornerRadius="2">
+            <Grid>
+                <DataGrid ItemsSource="{Binding Recipients}" SelectedItem="{Binding SelectedRecipient}"
+                          AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+                          Visibility="{Binding HasResults, Converter={StaticResource BoolToVisibility}}"
+                          MouseDoubleClick="DataGrid_MouseDoubleClick">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="ПІБ" Binding="{Binding FullName}" Width="2.2*"/>
+                        <DataGridTextColumn Header="ЗВАННЯ" Binding="{Binding Rank}" Width="1.3*"/>
+                        <DataGridTextColumn Header="ПОСАДА" Binding="{Binding Position}" Width="1.6*"/>
+                        <DataGridTextColumn Header="ПІДРОЗДІЛ" Binding="{Binding UnitName}" Width="1.6*"/>
+                        <DataGridTextColumn Header="КІМНАТА" Binding="{Binding RoomDisplay}" Width="0.9*"/>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <TextBlock Text="{Binding EmptyMessage}" Foreground="{StaticResource TextSecondaryBrush}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" Padding="48"
+                           Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,9 +1,16 @@
 ﻿<Application x:Class="GenDoc.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:GenDoc"
-             StartupUri="MainWindow.xaml">
+             xmlns:conv="clr-namespace:GenDoc.Converters"
+             ShutdownMode="OnExplicitShutdown">
     <Application.Resources>
-         
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/DarkTheme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <conv:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
+            <conv:EnumToVisibilityConverter x:Key="EnumToVisibility"/>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>

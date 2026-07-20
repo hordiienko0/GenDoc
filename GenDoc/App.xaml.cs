@@ -1,10 +1,11 @@
 ﻿using GenDoc.Data;
 using GenDoc.Services;
+using GenDoc.Services.Recipients;
 using GenDoc.ViewModels.Login;
+using GenDoc.ViewModels.Recipients;
+using GenDoc.ViewModels.Shell;
 using GenDoc.Views.Login;
 using Microsoft.Extensions.DependencyInjection;
-using System.Configuration;
-using System.Data;
 using System.Windows;
 
 namespace GenDoc
@@ -32,12 +33,19 @@ namespace GenDoc
             services.AddSingleton<IDbPasswordProvider, InMemoryDbPasswordProvider>();
             services.AddSingleton<IDatabaseUnlockService, DatabaseUnlockService>();
             services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
-            services.AddTransient<AppDbContext>();
+            services.AddDbContextFactory<AppDbContext>();
 
             services.AddTransient<IUserProfileService, UserProfileService>();
+            services.AddTransient<IDatabaseSchemaInitializer, DatabaseSchemaInitializer>();
+            services.AddTransient<IAuditLogService, AuditLogService>();
+            services.AddTransient<IRecipientService, RecipientService>();
+            services.AddSingleton<IDialogService, DialogService>();
 
             services.AddTransient<LoginViewModel>();
             services.AddTransient<LoginWindow>();
+            services.AddTransient<MainViewModel>();
+            services.AddTransient<RecipientsViewModel>();
+            services.AddTransient<RecipientEditViewModel>();
             services.AddTransient<MainWindow>();
         }
 
@@ -53,6 +61,7 @@ namespace GenDoc
             }
 
             var mainWindow = Services.GetRequiredService<MainWindow>();
+            MainWindow = mainWindow;
             mainWindow.Show();
 
             ShutdownMode = ShutdownMode.OnMainWindowClose;

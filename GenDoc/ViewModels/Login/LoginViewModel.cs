@@ -9,11 +9,16 @@ public partial class LoginViewModel : ObservableObject
 {
     private readonly IDatabaseUnlockService _unlockService;
     private readonly IUserProfileService _userProfileService;
+    private readonly IDatabaseSchemaInitializer _schemaInitializer;
 
-    public LoginViewModel(IDatabaseUnlockService unlockService, IUserProfileService userProfileService)
+    public LoginViewModel(
+        IDatabaseUnlockService unlockService,
+        IUserProfileService userProfileService,
+        IDatabaseSchemaInitializer schemaInitializer)
     {
         _unlockService = unlockService;
         _userProfileService = userProfileService;
+        _schemaInitializer = schemaInitializer;
     }
 
     [ObservableProperty]
@@ -57,6 +62,8 @@ public partial class LoginViewModel : ObservableObject
             ErrorMessage = error;
             return;
         }
+
+        _schemaInitializer.EnsureInitialized();
 
         Profiles = new ObservableCollection<UserProfileListItem>(_userProfileService.GetActiveProfiles());
         Stage = LoginStage.ProfileSelect;
