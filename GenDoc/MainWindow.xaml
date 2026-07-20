@@ -6,6 +6,7 @@
         xmlns:recipientsView="clr-namespace:GenDoc.Views.Recipients"
         Title="GenDoc — Облік особового складу" Height="720" Width="1180"
         MinWidth="960" MinHeight="600"
+        Background="{StaticResource BackgroundBrush}"
         WindowStartupLocation="CenterScreen">
 
     <Window.Resources>
@@ -19,7 +20,7 @@
         </DataTemplate>
     </Window.Resources>
 
-    <DockPanel>
+    <DockPanel Background="{StaticResource BackgroundBrush}">
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="Файл" Click="MenuItem_Click"/>
             <MenuItem Header="Правка" Click="MenuItem_Click"/>
@@ -40,7 +41,7 @@
             </Grid>
         </Border>
 
-        <Grid>
+        <Grid Background="{StaticResource BackgroundBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="250"/>
                 <ColumnDefinition Width="*"/>
@@ -71,7 +72,7 @@
                 </ScrollViewer>
             </Border>
 
-            <ContentControl Grid.Column="1" Content="{Binding CurrentContent}" Margin="36,28"/>
+            <ContentControl Grid.Column="1" Content="{Binding CurrentContent}" Margin="24"/>
         </Grid>
     </DockPanel>
 </Window>

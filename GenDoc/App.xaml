@@ -11,6 +11,7 @@
 
             <conv:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
             <conv:EnumToVisibilityConverter x:Key="EnumToVisibility"/>
+            <conv:FractionToGridLengthConverter x:Key="FractionToGridLength"/>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

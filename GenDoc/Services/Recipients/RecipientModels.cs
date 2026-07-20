@@ -2,6 +2,17 @@
 {
     public record RecipientListItem(int Id, string FullName, string Rank, string Position, string UnitName, string RoomDisplay);
 
+    public enum RecipientSortColumn
+    {
+        FullName,
+        Rank,
+        Position,
+        UnitName,
+        Room
+    }
+
+    public record RoomOccupancyInfo(int OccupantCount, int Capacity);
+
     public class RecipientEditModel
     {
         public int Id { get; set; }

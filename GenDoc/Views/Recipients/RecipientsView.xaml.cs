@@ -10,13 +10,34 @@ public partial class RecipientsView : UserControl
     public RecipientsView()
     {
         InitializeComponent();
+        Loaded += (_, _) => SearchTextBox.Focus();
     }
 
-    private void DataGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    private void DataGrid_Sorting(object sender, DataGridSortingEventArgs e)
+    {
+        e.Handled = true;
+        if (DataContext is not RecipientsViewModel viewModel) return;
+        if (e.Column.SortMemberPath is not string key) return;
+        if (!Enum.TryParse<RecipientSortColumn>(key, out var column)) return;
+
+        viewModel.SortByColumn(column);
+    }
+
+    private void DataGrid_PreviewKeyDown(object sender, KeyEventArgs e)
     {
         if (DataContext is not RecipientsViewModel viewModel) return;
-        if ((sender as DataGrid)?.SelectedItem is not RecipientListItem item) return;
+        if (sender is not DataGrid grid) return;
+        if (grid.SelectedItem is not RecipientListItem item) return;
 
-        viewModel.EditCommand.Execute(item);
+        if (e.Key == Key.Enter)
+        {
+            viewModel.EditCommand.Execute(item);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Delete)
+        {
+            viewModel.DeleteRecipientCommand.Execute(item);
+            e.Handled = true;
+        }
     }
 }

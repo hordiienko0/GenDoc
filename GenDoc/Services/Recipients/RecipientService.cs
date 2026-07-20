@@ -20,34 +20,67 @@ namespace GenDoc.Services.Recipients
             _currentUserContext = currentUserContext;
         }
 
-        public List<RecipientListItem> Search(string? searchText)
+        public List<RecipientListItem> Search(string? searchText, RecipientSortColumn sortColumn = RecipientSortColumn.FullName, bool sortDescending = false)
         {
             using var db = _dbFactory.CreateDbContext();
-            var query = db.Recipients.Include(r => r.Unit).Include(r => r.Room).AsQueryable();
 
-            if (!string.IsNullOrWhiteSpace(searchText))
+            // Матеріалізуємо сутності одразу (ToList) — подальший пошук за словами
+            // і форматування кімнати виконуються в пам'яті на C#, EF Core/SQLite
+            // не повинен транслювати динамічне розбиття рядка на слова в SQL.
+            var entities = db.Recipients
+                .Include(r => r.Unit)
+                .Include(r => r.Room)
+                .ToList();
+
+            var words = (searchText ?? string.Empty).Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (words.Length > 0)
             {
-                var term = searchText.Trim();
-                query = query.Where(r =>
-                    r.LastName.Contains(term) ||
-                    r.FirstName.Contains(term) ||
-                    (r.MiddleName != null && r.MiddleName.Contains(term)) ||
-                    r.ServiceNumber.Contains(term) ||
-                    r.Rank.Contains(term) ||
-                    r.Position.Contains(term));
+                entities = entities.Where(r => MatchesAllWords(r, words)).ToList();
             }
 
-            var entities = query.OrderBy(r => r.LastName).ThenBy(r => r.FirstName).ToList();
+            var items = entities.Select(r => new RecipientListItem(
+                r.Id,
+                r.LastName + " " + r.FirstName + (r.MiddleName != null ? " " + r.MiddleName : ""),
+                r.Rank,
+                r.Position,
+                r.Unit != null ? r.Unit.Name : "—",
+                FormatRoom(r.Room)));
 
-            return entities
-                .Select(r => new RecipientListItem(
-                    r.Id,
-                    r.LastName + " " + r.FirstName + (r.MiddleName != null ? " " + r.MiddleName : ""),
-                    r.Rank,
-                    r.Position,
-                    r.Unit != null ? r.Unit.Name : "—",
-                    FormatRoom(r.Room)))
-                .ToList();
+            items = sortColumn switch
+            {
+                RecipientSortColumn.Rank => sortDescending ? items.OrderByDescending(i => i.Rank) : items.OrderBy(i => i.Rank),
+                RecipientSortColumn.Position => sortDescending ? items.OrderByDescending(i => i.Position) : items.OrderBy(i => i.Position),
+                RecipientSortColumn.UnitName => sortDescending ? items.OrderByDescending(i => i.UnitName) : items.OrderBy(i => i.UnitName),
+                RecipientSortColumn.Room => sortDescending ? items.OrderByDescending(i => i.RoomDisplay) : items.OrderBy(i => i.RoomDisplay),
+                _ => sortDescending ? items.OrderByDescending(i => i.FullName) : items.OrderBy(i => i.FullName),
+            };
+
+            return items.ToList();
+        }
+
+        public RoomOccupancyInfo? GetRoomOccupancy(string? building, string? number, int excludeRecipientId)
+        {
+            if (string.IsNullOrWhiteSpace(building) || string.IsNullOrWhiteSpace(number)) return null;
+
+            using var db = _dbFactory.CreateDbContext();
+            var b = building.Trim();
+            var n = number.Trim();
+
+            var room = db.Rooms.FirstOrDefault(r => r.Building == b && r.Number == n);
+            if (room is null) return null;
+
+            var occupantCount = db.Recipients.Count(r => r.RoomId == room.Id && r.Id != excludeRecipientId);
+            return new RoomOccupancyInfo(occupantCount, room.Capacity);
+        }
+
+        private static bool MatchesAllWords(Recipient r, string[] words)
+        {
+            var haystack = string.Join(' ', new[]
+            {
+                r.LastName, r.FirstName, r.MiddleName, r.Rank, r.Position, r.ServiceNumber, r.Unit?.Name
+            }).ToLowerInvariant();
+
+            return words.All(w => haystack.Contains(w.ToLowerInvariant()));
         }
 
         private static string FormatRoom(Room? room)
@@ -95,9 +128,36 @@ namespace GenDoc.Services.Recipients
             return db.Rooms.Select(r => r.Building).Distinct().OrderBy(b => b).ToList();
         }
 
-        public void Save(RecipientEditModel model)
+        public List<string> GetRanks()
         {
             using var db = _dbFactory.CreateDbContext();
+            return db.Recipients.Select(r => r.Rank).Distinct().OrderBy(r => r).ToList();
+        }
+
+        public string? FindDuplicateServiceNumberOwner(string? serviceNumber, int excludeRecipientId)
+        {
+            if (string.IsNullOrWhiteSpace(serviceNumber)) return null;
+
+            using var db = _dbFactory.CreateDbContext();
+            var number = serviceNumber.Trim();
+            var duplicate = db.Recipients.FirstOrDefault(r => r.ServiceNumber == number && r.Id != excludeRecipientId);
+            return duplicate is null ? null : $"{duplicate.LastName} {duplicate.FirstName}".Trim();
+        }
+
+        public void Save(RecipientEditModel model, out string? errorMessage)
+        {
+            errorMessage = null;
+            using var db = _dbFactory.CreateDbContext();
+
+            var serviceNumber = model.ServiceNumber.Trim();
+            var duplicate = db.Recipients.FirstOrDefault(r => r.ServiceNumber == serviceNumber && r.Id != model.Id);
+            if (duplicate is not null)
+            {
+                var duplicateName = $"{duplicate.LastName} {duplicate.FirstName}".Trim();
+                errorMessage = $"Особовий номер {serviceNumber} вже використовується: {duplicateName}";
+                return;
+            }
+
             var isNew = model.Id == 0;
             var recipient = isNew ? new Recipient() : db.Recipients.First(r => r.Id == model.Id);
             var oldSnapshot = isNew ? null : BuildSnapshot(recipient);

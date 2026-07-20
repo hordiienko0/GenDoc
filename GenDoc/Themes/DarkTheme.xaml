@@ -13,6 +13,19 @@
     <SolidColorBrush x:Key="AccentSoftBrush" Color="#2ECF6139"/>
     <SolidColorBrush x:Key="DangerBrush" Color="#E24947"/>
     <SolidColorBrush x:Key="SuccessBrush" Color="#61B565"/>
+    <SolidColorBrush x:Key="WarningBrush" Color="#D9A514"/>
+
+    <!-- Токени з макета "Модальне вікно - Новий запис.dc.html" — власна, трохи інша
+         палітра саме для цього діалогу (модальна поверхня темніша за SurfaceBrush,
+         поле вводу — своє). Не підмінюють глобальні брендовані кольори. -->
+    <SolidColorBrush x:Key="ModalSurfaceBrush" Color="#0C0705"/>
+    <SolidColorBrush x:Key="FieldBrush" Color="#191210"/>
+    <SolidColorBrush x:Key="FieldBorderBrush" Color="#332C29"/>
+    <SolidColorBrush x:Key="ModalDividerBrush" Color="#2E2724"/>
+    <SolidColorBrush x:Key="ModalLabelBrush" Color="#817875"/>
+    <SolidColorBrush x:Key="ModalAccentBrush" Color="#D96533"/>
+    <SolidColorBrush x:Key="ModalAccentSoftBrush" Color="#24D96533"/>
+    <SolidColorBrush x:Key="ModalWarnBrush" Color="#E99B2A"/>
 
     <!-- Window: тло/текст/шрифт успадковуються вниз по дереву (LoginWindow/RecipientEditWindow теж) -->
     <Style TargetType="Window">
@@ -281,9 +294,11 @@
             <Setter.Value>
                 <ControlTemplate TargetType="DataGridColumnHeader">
                     <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
-                        <TextBlock Text="{TemplateBinding Content}"
-                                   FontSize="{TemplateBinding FontSize}" FontWeight="{TemplateBinding FontWeight}"
-                                   Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center"/>
+                        <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          VerticalAlignment="Center"
+                                          TextBlock.FontSize="{TemplateBinding FontSize}"
+                                          TextBlock.FontWeight="{TemplateBinding FontWeight}"
+                                          TextBlock.Foreground="{TemplateBinding Foreground}"/>
                     </Border>
                 </ControlTemplate>
             </Setter.Value>
@@ -367,6 +382,80 @@
                 <Setter Property="Padding" Value="13,11,16,11"/>
             </DataTrigger>
         </Style.Triggers>
+    </Style>
+
+    <!-- Кнопка "✕" закриття модального вікна (заголовок RecipientEditWindow) -->
+    <Style x:Key="ModalCloseButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource ModalLabelBrush}"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Width" Value="26"/>
+        <Setter Property="Height" Value="26"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="4">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource DangerBrush}"/>
+                            <Setter Property="Foreground" Value="White"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Другорядна (outline) кнопка — "Зберегти і додати ще" -->
+    <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource FieldBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="18,10"/>
+    </Style>
+
+    <!-- Текстова (ghost) кнопка — "Скасувати" -->
+    <Style x:Key="GhostButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource ModalLabelBrush}"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="Padding" Value="14,10"/>
+    </Style>
+
+    <!-- Чіп-підказка звання під полем "Звання" -->
+    <Style x:Key="SuggestionChipStyle" TargetType="Button">
+        <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+        <Setter Property="Foreground" Value="{StaticResource ModalLabelBrush}"/>
+        <Setter Property="FontSize" Value="11.5"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="Padding" Value="8,2"/>
+        <Setter Property="Margin" Value="0,0,6,0"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="4"
+                            Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource ModalAccentSoftBrush}"/>
+                            <Setter Property="Foreground" Value="{StaticResource ModalAccentBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
 </ResourceDictionary>
