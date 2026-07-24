@@ -12,7 +12,7 @@ using Microsoft.Win32;
 
 namespace GenDoc.ViewModels.Recipients
 {
-    public record ExportMenuOption(string Header, int? TemplateId);
+    public record ExportMenuOption(string Header, int? TemplateId, bool IsBuiltIn = false);
 
     public partial class RecipientsViewModel : ObservableObject
     {
@@ -55,8 +55,8 @@ namespace GenDoc.ViewModels.Recipients
         private ObservableCollection<ExportMenuOption> BuildExportOptions()
         {
             var options = new ObservableCollection<ExportMenuOption> { new("Простий список (.xlsx)", null) };
-            foreach (var template in _exportTemplateService.GetTemplates())
-                options.Add(new ExportMenuOption(template.Name, template.Id));
+            foreach (var template in _exportTemplateService.GetTemplateListItems())
+                options.Add(new ExportMenuOption(template.Name, template.Id, template.IsBuiltIn));
 
             return options;
         }
@@ -168,10 +168,9 @@ namespace GenDoc.ViewModels.Recipients
                 return;
             }
 
-            var isBuiltIn = option.Header == ExportTemplateService.BuiltInTemplateName;
             var dialog = new SaveFileDialog
             {
-                FileName = isBuiltIn ? $"анкетні_дані_{DateTime.Now:ddMMyyyy}.xlsx" : $"{option.Header}.xlsx",
+                FileName = option.IsBuiltIn ? $"анкетні_дані_{DateTime.Now:ddMMyyyy}.xlsx" : $"{option.Header}.xlsx",
                 Filter = "Excel файли (*.xlsx)|*.xlsx",
                 DefaultExt = ".xlsx"
             };

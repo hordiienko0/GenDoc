@@ -87,6 +87,7 @@
         <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="14,10"/>
+        <Setter Property="MinHeight" Value="38"/>
         <Setter Property="CaretBrush" Value="{StaticResource TextPrimaryBrush}"/>
         <Setter Property="SelectionBrush" Value="{StaticResource AccentSoftBrush}"/>
         <Setter Property="Template">
@@ -116,6 +117,7 @@
         <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="14,10"/>
+        <Setter Property="MinHeight" Value="38"/>
         <Setter Property="CaretBrush" Value="{StaticResource TextPrimaryBrush}"/>
         <Setter Property="SelectionBrush" Value="{StaticResource AccentSoftBrush}"/>
         <Setter Property="Template">
@@ -242,6 +244,35 @@
         <Setter Property="BorderThickness" Value="1"/>
     </Style>
 
+    <!-- CheckBox: темний квадрат + галочка-Path замість системного вигляду -->
+    <Style TargetType="CheckBox">
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="CheckBox">
+                    <StackPanel Orientation="Horizontal">
+                        <Border x:Name="box" Width="16" Height="16" Background="{StaticResource Surface2Brush}"
+                                BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1" CornerRadius="2"
+                                VerticalAlignment="Center">
+                            <Path x:Name="checkMark" Data="M1,4 L4,7 L9,1" Stroke="{StaticResource AccentBrush}"
+                                  StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round" Visibility="Collapsed"/>
+                        </Border>
+                        <ContentPresenter Margin="8,0,0,0" VerticalAlignment="Center"
+                                          TextBlock.Foreground="{StaticResource TextPrimaryBrush}"/>
+                    </StackPanel>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="checkMark" Property="Visibility" Value="Visible"/>
+                            <Setter TargetName="box" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Menu / MenuItem (верхня смуга MainWindow) -->
     <Style TargetType="Menu">
         <Setter Property="Background" Value="{StaticResource SidebarBrush}"/>
@@ -274,12 +305,47 @@
         </Setter>
     </Style>
 
-    <!-- ContextMenu (меню вибору формату експорту) -->
-    <Style TargetType="ContextMenu">
+    <!-- ContextMenu (меню вибору формату експорту) — ПОВНИЙ ControlTemplate,
+         бо імпліцитні стилі MenuItem з теми не покривають Popup-дерево надійно
+         і без ретемплейту лишається системний icon-gutter зліва. -->
+    <Style x:Key="DarkContextMenuStyle" TargetType="ContextMenu">
         <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="4"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContextMenu">
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="2" Padding="{TemplateBinding Padding}">
+                        <StackPanel IsItemsHost="True"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="DarkMenuItemStyle" TargetType="MenuItem">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="MenuItem">
+                    <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="2" Padding="12,8">
+                        <ContentPresenter ContentSource="Header" VerticalAlignment="Center"
+                                          TextBlock.Foreground="{StaticResource TextPrimaryBrush}" TextBlock.FontSize="13.5"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource Surface2Brush}"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="border" Property="Opacity" Value="0.5"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- DataGrid: borderless, без вертикальної сітки, uppercase-заголовки -->
@@ -428,6 +494,37 @@
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="border" Property="Background" Value="{StaticResource DangerBrush}"/>
                             <Setter Property="Foreground" Value="White"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Іконка-кнопка в рядку таблиці (редагувати/видалити/мапінг тощо) -->
+    <Style x:Key="RowIconButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="Width" Value="26"/>
+        <Setter Property="Height" Value="26"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="2">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          TextBlock.Foreground="{TemplateBinding Foreground}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="border" Property="Background" Value="{StaticResource Surface2Brush}"/>
+                            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

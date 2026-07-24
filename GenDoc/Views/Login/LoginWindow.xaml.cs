@@ -2,6 +2,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Threading;
 using GenDoc.Native;
 using GenDoc.ViewModels.Login;
 
@@ -19,14 +20,38 @@ public partial class LoginWindow : Window
         DataContext = _viewModel;
         _viewModel.RequestClose += OnRequestClose;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        Loaded += (_, _) => FocusStageField();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(LoginViewModel.Stage) && _viewModel.Stage == LoginStage.ProfileSelect)
+        if (e.PropertyName != nameof(LoginViewModel.Stage)) return;
+
+        if (_viewModel.Stage == LoginStage.ProfileSelect)
         {
             ProfilePasswordBox.Clear();
         }
+
+        FocusStageField();
+    }
+
+    private void FocusStageField()
+    {
+        Dispatcher.BeginInvoke(DispatcherPriority.Input, () =>
+        {
+            switch (_viewModel.Stage)
+            {
+                case LoginStage.DatabasePassword:
+                    DatabasePasswordBox.Focus();
+                    break;
+                case LoginStage.ProfileSelect:
+                    ProfilePasswordBox.Focus();
+                    break;
+                case LoginStage.CreateProfile:
+                    NewProfileFullNameBox.Focus();
+                    break;
+            }
+        });
     }
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)

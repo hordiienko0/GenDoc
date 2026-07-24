@@ -1,6 +1,5 @@
 using System.Globalization;
 using System.IO;
-using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 using GenDoc.Data;
 using GenDoc.Models;
@@ -186,21 +185,9 @@ public class ImportService : IImportService
         return text.Length == 0 ? null : text;
     }
 
-    private static string NormalizeHeader(string header)
-    {
-        var normalized = header.ToLowerInvariant()
-            .Replace("'", string.Empty)
-            .Replace("’", string.Empty)
-            .Replace("-", string.Empty)
-            .Replace('\n', ' ')
-            .Replace('\r', ' ');
-
-        return Regex.Replace(normalized, @"\s+", " ").Trim();
-    }
-
     private static ImportTargetField AutoMapHeader(string header, ref bool noteColumnAssigned)
     {
-        var normalized = NormalizeHeader(header);
+        var normalized = HeaderNormalization.Normalize(header);
 
         if (normalized.Contains("№ з/п")) return ImportTargetField.NotImported;
 

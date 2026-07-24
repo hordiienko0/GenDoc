@@ -108,14 +108,14 @@
                         <StackPanel Grid.Row="1"
                                     Visibility="{Binding Stage, Converter={StaticResource EnumToVisibility}, ConverterParameter=CreateProfile, FallbackValue=Collapsed}">
                             <TextBlock Text="Повне ім'я" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5" Margin="0 0 0 6"/>
-                            <TextBox Text="{Binding NewProfileFullName, UpdateSourceTrigger=PropertyChanged}"
-                                     Background="{StaticResource Surface2Brush}" Height="35"/>
+                            <TextBox x:Name="NewProfileFullNameBox" Text="{Binding NewProfileFullName, UpdateSourceTrigger=PropertyChanged}"
+                                     Background="{StaticResource Surface2Brush}"/>
                             <TextBlock Text="Пароль" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5" Margin="0 14 0 6"/>
                             <PasswordBox x:Name="NewProfilePasswordBox" Background="{StaticResource Surface2Brush}"
-                                         PasswordChanged="NewProfilePasswordBox_PasswordChanged" Height="34"/>
+                                         PasswordChanged="NewProfilePasswordBox_PasswordChanged"/>
                             <TextBlock Text="Підтвердження пароля" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5" Margin="0 14 0 6"/>
                             <PasswordBox x:Name="NewProfilePasswordConfirmBox" Background="{StaticResource Surface2Brush}"
-                                         PasswordChanged="NewProfilePasswordConfirmBox_PasswordChanged" Height="34"/>
+                                         PasswordChanged="NewProfilePasswordConfirmBox_PasswordChanged"/>
                             <StackPanel Orientation="Horizontal" Margin="0 16 0 0">
                                 <Button Content="Створити" Command="{Binding CreateProfileCommand}" Padding="16,8"/>
                                 <Button Content="Скасувати" Command="{Binding CancelCreateProfileCommand}"

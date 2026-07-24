@@ -6,7 +6,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 2;
+    private const int CurrentSchemaVersion = 3;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -16,6 +16,8 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         "FoodCertificate", "IdDocumentNumber", "MedicalBoard", "MedicalBoardConclusion",
         "OriginUnit", "Vehicle"
     };
+
+    private static readonly string[] OrganizationSettingsColumnsV3 = { "HrOfficerFullName" };
 
     private readonly IDbContextFactory<AppDbContext> _dbFactory;
     private readonly IExportTemplateService _exportTemplateService;
@@ -42,20 +44,44 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
             {
                 Version = CurrentSchemaVersion,
                 AppliedAt = DateTime.Now,
-                Description = "Початкова схема (v2, анкетні дані)"
+                Description = "Початкова схема (v3, дані кадровика частини)"
             });
         }
-        else if (db.SchemaVersions.Max(s => s.Version) < CurrentSchemaVersion)
+        else
         {
-            ApplyQuestionnaireColumns(db);
+            var currentVersion = db.SchemaVersions.Max(s => s.Version);
 
-            db.SchemaVersions.Add(new SchemaVersion
+            if (currentVersion < 2)
             {
-                Version = CurrentSchemaVersion,
-                AppliedAt = DateTime.Now,
-                Description = "Анкетні дані прикомандированих"
-            });
+                AddMissingColumns(db, "Recipients", QuestionnaireColumns);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 2,
+                    AppliedAt = DateTime.Now,
+                    Description = "Анкетні дані прикомандированих"
+                });
+                currentVersion = 2;
+            }
+
+            if (currentVersion < 3)
+            {
+                AddMissingColumns(db, "OrganizationSettings", OrganizationSettingsColumnsV3);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 3,
+                    AppliedAt = DateTime.Now,
+                    Description = "ПІБ начальника служби персоналу"
+                });
+            }
         }
+
+        // Самовідновлення: якщо міграція v3 вже позначена виконаною раніше (до
+        // цього виправлення), рядок міг лишитись з HrOfficerFullName = NULL —
+        // не-nullable властивість моделі, EF падає при читанні. На цьому етапі
+        // колонка вже гарантовано існує (щойно мігровано або створено з нуля).
+        db.Database.ExecuteSqlRaw("UPDATE OrganizationSettings SET HrOfficerFullName = '' WHERE HrOfficerFullName IS NULL;");
 
         if (!db.AppSettings.Any())
         {
@@ -72,7 +98,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         _exportTemplateService.EnsureBuiltInTemplate();
     }
 
-    private static void ApplyQuestionnaireColumns(AppDbContext db)
+    private static void AddMissingColumns(AppDbContext db, string tableName, string[] columns)
     {
         var existingColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var connection = db.Database.GetDbConnection();
@@ -82,7 +108,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         try
         {
             using var command = connection.CreateCommand();
-            command.CommandText = "PRAGMA table_info(Recipients);";
+            command.CommandText = $"PRAGMA table_info({tableName});";
             using var reader = command.ExecuteReader();
             var nameOrdinal = reader.GetOrdinal("name");
             while (reader.Read())
@@ -95,10 +121,10 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
             if (wasClosed) connection.Close();
         }
 
-        foreach (var column in QuestionnaireColumns)
+        foreach (var column in columns)
         {
             if (existingColumns.Contains(column)) continue;
-            string sql = "ALTER TABLE Recipients ADD COLUMN " + column + " TEXT NULL;";
+            string sql = "ALTER TABLE " + tableName + " ADD COLUMN " + column + " TEXT NULL;";
             db.Database.ExecuteSqlRaw(sql);
         }
     }

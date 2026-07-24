@@ -4,8 +4,12 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GenDoc.Data;
 using GenDoc.Services;
+using GenDoc.ViewModels.Audit;
+using GenDoc.ViewModels.Generation;
 using GenDoc.ViewModels.Import;
 using GenDoc.ViewModels.Recipients;
+using GenDoc.ViewModels.Settings;
+using GenDoc.ViewModels.Templates;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -35,18 +39,18 @@ public partial class MainViewModel : ObservableObject
             {
                 new NavigationItem("Особовий склад", () => _serviceProvider.GetRequiredService<RecipientsViewModel>()),
                 new NavigationItem("Імпорт з Excel", () => _serviceProvider.GetRequiredService<ImportViewModel>()),
-                new NavigationItem("Шаблони", () => new PlaceholderViewModel("Шаблони")),
-                new NavigationItem("Генерація", () => new PlaceholderViewModel("Генерація")),
+                new NavigationItem("Шаблони", () => _serviceProvider.GetRequiredService<TemplatesViewModel>()),
+                new NavigationItem("Генерація", () => _serviceProvider.GetRequiredService<GenerationViewModel>()),
                 new NavigationItem("Кімнати", () => new PlaceholderViewModel("Кімнати")),
             }, showDividerAfter: true),
             new(new[]
             {
-                new NavigationItem("Журнал дій", () => new PlaceholderViewModel("Журнал дій")),
+                new NavigationItem("Журнал дій", () => _serviceProvider.GetRequiredService<AuditLogViewModel>()),
                 new NavigationItem("Кошик", () => new PlaceholderViewModel("Кошик")),
             }, showDividerAfter: true),
             new(new[]
             {
-                new NavigationItem("Налаштування", () => new PlaceholderViewModel("Налаштування")),
+                new NavigationItem("Налаштування", () => _serviceProvider.GetRequiredService<SettingsViewModel>()),
             }, showDividerAfter: false),
         };
 

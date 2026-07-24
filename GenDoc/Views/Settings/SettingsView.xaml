@@ -1,0 +1,53 @@
+<UserControl x:Class="GenDoc.Views.Settings.SettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <UserControl.Resources>
+        <Style x:Key="SettingsFieldLabelStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="0,0,0,24">
+
+            <TextBlock Text="Налаштування" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock Text="Параметри системи обліку особового складу"
+                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="13.5" Margin="0,4,0,22"/>
+
+            <TextBlock Text="Дані військової частини" FontSize="16" FontWeight="SemiBold"
+                       Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,10"/>
+
+            <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                    BorderThickness="1" CornerRadius="2" Padding="24">
+                <StackPanel MaxWidth="480">
+                    <StackPanel Margin="0,0,0,14">
+                        <TextBlock Text="Номер військової частини" Style="{StaticResource SettingsFieldLabelStyle}"/>
+                        <TextBox Text="{Binding UnitNumber, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,0,14">
+                        <TextBlock Text="Місто" Style="{StaticResource SettingsFieldLabelStyle}"/>
+                        <TextBox Text="{Binding City, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,0,14">
+                        <TextBlock Text="Звання командира" Style="{StaticResource SettingsFieldLabelStyle}"/>
+                        <TextBox Text="{Binding CommanderRank, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,0,14">
+                        <TextBlock Text="ПІБ командира" Style="{StaticResource SettingsFieldLabelStyle}"/>
+                        <TextBox Text="{Binding CommanderFullName, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,0,18">
+                        <TextBlock Text="ПІБ начальника служби персоналу" Style="{StaticResource SettingsFieldLabelStyle}"/>
+                        <TextBox Text="{Binding HrOfficerFullName, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+
+                    <Button Content="Зберегти" Command="{Binding SaveCommand}" HorizontalAlignment="Left"/>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

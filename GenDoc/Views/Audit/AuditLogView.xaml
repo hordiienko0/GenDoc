@@ -1,0 +1,137 @@
+<UserControl x:Class="GenDoc.Views.Audit.AuditLogView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <UserControl.Resources>
+        <Style x:Key="AuditHeaderTextStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <Style x:Key="FilterLabelStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="0,0,0,5"/>
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="0,0,0,24">
+
+            <TextBlock Text="Журнал дій" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock Text="Історія змін у базі даних"
+                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="13.5" Margin="0,4,0,22"/>
+
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,20" VerticalAlignment="Bottom">
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="Від" Style="{StaticResource FilterLabelStyle}"/>
+                    <DatePicker SelectedDate="{Binding SelectedFrom}" Width="150"/>
+                </StackPanel>
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="До" Style="{StaticResource FilterLabelStyle}"/>
+                    <DatePicker SelectedDate="{Binding SelectedTo}" Width="150"/>
+                </StackPanel>
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="Профіль" Style="{StaticResource FilterLabelStyle}"/>
+                    <ComboBox ItemsSource="{Binding ProfileOptions}" DisplayMemberPath="Display" SelectedValuePath="Value"
+                              SelectedValue="{Binding SelectedProfile}" Width="200"/>
+                </StackPanel>
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="Дія" Style="{StaticResource FilterLabelStyle}"/>
+                    <ComboBox ItemsSource="{Binding ActionOptions}" DisplayMemberPath="Display" SelectedValuePath="Value"
+                              SelectedValue="{Binding SelectedAction}" Width="180"/>
+                </StackPanel>
+                <Button Content="Скинути" Style="{StaticResource OutlineButtonStyle}" Command="{Binding ResetCommand}"/>
+            </StackPanel>
+
+            <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                    BorderThickness="1" CornerRadius="2">
+                <StackPanel>
+                    <Grid Background="{StaticResource Surface2Brush}"
+                          Visibility="{Binding HasEntries, Converter={StaticResource BoolToVisibility}}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.2*"/>
+                            <ColumnDefinition Width="1*"/>
+                            <ColumnDefinition Width="1*"/>
+                            <ColumnDefinition Width="1.8*"/>
+                            <ColumnDefinition Width="2*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="ЧАС" Style="{StaticResource AuditHeaderTextStyle}" Margin="20,11"/>
+                        <TextBlock Grid.Column="1" Text="ПРОФІЛЬ" Style="{StaticResource AuditHeaderTextStyle}" Margin="20,11"/>
+                        <TextBlock Grid.Column="2" Text="ДІЯ" Style="{StaticResource AuditHeaderTextStyle}" Margin="20,11"/>
+                        <TextBlock Grid.Column="3" Text="ОБ'ЄКТ" Style="{StaticResource AuditHeaderTextStyle}" Margin="20,11"/>
+                        <TextBlock Grid.Column="4" Text="ЗМІНА" Style="{StaticResource AuditHeaderTextStyle}" Margin="20,11"/>
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding Entries}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderLineBrush}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="1.2*"/>
+                                            <ColumnDefinition Width="1*"/>
+                                            <ColumnDefinition Width="1*"/>
+                                            <ColumnDefinition Width="1.8*"/>
+                                            <ColumnDefinition Width="2*"/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBlock Grid.Column="0" Text="{Binding TimeDisplay}" Margin="20,11" VerticalAlignment="Center"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Profile}" Margin="20,11" VerticalAlignment="Center"
+                                                   Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+
+                                        <TextBlock Grid.Column="2" Text="{Binding Action}" Margin="20,11" VerticalAlignment="Center" FontWeight="SemiBold">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Action}" Value="Видалено">
+                                                            <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Action}" Value="Згенеровано">
+                                                            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Action}" Value="Експортовано">
+                                                            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Action}" Value="Створено">
+                                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Action}" Value="Оновлено">
+                                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding Action}" Value="Імпортовано">
+                                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+
+                                        <TextBlock Grid.Column="3" Text="{Binding ObjectDisplay}" Margin="20,11" VerticalAlignment="Center"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding ObjectDisplay}"/>
+                                        <TextBlock Grid.Column="4" Text="{Binding ChangeDisplay}" Margin="20,11" VerticalAlignment="Center"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding ChangeDisplay}"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Text="Записів за вибраними фільтрами немає" Foreground="{StaticResource TextSecondaryBrush}"
+                               HorizontalAlignment="Center" Padding="48"
+                               Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>
+                </StackPanel>
+            </Border>
+
+            <Button Content="Показати ще 200" Style="{StaticResource OutlineButtonStyle}" Command="{Binding LoadMoreCommand}"
+                    HorizontalAlignment="Center" Margin="0,16,0,0"
+                    Visibility="{Binding CanLoadMore, Converter={StaticResource BoolToVisibility}}"/>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

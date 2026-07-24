@@ -6,6 +6,14 @@
         xmlns:recipientsView="clr-namespace:GenDoc.Views.Recipients"
         xmlns:importVm="clr-namespace:GenDoc.ViewModels.Import"
         xmlns:importView="clr-namespace:GenDoc.Views.Import"
+        xmlns:templatesVm="clr-namespace:GenDoc.ViewModels.Templates"
+        xmlns:templatesView="clr-namespace:GenDoc.Views.Templates"
+        xmlns:auditVm="clr-namespace:GenDoc.ViewModels.Audit"
+        xmlns:auditView="clr-namespace:GenDoc.Views.Audit"
+        xmlns:settingsVm="clr-namespace:GenDoc.ViewModels.Settings"
+        xmlns:settingsView="clr-namespace:GenDoc.Views.Settings"
+        xmlns:generationVm="clr-namespace:GenDoc.ViewModels.Generation"
+        xmlns:generationView="clr-namespace:GenDoc.Views.Generation"
         Style="{StaticResource {x:Type Window}}"
         Title="GenDoc — Облік особового складу" Height="720" Width="1180"
         MinWidth="960" MinHeight="600"
@@ -23,6 +31,18 @@
         </DataTemplate>
         <DataTemplate DataType="{x:Type importVm:ImportViewModel}">
             <importView:ImportView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type templatesVm:TemplatesViewModel}">
+            <templatesView:TemplatesView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type auditVm:AuditLogViewModel}">
+            <auditView:AuditLogView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type settingsVm:SettingsViewModel}">
+            <settingsView:SettingsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type generationVm:GenerationViewModel}">
+            <generationView:GenerationView/>
         </DataTemplate>
     </Window.Resources>
 

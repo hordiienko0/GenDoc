@@ -1,0 +1,249 @@
+<UserControl x:Class="GenDoc.Views.Templates.TemplatesView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <UserControl.Resources>
+        <Style x:Key="TemplatesHeaderTextStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <Style x:Key="TemplatesSectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="0,0,0,24">
+
+            <TextBlock Text="Шаблони" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock Text="Шаблони документів Word і шаблони експорту Excel"
+                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="13.5" Margin="0,4,0,22"/>
+
+            <TextBlock Text="Шаблони документів (.docx)" Style="{StaticResource TemplatesSectionTitleStyle}"/>
+            <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                    BorderThickness="1" CornerRadius="2" Margin="0,0,0,28">
+                <StackPanel>
+                    <Grid Background="{StaticResource Surface2Brush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.8*"/>
+                            <ColumnDefinition Width="1.4*"/>
+                            <ColumnDefinition Width="1*"/>
+                            <ColumnDefinition Width="0.8*"/>
+                            <ColumnDefinition Width="0.8*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="НАЗВА" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
+                        <TextBlock Grid.Column="1" Text="ФАЙЛ" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
+                        <TextBlock Grid.Column="2" Text="ЗАВАНТАЖЕНО" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
+                        <TextBlock Grid.Column="3" Text="МІТОК" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
+                        <TextBlock Grid.Column="4" Text="" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding DocxTemplates}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderLineBrush}">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="1.8*"/>
+                                                <ColumnDefinition Width="1.4*"/>
+                                                <ColumnDefinition Width="1*"/>
+                                                <ColumnDefinition Width="0.8*"/>
+                                                <ColumnDefinition Width="0.8*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="SemiBold" Margin="20,13"
+                                                       VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding OriginalFileName}" Margin="20,13" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding UploadedAtDisplay}" Margin="20,13" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            <TextBlock Grid.Column="3" Text="{Binding TagCount}" Margin="20,13" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+
+                                            <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,13">
+                                                <Button Content="&#xE70F;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Переглянути мапінг"
+                                                        Command="{Binding DataContext.ToggleDocxMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                                <Button Content="&#xE74D;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Видалити" Margin="4,0,0,0"
+                                                        Command="{Binding DataContext.DeleteDocxTemplateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <StackPanel Margin="20,0,20,16" Visibility="{Binding IsMappingExpanded, Converter={StaticResource BoolToVisibility}}">
+                                            <Border Background="{StaticResource Surface2Brush}" CornerRadius="2" Padding="16">
+                                                <StackPanel>
+                                                    <Grid Margin="0,0,0,8">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="1*"/>
+                                                            <ColumnDefinition Width="1.1*"/>
+                                                            <ColumnDefinition Width="1.4*"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="Мітка" Style="{StaticResource TemplatesHeaderTextStyle}"/>
+                                                        <TextBlock Grid.Column="1" Text="Джерело" Style="{StaticResource TemplatesHeaderTextStyle}"/>
+                                                        <TextBlock Grid.Column="2" Text="Поле" Style="{StaticResource TemplatesHeaderTextStyle}"/>
+                                                    </Grid>
+
+                                                    <ItemsControl ItemsSource="{Binding Mappings}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Grid Margin="0,0,0,8">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="1*"/>
+                                                                        <ColumnDefinition Width="1.1*"/>
+                                                                        <ColumnDefinition Width="1.4*"/>
+                                                                    </Grid.ColumnDefinitions>
+
+                                                                    <TextBlock Grid.Column="0" Text="{Binding PlaceholderTag}"
+                                                                               FontFamily="Consolas" Foreground="{StaticResource AccentBrush}"
+                                                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+
+                                                                    <ComboBox Grid.Column="1" ItemsSource="{Binding SourceOptions}"
+                                                                              DisplayMemberPath="Display" SelectedValuePath="Value"
+                                                                              SelectedValue="{Binding SourceType, Mode=TwoWay}"
+                                                                              Width="180" HorizontalAlignment="Left" Margin="0,0,10,0"/>
+
+                                                                    <ComboBox Grid.Column="2" ItemsSource="{Binding FieldOptions}"
+                                                                              DisplayMemberPath="DisplayName" SelectedValuePath="FieldName"
+                                                                              SelectedValue="{Binding SelectedFieldName, Mode=TwoWay}"
+                                                                              IsEnabled="{Binding IsFieldEnabled}"
+                                                                              Width="260" HorizontalAlignment="Left"/>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+
+                                                    <Button Content="Зберегти мапінг" HorizontalAlignment="Left" Margin="0,8,0,0"
+                                                            Command="{Binding DataContext.SaveDocxMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Button Content="+ Завантажити шаблон (.docx)" Style="{StaticResource OutlineButtonStyle}"
+                            Command="{Binding UploadDocxTemplateCommand}" HorizontalAlignment="Left" Margin="20,16"/>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Text="Шаблони експорту (.xlsx)" Style="{StaticResource TemplatesSectionTitleStyle}"/>
+            <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                    BorderThickness="1" CornerRadius="2">
+                <StackPanel>
+                    <Grid Background="{StaticResource Surface2Brush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="1.6*"/>
+                            <ColumnDefinition Width="1*"/>
+                            <ColumnDefinition Width="0.8*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="НАЗВА" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
+                        <TextBlock Grid.Column="1" Text="ФАЙЛ" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
+                        <TextBlock Grid.Column="2" Text="ЗАВАНТАЖЕНО" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
+                        <TextBlock Grid.Column="3" Text="" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding Templates}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderLineBrush}">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="2*"/>
+                                                <ColumnDefinition Width="1.6*"/>
+                                                <ColumnDefinition Width="1*"/>
+                                                <ColumnDefinition Width="0.8*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="20,13" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                                <Border Background="{StaticResource AccentSoftBrush}" CornerRadius="2" Padding="8,2"
+                                                        Margin="8,0,0,0" VerticalAlignment="Center"
+                                                        Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="Вбудований" FontSize="11.5" Foreground="{StaticResource AccentBrush}"/>
+                                                </Border>
+                                            </StackPanel>
+
+                                            <TextBlock Grid.Column="1" Text="{Binding OriginalFileName}" Margin="20,13" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding UploadedAtDisplay}" Margin="20,13" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+
+                                            <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,13">
+                                                <Button Content="&#xE70F;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Переглянути мапінг"
+                                                        Command="{Binding DataContext.ToggleMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                                <Button Content="&#xE74D;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Видалити" Margin="4,0,0,0"
+                                                        Visibility="{Binding CanDelete, Converter={StaticResource BoolToVisibility}}"
+                                                        Command="{Binding DataContext.DeleteTemplateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <StackPanel Margin="20,0,20,16" Visibility="{Binding IsMappingExpanded, Converter={StaticResource BoolToVisibility}}">
+                                            <Border Background="{StaticResource Surface2Brush}" CornerRadius="2" Padding="16">
+                                                <StackPanel>
+                                                    <Grid Margin="0,0,0,8">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="1*"/>
+                                                            <ColumnDefinition Width="1*"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="Колонка шаблону (заголовок)"
+                                                                   Style="{StaticResource TemplatesHeaderTextStyle}"/>
+                                                        <TextBlock Grid.Column="1" Text="Поле бази даних"
+                                                                   Style="{StaticResource TemplatesHeaderTextStyle}"/>
+                                                    </Grid>
+
+                                                    <ItemsControl ItemsSource="{Binding Mappings}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Grid Margin="0,0,0,8">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="1*"/>
+                                                                        <ColumnDefinition Width="1*"/>
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <TextBlock Grid.Column="0" Text="{Binding HeaderText}"
+                                                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                                    <ComboBox Grid.Column="1" ItemsSource="{Binding FieldOptions}"
+                                                                              DisplayMemberPath="DisplayName" SelectedValuePath="Field"
+                                                                              SelectedValue="{Binding SelectedField, Mode=TwoWay}"
+                                                                              Width="260" HorizontalAlignment="Left"/>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+
+                                                    <Button Content="Зберегти мапінг" HorizontalAlignment="Left" Margin="0,8,0,0"
+                                                            Command="{Binding DataContext.SaveMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Button Content="+ Завантажити шаблон експорту" Style="{StaticResource OutlineButtonStyle}"
+                            Command="{Binding UploadTemplateCommand}" HorizontalAlignment="Left" Margin="20,16"/>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

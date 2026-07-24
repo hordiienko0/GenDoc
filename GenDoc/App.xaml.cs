@@ -1,11 +1,18 @@
 ﻿using GenDoc.Data;
 using GenDoc.Services;
+using GenDoc.Services.Audit;
+using GenDoc.Services.Generation;
 using GenDoc.Services.Import;
 using GenDoc.Services.Recipients;
+using GenDoc.Services.Templates;
+using GenDoc.ViewModels.Audit;
+using GenDoc.ViewModels.Generation;
 using GenDoc.ViewModels.Import;
 using GenDoc.ViewModels.Login;
 using GenDoc.ViewModels.Recipients;
+using GenDoc.ViewModels.Settings;
 using GenDoc.ViewModels.Shell;
+using GenDoc.ViewModels.Templates;
 using GenDoc.Views.Login;
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
@@ -45,6 +52,10 @@ namespace GenDoc
             services.AddSingleton<IExportService, ExportService>();
             services.AddTransient<IImportService, ImportService>();
             services.AddTransient<IExportTemplateService, ExportTemplateService>();
+            services.AddTransient<IAuditLogQueryService, AuditLogQueryService>();
+            services.AddTransient<ITemplateService, TemplateService>();
+            services.AddTransient<IDocumentGenerationService, DocumentGenerationService>();
+            services.AddTransient<IGenerationService, GenerationService>();
 
             services.AddTransient<LoginViewModel>();
             services.AddTransient<LoginWindow>();
@@ -52,6 +63,10 @@ namespace GenDoc
             services.AddTransient<RecipientsViewModel>();
             services.AddTransient<RecipientEditViewModel>();
             services.AddTransient<ImportViewModel>();
+            services.AddTransient<TemplatesViewModel>();
+            services.AddTransient<AuditLogViewModel>();
+            services.AddTransient<SettingsViewModel>();
+            services.AddTransient<GenerationViewModel>();
             services.AddTransient<MainWindow>();
         }
 

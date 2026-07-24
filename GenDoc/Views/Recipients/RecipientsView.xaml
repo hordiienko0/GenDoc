@@ -3,40 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <UserControl.Resources>
-        <Style x:Key="RowIconButtonStyle" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
-            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Width" Value="26"/>
-            <Setter Property="Height" Value="26"/>
-            <Setter Property="Padding" Value="0"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="HorizontalContentAlignment" Value="Center"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="2">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
-                                              TextBlock.Foreground="{TemplateBinding Foreground}"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="{StaticResource Surface2Brush}"/>
-                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
         <Style x:Key="SortableHeaderStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
         </Style>
-
     </UserControl.Resources>
 
     <Grid Background="{StaticResource BackgroundBrush}">
@@ -66,9 +35,10 @@
                 <Button x:Name="ExportButton" Content="Експорт" Style="{StaticResource OutlineButtonStyle}"
                         Margin="10,0,0,0" Click="ExportButton_Click">
                     <Button.ContextMenu>
-                        <ContextMenu ItemsSource="{Binding ExportOptions}">
+                        <ContextMenu ItemsSource="{Binding ExportOptions}"
+                                     Style="{StaticResource DarkContextMenuStyle}">
                             <ContextMenu.ItemContainerStyle>
-                                <Style TargetType="MenuItem">
+                                <Style TargetType="MenuItem" BasedOn="{StaticResource DarkMenuItemStyle}">
                                     <Setter Property="Header" Value="{Binding Header}"/>
                                     <Setter Property="Command"
                                             Value="{Binding DataContext.ExportOptionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>

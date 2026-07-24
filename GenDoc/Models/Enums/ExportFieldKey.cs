@@ -35,4 +35,43 @@ namespace GenDoc.Models.Enums
         RoomDisplay,
         Empty
     }
+
+    public static class ExportFieldKeyNames
+    {
+        public static readonly IReadOnlyDictionary<ExportFieldKey, string> DisplayNames = new Dictionary<ExportFieldKey, string>
+        {
+            [ExportFieldKey.RowNumber] = "№ з/п",
+            [ExportFieldKey.Rank] = "Звання",
+            [ExportFieldKey.FullNameFormatted] = "ПІБ (ПРІЗВИЩЕ Ім'я По батькові)",
+            [ExportFieldKey.LastName] = "Прізвище",
+            [ExportFieldKey.FirstName] = "Ім'я",
+            [ExportFieldKey.MiddleName] = "По батькові",
+            [ExportFieldKey.DateOfBirth] = "Дата народження",
+            [ExportFieldKey.Nationality] = "Національність",
+            [ExportFieldKey.Vos] = "ВОС на який навчається",
+            [ExportFieldKey.CourseArrivalDate] = "З якого часу прибув на курси П та ПК",
+            [ExportFieldKey.MaritalStatus] = "Сімейний стан",
+            [ExportFieldKey.RegistrationAddress] = "Адреса реєстрації",
+            [ExportFieldKey.ResidenceAddress] = "Адреса фактичного проживання",
+            [ExportFieldKey.Phone] = "Телефон",
+            [ExportFieldKey.Note] = "Примітка",
+            [ExportFieldKey.GroupName] = "Група",
+            [ExportFieldKey.NameTransliterated] = "ПІБ на іноземній мові",
+            [ExportFieldKey.ServedBefore] = "Служив/не служив",
+            [ExportFieldKey.ExtraNote] = "Примітка (2)",
+            [ExportFieldKey.CommanderContact] = "Командир (ПІП та телефон)",
+            [ExportFieldKey.TravelCertificateNumber] = "№ посвідчення про відрядження",
+            [ExportFieldKey.FoodCertificate] = "Прод атестат",
+            [ExportFieldKey.IdDocumentNumber] = "Номер посвідчення офіцера/військового квитка",
+            [ExportFieldKey.MedicalBoard] = "ВЛК, №, дата",
+            [ExportFieldKey.MedicalBoardConclusion] = "Висновок ВЛК",
+            [ExportFieldKey.OriginUnit] = "З якої частини прибув",
+            [ExportFieldKey.Position] = "Посада",
+            [ExportFieldKey.Vehicle] = "Автомобіль, номер авто",
+            [ExportFieldKey.ServiceNumber] = "Особовий номер",
+            [ExportFieldKey.UnitName] = "Підрозділ",
+            [ExportFieldKey.RoomDisplay] = "Кімната",
+            [ExportFieldKey.Empty] = "— не заповнювати —"
+        };
+    }
 }

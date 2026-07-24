@@ -27,6 +27,9 @@ namespace GenDoc.Services
         public void LogImport(AppDbContext db, string entityName, int count, string? details = null)
             => Add(db, "Імпортовано", entityName, 0, null, null, details ?? $"{count} записів");
 
+        public void LogGenerate(AppDbContext db, string entityName, int entityId, string? details = null)
+            => Add(db, "Згенеровано", entityName, entityId, null, null, details);
+
         private void Add(AppDbContext db, string action, string entityName, int entityId, string? oldValue, string? newValue, string? details)
         {
             db.AuditLog.Add(new AuditLogEntry
