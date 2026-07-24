@@ -12,12 +12,15 @@ using Microsoft.Win32;
 
 namespace GenDoc.ViewModels.Recipients
 {
+    public record ExportMenuOption(string Header, int? TemplateId);
+
     public partial class RecipientsViewModel : ObservableObject
     {
         private static readonly TimeSpan SearchDebounceInterval = TimeSpan.FromMilliseconds(280);
 
         private readonly IRecipientService _recipientService;
         private readonly IExportService _exportService;
+        private readonly IExportTemplateService _exportTemplateService;
         private readonly IDialogService _dialogService;
         private readonly IServiceProvider _serviceProvider;
         private readonly DispatcherTimer _searchDebounceTimer;
@@ -25,11 +28,13 @@ namespace GenDoc.ViewModels.Recipients
         public RecipientsViewModel(
             IRecipientService recipientService,
             IExportService exportService,
+            IExportTemplateService exportTemplateService,
             IDialogService dialogService,
             IServiceProvider serviceProvider)
         {
             _recipientService = recipientService;
             _exportService = exportService;
+            _exportTemplateService = exportTemplateService;
             _dialogService = dialogService;
             _serviceProvider = serviceProvider;
 
@@ -40,7 +45,20 @@ namespace GenDoc.ViewModels.Recipients
                 Refresh();
             };
 
+            ExportOptions = BuildExportOptions();
+
             Refresh();
+        }
+
+        public ObservableCollection<ExportMenuOption> ExportOptions { get; }
+
+        private ObservableCollection<ExportMenuOption> BuildExportOptions()
+        {
+            var options = new ObservableCollection<ExportMenuOption> { new("Простий список (.xlsx)", null) };
+            foreach (var template in _exportTemplateService.GetTemplates())
+                options.Add(new ExportMenuOption(template.Name, template.Id));
+
+            return options;
         }
 
         [ObservableProperty]
@@ -137,6 +155,43 @@ namespace GenDoc.ViewModels.Recipients
 
             var result = _dialogService.ShowDialog(vm, Application.Current.MainWindow);
             if (result == true) Refresh();
+        }
+
+        [RelayCommand]
+        private async Task ExportOption(ExportMenuOption? option)
+        {
+            if (option is null) return;
+
+            if (option.TemplateId is null)
+            {
+                await ExportAsync();
+                return;
+            }
+
+            var isBuiltIn = option.Header == ExportTemplateService.BuiltInTemplateName;
+            var dialog = new SaveFileDialog
+            {
+                FileName = isBuiltIn ? $"анкетні_дані_{DateTime.Now:ddMMyyyy}.xlsx" : $"{option.Header}.xlsx",
+                Filter = "Excel файли (*.xlsx)|*.xlsx",
+                DefaultExt = ".xlsx"
+            };
+            if (dialog.ShowDialog() != true) return;
+
+            var items = _recipientService.SearchEntities(SearchText, SortColumn, SortDescending);
+            var result = await _exportService.ExportByTemplateAsync(option.TemplateId.Value, items, dialog.FileName);
+
+            if (result.Success)
+            {
+                MessageBox.Show(
+                    $"Експортовано {result.RowCount} записів у файл:\n{result.FilePath}",
+                    "Експорт завершено", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show(
+                    $"Не вдалося виконати експорт:\n{result.ErrorMessage}",
+                    "Помилка експорту", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         [RelayCommand]

@@ -13,7 +13,29 @@ public enum ImportTargetField
     ServiceNumber,
     DateOfBirth,
     Building,
-    RoomNumber
+    RoomNumber,
+
+    // Анкетні дані (прикомандировані)
+    Nationality,
+    Vos,
+    CourseArrivalDate,
+    MaritalStatus,
+    RegistrationAddress,
+    ResidenceAddress,
+    Phone,
+    Note,
+    GroupName,
+    NameTransliterated,
+    ServedBefore,
+    ExtraNote,
+    CommanderContact,
+    TravelCertificateNumber,
+    FoodCertificate,
+    IdDocumentNumber,
+    MedicalBoard,
+    MedicalBoardConclusion,
+    OriginUnit,
+    Vehicle
 }
 
 public static class ImportTargetFieldNames
@@ -31,7 +53,28 @@ public static class ImportTargetFieldNames
         [ImportTargetField.ServiceNumber] = "Особовий номер",
         [ImportTargetField.DateOfBirth] = "Дата народження",
         [ImportTargetField.Building] = "Корпус",
-        [ImportTargetField.RoomNumber] = "Кімната"
+        [ImportTargetField.RoomNumber] = "Кімната",
+
+        [ImportTargetField.Nationality] = "Національність",
+        [ImportTargetField.Vos] = "ВОС на який навчається",
+        [ImportTargetField.CourseArrivalDate] = "З якого часу прибув на курси П та ПК",
+        [ImportTargetField.MaritalStatus] = "Сімейний стан",
+        [ImportTargetField.RegistrationAddress] = "Адреса реєстрації",
+        [ImportTargetField.ResidenceAddress] = "Адреса фактичного проживання",
+        [ImportTargetField.Phone] = "Телефон",
+        [ImportTargetField.Note] = "Примітка",
+        [ImportTargetField.GroupName] = "Група",
+        [ImportTargetField.NameTransliterated] = "ПІБ на іноземній мові",
+        [ImportTargetField.ServedBefore] = "Служив/не служив",
+        [ImportTargetField.ExtraNote] = "Примітка (2)",
+        [ImportTargetField.CommanderContact] = "Командир (ПІП та телефон)",
+        [ImportTargetField.TravelCertificateNumber] = "№ посвідчення про відрядження",
+        [ImportTargetField.FoodCertificate] = "Прод атестат",
+        [ImportTargetField.IdDocumentNumber] = "Номер посвідчення офіцера/військового квитка",
+        [ImportTargetField.MedicalBoard] = "ВЛК, №, дата",
+        [ImportTargetField.MedicalBoardConclusion] = "Висновок ВЛК",
+        [ImportTargetField.OriginUnit] = "З якої частини прибув",
+        [ImportTargetField.Vehicle] = "Автомобіль, номер авто"
     };
 }
 

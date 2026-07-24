@@ -30,6 +30,8 @@ namespace GenDoc.Data
         public DbSet<Models.AppSettings> AppSettings => Set<Models.AppSettings>();
         public DbSet<OrganizationSettings> OrganizationSettings => Set<OrganizationSettings>();
         public DbSet<SchemaVersion> SchemaVersions => Set<SchemaVersion>();
+        public DbSet<ExportTemplate> ExportTemplates => Set<ExportTemplate>();
+        public DbSet<ExportTemplateColumnMapping> ExportTemplateColumnMappings => Set<ExportTemplateColumnMapping>();
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -53,6 +55,12 @@ namespace GenDoc.Data
             modelBuilder.Entity<GeneratedDocument>()
                 .HasIndex(g => new { g.RecipientId, g.TemplateId })
                 .IsUnique();
+
+            modelBuilder.Entity<ExportTemplate>()
+                .HasMany(t => t.ColumnMappings)
+                .WithOne(m => m.ExportTemplate)
+                .HasForeignKey(m => m.ExportTemplateId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             ApplySoftDeleteFilters(modelBuilder);
         }

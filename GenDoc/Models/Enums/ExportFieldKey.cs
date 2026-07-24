@@ -1,0 +1,38 @@
+namespace GenDoc.Models.Enums
+{
+    public enum ExportFieldKey
+    {
+        RowNumber,
+        Rank,
+        FullNameFormatted,
+        LastName,
+        FirstName,
+        MiddleName,
+        DateOfBirth,
+        Nationality,
+        Vos,
+        CourseArrivalDate,
+        MaritalStatus,
+        RegistrationAddress,
+        ResidenceAddress,
+        Phone,
+        Note,
+        GroupName,
+        NameTransliterated,
+        ServedBefore,
+        ExtraNote,
+        CommanderContact,
+        TravelCertificateNumber,
+        FoodCertificate,
+        IdDocumentNumber,
+        MedicalBoard,
+        MedicalBoardConclusion,
+        OriginUnit,
+        Position,
+        Vehicle,
+        ServiceNumber,
+        UnitName,
+        RoomDisplay,
+        Empty
+    }
+}

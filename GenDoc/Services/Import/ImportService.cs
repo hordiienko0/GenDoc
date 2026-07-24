@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.IO;
+using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 using GenDoc.Data;
 using GenDoc.Models;
@@ -48,13 +49,15 @@ public class ImportService : IImportService
         }
 
         var columns = new List<ImportColumn>();
+        var noteColumnAssigned = false;
         for (var c = 1; c <= columnCount; c++)
         {
             var header = headerRow.Cell(c).GetString().Trim();
             var example = rawRows.Select(r => r[c - 1]).FirstOrDefault(v => !string.IsNullOrWhiteSpace(v)) ?? string.Empty;
+            var mappedField = AutoMapHeader(header, ref noteColumnAssigned);
             var column = new ImportColumn(c - 1, header, example)
             {
-                MappedField = AutoMapHeader(header)
+                MappedField = mappedField
             };
             columns.Add(column);
         }
@@ -74,7 +77,7 @@ public class ImportService : IImportService
         var previews = new List<ImportRowPreview>();
         foreach (var row in rows)
         {
-            var (status, note) = EvaluateRow(row.Fields, row.IncompleteFullName, existingServiceNumbers, seenInFile);
+            var (status, note) = EvaluateRow(row.Fields, row.IncompleteFullName, row.CourseArrivalDateInvalid, existingServiceNumbers, seenInFile);
             previews.Add(new ImportRowPreview
             {
                 RowNumber = row.RowNumber,
@@ -105,7 +108,7 @@ public class ImportService : IImportService
 
         foreach (var row in rows)
         {
-            var (status, _) = EvaluateRow(row.Fields, row.IncompleteFullName, existingServiceNumbers, seenInFile);
+            var (status, _) = EvaluateRow(row.Fields, row.IncompleteFullName, row.CourseArrivalDateInvalid, existingServiceNumbers, seenInFile);
             if (status is ImportRowStatus.Error or ImportRowStatus.Duplicate)
             {
                 skipped++;
@@ -127,7 +130,28 @@ public class ImportService : IImportService
                     ServiceNumber = row.Fields.ServiceNumber,
                     DateOfBirth = row.Fields.DateOfBirth,
                     UnitId = unit?.Id,
-                    RoomId = room?.Id
+                    RoomId = room?.Id,
+
+                    Nationality = NullIfEmpty(row.Fields.Nationality),
+                    Vos = NullIfEmpty(row.Fields.Vos),
+                    CourseArrivalDate = row.Fields.CourseArrivalDate,
+                    MaritalStatus = NullIfEmpty(row.Fields.MaritalStatus),
+                    RegistrationAddress = NullIfEmpty(row.Fields.RegistrationAddress),
+                    ResidenceAddress = NullIfEmpty(row.Fields.ResidenceAddress),
+                    Phone = NullIfEmpty(row.Fields.Phone),
+                    Note = NullIfEmpty(row.Fields.Note),
+                    GroupName = NullIfEmpty(row.Fields.GroupName),
+                    NameTransliterated = NullIfEmpty(row.Fields.NameTransliterated),
+                    ServedBefore = NullIfEmpty(row.Fields.ServedBefore),
+                    ExtraNote = NullIfEmpty(row.Fields.ExtraNote),
+                    CommanderContact = NullIfEmpty(row.Fields.CommanderContact),
+                    TravelCertificateNumber = NullIfEmpty(row.Fields.TravelCertificateNumber),
+                    FoodCertificate = NullIfEmpty(row.Fields.FoodCertificate),
+                    IdDocumentNumber = NullIfEmpty(row.Fields.IdDocumentNumber),
+                    MedicalBoard = NullIfEmpty(row.Fields.MedicalBoard),
+                    MedicalBoardConclusion = NullIfEmpty(row.Fields.MedicalBoardConclusion),
+                    OriginUnit = NullIfEmpty(row.Fields.OriginUnit),
+                    Vehicle = NullIfEmpty(row.Fields.Vehicle)
                 };
 
                 db.Recipients.Add(recipient);
@@ -149,6 +173,8 @@ public class ImportService : IImportService
         return new ImportSummary(imported, skipped, errors);
     }
 
+    private static string? NullIfEmpty(string value) => string.IsNullOrWhiteSpace(value) ? null : value;
+
     private static string? GetCellText(IXLCell cell)
     {
         if (cell.IsEmpty()) return null;
@@ -160,28 +186,72 @@ public class ImportService : IImportService
         return text.Length == 0 ? null : text;
     }
 
-    private static ImportTargetField AutoMapHeader(string header)
+    private static string NormalizeHeader(string header)
     {
-        var normalized = header.ToLowerInvariant().Trim()
+        var normalized = header.ToLowerInvariant()
             .Replace("'", string.Empty)
             .Replace("’", string.Empty)
-            .Replace("-", string.Empty);
+            .Replace("-", string.Empty)
+            .Replace('\n', ' ')
+            .Replace('\r', ' ');
 
-        return normalized switch
+        return Regex.Replace(normalized, @"\s+", " ").Trim();
+    }
+
+    private static ImportTargetField AutoMapHeader(string header, ref bool noteColumnAssigned)
+    {
+        var normalized = NormalizeHeader(header);
+
+        if (normalized.Contains("№ з/п")) return ImportTargetField.NotImported;
+
+        if (normalized.Contains("іноземній мові")) return ImportTargetField.NameTransliterated;
+        if (normalized.Contains("піб")) return ImportTargetField.FullName;
+
+        if (normalized.Contains("прізвище")) return ImportTargetField.LastName;
+        if (normalized.Contains("по батькові")) return ImportTargetField.MiddleName;
+        if (normalized.Contains("імя")) return ImportTargetField.FirstName;
+
+        if (normalized.Contains("звання")) return ImportTargetField.Rank;
+        if (normalized.Contains("національність")) return ImportTargetField.Nationality;
+        if (normalized.Contains("вос")) return ImportTargetField.Vos;
+        if (normalized.Contains("прибув на курси")) return ImportTargetField.CourseArrivalDate;
+        if (normalized.Contains("сімейний стан")) return ImportTargetField.MaritalStatus;
+        if (normalized.Contains("адреса реєстрації")) return ImportTargetField.RegistrationAddress;
+        if (normalized.Contains("фактичного проживання")) return ImportTargetField.ResidenceAddress;
+
+        if (normalized.Contains("командир")) return ImportTargetField.CommanderContact;
+        if (normalized.Contains("телефон")) return ImportTargetField.Phone;
+
+        if (normalized.Contains("примітка"))
         {
-            "піб" => ImportTargetField.FullName,
-            "прізвище" => ImportTargetField.LastName,
-            "імя" => ImportTargetField.FirstName,
-            "по батькові" => ImportTargetField.MiddleName,
-            "звання" => ImportTargetField.Rank,
-            "посада" => ImportTargetField.Position,
-            "підрозділ" => ImportTargetField.Unit,
-            "особовий номер" => ImportTargetField.ServiceNumber,
-            "дата народження" => ImportTargetField.DateOfBirth,
-            "корпус" => ImportTargetField.Building,
-            "кімната" => ImportTargetField.RoomNumber,
-            _ => ImportTargetField.NotImported
-        };
+            if (noteColumnAssigned) return ImportTargetField.ExtraNote;
+            noteColumnAssigned = true;
+            return ImportTargetField.Note;
+        }
+
+        if (normalized.Contains("група")) return ImportTargetField.GroupName;
+        if (normalized.Contains("служив")) return ImportTargetField.ServedBefore;
+
+        if (normalized.Contains("посвідчення про відрядження")) return ImportTargetField.TravelCertificateNumber;
+        if (normalized.Contains("прод")) return ImportTargetField.FoodCertificate;
+        if (normalized.Contains("посвідчення офіцера") || normalized.Contains("військового квитка"))
+            return ImportTargetField.IdDocumentNumber;
+
+        if (normalized.Contains("висновок влк")) return ImportTargetField.MedicalBoardConclusion;
+        if (normalized.Contains("влк")) return ImportTargetField.MedicalBoard;
+
+        if (normalized.Contains("з якої військової частини")) return ImportTargetField.OriginUnit;
+
+        if (normalized.Contains("посада")) return ImportTargetField.Position;
+        if (normalized.Contains("автомобіль")) return ImportTargetField.Vehicle;
+
+        if (normalized.Contains("підрозділ")) return ImportTargetField.Unit;
+        if (normalized.Contains("особовий номер")) return ImportTargetField.ServiceNumber;
+        if (normalized.Contains("дата народження")) return ImportTargetField.DateOfBirth;
+        if (normalized.Contains("корпус")) return ImportTargetField.Building;
+        if (normalized.Contains("кімната")) return ImportTargetField.RoomNumber;
+
+        return ImportTargetField.NotImported;
     }
 
     private static List<RowInfo> ParseRows(ImportParseResult parsed)
@@ -237,6 +307,26 @@ public class ImportService : IImportService
             fields.Building = values.GetValueOrDefault(ImportTargetField.Building) ?? string.Empty;
             fields.RoomNumber = values.GetValueOrDefault(ImportTargetField.RoomNumber) ?? string.Empty;
 
+            fields.Nationality = values.GetValueOrDefault(ImportTargetField.Nationality) ?? string.Empty;
+            fields.Vos = values.GetValueOrDefault(ImportTargetField.Vos) ?? string.Empty;
+            fields.MaritalStatus = values.GetValueOrDefault(ImportTargetField.MaritalStatus) ?? string.Empty;
+            fields.RegistrationAddress = values.GetValueOrDefault(ImportTargetField.RegistrationAddress) ?? string.Empty;
+            fields.ResidenceAddress = values.GetValueOrDefault(ImportTargetField.ResidenceAddress) ?? string.Empty;
+            fields.Phone = values.GetValueOrDefault(ImportTargetField.Phone) ?? string.Empty;
+            fields.Note = values.GetValueOrDefault(ImportTargetField.Note) ?? string.Empty;
+            fields.GroupName = values.GetValueOrDefault(ImportTargetField.GroupName) ?? string.Empty;
+            fields.NameTransliterated = values.GetValueOrDefault(ImportTargetField.NameTransliterated) ?? string.Empty;
+            fields.ServedBefore = values.GetValueOrDefault(ImportTargetField.ServedBefore) ?? string.Empty;
+            fields.ExtraNote = values.GetValueOrDefault(ImportTargetField.ExtraNote) ?? string.Empty;
+            fields.CommanderContact = values.GetValueOrDefault(ImportTargetField.CommanderContact) ?? string.Empty;
+            fields.TravelCertificateNumber = values.GetValueOrDefault(ImportTargetField.TravelCertificateNumber) ?? string.Empty;
+            fields.FoodCertificate = values.GetValueOrDefault(ImportTargetField.FoodCertificate) ?? string.Empty;
+            fields.IdDocumentNumber = values.GetValueOrDefault(ImportTargetField.IdDocumentNumber) ?? string.Empty;
+            fields.MedicalBoard = values.GetValueOrDefault(ImportTargetField.MedicalBoard) ?? string.Empty;
+            fields.MedicalBoardConclusion = values.GetValueOrDefault(ImportTargetField.MedicalBoardConclusion) ?? string.Empty;
+            fields.OriginUnit = values.GetValueOrDefault(ImportTargetField.OriginUnit) ?? string.Empty;
+            fields.Vehicle = values.GetValueOrDefault(ImportTargetField.Vehicle) ?? string.Empty;
+
             fields.DateOfBirthRaw = values.GetValueOrDefault(ImportTargetField.DateOfBirth);
             if (!string.IsNullOrWhiteSpace(fields.DateOfBirthRaw) &&
                 DateOnly.TryParseExact(fields.DateOfBirthRaw, DateFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dob))
@@ -244,14 +334,25 @@ public class ImportService : IImportService
                 fields.DateOfBirth = dob;
             }
 
-            result.Add(new RowInfo(i + 2, fields, incompleteFullName));
+            var courseArrivalDateRaw = values.GetValueOrDefault(ImportTargetField.CourseArrivalDate);
+            var courseArrivalDateInvalid = false;
+            if (!string.IsNullOrWhiteSpace(courseArrivalDateRaw))
+            {
+                if (DateOnly.TryParseExact(courseArrivalDateRaw, DateFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var arrivalDate))
+                    fields.CourseArrivalDate = arrivalDate;
+                else
+                    courseArrivalDateInvalid = true;
+            }
+
+            result.Add(new RowInfo(i + 2, fields, incompleteFullName, courseArrivalDateInvalid));
         }
 
         return result;
     }
 
     private static (ImportRowStatus Status, string Note) EvaluateRow(
-        RowFields fields, bool incompleteFullName, HashSet<string> existingServiceNumbers, HashSet<string> seenInFile)
+        RowFields fields, bool incompleteFullName, bool courseArrivalDateInvalid,
+        HashSet<string> existingServiceNumbers, HashSet<string> seenInFile)
     {
         if (string.IsNullOrWhiteSpace(fields.LastName) && string.IsNullOrWhiteSpace(fields.FirstName))
             return (ImportRowStatus.Error, "Порожнє поле ПІБ");
@@ -271,6 +372,9 @@ public class ImportService : IImportService
 
         if (incompleteFullName)
             return (ImportRowStatus.Warning, "Неповне ПІБ");
+
+        if (courseArrivalDateInvalid)
+            return (ImportRowStatus.Warning, "Некоректна дата прибуття — поле пропущено");
 
         if (string.IsNullOrWhiteSpace(fields.RoomNumber))
             return (ImportRowStatus.Warning, "Немає поля «Кімната» — додасться без розміщення");
@@ -358,7 +462,28 @@ public class ImportService : IImportService
         public DateOnly? DateOfBirth;
         public string Building = string.Empty;
         public string RoomNumber = string.Empty;
+
+        public string Nationality = string.Empty;
+        public string Vos = string.Empty;
+        public DateOnly? CourseArrivalDate;
+        public string MaritalStatus = string.Empty;
+        public string RegistrationAddress = string.Empty;
+        public string ResidenceAddress = string.Empty;
+        public string Phone = string.Empty;
+        public string Note = string.Empty;
+        public string GroupName = string.Empty;
+        public string NameTransliterated = string.Empty;
+        public string ServedBefore = string.Empty;
+        public string ExtraNote = string.Empty;
+        public string CommanderContact = string.Empty;
+        public string TravelCertificateNumber = string.Empty;
+        public string FoodCertificate = string.Empty;
+        public string IdDocumentNumber = string.Empty;
+        public string MedicalBoard = string.Empty;
+        public string MedicalBoardConclusion = string.Empty;
+        public string OriginUnit = string.Empty;
+        public string Vehicle = string.Empty;
     }
 
-    private record RowInfo(int RowNumber, RowFields Fields, bool IncompleteFullName);
+    private record RowInfo(int RowNumber, RowFields Fields, bool IncompleteFullName, bool CourseArrivalDateInvalid);
 }

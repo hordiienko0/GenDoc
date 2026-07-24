@@ -22,6 +22,28 @@ namespace GenDoc.Models
         public int? RoomId { get; set; }
         public Room? Room { get; set; }
 
+        // Анкетні дані (прикомандировані) — Б.1
+        public string? Nationality { get; set; }
+        public string? Vos { get; set; }
+        public DateOnly? CourseArrivalDate { get; set; }
+        public string? MaritalStatus { get; set; }
+        public string? RegistrationAddress { get; set; }
+        public string? ResidenceAddress { get; set; }
+        public string? Phone { get; set; }
+        public string? Note { get; set; }
+        public string? GroupName { get; set; }
+        public string? NameTransliterated { get; set; }
+        public string? ServedBefore { get; set; }
+        public string? ExtraNote { get; set; }
+        public string? CommanderContact { get; set; }
+        public string? TravelCertificateNumber { get; set; }
+        public string? FoodCertificate { get; set; }
+        public string? IdDocumentNumber { get; set; }
+        public string? MedicalBoard { get; set; }
+        public string? MedicalBoardConclusion { get; set; }
+        public string? OriginUnit { get; set; }
+        public string? Vehicle { get; set; }
+
         public DateTime? DeletedAt { get; set; }
         public string? DeletedBy { get; set; }
 

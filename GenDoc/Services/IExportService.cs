@@ -1,3 +1,5 @@
+using GenDoc.Models;
+
 namespace GenDoc.Services
 {
     public sealed record ExportColumn<T>(string Header, Func<T, object?> Selector);
@@ -11,5 +13,7 @@ namespace GenDoc.Services
             IReadOnlyList<ExportColumn<T>> columns,
             string filePath,
             string sheetName = "Аркуш1");
+
+        Task<ExportResult> ExportByTemplateAsync(int templateId, IReadOnlyList<Recipient> items, string filePath);
     }
 }

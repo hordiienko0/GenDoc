@@ -1,6 +1,7 @@
 <Window x:Class="GenDoc.Views.Recipients.RecipientEditWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource {x:Type Window}}"
         Title="{Binding Title}" Width="580" Height="800"
         Background="{StaticResource ModalSurfaceBrush}"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
@@ -45,6 +46,54 @@
             <Setter Property="Foreground" Value="{StaticResource ModalWarnBrush}"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="Margin" Value="0,5,0,0"/>
+        </Style>
+
+        <!-- Мінімальний темний Expander: системний рендериться світлими кольорами -->
+        <Style TargetType="Expander">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Expander">
+                        <StackPanel>
+                            <ToggleButton Cursor="Hand" Focusable="False"
+                                          IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                          Content="{TemplateBinding Header}">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Border Background="Transparent" Padding="0,10">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Path x:Name="Arrow" Data="M0,0 L4,4 L0,8 Z" Fill="{StaticResource TextSecondaryBrush}"
+                                                      VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                <ContentPresenter Grid.Column="1" Content="{TemplateBinding Content}" VerticalAlignment="Center"
+                                                                  TextBlock.Foreground="{StaticResource TextSecondaryBrush}"
+                                                                  TextBlock.FontSize="13.5" TextBlock.FontWeight="SemiBold"/>
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="Arrow" Property="Data" Value="M0,0 L8,0 L4,4 Z"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                            </ToggleButton>
+                            <ContentPresenter x:Name="ExpanderContent" Visibility="Collapsed"/>
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsExpanded" Value="True">
+                                <Setter TargetName="ExpanderContent" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="QuestionnaireRowStyle" TargetType="Grid">
+            <Setter Property="Margin" Value="0,0,0,10"/>
         </Style>
     </Window.Resources>
 
@@ -187,6 +236,174 @@
                 </Grid>
                 <TextBlock Text="{Binding RoomWarningMessage}" Style="{StaticResource WarningTextStyle}"
                            Visibility="{Binding HasRoomWarning, Converter={StaticResource BoolToVisibility}}"/>
+
+                <Border Height="1" Background="{StaticResource ModalDividerBrush}" Margin="0,18"/>
+
+                <Expander Header="Анкетні дані (прикомандировані)" IsExpanded="False">
+                    <StackPanel Margin="0,14,0,0">
+
+                        <Grid Style="{StaticResource QuestionnaireRowStyle}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Національність" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding Nationality, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="ВОС на який навчається" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding Vos, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Style="{StaticResource QuestionnaireRowStyle}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="З якого часу прибув на курси П та ПК" Style="{StaticResource FieldLabelStyle}"/>
+                                <DatePicker SelectedDate="{Binding CourseArrivalDate}" Style="{StaticResource FieldDatePickerStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Сімейний стан (контакт близької людини)" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding MaritalStatus, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Style="{StaticResource QuestionnaireRowStyle}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Адреса реєстрації" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding RegistrationAddress, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Адреса фактичного проживання" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding ResidenceAddress, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Style="{StaticResource QuestionnaireRowStyle}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Телефон" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding Phone, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Примітка" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding Note, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Style="{StaticResource QuestionnaireRowStyle}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Група" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding GroupName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="ПІБ на іноземній мові" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding NameTransliterated, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Style="{StaticResource QuestionnaireRowStyle}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Служив/не служив" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding ServedBefore, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Примітка (2)" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding ExtraNote, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Style="{StaticResource QuestionnaireRowStyle}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Безпосередній командир (ПІП та номер телефону)" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding CommanderContact, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="№ посвідчення про відрядження" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding TravelCertificateNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Style="{StaticResource QuestionnaireRowStyle}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Прод атестат" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding FoodCertificate, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Номер посвідчення офіцера/військового квитка" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding IdDocumentNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Style="{StaticResource QuestionnaireRowStyle}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="ВЛК, №, дата" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding MedicalBoard, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Висновок ВЛК" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding MedicalBoardConclusion, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Style="{StaticResource QuestionnaireRowStyle}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="З якої військової частини прибув" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding OriginUnit, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Автомобіль, номер авто" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding Vehicle, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                        </Grid>
+
+                    </StackPanel>
+                </Expander>
 
                 <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}"
                            TextWrapping="Wrap" Margin="0,14,0,18"/>

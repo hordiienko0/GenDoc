@@ -134,7 +134,28 @@ namespace GenDoc.Services.Recipients
                 DateOfBirth = r.DateOfBirth,
                 UnitName = r.Unit?.Name,
                 RoomBuilding = r.Room?.Building,
-                RoomNumber = r.Room?.Number
+                RoomNumber = r.Room?.Number,
+
+                Nationality = r.Nationality,
+                Vos = r.Vos,
+                CourseArrivalDate = r.CourseArrivalDate,
+                MaritalStatus = r.MaritalStatus,
+                RegistrationAddress = r.RegistrationAddress,
+                ResidenceAddress = r.ResidenceAddress,
+                Phone = r.Phone,
+                Note = r.Note,
+                GroupName = r.GroupName,
+                NameTransliterated = r.NameTransliterated,
+                ServedBefore = r.ServedBefore,
+                ExtraNote = r.ExtraNote,
+                CommanderContact = r.CommanderContact,
+                TravelCertificateNumber = r.TravelCertificateNumber,
+                FoodCertificate = r.FoodCertificate,
+                IdDocumentNumber = r.IdDocumentNumber,
+                MedicalBoard = r.MedicalBoard,
+                MedicalBoardConclusion = r.MedicalBoardConclusion,
+                OriginUnit = r.OriginUnit,
+                Vehicle = r.Vehicle
             };
         }
 
@@ -194,6 +215,27 @@ namespace GenDoc.Services.Recipients
             recipient.UnitId = ResolveUnitId(db, model.UnitName);
             recipient.RoomId = ResolveRoomId(db, model.RoomBuilding, model.RoomNumber);
 
+            recipient.Nationality = TrimOrNull(model.Nationality);
+            recipient.Vos = TrimOrNull(model.Vos);
+            recipient.CourseArrivalDate = model.CourseArrivalDate;
+            recipient.MaritalStatus = TrimOrNull(model.MaritalStatus);
+            recipient.RegistrationAddress = TrimOrNull(model.RegistrationAddress);
+            recipient.ResidenceAddress = TrimOrNull(model.ResidenceAddress);
+            recipient.Phone = TrimOrNull(model.Phone);
+            recipient.Note = TrimOrNull(model.Note);
+            recipient.GroupName = TrimOrNull(model.GroupName);
+            recipient.NameTransliterated = TrimOrNull(model.NameTransliterated);
+            recipient.ServedBefore = TrimOrNull(model.ServedBefore);
+            recipient.ExtraNote = TrimOrNull(model.ExtraNote);
+            recipient.CommanderContact = TrimOrNull(model.CommanderContact);
+            recipient.TravelCertificateNumber = TrimOrNull(model.TravelCertificateNumber);
+            recipient.FoodCertificate = TrimOrNull(model.FoodCertificate);
+            recipient.IdDocumentNumber = TrimOrNull(model.IdDocumentNumber);
+            recipient.MedicalBoard = TrimOrNull(model.MedicalBoard);
+            recipient.MedicalBoardConclusion = TrimOrNull(model.MedicalBoardConclusion);
+            recipient.OriginUnit = TrimOrNull(model.OriginUnit);
+            recipient.Vehicle = TrimOrNull(model.Vehicle);
+
             if (isNew) db.Recipients.Add(recipient);
             db.SaveChanges();
 
@@ -248,7 +290,21 @@ namespace GenDoc.Services.Recipients
             return room.Id;
         }
 
+        private static string? TrimOrNull(string? value)
+            => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
         private static string BuildSnapshot(Recipient r)
-            => $"{r.LastName} {r.FirstName} {r.MiddleName}, {r.Rank}, {r.Position}, №{r.ServiceNumber}".Trim();
+            => string.Join(", ", new[]
+            {
+                $"{r.LastName} {r.FirstName} {r.MiddleName}".Trim(),
+                r.Rank, r.Position, $"№{r.ServiceNumber}",
+                r.Nationality, r.Vos,
+                r.CourseArrivalDate?.ToString("dd.MM.yyyy"),
+                r.MaritalStatus, r.RegistrationAddress, r.ResidenceAddress, r.Phone,
+                r.Note, r.GroupName, r.NameTransliterated, r.ServedBefore, r.ExtraNote,
+                r.CommanderContact, r.TravelCertificateNumber, r.FoodCertificate,
+                r.IdDocumentNumber, r.MedicalBoard, r.MedicalBoardConclusion,
+                r.OriginUnit, r.Vehicle
+            }.Where(v => !string.IsNullOrWhiteSpace(v)));
     }
 }

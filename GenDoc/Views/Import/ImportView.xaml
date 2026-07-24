@@ -31,7 +31,7 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="0,0,0,24">
 
-            <TextBlock Text="Імпорт з Excel" FontSize="22" FontWeight="SemiBold"/>
+            <TextBlock Text="Імпорт з Excel" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
             <TextBlock Text="Завантажте Excel-файл з особовим складом і зіставте колонки перед імпортом."
                        Foreground="{StaticResource TextSecondaryBrush}" FontSize="13.5" Margin="0,4,0,22"/>
 
@@ -195,7 +195,7 @@
                 </Border>
 
                 <!-- Зіставлення колонок -->
-                <TextBlock Text="Зіставлення колонок" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                <TextBlock Text="Зіставлення колонок" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" Foreground="{StaticResource TextPrimaryBrush}"/>
                 <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderLineBrush}"
                         BorderThickness="1" CornerRadius="2" Margin="0,0,0,20">
                     <StackPanel>
@@ -238,7 +238,7 @@
                 </Border>
 
                 <!-- Попередній перегляд -->
-                <TextBlock Text="{Binding PreviewHeaderText}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                <TextBlock Text="{Binding PreviewHeaderText}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" Foreground="{StaticResource TextPrimaryBrush}"/>
                 <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderLineBrush}"
                         BorderThickness="1" CornerRadius="2" Margin="0,0,0,20">
                     <StackPanel>

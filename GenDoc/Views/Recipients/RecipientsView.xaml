@@ -52,7 +52,7 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0">
-                <TextBlock Text="Особовий склад" FontSize="22" FontWeight="SemiBold"/>
+                <TextBlock Text="Особовий склад" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
                 <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                     <TextBlock Text="{Binding CountLabel}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13.5"/>
                     <TextBlock Text="  Пошук…" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13.5"
@@ -63,7 +63,21 @@
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBox x:Name="SearchTextBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                          Width="320" Tag="Пошук за ПІБ, званням, підрозділом…"/>
-                <Button Content="Експорт" Command="{Binding ExportCommand}" Style="{StaticResource OutlineButtonStyle}" Margin="10,0,0,0"/>
+                <Button x:Name="ExportButton" Content="Експорт" Style="{StaticResource OutlineButtonStyle}"
+                        Margin="10,0,0,0" Click="ExportButton_Click">
+                    <Button.ContextMenu>
+                        <ContextMenu ItemsSource="{Binding ExportOptions}">
+                            <ContextMenu.ItemContainerStyle>
+                                <Style TargetType="MenuItem">
+                                    <Setter Property="Header" Value="{Binding Header}"/>
+                                    <Setter Property="Command"
+                                            Value="{Binding DataContext.ExportOptionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                    <Setter Property="CommandParameter" Value="{Binding}"/>
+                                </Style>
+                            </ContextMenu.ItemContainerStyle>
+                        </ContextMenu>
+                    </Button.ContextMenu>
+                </Button>
                 <Button Content="+ Додати запис" Command="{Binding AddCommand}" Margin="10,0,0,0"/>
             </StackPanel>
         </Grid>

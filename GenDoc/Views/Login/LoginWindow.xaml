@@ -7,6 +7,7 @@
         xmlns:login="clr-namespace:GenDoc.ViewModels.Login"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=login:LoginViewModel, IsDesignTimeCreatable=False}"
+        Style="{StaticResource {x:Type Window}}"
         Title="Вхід — GenDoc" Height="560" Width="420"
         Background="{StaticResource BackgroundBrush}"
         WindowStyle="None" ResizeMode="NoResize"

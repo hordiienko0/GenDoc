@@ -274,6 +274,14 @@
         </Setter>
     </Style>
 
+    <!-- ContextMenu (меню вибору формату експорту) -->
+    <Style TargetType="ContextMenu">
+        <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Padding" Value="4"/>
+    </Style>
+
     <!-- DataGrid: borderless, без вертикальної сітки, uppercase-заголовки -->
     <Style TargetType="DataGrid">
         <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>

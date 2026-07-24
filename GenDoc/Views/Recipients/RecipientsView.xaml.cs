@@ -1,4 +1,6 @@
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using GenDoc.Services.Recipients;
 using GenDoc.ViewModels.Recipients;
@@ -11,6 +13,16 @@ public partial class RecipientsView : UserControl
     {
         InitializeComponent();
         Loaded += (_, _) => SearchTextBox.Focus();
+    }
+
+    private void ExportButton_Click(object sender, RoutedEventArgs e)
+    {
+        var button = (Button)sender;
+        if (button.ContextMenu is null) return;
+
+        button.ContextMenu.PlacementTarget = button;
+        button.ContextMenu.Placement = PlacementMode.Bottom;
+        button.ContextMenu.IsOpen = true;
     }
 
     private void DataGrid_Sorting(object sender, DataGridSortingEventArgs e)

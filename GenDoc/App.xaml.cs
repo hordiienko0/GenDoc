@@ -44,6 +44,7 @@ namespace GenDoc
             services.AddSingleton<IDialogService, DialogService>();
             services.AddSingleton<IExportService, ExportService>();
             services.AddTransient<IImportService, ImportService>();
+            services.AddTransient<IExportTemplateService, ExportTemplateService>();
 
             services.AddTransient<LoginViewModel>();
             services.AddTransient<LoginWindow>();

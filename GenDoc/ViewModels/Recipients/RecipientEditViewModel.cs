@@ -78,6 +78,28 @@ public partial class RecipientEditViewModel : ObservableObject
     [ObservableProperty] private string? roomBuilding;
     [ObservableProperty] private string? roomNumber;
 
+    // Анкетні дані (прикомандировані) — Б.4
+    [ObservableProperty] private string? nationality;
+    [ObservableProperty] private string? vos;
+    [ObservableProperty] private DateTime? courseArrivalDate;
+    [ObservableProperty] private string? maritalStatus;
+    [ObservableProperty] private string? registrationAddress;
+    [ObservableProperty] private string? residenceAddress;
+    [ObservableProperty] private string? phone;
+    [ObservableProperty] private string? note;
+    [ObservableProperty] private string? groupName;
+    [ObservableProperty] private string? nameTransliterated;
+    [ObservableProperty] private string? servedBefore;
+    [ObservableProperty] private string? extraNote;
+    [ObservableProperty] private string? commanderContact;
+    [ObservableProperty] private string? travelCertificateNumber;
+    [ObservableProperty] private string? foodCertificate;
+    [ObservableProperty] private string? idDocumentNumber;
+    [ObservableProperty] private string? medicalBoard;
+    [ObservableProperty] private string? medicalBoardConclusion;
+    [ObservableProperty] private string? originUnit;
+    [ObservableProperty] private string? vehicle;
+
     [ObservableProperty] private string? errorMessage;
 
     [ObservableProperty]
@@ -138,6 +160,27 @@ public partial class RecipientEditViewModel : ObservableObject
             UnitName = model.UnitName;
             RoomBuilding = model.RoomBuilding;
             RoomNumber = model.RoomNumber;
+
+            Nationality = model.Nationality;
+            Vos = model.Vos;
+            CourseArrivalDate = model.CourseArrivalDate?.ToDateTime(TimeOnly.MinValue);
+            MaritalStatus = model.MaritalStatus;
+            RegistrationAddress = model.RegistrationAddress;
+            ResidenceAddress = model.ResidenceAddress;
+            Phone = model.Phone;
+            Note = model.Note;
+            GroupName = model.GroupName;
+            NameTransliterated = model.NameTransliterated;
+            ServedBefore = model.ServedBefore;
+            ExtraNote = model.ExtraNote;
+            CommanderContact = model.CommanderContact;
+            TravelCertificateNumber = model.TravelCertificateNumber;
+            FoodCertificate = model.FoodCertificate;
+            IdDocumentNumber = model.IdDocumentNumber;
+            MedicalBoard = model.MedicalBoard;
+            MedicalBoardConclusion = model.MedicalBoardConclusion;
+            OriginUnit = model.OriginUnit;
+            Vehicle = model.Vehicle;
         }
         else
         {
@@ -154,6 +197,27 @@ public partial class RecipientEditViewModel : ObservableObject
             UnitName = null;
             RoomBuilding = null;
             RoomNumber = null;
+
+            Nationality = null;
+            Vos = null;
+            CourseArrivalDate = null;
+            MaritalStatus = null;
+            RegistrationAddress = null;
+            ResidenceAddress = null;
+            Phone = null;
+            Note = null;
+            GroupName = null;
+            NameTransliterated = null;
+            ServedBefore = null;
+            ExtraNote = null;
+            CommanderContact = null;
+            TravelCertificateNumber = null;
+            FoodCertificate = null;
+            IdDocumentNumber = null;
+            MedicalBoard = null;
+            MedicalBoardConclusion = null;
+            OriginUnit = null;
+            Vehicle = null;
         }
 
         UpdateRoomWarning();
@@ -264,6 +328,27 @@ public partial class RecipientEditViewModel : ObservableObject
             UnitName = UnitName,
             RoomBuilding = RoomBuilding,
             RoomNumber = RoomNumber,
+
+            Nationality = Nationality,
+            Vos = Vos,
+            CourseArrivalDate = CourseArrivalDate.HasValue ? DateOnly.FromDateTime(CourseArrivalDate.Value) : null,
+            MaritalStatus = MaritalStatus,
+            RegistrationAddress = RegistrationAddress,
+            ResidenceAddress = ResidenceAddress,
+            Phone = Phone,
+            Note = Note,
+            GroupName = GroupName,
+            NameTransliterated = NameTransliterated,
+            ServedBefore = ServedBefore,
+            ExtraNote = ExtraNote,
+            CommanderContact = CommanderContact,
+            TravelCertificateNumber = TravelCertificateNumber,
+            FoodCertificate = FoodCertificate,
+            IdDocumentNumber = IdDocumentNumber,
+            MedicalBoard = MedicalBoard,
+            MedicalBoardConclusion = MedicalBoardConclusion,
+            OriginUnit = OriginUnit,
+            Vehicle = Vehicle,
         }, out var saveError);
 
         if (saveError is not null)
