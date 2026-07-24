@@ -4,6 +4,8 @@
         xmlns:shell="clr-namespace:GenDoc.ViewModels.Shell"
         xmlns:recipientsVm="clr-namespace:GenDoc.ViewModels.Recipients"
         xmlns:recipientsView="clr-namespace:GenDoc.Views.Recipients"
+        xmlns:importVm="clr-namespace:GenDoc.ViewModels.Import"
+        xmlns:importView="clr-namespace:GenDoc.Views.Import"
         Title="GenDoc — Облік особового складу" Height="720" Width="1180"
         MinWidth="960" MinHeight="600"
         Background="{StaticResource BackgroundBrush}"
@@ -17,6 +19,9 @@
         </DataTemplate>
         <DataTemplate DataType="{x:Type recipientsVm:RecipientsViewModel}">
             <recipientsView:RecipientsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type importVm:ImportViewModel}">
+            <importView:ImportView/>
         </DataTemplate>
     </Window.Resources>
 

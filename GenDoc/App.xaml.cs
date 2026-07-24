@@ -1,6 +1,8 @@
 ﻿using GenDoc.Data;
 using GenDoc.Services;
+using GenDoc.Services.Import;
 using GenDoc.Services.Recipients;
+using GenDoc.ViewModels.Import;
 using GenDoc.ViewModels.Login;
 using GenDoc.ViewModels.Recipients;
 using GenDoc.ViewModels.Shell;
@@ -41,12 +43,14 @@ namespace GenDoc
             services.AddTransient<IRecipientService, RecipientService>();
             services.AddSingleton<IDialogService, DialogService>();
             services.AddSingleton<IExportService, ExportService>();
+            services.AddTransient<IImportService, ImportService>();
 
             services.AddTransient<LoginViewModel>();
             services.AddTransient<LoginWindow>();
             services.AddTransient<MainViewModel>();
             services.AddTransient<RecipientsViewModel>();
             services.AddTransient<RecipientEditViewModel>();
+            services.AddTransient<ImportViewModel>();
             services.AddTransient<MainWindow>();
         }
 

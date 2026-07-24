@@ -1,4 +1,5 @@
-﻿using System.Windows;
+﻿using System.ComponentModel;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using GenDoc.Native;
@@ -17,6 +18,34 @@ public partial class LoginWindow : Window
         _viewModel = viewModel;
         DataContext = _viewModel;
         _viewModel.RequestClose += OnRequestClose;
+        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(LoginViewModel.Stage) && _viewModel.Stage == LoginStage.ProfileSelect)
+        {
+            ProfilePasswordBox.Clear();
+        }
+    }
+
+    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+
+        var command = _viewModel.Stage switch
+        {
+            LoginStage.DatabasePassword => _viewModel.UnlockDatabaseCommand,
+            LoginStage.ProfileSelect => _viewModel.SelectLoginCommand,
+            LoginStage.CreateProfile => _viewModel.CreateProfileCommand,
+            _ => null
+        };
+
+        if (command is { } cmd && cmd.CanExecute(null))
+        {
+            cmd.Execute(null);
+            e.Handled = true;
+        }
     }
 
     private void OnRequestClose(object? sender, EventArgs e)

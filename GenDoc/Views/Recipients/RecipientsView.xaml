@@ -37,34 +37,6 @@
             <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
         </Style>
 
-        <!-- Другорядна (не заповнена) кнопка — напр. "Експорт", щоб не сперечатись
-             з акцентною головною дією поруч ("+ Додати запис") -->
-        <Style x:Key="OutlineButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="2"
-                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
-                            <ContentPresenter Margin="{TemplateBinding Padding}"
-                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                              TextBlock.Foreground="{TemplateBinding Foreground}"
-                                              TextBlock.FontWeight="{TemplateBinding FontWeight}"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="border" Property="Background" Value="{StaticResource Surface2Brush}"/>
-                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
     </UserControl.Resources>
 
     <Grid Background="{StaticResource BackgroundBrush}">

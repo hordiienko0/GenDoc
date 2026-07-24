@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GenDoc.Data;
 using GenDoc.Services;
+using GenDoc.ViewModels.Import;
 using GenDoc.ViewModels.Recipients;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,7 +34,7 @@ public partial class MainViewModel : ObservableObject
             new(new[]
             {
                 new NavigationItem("Особовий склад", () => _serviceProvider.GetRequiredService<RecipientsViewModel>()),
-                new NavigationItem("Імпорт з Excel", () => new PlaceholderViewModel("Імпорт з Excel")),
+                new NavigationItem("Імпорт з Excel", () => _serviceProvider.GetRequiredService<ImportViewModel>()),
                 new NavigationItem("Шаблони", () => new PlaceholderViewModel("Шаблони")),
                 new NavigationItem("Генерація", () => new PlaceholderViewModel("Генерація")),
                 new NavigationItem("Кімнати", () => new PlaceholderViewModel("Кімнати")),

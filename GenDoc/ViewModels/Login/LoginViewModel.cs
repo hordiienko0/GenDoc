@@ -1,4 +1,5 @@
 ﻿using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GenDoc.Services;
@@ -128,7 +129,10 @@ public partial class LoginViewModel : ObservableObject
             return;
         }
 
-        LoginResult = true;
-        RequestClose?.Invoke(this, EventArgs.Empty);
+        var createdFullName = NewProfileFullName.Trim();
+
+        Profiles = new ObservableCollection<UserProfileListItem>(_userProfileService.GetActiveProfiles());
+        SelectedProfile = Profiles.FirstOrDefault(p => p.FullName == createdFullName);
+        Stage = LoginStage.ProfileSelect;
     }
 }
