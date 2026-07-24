@@ -1,4 +1,5 @@
-﻿using GenDoc.Data;
+﻿using System.IO;
+using GenDoc.Data;
 using GenDoc.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,11 +23,36 @@ namespace GenDoc.Services.Recipients
 
         public List<RecipientListItem> Search(string? searchText, RecipientSortColumn sortColumn = RecipientSortColumn.FullName, bool sortDescending = false)
         {
+            var entities = QueryEntities(searchText, sortColumn, sortDescending);
+
+            return entities.Select(r => new RecipientListItem(
+                r.Id,
+                r.LastName + " " + r.FirstName + (r.MiddleName != null ? " " + r.MiddleName : ""),
+                r.Rank,
+                r.Position,
+                r.Unit != null ? r.Unit.Name : "—",
+                FormatRoom(r.Room))).ToList();
+        }
+
+        public List<Recipient> SearchEntities(string? searchText, RecipientSortColumn sortColumn = RecipientSortColumn.FullName, bool sortDescending = false)
+            => QueryEntities(searchText, sortColumn, sortDescending);
+
+        public void LogExport(int count, string filePath)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            _auditLogService.LogExport(db, "Recipient", count, $"{count} записів → {Path.GetFileName(filePath)}");
+            db.SaveChanges();
+        }
+
+        // Матеріалізуємо сутності одразу (ToList) — подальший пошук за словами
+        // і форматування кімнати виконуються в пам'яті на C#, EF Core/SQLite
+        // не повинен транслювати динамічне розбиття рядка на слова в SQL.
+        // Спільна точка для UI-списку (Search) і експорту (SearchEntities) — обидва
+        // повинні бачити однакову вибірку з урахуванням активного пошуку/сортування.
+        private List<Recipient> QueryEntities(string? searchText, RecipientSortColumn sortColumn, bool sortDescending)
+        {
             using var db = _dbFactory.CreateDbContext();
 
-            // Матеріалізуємо сутності одразу (ToList) — подальший пошук за словами
-            // і форматування кімнати виконуються в пам'яті на C#, EF Core/SQLite
-            // не повинен транслювати динамічне розбиття рядка на слова в SQL.
             var entities = db.Recipients
                 .Include(r => r.Unit)
                 .Include(r => r.Room)
@@ -38,24 +64,20 @@ namespace GenDoc.Services.Recipients
                 entities = entities.Where(r => MatchesAllWords(r, words)).ToList();
             }
 
-            var items = entities.Select(r => new RecipientListItem(
-                r.Id,
-                r.LastName + " " + r.FirstName + (r.MiddleName != null ? " " + r.MiddleName : ""),
-                r.Rank,
-                r.Position,
-                r.Unit != null ? r.Unit.Name : "—",
-                FormatRoom(r.Room)));
-
-            items = sortColumn switch
+            IEnumerable<Recipient> sorted = sortColumn switch
             {
-                RecipientSortColumn.Rank => sortDescending ? items.OrderByDescending(i => i.Rank) : items.OrderBy(i => i.Rank),
-                RecipientSortColumn.Position => sortDescending ? items.OrderByDescending(i => i.Position) : items.OrderBy(i => i.Position),
-                RecipientSortColumn.UnitName => sortDescending ? items.OrderByDescending(i => i.UnitName) : items.OrderBy(i => i.UnitName),
-                RecipientSortColumn.Room => sortDescending ? items.OrderByDescending(i => i.RoomDisplay) : items.OrderBy(i => i.RoomDisplay),
-                _ => sortDescending ? items.OrderByDescending(i => i.FullName) : items.OrderBy(i => i.FullName),
+                RecipientSortColumn.Rank => sortDescending ? entities.OrderByDescending(r => r.Rank) : entities.OrderBy(r => r.Rank),
+                RecipientSortColumn.Position => sortDescending ? entities.OrderByDescending(r => r.Position) : entities.OrderBy(r => r.Position),
+                RecipientSortColumn.UnitName => sortDescending
+                    ? entities.OrderByDescending(r => r.Unit != null ? r.Unit.Name : "—")
+                    : entities.OrderBy(r => r.Unit != null ? r.Unit.Name : "—"),
+                RecipientSortColumn.Room => sortDescending
+                    ? entities.OrderByDescending(r => FormatRoom(r.Room))
+                    : entities.OrderBy(r => FormatRoom(r.Room)),
+                _ => sortDescending ? entities.OrderByDescending(r => r.FullName) : entities.OrderBy(r => r.FullName),
             };
 
-            return items.ToList();
+            return sorted.ToList();
         }
 
         public RoomOccupancyInfo? GetRoomOccupancy(string? building, string? number, int excludeRecipientId)

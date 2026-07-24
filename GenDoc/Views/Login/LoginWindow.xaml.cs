@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using GenDoc.Native;
 using GenDoc.ViewModels.Login;
 
@@ -23,6 +24,14 @@ public partial class LoginWindow : Window
         DialogResult = _viewModel.LoginResult;
         Close();
     }
+
+    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ButtonState == MouseButtonState.Pressed)
+            DragMove();
+    }
+
+    private void CloseButton_Click(object sender, RoutedEventArgs e) => Close();
 
     private void DatabasePasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
         => _viewModel.DatabasePassword = ((PasswordBox)sender).Password;

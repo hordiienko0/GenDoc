@@ -63,7 +63,8 @@
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="{Binding Title}" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <TextBlock Grid.Column="0" Text="{Binding Title}" Foreground="{StaticResource TextPrimaryBrush}"
+                           FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
                 <Button Grid.Column="1" Content="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="11"
                         Style="{StaticResource ModalCloseButtonStyle}" Command="{Binding CancelCommand}"/>
             </Grid>

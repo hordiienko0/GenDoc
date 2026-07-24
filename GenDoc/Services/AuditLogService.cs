@@ -21,6 +21,9 @@ namespace GenDoc.Services
         public void LogDelete(AppDbContext db, string entityName, int entityId, string? oldValue = null, string? details = null)
             => Add(db, "Видалено", entityName, entityId, oldValue, null, details);
 
+        public void LogExport(AppDbContext db, string entityName, int count, string? details = null)
+            => Add(db, "Експортовано", entityName, 0, null, null, details ?? $"{count} записів");
+
         private void Add(AppDbContext db, string action, string entityName, int entityId, string? oldValue, string? newValue, string? details)
         {
             db.AuditLog.Add(new AuditLogEntry

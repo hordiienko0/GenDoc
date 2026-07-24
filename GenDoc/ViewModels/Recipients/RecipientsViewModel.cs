@@ -4,9 +4,11 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GenDoc.Models;
 using GenDoc.Services;
 using GenDoc.Services.Recipients;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Win32;
 
 namespace GenDoc.ViewModels.Recipients
 {
@@ -15,13 +17,19 @@ namespace GenDoc.ViewModels.Recipients
         private static readonly TimeSpan SearchDebounceInterval = TimeSpan.FromMilliseconds(280);
 
         private readonly IRecipientService _recipientService;
+        private readonly IExportService _exportService;
         private readonly IDialogService _dialogService;
         private readonly IServiceProvider _serviceProvider;
         private readonly DispatcherTimer _searchDebounceTimer;
 
-        public RecipientsViewModel(IRecipientService recipientService, IDialogService dialogService, IServiceProvider serviceProvider)
+        public RecipientsViewModel(
+            IRecipientService recipientService,
+            IExportService exportService,
+            IDialogService dialogService,
+            IServiceProvider serviceProvider)
         {
             _recipientService = recipientService;
+            _exportService = exportService;
             _dialogService = dialogService;
             _serviceProvider = serviceProvider;
 
@@ -129,6 +137,58 @@ namespace GenDoc.ViewModels.Recipients
 
             var result = _dialogService.ShowDialog(vm, Application.Current.MainWindow);
             if (result == true) Refresh();
+        }
+
+        [RelayCommand]
+        private async Task ExportAsync()
+        {
+            var dialog = new SaveFileDialog
+            {
+                FileName = $"особовий_склад_{DateTime.Now:ddMMyyyy}.xlsx",
+                Filter = "Excel файли (*.xlsx)|*.xlsx",
+                DefaultExt = ".xlsx"
+            };
+            if (dialog.ShowDialog() != true) return;
+
+            // Та сама вибірка, що зараз у гріді (пошук/сортування враховані) —
+            // а не весь особовий склад.
+            var items = _recipientService.SearchEntities(SearchText, SortColumn, SortDescending);
+
+            var columns = new List<ExportColumn<Recipient>>
+            {
+                new("Прізвище", r => r.LastName),
+                new("Ім'я", r => r.FirstName),
+                new("По батькові", r => r.MiddleName),
+                new("Звання", r => r.Rank),
+                new("Посада", r => r.Position),
+                new("Підрозділ", r => r.Unit?.Name),
+                new("Особовий номер", r => r.ServiceNumber),
+                new("Дата народження", r => r.DateOfBirth?.ToDateTime(TimeOnly.MinValue)),
+                new("Кімната", FormatRoom),
+            };
+
+            var result = await _exportService.ExportToXlsxAsync(items, columns, dialog.FileName, "Особовий склад");
+
+            if (result.Success)
+            {
+                _recipientService.LogExport(result.RowCount, result.FilePath!);
+
+                MessageBox.Show(
+                    $"Експортовано {result.RowCount} записів у файл:\n{result.FilePath}",
+                    "Експорт завершено", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show(
+                    $"Не вдалося виконати експорт:\n{result.ErrorMessage}",
+                    "Помилка експорту", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private static string? FormatRoom(Recipient r)
+        {
+            if (r.Room is null || string.IsNullOrWhiteSpace(r.Room.Number)) return null;
+            return string.IsNullOrWhiteSpace(r.Room.Building) ? r.Room.Number : $"{r.Room.Building} {r.Room.Number}";
         }
 
         [RelayCommand]

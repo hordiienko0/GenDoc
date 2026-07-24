@@ -19,7 +19,8 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="2">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              TextBlock.Foreground="{TemplateBinding Foreground}"/>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
@@ -34,6 +35,35 @@
 
         <Style x:Key="SortableHeaderStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+        </Style>
+
+        <!-- Другорядна (не заповнена) кнопка — напр. "Експорт", щоб не сперечатись
+             з акцентною головною дією поруч ("+ Додати запис") -->
+        <Style x:Key="OutlineButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="2"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                              TextBlock.Foreground="{TemplateBinding Foreground}"
+                                              TextBlock.FontWeight="{TemplateBinding FontWeight}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource Surface2Brush}"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </UserControl.Resources>
 
@@ -61,6 +91,7 @@
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBox x:Name="SearchTextBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                          Width="320" Tag="Пошук за ПІБ, званням, підрозділом…"/>
+                <Button Content="Експорт" Command="{Binding ExportCommand}" Style="{StaticResource OutlineButtonStyle}" Margin="10,0,0,0"/>
                 <Button Content="+ Додати запис" Command="{Binding AddCommand}" Margin="10,0,0,0"/>
             </StackPanel>
         </Grid>
@@ -77,7 +108,7 @@
                         <DataGridTextColumn Binding="{Binding FullName}" Width="2.2*" SortMemberPath="FullName">
                             <DataGridTextColumn.HeaderTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding FullNameHeaderText}"/>
+                                    <TextBlock Text="{Binding FullNameHeaderText}" Foreground="{StaticResource TextSecondaryBrush}"/>
                                 </DataTemplate>
                             </DataGridTextColumn.HeaderTemplate>
                             <DataGridTextColumn.ElementStyle>
@@ -91,7 +122,7 @@
                         <DataGridTextColumn Binding="{Binding Rank}" Width="1.3*" SortMemberPath="Rank">
                             <DataGridTextColumn.HeaderTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding RankHeaderText}"/>
+                                    <TextBlock Text="{Binding RankHeaderText}" Foreground="{StaticResource TextSecondaryBrush}"/>
                                 </DataTemplate>
                             </DataGridTextColumn.HeaderTemplate>
                             <DataGridTextColumn.ElementStyle>
@@ -105,7 +136,7 @@
                         <DataGridTextColumn Binding="{Binding Position}" Width="1.6*" SortMemberPath="Position">
                             <DataGridTextColumn.HeaderTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding PositionHeaderText}"/>
+                                    <TextBlock Text="{Binding PositionHeaderText}" Foreground="{StaticResource TextSecondaryBrush}"/>
                                 </DataTemplate>
                             </DataGridTextColumn.HeaderTemplate>
                             <DataGridTextColumn.ElementStyle>
@@ -119,7 +150,7 @@
                         <DataGridTextColumn Binding="{Binding UnitName}" Width="1.6*" SortMemberPath="UnitName">
                             <DataGridTextColumn.HeaderTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding UnitNameHeaderText}"/>
+                                    <TextBlock Text="{Binding UnitNameHeaderText}" Foreground="{StaticResource TextSecondaryBrush}"/>
                                 </DataTemplate>
                             </DataGridTextColumn.HeaderTemplate>
                             <DataGridTextColumn.ElementStyle>
@@ -133,7 +164,7 @@
                         <DataGridTextColumn Binding="{Binding RoomDisplay}" Width="0.9*" SortMemberPath="Room">
                             <DataGridTextColumn.HeaderTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding RoomHeaderText}"/>
+                                    <TextBlock Text="{Binding RoomHeaderText}" Foreground="{StaticResource TextSecondaryBrush}"/>
                                 </DataTemplate>
                             </DataGridTextColumn.HeaderTemplate>
                             <DataGridTextColumn.ElementStyle>

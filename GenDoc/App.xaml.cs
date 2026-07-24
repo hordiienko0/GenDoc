@@ -40,6 +40,7 @@ namespace GenDoc
             services.AddTransient<IAuditLogService, AuditLogService>();
             services.AddTransient<IRecipientService, RecipientService>();
             services.AddSingleton<IDialogService, DialogService>();
+            services.AddSingleton<IExportService, ExportService>();
 
             services.AddTransient<LoginViewModel>();
             services.AddTransient<LoginWindow>();

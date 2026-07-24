@@ -3,6 +3,8 @@ namespace GenDoc.Services.Recipients
     public interface IRecipientService
     {
         List<RecipientListItem> Search(string? searchText, RecipientSortColumn sortColumn = RecipientSortColumn.FullName, bool sortDescending = false);
+        List<Models.Recipient> SearchEntities(string? searchText, RecipientSortColumn sortColumn = RecipientSortColumn.FullName, bool sortDescending = false);
+        void LogExport(int count, string filePath);
         RecipientEditModel? GetForEdit(int id);
         List<string> GetUnitNames();
         List<string> GetRoomBuildings();
