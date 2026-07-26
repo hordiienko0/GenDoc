@@ -4,21 +4,22 @@
 
     <UserControl.Resources>
         <Style x:Key="StepLabelStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontSize" Value="12.5"/>
             <Setter Property="Margin" Value="8,0,0,0"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
         </Style>
 
         <Style x:Key="MappingHeaderTextStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
-            <Setter Property="FontSize" Value="12.5"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource NavyBrush}"/>
+            <Setter Property="FontSize" Value="10.5"/>
+            <Setter Property="FontWeight" Value="Bold"/>
         </Style>
 
         <Style x:Key="CardLabelStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
-            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="FontSize" Value="10.5"/>
+            <Setter Property="FontWeight" Value="Bold"/>
         </Style>
 
         <Style x:Key="CardValueStyle" TargetType="TextBlock">
@@ -26,27 +27,34 @@
             <Setter Property="FontSize" Value="16"/>
             <Setter Property="Margin" Value="0,4,0,0"/>
         </Style>
+
+        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,10"/>
+        </Style>
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="0,0,0,24">
 
-            <TextBlock Text="Імпорт з Excel" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock Text="Імпорт з Excel" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
             <TextBlock Text="Завантажте Excel-файл з особовим складом і зіставте колонки перед імпортом."
-                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="13.5" Margin="0,4,0,22"/>
+                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,4,0,22"/>
 
             <!-- Смуга кроків -->
             <StackPanel Orientation="Horizontal" Margin="0,0,0,22">
 
                 <StackPanel Orientation="Horizontal">
-                    <Border Width="26" Height="26" CornerRadius="13" Background="{StaticResource SuccessBrush}">
+                    <Border Width="26" Height="26" CornerRadius="0" Background="{StaticResource SuccessBrush}">
                         <TextBlock Text="1" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   FontSize="12" FontWeight="Bold" Foreground="{StaticResource BackgroundBrush}">
+                                   FontSize="12" FontWeight="Bold" Foreground="White">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding CurrentStep}" Value="1">
-                                            <Setter Property="Foreground" Value="{StaticResource BackgroundBrush}"/>
+                                            <Setter Property="Foreground" Value="White"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -70,7 +78,7 @@
                         VerticalAlignment="Center" Margin="12,0"/>
 
                 <StackPanel Orientation="Horizontal">
-                    <Border Width="26" Height="26" CornerRadius="13">
+                    <Border Width="26" Height="26" CornerRadius="0">
                         <TextBlock Text="2" HorizontalAlignment="Center" VerticalAlignment="Center"
                                    FontSize="12" FontWeight="Bold">
                             <TextBlock.Style>
@@ -78,10 +86,10 @@
                                     <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding CurrentStep}" Value="2">
-                                            <Setter Property="Foreground" Value="{StaticResource BackgroundBrush}"/>
+                                            <Setter Property="Foreground" Value="White"/>
                                         </DataTrigger>
                                         <DataTrigger Binding="{Binding CurrentStep}" Value="3">
-                                            <Setter Property="Foreground" Value="{StaticResource BackgroundBrush}"/>
+                                            <Setter Property="Foreground" Value="White"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -89,7 +97,7 @@
                         </TextBlock>
                         <Border.Style>
                             <Style TargetType="Border">
-                                <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+                                <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
                                 <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
                                 <Setter Property="BorderThickness" Value="1"/>
                                 <Style.Triggers>
@@ -112,7 +120,7 @@
                         VerticalAlignment="Center" Margin="12,0"/>
 
                 <StackPanel Orientation="Horizontal">
-                    <Border Width="26" Height="26" CornerRadius="13">
+                    <Border Width="26" Height="26" CornerRadius="0">
                         <TextBlock Text="3" HorizontalAlignment="Center" VerticalAlignment="Center"
                                    FontSize="12" FontWeight="Bold">
                             <TextBlock.Style>
@@ -120,7 +128,7 @@
                                     <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding CurrentStep}" Value="3">
-                                            <Setter Property="Foreground" Value="{StaticResource BackgroundBrush}"/>
+                                            <Setter Property="Foreground" Value="White"/>
                                         </DataTrigger>
                                     </Style.Triggers>
                                 </Style>
@@ -128,7 +136,7 @@
                         </TextBlock>
                         <Border.Style>
                             <Style TargetType="Border">
-                                <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+                                <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
                                 <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
                                 <Setter Property="BorderThickness" Value="1"/>
                                 <Style.Triggers>
@@ -145,12 +153,12 @@
             </StackPanel>
 
             <!-- Стан без файлу -->
-            <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderLineBrush}"
-                    BorderThickness="1" CornerRadius="2" Padding="24"
+            <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                    BorderThickness="1" CornerRadius="0" Padding="24"
                     Visibility="{Binding NoFile, Converter={StaticResource BoolToVisibility}}">
                 <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                     <TextBlock Text="Оберіть Excel-файл (.xlsx) з особовим складом для імпорту"
-                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="14"
+                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"
                                HorizontalAlignment="Center" Margin="0,0,0,16"/>
                     <Button Content="Обрати файл…" Command="{Binding PickFileCommand}" HorizontalAlignment="Center"/>
                 </StackPanel>
@@ -160,8 +168,8 @@
             <StackPanel Visibility="{Binding HasFile, Converter={StaticResource BoolToVisibility}}">
 
                 <!-- Картка файлу -->
-                <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderLineBrush}"
-                        BorderThickness="1" CornerRadius="2" Padding="24" Margin="0,0,0,20">
+                <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                        BorderThickness="1" CornerRadius="0" Padding="24" Margin="0,0,0,20">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -170,36 +178,36 @@
 
                         <StackPanel Grid.Column="0" Orientation="Horizontal">
                             <StackPanel Margin="0,0,40,0">
-                                <TextBlock Text="Файл" Style="{StaticResource CardLabelStyle}"/>
+                                <TextBlock Text="ФАЙЛ" Style="{StaticResource CardLabelStyle}"/>
                                 <TextBlock Text="{Binding FileName}" Style="{StaticResource CardValueStyle}" FontWeight="SemiBold"/>
                             </StackPanel>
                             <StackPanel Margin="0,0,40,0">
-                                <TextBlock Text="Рядків у файлі" Style="{StaticResource CardLabelStyle}"/>
+                                <TextBlock Text="РЯДКІВ У ФАЙЛІ" Style="{StaticResource CardLabelStyle}"/>
                                 <TextBlock Text="{Binding TotalRows}" Style="{StaticResource CardValueStyle}"/>
                             </StackPanel>
                             <StackPanel Margin="0,0,40,0">
-                                <TextBlock Text="Готово до імпорту" Style="{StaticResource CardLabelStyle}"/>
+                                <TextBlock Text="ГОТОВО ДО ІМПОРТУ" Style="{StaticResource CardLabelStyle}"/>
                                 <TextBlock Text="{Binding ReadyCount}" Style="{StaticResource CardValueStyle}"
                                            Foreground="{StaticResource SuccessBrush}"/>
                             </StackPanel>
                             <StackPanel Visibility="{Binding HasSkippedRows, Converter={StaticResource BoolToVisibility}}">
-                                <TextBlock Text="Потребують уваги" Style="{StaticResource CardLabelStyle}"/>
+                                <TextBlock Text="ПОТРЕБУЮТЬ УВАГИ" Style="{StaticResource CardLabelStyle}"/>
                                 <TextBlock Text="{Binding IssueCount}" Style="{StaticResource CardValueStyle}"
                                            Foreground="{StaticResource DangerBrush}"/>
                             </StackPanel>
                         </StackPanel>
 
                         <Button Grid.Column="1" Content="Обрати інший файл" Command="{Binding PickAnotherFileCommand}"
-                                Style="{StaticResource OutlineButtonStyle}" VerticalAlignment="Center"/>
+                                Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Center"/>
                     </Grid>
                 </Border>
 
                 <!-- Зіставлення колонок -->
-                <TextBlock Text="Зіставлення колонок" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" Foreground="{StaticResource TextPrimaryBrush}"/>
-                <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderLineBrush}"
-                        BorderThickness="1" CornerRadius="2" Margin="0,0,0,20">
+                <TextBlock Text="Зіставлення колонок" Style="{StaticResource SectionTitleStyle}"/>
+                <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                        BorderThickness="1" CornerRadius="0" Margin="0,0,0,20">
                     <StackPanel>
-                        <Grid Background="{StaticResource Surface2Brush}">
+                        <Grid Background="{StaticResource SkySoftBrush}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="1.6*"/>
                                 <ColumnDefinition Width="2*"/>
@@ -244,11 +252,11 @@
                 </Border>
 
                 <!-- Попередній перегляд -->
-                <TextBlock Text="{Binding PreviewHeaderText}" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,10" Foreground="{StaticResource TextPrimaryBrush}"/>
-                <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderLineBrush}"
-                        BorderThickness="1" CornerRadius="2" Margin="0,0,0,20">
+                <TextBlock Text="{Binding PreviewHeaderText}" Style="{StaticResource SectionTitleStyle}"/>
+                <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                        BorderThickness="1" CornerRadius="0" Margin="0,0,0,20">
                     <StackPanel>
-                        <Grid Background="{StaticResource Surface2Brush}">
+                        <Grid Background="{StaticResource SkySoftBrush}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="0.7*"/>
                                 <ColumnDefinition Width="1.8*"/>
@@ -289,7 +297,7 @@
                                                 <ColumnDefinition Width="2.2*"/>
                                             </Grid.ColumnDefinitions>
 
-                                            <Border Grid.Column="0" CornerRadius="2" Padding="10,3"
+                                            <Border Grid.Column="0" CornerRadius="0" Padding="2,6"
                                                     HorizontalAlignment="Left" Margin="16,10">
                                                 <Border.Style>
                                                     <Style TargetType="Border">
@@ -307,7 +315,7 @@
                                                         </Style.Triggers>
                                                     </Style>
                                                 </Border.Style>
-                                                <TextBlock FontSize="12" FontWeight="Bold" Text="ОК">
+                                                <TextBlock FontSize="10.5" FontWeight="Bold" Text="ОК">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
                                                             <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
@@ -322,7 +330,7 @@
                                                                 </DataTrigger>
                                                                 <DataTrigger Binding="{Binding Status}" Value="Warning">
                                                                     <Setter Property="Text" Value="УВАГА"/>
-                                                                    <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+                                                                    <Setter Property="Foreground" Value="{StaticResource WarnTextBrush}"/>
                                                                 </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
@@ -350,7 +358,7 @@
                                                                 <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
                                                             </DataTrigger>
                                                             <DataTrigger Binding="{Binding Status}" Value="Warning">
-                                                                <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+                                                                <Setter Property="Foreground" Value="{StaticResource WarnTextBrush}"/>
                                                             </DataTrigger>
                                                             <MultiDataTrigger>
                                                                 <MultiDataTrigger.Conditions>
@@ -374,9 +382,10 @@
                 <!-- Низ: кнопка імпорту -->
                 <StackPanel Orientation="Horizontal">
                     <Button Content="{Binding ImportButtonText}" Command="{Binding RunImportCommand}" Padding="26,12"/>
-                    <TextBlock Text="{Binding SkippedNoteText}" Foreground="{StaticResource TextSecondaryBrush}"
-                               FontSize="13.5" VerticalAlignment="Center" Margin="16,0,0,0"
-                               Visibility="{Binding HasSkippedRows, Converter={StaticResource BoolToVisibility}}"/>
+                    <Border Background="{StaticResource RowAltBrush}" Padding="12,8" VerticalAlignment="Center" Margin="16,0,0,0"
+                            Visibility="{Binding HasSkippedRows, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="{Binding SkippedNoteText}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5"/>
+                    </Border>
                 </StackPanel>
 
             </StackPanel>

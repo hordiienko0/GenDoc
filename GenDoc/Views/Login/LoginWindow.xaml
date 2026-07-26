@@ -22,19 +22,15 @@
         <DockPanel Background="{StaticResource BackgroundBrush}">
 
             <!-- Власна заголовна смуга замість системної рамки вікна -->
-            <Border DockPanel.Dock="Top" Height="32" Background="{StaticResource SidebarBrush}"
-                    BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1"
+            <Border DockPanel.Dock="Top" Height="30" Background="{StaticResource NavyDeepBrush}"
                     MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <Grid>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-                        <Border Width="7" Height="7" Background="{StaticResource AccentBrush}"/>
-                        <TextBlock Text="GenDoc — Облік особового складу" Margin="8,0,0,0"
-                                   FontSize="12.5" FontWeight="SemiBold" Foreground="{StaticResource TextSecondaryBrush}"/>
-                    </StackPanel>
-                    <Button x:Name="CloseButton" Content="✕" Click="CloseButton_Click"
-                            Width="46" Height="32" HorizontalAlignment="Right"
-                            Background="Transparent" Foreground="{StaticResource TextSecondaryBrush}"
-                            BorderThickness="0" FontSize="12" Cursor="Hand"
+                    <TextBlock Text="GenDoc — Облік особового складу" Margin="14,0,0,0"
+                               FontSize="12" Foreground="White" VerticalAlignment="Center"/>
+                    <Button x:Name="CloseButton" Content="&#xE711;" Click="CloseButton_Click"
+                            FontFamily="Segoe MDL2 Assets" Width="42" HorizontalAlignment="Right"
+                            Background="Transparent" Foreground="White"
+                            BorderThickness="0" FontSize="10" Cursor="Hand"
                             FocusVisualStyle="{x:Null}">
                         <Button.Template>
                             <ControlTemplate TargetType="Button">
@@ -55,9 +51,9 @@
             </Border>
 
             <Grid Background="{StaticResource BackgroundBrush}">
-                <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderLineBrush}"
-                        BorderThickness="1" CornerRadius="2" Margin="24,0,24,0" Padding="24"
-                        VerticalAlignment="Center">
+                <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                        BorderThickness="1" Margin="24,0,24,0" Padding="24"
+                        VerticalAlignment="Center" Effect="{StaticResource ModalShadowEffect}">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
@@ -71,8 +67,8 @@
 
                         <StackPanel Grid.Row="1"
                                     Visibility="{Binding Stage, Converter={StaticResource EnumToVisibility}, ConverterParameter=DatabasePassword, FallbackValue=Visible}">
-                            <TextBlock Text="Пароль бази даних" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5" Margin="0 0 0 6"/>
-                            <PasswordBox x:Name="DatabasePasswordBox" Background="{StaticResource Surface2Brush}"
+                            <TextBlock Text="Пароль бази даних" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" Margin="0 0 0 6"/>
+                            <PasswordBox x:Name="DatabasePasswordBox"
                                          PasswordChanged="DatabasePasswordBox_PasswordChanged"/>
                             <Button Content="Розблокувати" Command="{Binding UnlockDatabaseCommand}"
                                     Margin="0 16 0 0" HorizontalAlignment="Left"/>
@@ -80,21 +76,20 @@
 
                         <StackPanel Grid.Row="1"
                                     Visibility="{Binding Stage, Converter={StaticResource EnumToVisibility}, ConverterParameter=ProfileSelect, FallbackValue=Collapsed}">
-                            <TextBlock Text="Профіль" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5" Margin="0 0 0 6"/>
-                            <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}"
-                                      Background="{StaticResource Surface2Brush}">
+                            <TextBlock Text="Профіль" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" Margin="0 0 0 6"/>
+                            <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding FullName}"/>
                                     </DataTemplate>
                                 </ComboBox.ItemTemplate>
                             </ComboBox>
-                            <TextBlock Text="Пароль профілю" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5" Margin="0 14 0 6"/>
-                            <PasswordBox x:Name="ProfilePasswordBox" Background="{StaticResource Surface2Brush}"
+                            <TextBlock Text="Пароль профілю" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" Margin="0 14 0 6"/>
+                            <PasswordBox x:Name="ProfilePasswordBox"
                                          PasswordChanged="ProfilePasswordBox_PasswordChanged"/>
                             <Button Content="Увійти" Command="{Binding SelectLoginCommand}" Margin="0 16 0 0" HorizontalAlignment="Left"/>
 
-                            <TextBlock Text="+ Створити профіль" Margin="0 14 0 0" FontSize="13" Cursor="Hand"
+                            <TextBlock Text="+ Створити профіль" Margin="0 14 0 0" FontSize="12.5" FontWeight="SemiBold" Cursor="Hand"
                                        Foreground="{StaticResource AccentBrush}">
                                 <TextBlock.InputBindings>
                                     <MouseBinding MouseAction="LeftClick" Command="{Binding ShowCreateProfileCommand}"/>
@@ -113,20 +108,18 @@
 
                         <StackPanel Grid.Row="1"
                                     Visibility="{Binding Stage, Converter={StaticResource EnumToVisibility}, ConverterParameter=CreateProfile, FallbackValue=Collapsed}">
-                            <TextBlock Text="Повне ім'я" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5" Margin="0 0 0 6"/>
-                            <TextBox x:Name="NewProfileFullNameBox" Text="{Binding NewProfileFullName, UpdateSourceTrigger=PropertyChanged}"
-                                     Background="{StaticResource Surface2Brush}"/>
-                            <TextBlock Text="Пароль" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5" Margin="0 14 0 6"/>
-                            <PasswordBox x:Name="NewProfilePasswordBox" Background="{StaticResource Surface2Brush}"
+                            <TextBlock Text="Повне ім'я" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" Margin="0 0 0 6"/>
+                            <TextBox x:Name="NewProfileFullNameBox" Text="{Binding NewProfileFullName, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock Text="Пароль" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" Margin="0 14 0 6"/>
+                            <PasswordBox x:Name="NewProfilePasswordBox"
                                          PasswordChanged="NewProfilePasswordBox_PasswordChanged"/>
-                            <TextBlock Text="Підтвердження пароля" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5" Margin="0 14 0 6"/>
-                            <PasswordBox x:Name="NewProfilePasswordConfirmBox" Background="{StaticResource Surface2Brush}"
+                            <TextBlock Text="Підтвердження пароля" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" Margin="0 14 0 6"/>
+                            <PasswordBox x:Name="NewProfilePasswordConfirmBox"
                                          PasswordChanged="NewProfilePasswordConfirmBox_PasswordChanged"/>
                             <StackPanel Orientation="Horizontal" Margin="0 16 0 0">
                                 <Button Content="Створити" Command="{Binding CreateProfileCommand}" Padding="16,8"/>
                                 <Button Content="Скасувати" Command="{Binding CancelCreateProfileCommand}"
-                                        Padding="16,8" Margin="10 0 0 0"
-                                        Background="Transparent" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        Style="{StaticResource GhostButtonStyle}" Padding="16,8" Margin="10 0 0 0"/>
                             </StackPanel>
                         </StackPanel>
 

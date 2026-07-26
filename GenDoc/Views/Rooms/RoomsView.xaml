@@ -16,36 +16,35 @@
         </Style>
 
         <Style x:Key="RoomFieldTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-            <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
             <Setter Property="Padding" Value="10,8"/>
-            <Setter Property="FontSize" Value="13.5"/>
         </Style>
 
-        <Style x:Key="RoomBadgeStyle" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
-            <Setter Property="CornerRadius" Value="2"/>
-            <Setter Property="Padding" Value="9,3"/>
+        <Style x:Key="RoomNumberChipStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource SkySoftBrush}"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="Padding" Value="6,2"/>
         </Style>
 
         <Style x:Key="RoomCardBorderStyle" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="2"/>
-            <Setter Property="Padding" Value="16,14"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="Padding" Value="11,13"/>
             <Setter Property="Width" Value="230"/>
             <Setter Property="Margin" Value="0,0,14,14"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsOverCapacity}" Value="True">
                     <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}"/>
-                    <Setter Property="Background" Value="{StaticResource DangerSoftBrush}"/>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                    <Setter Property="BorderThickness" Value="3,0,0,0"/>
                     <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                    <Setter Property="BorderThickness" Value="3,0,0,0"/>
+                    <Setter Property="BorderBrush" Value="{StaticResource SkyBrush}"/>
                     <Setter Property="Background" Value="{StaticResource AccentSoftBrush}"/>
                 </DataTrigger>
             </Style.Triggers>
@@ -66,12 +65,12 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0">
-                <TextBlock Text="Розміщення по кімнатах" FontSize="22" FontWeight="SemiBold"
+                <TextBlock Text="Розміщення по кімнатах" FontSize="19" FontWeight="SemiBold"
                            Foreground="{StaticResource TextPrimaryBrush}"/>
                 <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
-                    <TextBlock Text="{Binding OccupancyLabel}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13.5"/>
+                    <TextBlock Text="{Binding OccupancyLabel}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"/>
                     <TextBlock Text="{Binding OverCapacityCount, StringFormat='  ·  {0} з перевищенням місць'}"
-                               Foreground="{StaticResource DangerBrush}" FontSize="13.5" FontWeight="SemiBold"
+                               Foreground="{StaticResource DangerBrush}" FontSize="12" FontWeight="SemiBold"
                                Visibility="{Binding HasOverCapacityWarning, Converter={StaticResource BoolToVisibility}}"/>
                 </StackPanel>
             </StackPanel>
@@ -80,7 +79,7 @@
                 <Grid Width="280" Margin="0,0,10,0">
                     <TextBox x:Name="SearchTextBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                              Padding="10,10"/>
-                    <TextBlock Text="Пошук за корпусом, номером або мешканцем…" Foreground="{StaticResource TextSecondaryBrush}"
+                    <TextBlock Text="Пошук за корпусом, номером або мешканцем…" Foreground="{StaticResource PlaceholderBrush}"
                                Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
                                Visibility="{Binding IsSearchEmpty, Converter={StaticResource BoolToVisibility}}"/>
                 </Grid>
@@ -129,50 +128,55 @@
 
                                         <!-- Режим перегляду -->
                                         <StackPanel Visibility="{Binding IsNotEditing, Converter={StaticResource BoolToVisibility}}">
-                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
-                                                <Border Style="{StaticResource RoomBadgeStyle}">
-                                                    <TextBlock Text="{Binding Building}" FontSize="12" FontWeight="SemiBold"
-                                                               Foreground="{StaticResource TextSecondaryBrush}"/>
-                                                </Border>
-                                                <Border Style="{StaticResource RoomBadgeStyle}" Margin="8,0,0,0">
-                                                    <TextBlock Text="{Binding Number, StringFormat='№{0}'}" FontSize="12" FontWeight="Bold"
-                                                               Foreground="{StaticResource TextPrimaryBrush}"/>
-                                                </Border>
-                                                <Border Style="{StaticResource RoomBadgeStyle}" Background="{StaticResource DangerSoftBrush}" Margin="8,0,0,0"
-                                                        Visibility="{Binding IsOverCapacity, Converter={StaticResource BoolToVisibility}}">
-                                                    <TextBlock Text="ПЕРЕВИЩЕННЯ" FontSize="12" FontWeight="Bold"
-                                                               Foreground="{StaticResource DangerBrush}"/>
-                                                </Border>
-                                            </StackPanel>
+                                            <Grid Margin="0,0,0,10">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
 
-                                            <TextBlock Text="{Binding OccupancyText, StringFormat='{}{0} місць'}" FontSize="13.5" Margin="0,0,0,8">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock">
-                                                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding IsEmpty}" Value="True">
-                                                                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
-                                                            </DataTrigger>
-                                                            <DataTrigger Binding="{Binding IsOverCapacity}" Value="True">
-                                                                <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
+                                                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                                                    <TextBlock Text="{Binding Building}" FontSize="11.5"
+                                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                                               VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                                    <Border Style="{StaticResource RoomNumberChipStyle}">
+                                                        <TextBlock Text="{Binding Number, StringFormat='№{0}'}" FontSize="11.5" FontWeight="Bold"
+                                                                   Foreground="{StaticResource NavyBrush}"/>
+                                                    </Border>
+                                                    <Border Background="{StaticResource DangerSoftBrush}" Padding="2,6" Margin="8,0,0,0"
+                                                            Visibility="{Binding IsOverCapacity, Converter={StaticResource BoolToVisibility}}">
+                                                        <TextBlock Text="ПЕРЕВИЩЕННЯ" FontSize="10.5" FontWeight="Bold"
+                                                                   Foreground="{StaticResource DangerBrush}"/>
+                                                    </Border>
+                                                </StackPanel>
+
+                                                <TextBlock Grid.Column="2" Text="{Binding OccupancyText}" FontSize="11.5"
+                                                           HorizontalAlignment="Right" VerticalAlignment="Center">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsOverCapacity}" Value="True">
+                                                                    <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </Grid>
 
                                             <ItemsControl ItemsSource="{Binding DisplayedOccupantNames}" Margin="0,0,0,4">
                                                 <ItemsControl.ItemTemplate>
                                                     <DataTemplate>
-                                                        <TextBlock Text="{Binding}" FontSize="13.5" Foreground="{StaticResource TextSecondaryBrush}"
+                                                        <TextBlock Text="{Binding}" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}"
                                                                    Margin="0,0,0,4"/>
                                                     </DataTemplate>
                                                 </ItemsControl.ItemTemplate>
                                             </ItemsControl>
-                                            <TextBlock Text="{Binding ExtraOccupantCount, StringFormat='…і ще {0}'}" FontSize="13.5"
+                                            <TextBlock Text="{Binding ExtraOccupantCount, StringFormat='…і ще {0}'}" FontSize="12"
                                                        Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"
                                                        Visibility="{Binding HasExtraOccupants, Converter={StaticResource BoolToVisibility}}"/>
-                                            <TextBlock Text="Вільна" FontSize="13.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,10"
+                                            <TextBlock Text="Вільна" FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,10"
                                                        Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>
 
                                             <StackPanel Orientation="Horizontal">
@@ -222,7 +226,7 @@
                                                         Command="{Binding DataContext.SaveRoomCommand, ElementName=RoomsRoot}"
                                                         CommandParameter="{Binding}"/>
                                                 <Button Content="Скасувати" Padding="16,8" Margin="8,0,0,0"
-                                                        Style="{StaticResource OutlineButtonStyle}"
+                                                        Style="{StaticResource SecondaryButtonStyle}"
                                                         Command="{Binding DataContext.CancelEditCommand, ElementName=RoomsRoot}"
                                                         CommandParameter="{Binding}"/>
                                             </StackPanel>

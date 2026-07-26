@@ -3,52 +3,45 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Style="{StaticResource {x:Type Window}}"
         Title="{Binding Title}" Width="580" Height="800"
-        Background="{StaticResource ModalSurfaceBrush}"
+        Background="{StaticResource PanelBrush}"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
 
     <Window.Resources>
         <Style x:Key="FieldTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-            <Setter Property="Background" Value="{StaticResource FieldBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource FieldBorderBrush}"/>
-            <Setter Property="Padding" Value="11,9"/>
-            <Setter Property="FontSize" Value="13.5"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontSize" Value="13"/>
         </Style>
         <Style x:Key="ServiceNumberFieldStyle" TargetType="TextBox" BasedOn="{StaticResource FieldTextBoxStyle}">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding HasServiceNumberWarning}" Value="True">
-                    <Setter Property="BorderBrush" Value="{StaticResource ModalWarnBrush}"/>
+                    <Setter Property="BorderBrush" Value="{StaticResource WarningBrush}"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
         <Style x:Key="FieldComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
-            <Setter Property="Background" Value="{StaticResource FieldBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource FieldBorderBrush}"/>
-            <Setter Property="Padding" Value="11,9"/>
-            <Setter Property="FontSize" Value="13.5"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontSize" Value="13"/>
         </Style>
-        <Style x:Key="FieldDatePickerStyle" TargetType="DatePicker" BasedOn="{StaticResource {x:Type DatePicker}}">
-            <Setter Property="Background" Value="{StaticResource FieldBrush}"/>
-            <Setter Property="BorderBrush" Value="{StaticResource FieldBorderBrush}"/>
-        </Style>
+        <Style x:Key="FieldDatePickerStyle" TargetType="DatePicker" BasedOn="{StaticResource {x:Type DatePicker}}"/>
         <Style x:Key="SectionLabelStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="Foreground" Value="{StaticResource ModalLabelBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
             <Setter Property="Margin" Value="0,0,0,10"/>
         </Style>
         <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Foreground" Value="{StaticResource ModalLabelBrush}"/>
-            <Setter Property="Margin" Value="0,0,0,5"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
         </Style>
         <Style x:Key="WarningTextStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="11.5"/>
-            <Setter Property="Foreground" Value="{StaticResource ModalWarnBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource WarnTextBrush}"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
             <Setter Property="Margin" Value="0,5,0,0"/>
         </Style>
 
-        <!-- Мінімальний темний Expander: системний рендериться світлими кольорами -->
+        <!-- Мінімальний Expander: системний рендериться неоднорідно з нашою темою -->
         <Style TargetType="Expander">
             <Setter Property="Template">
                 <Setter.Value>
@@ -69,7 +62,7 @@
                                                       VerticalAlignment="Center" Margin="0,0,8,0"/>
                                                 <ContentPresenter Grid.Column="1" Content="{TemplateBinding Content}" VerticalAlignment="Center"
                                                                   TextBlock.Foreground="{StaticResource TextSecondaryBrush}"
-                                                                  TextBlock.FontSize="13.5" TextBlock.FontWeight="SemiBold"/>
+                                                                  TextBlock.FontSize="13" TextBlock.FontWeight="SemiBold"/>
                                             </Grid>
                                         </Border>
                                         <ControlTemplate.Triggers>
@@ -106,33 +99,33 @@
         </Grid.RowDefinitions>
 
         <!-- Заголовок -->
-        <Border Grid.Row="0" BorderBrush="{StaticResource ModalDividerBrush}" BorderThickness="0,0,0,1" Padding="22,16">
+        <Border Grid.Row="0" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1" Padding="16,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="{Binding Title}" Foreground="{StaticResource TextPrimaryBrush}"
-                           FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                           FontSize="14.5" FontWeight="Bold" VerticalAlignment="Center"/>
                 <Button Grid.Column="1" Content="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="11"
-                        Style="{StaticResource ModalCloseButtonStyle}" Command="{Binding CancelCommand}"/>
+                        Style="{StaticResource CloseButtonStyle}" Command="{Binding CancelCommand}"/>
             </Grid>
         </Border>
 
         <!-- Прогрес заповнення -->
         <StackPanel Grid.Row="1" Margin="22,14,22,0">
             <Grid Margin="0,0,0,6">
-                <TextBlock Text="Заповнено обов'язкових полів" FontSize="11.5" Foreground="{StaticResource ModalLabelBrush}" HorizontalAlignment="Left"/>
+                <TextBlock Text="Заповнено обов'язкових полів" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Left"/>
                 <TextBlock Text="{Binding RequiredFieldsLabel}" FontSize="11.5" FontWeight="Bold"
-                           Foreground="{StaticResource ModalAccentBrush}" HorizontalAlignment="Right"/>
+                           Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Right"/>
             </Grid>
             <Grid Height="4">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="{Binding RequiredFieldsFraction, Converter={StaticResource FractionToGridLength}}"/>
                     <ColumnDefinition Width="{Binding RequiredFieldsRemainingFraction, Converter={StaticResource FractionToGridLength}}"/>
                 </Grid.ColumnDefinitions>
-                <Border Grid.ColumnSpan="2" Background="{StaticResource Surface2Brush}" CornerRadius="2"/>
-                <Border Grid.Column="0" Background="{StaticResource ModalAccentBrush}" CornerRadius="2"/>
+                <Border Grid.ColumnSpan="2" Background="{StaticResource BorderLineBrush}"/>
+                <Border Grid.Column="0" Background="{StaticResource AccentBrush}"/>
             </Grid>
         </StackPanel>
 
@@ -169,7 +162,7 @@
                     <DatePicker SelectedDate="{Binding DateOfBirth}" Style="{StaticResource FieldDatePickerStyle}"/>
                 </StackPanel>
 
-                <Border Height="1" Background="{StaticResource ModalDividerBrush}" Margin="0,18"/>
+                <Border Height="1" Background="{StaticResource BorderLineBrush}" Margin="0,18"/>
 
                 <TextBlock Text="СЛУЖБА" Style="{StaticResource SectionLabelStyle}"/>
 
@@ -237,7 +230,7 @@
                 <TextBlock Text="{Binding RoomWarningMessage}" Style="{StaticResource WarningTextStyle}"
                            Visibility="{Binding HasRoomWarning, Converter={StaticResource BoolToVisibility}}"/>
 
-                <Border Height="1" Background="{StaticResource ModalDividerBrush}" Margin="0,18"/>
+                <Border Height="1" Background="{StaticResource BorderLineBrush}" Margin="0,18"/>
 
                 <Expander Header="Анкетні дані (прикомандировані)" IsExpanded="False">
                     <StackPanel Margin="0,14,0,0">
@@ -411,7 +404,7 @@
         </ScrollViewer>
 
         <!-- Дії -->
-        <Border Grid.Row="3" Background="{StaticResource SidebarBrush}" BorderBrush="{StaticResource ModalDividerBrush}"
+        <Border Grid.Row="3" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
                 BorderThickness="0,1,0,0" Padding="22,16">
             <Grid>
                 <Grid.ColumnDefinitions>

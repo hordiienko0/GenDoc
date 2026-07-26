@@ -4,9 +4,9 @@
 
     <UserControl.Resources>
         <Style x:Key="AuditHeaderTextStyle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
-            <Setter Property="FontSize" Value="12.5"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource NavyBrush}"/>
+            <Setter Property="FontSize" Value="10.5"/>
+            <Setter Property="FontWeight" Value="Bold"/>
         </Style>
 
         <Style x:Key="FilterLabelStyle" TargetType="TextBlock">
@@ -14,14 +14,75 @@
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Margin" Value="0,0,0,5"/>
         </Style>
+
+        <!-- Чіп типу дії: квадратна плашка, фон *SoftBrush, текст — відповідний насичений колір -->
+        <Style x:Key="ActionChipBackgroundStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Action}" Value="Видалено">
+                    <Setter Property="Background" Value="{StaticResource DangerSoftBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Action}" Value="Згенеровано">
+                    <Setter Property="Background" Value="{StaticResource AccentSoftBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Action}" Value="Експортовано">
+                    <Setter Property="Background" Value="{StaticResource AccentSoftBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Action}" Value="Створено">
+                    <Setter Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Action}" Value="Оновлено">
+                    <Setter Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Action}" Value="Імпортовано">
+                    <Setter Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ActionChipTextStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Action}" Value="Видалено">
+                    <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Action}" Value="Згенеровано">
+                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Action}" Value="Експортовано">
+                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Action}" Value="Створено">
+                    <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Action}" Value="Оновлено">
+                    <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Action}" Value="Імпортовано">
+                    <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Рядок таблиці: підсвітка при наведенні -->
+        <Style x:Key="AuditRowBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0,1,0,0"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource RowHoverBrush}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="0,0,0,24">
 
-            <TextBlock Text="Журнал дій" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock Text="Журнал дій" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
             <TextBlock Text="Історія змін у базі даних"
-                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="13.5" Margin="0,4,0,22"/>
+                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,4,0,22"/>
 
             <StackPanel Orientation="Horizontal" Margin="0,0,0,20" VerticalAlignment="Bottom">
                 <StackPanel Margin="0,0,10,0">
@@ -54,13 +115,13 @@
                         </ComboBox.ItemTemplate>
                     </ComboBox>
                 </StackPanel>
-                <Button Content="Скинути" Style="{StaticResource OutlineButtonStyle}" Command="{Binding ResetCommand}"/>
+                <Button Content="Скинути" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding ResetCommand}"/>
             </StackPanel>
 
-            <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderLineBrush}"
-                    BorderThickness="1" CornerRadius="2">
+            <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                    BorderThickness="1" CornerRadius="0">
                 <StackPanel>
-                    <Grid Background="{StaticResource Surface2Brush}"
+                    <Grid Background="{StaticResource SkySoftBrush}"
                           Visibility="{Binding HasEntries, Converter={StaticResource BoolToVisibility}}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="1.2*"/>
@@ -79,7 +140,7 @@
                     <ItemsControl ItemsSource="{Binding Entries}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderLineBrush}">
+                                <Border Style="{StaticResource AuditRowBorderStyle}">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="1.2*"/>
@@ -94,33 +155,11 @@
                                         <TextBlock Grid.Column="1" Text="{Binding Profile}" Margin="20,11" VerticalAlignment="Center"
                                                    Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
 
-                                        <TextBlock Grid.Column="2" Text="{Binding Action}" Margin="20,11" VerticalAlignment="Center" FontWeight="SemiBold">
-                                            <TextBlock.Style>
-                                                <Style TargetType="TextBlock">
-                                                    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-                                                    <Style.Triggers>
-                                                        <DataTrigger Binding="{Binding Action}" Value="Видалено">
-                                                            <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding Action}" Value="Згенеровано">
-                                                            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding Action}" Value="Експортовано">
-                                                            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding Action}" Value="Створено">
-                                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding Action}" Value="Оновлено">
-                                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
-                                                        </DataTrigger>
-                                                        <DataTrigger Binding="{Binding Action}" Value="Імпортовано">
-                                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
-                                                        </DataTrigger>
-                                                    </Style.Triggers>
-                                                </Style>
-                                            </TextBlock.Style>
-                                        </TextBlock>
+                                        <Border Grid.Column="2" Margin="20,11" Padding="2,6" HorizontalAlignment="Left"
+                                                VerticalAlignment="Center" Style="{StaticResource ActionChipBackgroundStyle}">
+                                            <TextBlock Text="{Binding Action}" FontSize="10.5" FontWeight="Bold"
+                                                       Style="{StaticResource ActionChipTextStyle}"/>
+                                        </Border>
 
                                         <TextBlock Grid.Column="3" Text="{Binding ObjectDisplay}" Margin="20,11" VerticalAlignment="Center"
                                                    Foreground="{StaticResource TextSecondaryBrush}"
@@ -140,7 +179,7 @@
                 </StackPanel>
             </Border>
 
-            <Button Content="Показати ще 200" Style="{StaticResource OutlineButtonStyle}" Command="{Binding LoadMoreCommand}"
+            <Button Content="Показати ще 200" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding LoadMoreCommand}"
                     HorizontalAlignment="Center" Margin="0,16,0,0"
                     Visibility="{Binding CanLoadMore, Converter={StaticResource BoolToVisibility}}"/>
 

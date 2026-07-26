@@ -5,23 +5,23 @@
     <UserControl.Resources>
         <Style x:Key="SettingsFieldLabelStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
-            <Setter Property="FontSize" Value="12.5"/>
-            <Setter Property="Margin" Value="0,0,0,6"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
         </Style>
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="0,0,0,24">
 
-            <TextBlock Text="Налаштування" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock Text="Налаштування" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
             <TextBlock Text="Параметри системи обліку особового складу"
-                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="13.5" Margin="0,4,0,22"/>
+                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,4,0,22"/>
 
-            <TextBlock Text="Дані військової частини" FontSize="16" FontWeight="SemiBold"
-                       Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,10"/>
+            <TextBlock Text="ДАНІ ВІЙСЬКОВОЇ ЧАСТИНИ" FontSize="11" FontWeight="Bold"
+                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,10"/>
 
-            <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderLineBrush}"
-                    BorderThickness="1" CornerRadius="2" Padding="24">
+            <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                    BorderThickness="1" CornerRadius="0" Padding="24">
                 <StackPanel MaxWidth="480">
                     <StackPanel Margin="0,0,0,14">
                         <TextBlock Text="Номер військової частини" Style="{StaticResource SettingsFieldLabelStyle}"/>

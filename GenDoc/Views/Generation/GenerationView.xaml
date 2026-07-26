@@ -4,9 +4,9 @@
 
     <UserControl.Resources>
         <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="16"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
             <Setter Property="Margin" Value="0,0,0,10"/>
         </Style>
 
@@ -17,23 +17,25 @@
         </Style>
 
         <Style x:Key="PackageCardStyle" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
             <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="2"/>
+            <Setter Property="CornerRadius" Value="0"/>
             <Setter Property="Padding" Value="14"/>
             <Setter Property="Margin" Value="0,0,0,10"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsSelected}" Value="True">
                     <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                    <Setter Property="BorderThickness" Value="3,1,1,1"/>
+                    <Setter Property="Background" Value="{StaticResource AccentSoftBrush}"/>
                 </DataTrigger>
             </Style.Triggers>
         </Style>
 
         <Style x:Key="ChipStyle" TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
-            <Setter Property="CornerRadius" Value="2"/>
+            <Setter Property="Background" Value="{StaticResource SkySoftBrush}"/>
+            <Setter Property="CornerRadius" Value="0"/>
             <Setter Property="Padding" Value="10,4"/>
             <Setter Property="Margin" Value="0,0,8,8"/>
         </Style>
@@ -42,9 +44,9 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="0,0,0,24">
 
-            <TextBlock Text="Генерація" FontSize="22" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock Text="Генерація" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
             <TextBlock Text="Пакети шаблонів для масової генерації документів"
-                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="13.5" Margin="0,4,0,22"/>
+                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,4,0,22"/>
 
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -86,13 +88,13 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <Button Content="+ Новий пакет" Style="{StaticResource OutlineButtonStyle}"
+                    <Button Content="+ Новий пакет" Style="{StaticResource SecondaryButtonStyle}"
                             Command="{Binding ShowCreatePackageCommand}" HorizontalAlignment="Left" Margin="0,4,0,0"
                             Visibility="{Binding NotCreatingPackage, Converter={StaticResource BoolToVisibility}}"/>
 
                     <!-- Інлайн-форма створення пакета -->
-                    <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderLineBrush}"
-                            BorderThickness="1" CornerRadius="2" Padding="16" Margin="0,4,0,0"
+                    <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                            BorderThickness="1" CornerRadius="0" Padding="16" Margin="0,4,0,0"
                             Visibility="{Binding IsCreatingPackage, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel>
                             <TextBlock Text="Назва" Style="{StaticResource FieldLabelStyle}"/>
@@ -113,7 +115,7 @@
 
                             <StackPanel Orientation="Horizontal">
                                 <Button Content="Створити" Command="{Binding CreatePackageCommand}"/>
-                                <Button Content="Скасувати" Style="{StaticResource OutlineButtonStyle}"
+                                <Button Content="Скасувати" Style="{StaticResource SecondaryButtonStyle}"
                                         Command="{Binding CancelCreatePackageCommand}" Margin="10,0,0,0"/>
                             </StackPanel>
                         </StackPanel>
@@ -122,13 +124,13 @@
 
                 <!-- Права панель: обраний пакет -->
                 <Grid Grid.Column="2">
-                    <TextBlock Text="Оберіть пакет ліворуч або створіть новий" Foreground="{StaticResource TextSecondaryBrush}"
+                    <TextBlock Text="Оберіть пакет ліворуч або створіть новий" Foreground="{StaticResource PlaceholderBrush}"
                                HorizontalAlignment="Center" VerticalAlignment="Center" Padding="48"
                                Visibility="{Binding NoSelectedPackage, Converter={StaticResource BoolToVisibility}}"/>
 
                     <StackPanel Visibility="{Binding HasSelectedPackage, Converter={StaticResource BoolToVisibility}}">
 
-                        <TextBlock Text="Шаблони пакета" Style="{StaticResource SectionTitleStyle}"/>
+                        <TextBlock Text="ШАБЛОНИ ПАКЕТА" Style="{StaticResource SectionTitleStyle}"/>
                         <ItemsControl ItemsSource="{Binding PackageTemplates}" Margin="0,0,0,16">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -138,19 +140,19 @@
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <Border Style="{StaticResource ChipStyle}">
-                                        <TextBlock Text="{Binding}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="13"/>
+                                        <TextBlock Text="{Binding}" Foreground="{StaticResource NavyBrush}" FontSize="12.5"/>
                                     </Border>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
                         <TextBlock Text="{Binding RecipientCount, StringFormat='Буде згенеровано для {0} осіб'}"
-                                   Foreground="{StaticResource TextSecondaryBrush}" FontSize="13.5" Margin="0,0,0,20"/>
+                                   Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5" Margin="0,0,0,20"/>
 
                         <StackPanel Visibility="{Binding HasManualTags, Converter={StaticResource BoolToVisibility}}" Margin="0,0,0,20">
-                            <TextBlock Text="Значення для цієї генерації" Style="{StaticResource SectionTitleStyle}"/>
-                            <Border Background="{StaticResource SurfaceBrush}" BorderBrush="{StaticResource BorderLineBrush}"
-                                    BorderThickness="1" CornerRadius="2" Padding="16">
+                            <TextBlock Text="ЗНАЧЕННЯ ДЛЯ ЦІЄЇ ГЕНЕРАЦІЇ" Style="{StaticResource SectionTitleStyle}"/>
+                            <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                                    BorderThickness="1" CornerRadius="0" Padding="16">
                                 <ItemsControl ItemsSource="{Binding ManualTagInputs}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
@@ -170,7 +172,7 @@
                         </StackPanel>
 
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
-                            <Button Content="Обрати папку…" Style="{StaticResource OutlineButtonStyle}"
+                            <Button Content="Обрати папку…" Style="{StaticResource SecondaryButtonStyle}"
                                     Command="{Binding PickOutputFolderCommand}"/>
                             <TextBlock Text="{Binding OutputFolder}" Foreground="{StaticResource TextSecondaryBrush}"
                                        VerticalAlignment="Center" Margin="10,0,0,0" TextTrimming="CharacterEllipsis"
@@ -183,8 +185,11 @@
                                 HorizontalAlignment="Left"
                                 Visibility="{Binding NotBusy, Converter={StaticResource BoolToVisibility}}"/>
 
-                        <TextBlock Text="{Binding ProgressText}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13.5"
-                                   Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}"/>
+                        <Border Background="{StaticResource AccentSoftBrush}" BorderBrush="{StaticResource SkyBrush}"
+                                BorderThickness="3,0,0,0" Padding="14,10"
+                                Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="{Binding ProgressText}" Foreground="{StaticResource NavyBrush}" FontSize="12.5"/>
+                        </Border>
 
                     </StackPanel>
                 </Grid>
