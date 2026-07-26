@@ -11,6 +11,11 @@ public class ImportService : IImportService
 {
     private static readonly string[] DateFormats = { "dd.MM.yyyy", "d.M.yyyy" };
 
+    // Кімнати, яких ще нема в базі, під час імпорту створюються "наосліп" (лише
+    // за корпусом/номером з файлу) — реальну місткість тоді ніхто не вказує,
+    // тож ставимо стандартну на 6 місць замість 1.
+    private const int DefaultImportedRoomCapacity = 6;
+
     private readonly IDbContextFactory<AppDbContext> _dbFactory;
     private readonly IAuditLogService _auditLogService;
 
@@ -429,7 +434,7 @@ public class ImportService : IImportService
             return existing;
         }
 
-        var created = new Room { Building = trimmedBuilding, Number = trimmedNumber, Capacity = 1 };
+        var created = new Room { Building = trimmedBuilding, Number = trimmedNumber, Capacity = DefaultImportedRoomCapacity };
         db.Rooms.Add(created);
         db.SaveChanges();
         cache[key] = created;

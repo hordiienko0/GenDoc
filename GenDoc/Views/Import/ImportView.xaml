@@ -226,9 +226,15 @@
                                                        VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                                                        Foreground="{StaticResource TextSecondaryBrush}"/>
                                             <ComboBox Grid.Column="2" ItemsSource="{Binding FieldOptions}"
-                                                      DisplayMemberPath="DisplayName" SelectedValuePath="Field"
+                                                      SelectedValuePath="Field"
                                                       SelectedValue="{Binding SelectedField, Mode=TwoWay}"
-                                                      Width="220" HorizontalAlignment="Left" Margin="16,8"/>
+                                                      Width="220" HorizontalAlignment="Left" Margin="16,8">
+                                                <ComboBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding DisplayName}"/>
+                                                    </DataTemplate>
+                                                </ComboBox.ItemTemplate>
+                                            </ComboBox>
                                         </Grid>
                                     </Border>
                                 </DataTemplate>

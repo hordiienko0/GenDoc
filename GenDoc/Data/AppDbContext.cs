@@ -62,6 +62,11 @@ namespace GenDoc.Data
                 .HasForeignKey(m => m.ExportTemplateId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            modelBuilder.Entity<Room>()
+                .HasIndex(r => new { r.Building, r.Number })
+                .IsUnique()
+                .HasFilter("\"DeletedAt\" IS NULL");
+
             ApplySoftDeleteFilters(modelBuilder);
         }
 

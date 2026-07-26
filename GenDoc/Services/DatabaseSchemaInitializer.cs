@@ -6,7 +6,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 3;
+    private const int CurrentSchemaVersion = 4;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -18,6 +18,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     };
 
     private static readonly string[] OrganizationSettingsColumnsV3 = { "HrOfficerFullName" };
+    private static readonly string[] RoomColumnsV4 = { "Note", "CreatedAt", "CreatedBy" };
 
     private readonly IDbContextFactory<AppDbContext> _dbFactory;
     private readonly IExportTemplateService _exportTemplateService;
@@ -44,7 +45,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
             {
                 Version = CurrentSchemaVersion,
                 AppliedAt = DateTime.Now,
-                Description = "Початкова схема (v3, дані кадровика частини)"
+                Description = "Початкова схема (v4, кімнати)"
             });
         }
         else
@@ -74,8 +75,27 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                     AppliedAt = DateTime.Now,
                     Description = "ПІБ начальника служби персоналу"
                 });
+                currentVersion = 3;
+            }
+
+            if (currentVersion < 4)
+            {
+                AddMissingColumns(db, "Rooms", RoomColumnsV4);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 4,
+                    AppliedAt = DateTime.Now,
+                    Description = "Кімнати: примітка, дата створення"
+                });
             }
         }
+
+        // Ідемпотентно (IF NOT EXISTS) — самовідновлюється незалежно від SchemaVersion,
+        // так само як EnsureExportTemplateTables. Обгорнуто в try/catch: якщо в
+        // існуючих даних вже є дублікати (Building, Number), унікальний індекс
+        // не повинен зривати запуск застосунку.
+        EnsureRoomUniqueIndex(db);
 
         // Самовідновлення: якщо міграція v3 вже позначена виконаною раніше (до
         // цього виправлення), рядок міг лишитись з HrOfficerFullName = NULL —
@@ -126,6 +146,21 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
             if (existingColumns.Contains(column)) continue;
             string sql = "ALTER TABLE " + tableName + " ADD COLUMN " + column + " TEXT NULL;";
             db.Database.ExecuteSqlRaw(sql);
+        }
+    }
+
+    private static void EnsureRoomUniqueIndex(AppDbContext db)
+    {
+        try
+        {
+            db.Database.ExecuteSqlRaw(
+                """CREATE UNIQUE INDEX IF NOT EXISTS "IX_Rooms_Building_Number" ON "Rooms" ("Building", "Number") WHERE "DeletedAt" IS NULL;""");
+        }
+        catch
+        {
+            // Найімовірніша причина — наявні дублікати (Building, Number) у старих даних.
+            // Не зриваємо запуск застосунку через це; унікальність далі перевіряється
+            // на рівні RoomService при створенні/редагуванні кімнати.
         }
     }
 

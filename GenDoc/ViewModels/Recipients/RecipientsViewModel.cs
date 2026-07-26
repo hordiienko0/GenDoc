@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -65,14 +66,14 @@ namespace GenDoc.ViewModels.Recipients
         [NotifyPropertyChangedFor(nameof(HasResults))]
         [NotifyPropertyChangedFor(nameof(IsEmpty))]
         [NotifyPropertyChangedFor(nameof(CountLabel))]
-        private ObservableCollection<RecipientListItem> recipients = new();
+        private ObservableCollection<RecipientRowViewModel> recipients = new();
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(EmptyMessage))]
         private string? searchText;
 
         [ObservableProperty]
-        private RecipientListItem? selectedRecipient;
+        private RecipientRowViewModel? selectedRecipient;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(CountLabel))]
@@ -103,6 +104,10 @@ namespace GenDoc.ViewModels.Recipients
         public string EmptyMessage => string.IsNullOrWhiteSpace(SearchText)
             ? "Особовий склад порожній"
             : $"Нічого не знайдено за запитом «{SearchText}»";
+
+        public int SelectedCount => Recipients.Count(r => r.IsSelected);
+        public bool HasSelection => SelectedCount > 0;
+        public string DeleteSelectedButtonText => $"Видалити ({SelectedCount})";
 
         public string FullNameHeaderText => "ПІБ" + SortArrow(RecipientSortColumn.FullName);
         public string RankHeaderText => "ЗВАННЯ" + SortArrow(RecipientSortColumn.Rank);
@@ -145,7 +150,26 @@ namespace GenDoc.ViewModels.Recipients
         }
 
         [RelayCommand]
-        private void Edit(RecipientListItem? item)
+        private void DeleteSelected()
+        {
+            var selected = Recipients.Where(r => r.IsSelected).ToList();
+            if (selected.Count == 0) return;
+
+            var result = MessageBox.Show(
+                $"Видалити {selected.Count} записів до кошика?",
+                "Підтвердження видалення",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+            if (result != MessageBoxResult.Yes) return;
+
+            foreach (var row in selected)
+                _recipientService.Delete(row.Id);
+
+            Refresh();
+        }
+
+        [RelayCommand]
+        private void Edit(RecipientRowViewModel? item)
         {
             var target = item ?? SelectedRecipient;
             if (target is null) return;
@@ -246,7 +270,7 @@ namespace GenDoc.ViewModels.Recipients
         }
 
         [RelayCommand]
-        private void DeleteRecipient(RecipientListItem? item)
+        private void DeleteRecipient(RecipientRowViewModel? item)
         {
             if (item is null) return;
 
@@ -268,13 +292,34 @@ namespace GenDoc.ViewModels.Recipients
             try
             {
                 TotalCount = _recipientService.Search(null, SortColumn, SortDescending).Count;
-                Recipients = new ObservableCollection<RecipientListItem>(_recipientService.Search(SearchText, SortColumn, SortDescending));
+
+                var rows = _recipientService.Search(SearchText, SortColumn, SortDescending)
+                    .Select(item => new RecipientRowViewModel(item))
+                    .ToList();
+
+                foreach (var row in rows)
+                    row.PropertyChanged += OnRowPropertyChanged;
+
+                Recipients = new ObservableCollection<RecipientRowViewModel>(rows);
+                NotifySelectionChanged();
             }
             finally
             {
                 Mouse.OverrideCursor = null;
                 IsSearching = false;
             }
+        }
+
+        private void OnRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(RecipientRowViewModel.IsSelected)) NotifySelectionChanged();
+        }
+
+        private void NotifySelectionChanged()
+        {
+            OnPropertyChanged(nameof(SelectedCount));
+            OnPropertyChanged(nameof(HasSelection));
+            OnPropertyChanged(nameof(DeleteSelectedButtonText));
         }
     }
 }

@@ -196,6 +196,8 @@
                         <ContentPresenter x:Name="ContentSite" IsHitTestVisible="False"
                                           Content="{TemplateBinding SelectionBoxItem}"
                                           ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                          ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                          ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
                                           Margin="{TemplateBinding Padding}"
                                           TextBlock.Foreground="{TemplateBinding Foreground}"
                                           VerticalAlignment="Center" HorizontalAlignment="Left"/>
@@ -469,6 +471,33 @@
                 <Setter Property="Padding" Value="13,11,16,11"/>
             </DataTrigger>
         </Style.Triggers>
+    </Style>
+
+    <!-- Текстова кнопка-посилання (Редагувати/Видалити/Виселити тощо) — Foreground
+         задає кожен виклик окремо, стиль лише прибирає рамку/фон і додає підкреслення на hover -->
+    <Style x:Key="TextLinkButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}">
+                        <ContentPresenter x:Name="content" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          TextBlock.Foreground="{TemplateBinding Foreground}"
+                                          TextBlock.FontSize="{TemplateBinding FontSize}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="content" Property="TextBlock.TextDecorations" Value="Underline"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <!-- Кнопка "✕" закриття модального вікна (заголовок RecipientEditWindow) -->

@@ -8,6 +8,7 @@ using GenDoc.ViewModels.Audit;
 using GenDoc.ViewModels.Generation;
 using GenDoc.ViewModels.Import;
 using GenDoc.ViewModels.Recipients;
+using GenDoc.ViewModels.Rooms;
 using GenDoc.ViewModels.Settings;
 using GenDoc.ViewModels.Templates;
 using Microsoft.EntityFrameworkCore;
@@ -41,7 +42,7 @@ public partial class MainViewModel : ObservableObject
                 new NavigationItem("Імпорт з Excel", () => _serviceProvider.GetRequiredService<ImportViewModel>()),
                 new NavigationItem("Шаблони", () => _serviceProvider.GetRequiredService<TemplatesViewModel>()),
                 new NavigationItem("Генерація", () => _serviceProvider.GetRequiredService<GenerationViewModel>()),
-                new NavigationItem("Кімнати", () => new PlaceholderViewModel("Кімнати")),
+                new NavigationItem("Кімнати", () => _serviceProvider.GetRequiredService<RoomsViewModel>()),
             }, showDividerAfter: true),
             new(new[]
             {

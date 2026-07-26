@@ -39,7 +39,7 @@ public partial class RecipientsView : UserControl
     {
         if (DataContext is not RecipientsViewModel viewModel) return;
         if (sender is not DataGrid grid) return;
-        if (grid.SelectedItem is not RecipientListItem item) return;
+        if (grid.SelectedItem is not RecipientRowViewModel item) return;
 
         if (e.Key == Key.Enter)
         {

@@ -82,7 +82,13 @@
                                     Visibility="{Binding Stage, Converter={StaticResource EnumToVisibility}, ConverterParameter=ProfileSelect, FallbackValue=Collapsed}">
                             <TextBlock Text="Профіль" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5" Margin="0 0 0 6"/>
                             <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}"
-                                      DisplayMemberPath="FullName" Background="{StaticResource Surface2Brush}"/>
+                                      Background="{StaticResource Surface2Brush}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding FullName}"/>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
                             <TextBlock Text="Пароль профілю" Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5" Margin="0 14 0 6"/>
                             <PasswordBox x:Name="ProfilePasswordBox" Background="{StaticResource Surface2Brush}"
                                          PasswordChanged="ProfilePasswordBox_PasswordChanged"/>

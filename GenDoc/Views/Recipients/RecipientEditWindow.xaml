@@ -152,15 +152,15 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="Прізвище *" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBox Text="{Binding LastName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                        <TextBox Text="{Binding LastName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}" Height="63"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2">
                         <TextBlock Text="Ім'я *" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBox Text="{Binding FirstName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                        <TextBox Text="{Binding FirstName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}" Height="63"/>
                     </StackPanel>
                     <StackPanel Grid.Column="4">
                         <TextBlock Text="По батькові" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBox Text="{Binding MiddleName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                        <TextBox Text="{Binding MiddleName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}" Height="71"/>
                     </StackPanel>
                 </Grid>
 
@@ -200,14 +200,14 @@
                     </StackPanel>
                     <StackPanel Grid.Column="2">
                         <TextBlock Text="Посада *" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBox Text="{Binding Position, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                        <TextBox Text="{Binding Position, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}" Height="61"/>
                     </StackPanel>
                 </Grid>
 
                 <StackPanel Margin="0,0,0,10">
                     <TextBlock Text="Підрозділ *" Style="{StaticResource FieldLabelStyle}"/>
                     <ComboBox Text="{Binding UnitName, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding UnitNameOptions}"
-                              IsEditable="True" Style="{StaticResource FieldComboBoxStyle}"/>
+                              IsEditable="True" Style="{StaticResource FieldComboBoxStyle}" Height="43"/>
                 </StackPanel>
 
                 <Grid Margin="0,0,0,4">
@@ -220,18 +220,18 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0">
                         <TextBlock Text="Особовий номер *" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBox Text="{Binding ServiceNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ServiceNumberFieldStyle}"/>
+                        <TextBox Text="{Binding ServiceNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource ServiceNumberFieldStyle}" Height="68"/>
                         <TextBlock Text="{Binding ServiceNumberWarningMessage}" Style="{StaticResource WarningTextStyle}"
                                    Visibility="{Binding HasServiceNumberWarning, Converter={StaticResource BoolToVisibility}}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2">
                         <TextBlock Text="Корпус" Style="{StaticResource FieldLabelStyle}"/>
                         <ComboBox Text="{Binding RoomBuilding, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding RoomBuildingOptions}"
-                                  IsEditable="True" Style="{StaticResource FieldComboBoxStyle}"/>
+                                  IsEditable="True" Style="{StaticResource FieldComboBoxStyle}" Height="43"/>
                     </StackPanel>
                     <StackPanel Grid.Column="4">
                         <TextBlock Text="Кімната" Style="{StaticResource FieldLabelStyle}"/>
-                        <TextBox Text="{Binding RoomNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                        <TextBox Text="{Binding RoomNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}" Height="62"/>
                     </StackPanel>
                 </Grid>
                 <TextBlock Text="{Binding RoomWarningMessage}" Style="{StaticResource WarningTextStyle}"

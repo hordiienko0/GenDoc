@@ -1,0 +1,248 @@
+<UserControl x:Class="GenDoc.Views.Rooms.RoomsView"
+             x:Name="RoomsRoot"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:roomsView="clr-namespace:GenDoc.Views.Rooms">
+
+    <UserControl.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding CloseRoomCommand}"/>
+    </UserControl.InputBindings>
+
+    <UserControl.Resources>
+        <Style x:Key="RoomFieldLabelStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+
+        <Style x:Key="RoomFieldTextBoxStyle" TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+            <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="FontSize" Value="13.5"/>
+        </Style>
+
+        <Style x:Key="RoomBadgeStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource Surface2Brush}"/>
+            <Setter Property="CornerRadius" Value="2"/>
+            <Setter Property="Padding" Value="9,3"/>
+        </Style>
+
+        <Style x:Key="RoomCardBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource SurfaceBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="2"/>
+            <Setter Property="Padding" Value="16,14"/>
+            <Setter Property="Width" Value="230"/>
+            <Setter Property="Margin" Value="0,0,14,14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsOverCapacity}" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource DangerBrush}"/>
+                    <Setter Property="Background" Value="{StaticResource DangerSoftBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                    <Setter Property="Background" Value="{StaticResource AccentSoftBrush}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="{StaticResource BackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Шапка -->
+        <Grid Grid.Row="0" Margin="0,0,0,22">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Розміщення по кімнатах" FontSize="22" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                    <TextBlock Text="{Binding OccupancyLabel}" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13.5"/>
+                    <TextBlock Text="{Binding OverCapacityCount, StringFormat='  ·  {0} з перевищенням місць'}"
+                               Foreground="{StaticResource DangerBrush}" FontSize="13.5" FontWeight="SemiBold"
+                               Visibility="{Binding HasOverCapacityWarning, Converter={StaticResource BoolToVisibility}}"/>
+                </StackPanel>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Grid Width="280" Margin="0,0,10,0">
+                    <TextBox x:Name="SearchTextBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             Padding="10,10"/>
+                    <TextBlock Text="Пошук за корпусом, номером або мешканцем…" Foreground="{StaticResource TextSecondaryBrush}"
+                               Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
+                               Visibility="{Binding IsSearchEmpty, Converter={StaticResource BoolToVisibility}}"/>
+                </Grid>
+                <Button Content="+ Додати кімнату" Command="{Binding AddRoomCommand}"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Вміст: сітка карток (мін. 480) + панель деталей -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" MinWidth="480"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Grid Grid.Column="0">
+                <TextBlock Text="Кімнат ще немає — додайте першу" Foreground="{StaticResource TextSecondaryBrush}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" Padding="48"
+                           Visibility="{Binding ShowEmptyNoRooms, Converter={StaticResource BoolToVisibility}}"/>
+
+                <TextBlock Foreground="{StaticResource TextSecondaryBrush}"
+                           HorizontalAlignment="Center" VerticalAlignment="Center" Padding="48"
+                           Visibility="{Binding ShowEmptySearch, Converter={StaticResource BoolToVisibility}}">
+                    <Run Text="Нічого не знайдено за запитом «"/>
+                    <Run Text="{Binding SearchText, Mode=OneWay}"/>
+                    <Run Text="»"/>
+                </TextBlock>
+
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Rooms}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border x:Name="CardBorder" Style="{StaticResource RoomCardBorderStyle}">
+                                    <Border.InputBindings>
+                                        <MouseBinding MouseAction="LeftClick"
+                                                      Command="{Binding DataContext.OpenRoomCommand, ElementName=RoomsRoot}"
+                                                      CommandParameter="{Binding}"/>
+                                    </Border.InputBindings>
+                                    <Grid>
+
+                                        <!-- Режим перегляду -->
+                                        <StackPanel Visibility="{Binding IsNotEditing, Converter={StaticResource BoolToVisibility}}">
+                                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                                <Border Style="{StaticResource RoomBadgeStyle}">
+                                                    <TextBlock Text="{Binding Building}" FontSize="12" FontWeight="SemiBold"
+                                                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                </Border>
+                                                <Border Style="{StaticResource RoomBadgeStyle}" Margin="8,0,0,0">
+                                                    <TextBlock Text="{Binding Number, StringFormat='№{0}'}" FontSize="12" FontWeight="Bold"
+                                                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                </Border>
+                                                <Border Style="{StaticResource RoomBadgeStyle}" Background="{StaticResource DangerSoftBrush}" Margin="8,0,0,0"
+                                                        Visibility="{Binding IsOverCapacity, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="ПЕРЕВИЩЕННЯ" FontSize="12" FontWeight="Bold"
+                                                               Foreground="{StaticResource DangerBrush}"/>
+                                                </Border>
+                                            </StackPanel>
+
+                                            <TextBlock Text="{Binding OccupancyText, StringFormat='{}{0} місць'}" FontSize="13.5" Margin="0,0,0,8">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsEmpty}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsOverCapacity}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+
+                                            <ItemsControl ItemsSource="{Binding DisplayedOccupantNames}" Margin="0,0,0,4">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <TextBlock Text="{Binding}" FontSize="13.5" Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   Margin="0,0,0,4"/>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <TextBlock Text="{Binding ExtraOccupantCount, StringFormat='…і ще {0}'}" FontSize="13.5"
+                                                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"
+                                                       Visibility="{Binding HasExtraOccupants, Converter={StaticResource BoolToVisibility}}"/>
+                                            <TextBlock Text="Вільна" FontSize="13.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,10"
+                                                       Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>
+
+                                            <StackPanel Orientation="Horizontal">
+                                                <StackPanel.Style>
+                                                    <Style TargetType="StackPanel">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsMouseOver, ElementName=CardBorder}" Value="True">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </StackPanel.Style>
+
+                                                <Button Content="Редагувати" Style="{StaticResource TextLinkButtonStyle}"
+                                                        Foreground="{StaticResource AccentBrush}"
+                                                        Command="{Binding DataContext.EditRoomCommand, ElementName=RoomsRoot}"
+                                                        CommandParameter="{Binding}"/>
+
+                                                <Button Content="Видалити" Style="{StaticResource TextLinkButtonStyle}"
+                                                        Foreground="{StaticResource DangerBrush}" Margin="14,0,0,0"
+                                                        Command="{Binding DataContext.DeleteRoomCommand, ElementName=RoomsRoot}"
+                                                        CommandParameter="{Binding}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <!-- Режим редагування -->
+                                        <StackPanel Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Text="Корпус" Style="{StaticResource RoomFieldLabelStyle}"/>
+                                            <TextBox Text="{Binding BuildingInput, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource RoomFieldTextBoxStyle}" Margin="0,0,0,10"/>
+
+                                            <TextBlock Text="Номер" Style="{StaticResource RoomFieldLabelStyle}"/>
+                                            <TextBox Text="{Binding NumberInput, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource RoomFieldTextBoxStyle}" Margin="0,0,0,10"/>
+
+                                            <TextBlock Text="Місць" Style="{StaticResource RoomFieldLabelStyle}"/>
+                                            <TextBox Text="{Binding CapacityInput, UpdateSourceTrigger=PropertyChanged}"
+                                                     Style="{StaticResource RoomFieldTextBoxStyle}" Margin="0,0,0,6"/>
+
+                                            <TextBlock Text="{Binding ValidationError}" Foreground="{StaticResource DangerBrush}"
+                                                       FontSize="12.5" TextWrapping="Wrap" Margin="0,0,0,10"
+                                                       Visibility="{Binding HasValidationError, Converter={StaticResource BoolToVisibility}}"/>
+
+                                            <StackPanel Orientation="Horizontal">
+                                                <Button Content="Зберегти" Padding="16,8" FontWeight="Bold"
+                                                        Command="{Binding DataContext.SaveRoomCommand, ElementName=RoomsRoot}"
+                                                        CommandParameter="{Binding}"/>
+                                                <Button Content="Скасувати" Padding="16,8" Margin="8,0,0,0"
+                                                        Style="{StaticResource OutlineButtonStyle}"
+                                                        Command="{Binding DataContext.CancelEditCommand, ElementName=RoomsRoot}"
+                                                        CommandParameter="{Binding}"/>
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+
+            <!-- Роздільник -->
+            <Border Grid.Column="1" Width="1" Background="{StaticResource BorderLineBrush}" Margin="20,0"
+                    Visibility="{Binding IsPanelOpen, Converter={StaticResource BoolToVisibility}}"/>
+
+            <!-- Панель деталей кімнати -->
+            <roomsView:RoomDetailsPanel Grid.Column="2"
+                                         Visibility="{Binding IsPanelOpen, Converter={StaticResource BoolToVisibility}}"/>
+        </Grid>
+    </Grid>
+</UserControl>

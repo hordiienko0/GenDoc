@@ -106,15 +106,27 @@
                                                                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
 
                                                                     <ComboBox Grid.Column="1" ItemsSource="{Binding SourceOptions}"
-                                                                              DisplayMemberPath="Display" SelectedValuePath="Value"
+                                                                              SelectedValuePath="Value"
                                                                               SelectedValue="{Binding SourceType, Mode=TwoWay}"
-                                                                              Width="180" HorizontalAlignment="Left" Margin="0,0,10,0"/>
+                                                                              Width="180" HorizontalAlignment="Left" Margin="0,0,10,0">
+                                                                        <ComboBox.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <TextBlock Text="{Binding Display}"/>
+                                                                            </DataTemplate>
+                                                                        </ComboBox.ItemTemplate>
+                                                                    </ComboBox>
 
                                                                     <ComboBox Grid.Column="2" ItemsSource="{Binding FieldOptions}"
-                                                                              DisplayMemberPath="DisplayName" SelectedValuePath="FieldName"
+                                                                              SelectedValuePath="FieldName"
                                                                               SelectedValue="{Binding SelectedFieldName, Mode=TwoWay}"
                                                                               IsEnabled="{Binding IsFieldEnabled}"
-                                                                              Width="260" HorizontalAlignment="Left"/>
+                                                                              Width="260" HorizontalAlignment="Left">
+                                                                        <ComboBox.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <TextBlock Text="{Binding DisplayName}"/>
+                                                                            </DataTemplate>
+                                                                        </ComboBox.ItemTemplate>
+                                                                    </ComboBox>
                                                                 </Grid>
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>
@@ -219,9 +231,15 @@
                                                                                Foreground="{StaticResource TextPrimaryBrush}"
                                                                                VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                                                     <ComboBox Grid.Column="1" ItemsSource="{Binding FieldOptions}"
-                                                                              DisplayMemberPath="DisplayName" SelectedValuePath="Field"
+                                                                              SelectedValuePath="Field"
                                                                               SelectedValue="{Binding SelectedField, Mode=TwoWay}"
-                                                                              Width="260" HorizontalAlignment="Left"/>
+                                                                              Width="260" HorizontalAlignment="Left">
+                                                                        <ComboBox.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <TextBlock Text="{Binding DisplayName}"/>
+                                                                            </DataTemplate>
+                                                                        </ComboBox.ItemTemplate>
+                                                                    </ComboBox>
                                                                 </Grid>
                                                             </DataTemplate>
                                                         </ItemsControl.ItemTemplate>

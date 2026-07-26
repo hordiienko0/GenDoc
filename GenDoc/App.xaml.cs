@@ -4,12 +4,14 @@ using GenDoc.Services.Audit;
 using GenDoc.Services.Generation;
 using GenDoc.Services.Import;
 using GenDoc.Services.Recipients;
+using GenDoc.Services.Rooms;
 using GenDoc.Services.Templates;
 using GenDoc.ViewModels.Audit;
 using GenDoc.ViewModels.Generation;
 using GenDoc.ViewModels.Import;
 using GenDoc.ViewModels.Login;
 using GenDoc.ViewModels.Recipients;
+using GenDoc.ViewModels.Rooms;
 using GenDoc.ViewModels.Settings;
 using GenDoc.ViewModels.Shell;
 using GenDoc.ViewModels.Templates;
@@ -56,6 +58,7 @@ namespace GenDoc
             services.AddTransient<ITemplateService, TemplateService>();
             services.AddTransient<IDocumentGenerationService, DocumentGenerationService>();
             services.AddTransient<IGenerationService, GenerationService>();
+            services.AddTransient<IRoomService, RoomService>();
 
             services.AddTransient<LoginViewModel>();
             services.AddTransient<LoginWindow>();
@@ -67,6 +70,7 @@ namespace GenDoc
             services.AddTransient<AuditLogViewModel>();
             services.AddTransient<SettingsViewModel>();
             services.AddTransient<GenerationViewModel>();
+            services.AddTransient<RoomsViewModel>();
             services.AddTransient<MainWindow>();
         }
 
