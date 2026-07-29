@@ -1,0 +1,83 @@
+<Window x:Class="GenDoc.Views.Intakes.CloseIntakeDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource {x:Type Window}}"
+        Title="{Binding HeaderText}" Width="500" SizeToContent="Height"
+        Background="{StaticResource PanelBrush}"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+
+    <Window.InputBindings>
+        <KeyBinding Key="Escape" Command="{Binding CancelCommand}"/>
+    </Window.InputBindings>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Заголовок -->
+        <Border Grid.Row="0" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1" Padding="16,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="{Binding HeaderText}" Foreground="{StaticResource TextPrimaryBrush}"
+                           FontSize="14.5" FontWeight="Bold" VerticalAlignment="Center"/>
+                <Button Grid.Column="1" Content="&#xE711;" FontFamily="Segoe MDL2 Assets" FontSize="11"
+                        Style="{StaticResource CloseButtonStyle}" Command="{Binding CancelCommand}"/>
+            </Grid>
+        </Border>
+
+        <!-- Тіло -->
+        <StackPanel Grid.Row="1" Margin="22,16">
+
+            <Grid Margin="0,0,0,16" Visibility="{Binding HasIncomplete, Converter={StaticResource BoolToVisibility}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Border Grid.ColumnSpan="2" Background="{StaticResource WarningSoftBrush}"/>
+                <Border Grid.Column="0" Background="{StaticResource WarningBrush}"/>
+                <StackPanel Grid.Column="1" Margin="12,10">
+                    <TextBlock Text="{Binding IncompleteText}" FontSize="12.5"
+                               Foreground="{StaticResource WarnTextBrush}" TextWrapping="Wrap"/>
+                    <Button Content="Переглянути" Style="{StaticResource TextLinkButtonStyle}"
+                            Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Left" Margin="0,4,0,0"
+                            Command="{Binding ViewMatrixCommand}"/>
+                </StackPanel>
+            </Grid>
+
+            <CheckBox Content="{Binding ReleaseRoomsText}" IsChecked="{Binding ReleaseRooms}" Margin="0,0,0,12"/>
+
+            <CheckBox Content="Перемістити особовий склад до…" IsChecked="{Binding MovePersonnel}" Margin="0,0,0,8"/>
+            <ComboBox ItemsSource="{Binding GraduateTargets}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedTarget}"
+                      Margin="0,0,0,14" Visibility="{Binding MovePersonnel, Converter={StaticResource BoolToVisibility}}"/>
+
+            <TextBlock FontSize="11.5" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap" Margin="0,0,0,10"
+                       Text="Звільнення кімнат і переміщення особового складу не відновлюються автоматично повторним відкриттям набору."/>
+
+            <TextBlock Text="{Binding ErrorText}" FontSize="11.5" Foreground="{StaticResource DangerBrush}" TextWrapping="Wrap">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ErrorText}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </StackPanel>
+
+        <!-- Футер -->
+        <Border Grid.Row="2" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,0,0" Padding="22,16">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button Content="Скасувати" Style="{StaticResource GhostButtonStyle}" Command="{Binding CancelCommand}" IsCancel="True"/>
+                <Button Content="Закрити набір" Command="{Binding ConfirmCommand}" IsDefault="True" Margin="10,0,0,0"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

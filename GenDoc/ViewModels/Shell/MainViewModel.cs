@@ -5,8 +5,11 @@ using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using GenDoc.Data;
 using GenDoc.Services;
+using GenDoc.Services.Intakes;
+using GenDoc.Services.Navigation;
 using GenDoc.ViewModels.Archive;
 using GenDoc.ViewModels.Audit;
+using GenDoc.ViewModels.Intakes;
 using GenDoc.ViewModels.Personnel;
 using GenDoc.ViewModels.Trash;
 using GenDoc.ViewModels.Generation;
@@ -22,33 +25,45 @@ namespace GenDoc.ViewModels.Shell;
 
 public partial class MainViewModel : ObservableObject
 {
+    public const string PersonnelSectionTitle = "Особовий склад";
+    public const string IntakesSectionTitle = "Набори";
+    public const string CompletenessSectionTitle = "Комплектність";
+    public const string GenerationSectionTitle = "Генерація";
+
     private readonly IServiceProvider _serviceProvider;
 
     private readonly ActiveIntakeState _activeIntakeState;
     private readonly Services.Completeness.ICompletenessService _completenessService;
+    private readonly IIntakeService _intakeService;
     private NavigationItem? _completenessNavItem;
+    private NavigationItem? _intakesNavItem;
 
     public MainViewModel(
         IServiceProvider serviceProvider,
         ICurrentUserContext currentUserContext,
         IDbContextFactory<AppDbContext> dbFactory,
         ActiveIntakeState activeIntakeState,
-        Services.Completeness.ICompletenessService completenessService)
+        Services.Completeness.ICompletenessService completenessService,
+        IIntakeService intakeService)
     {
         _serviceProvider = serviceProvider;
         _activeIntakeState = activeIntakeState;
         _completenessService = completenessService;
+        _intakeService = intakeService;
 
         WeakReferenceMessenger.Default.Register<MainViewModel, ActiveIntakeChangedMessage>(this,
             static (recipient, message) =>
             {
                 recipient.StatusBarIntakeText = recipient._activeIntakeState.StatusText;
                 recipient.RefreshCompletenessBadgeFireAndForget();
+                recipient.RefreshIntakesBadgeFireAndForget();
             });
         WeakReferenceMessenger.Default.Register<MainViewModel, MatrixChangedMessage>(this,
             static (recipient, message) => recipient.RefreshCompletenessBadgeFireAndForget());
         WeakReferenceMessenger.Default.Register<MainViewModel, CountsChangedMessage>(this,
             static (recipient, message) => recipient.RefreshCompletenessBadgeFireAndForget());
+        WeakReferenceMessenger.Default.Register<MainViewModel, NavigateToSectionMessage>(this,
+            static (recipient, message) => _ = recipient.NavigateAsync(message));
         _ = InitializeIntakeStateAsync();
         CurrentUserFullName = currentUserContext.CurrentUserFullName ?? string.Empty;
         OrganizationDisplayName = ReadOrganizationDisplayName(dbFactory);
@@ -62,12 +77,14 @@ public partial class MainViewModel : ObservableObject
         {
             new(new[]
             {
-                new NavigationItem("Особовий склад", () => _serviceProvider.GetRequiredService<PersonnelViewModel>()),
+                new NavigationItem(PersonnelSectionTitle, () => _serviceProvider.GetRequiredService<PersonnelViewModel>()),
+                (_intakesNavItem = new NavigationItem(IntakesSectionTitle,
+                    () => _serviceProvider.GetRequiredService<IntakesViewModel>())),
                 new NavigationItem("Імпорт з Excel", () => _serviceProvider.GetRequiredService<ImportViewModel>()),
                 new NavigationItem("Шаблони", () => _serviceProvider.GetRequiredService<TemplatesViewModel>()),
-                new NavigationItem("Генерація", () => _serviceProvider.GetRequiredService<GenerationViewModel>()),
+                new NavigationItem(GenerationSectionTitle, () => _serviceProvider.GetRequiredService<GenerationViewModel>()),
                 new NavigationItem("Архів документів", () => _serviceProvider.GetRequiredService<ArchiveViewModel>()),
-                (_completenessNavItem = new NavigationItem("Комплектність",
+                (_completenessNavItem = new NavigationItem(CompletenessSectionTitle,
                     () => _serviceProvider.GetRequiredService<GenDoc.ViewModels.Completeness.CompletenessViewModel>())),
                 new NavigationItem("Кімнати", () => _serviceProvider.GetRequiredService<RoomsViewModel>()),
             }, showDividerAfter: true),
@@ -111,6 +128,7 @@ public partial class MainViewModel : ObservableObject
     {
         await _activeIntakeState.RefreshAsync();
         await RefreshCompletenessBadgeAsync();
+        await RefreshIntakesBadgeAsync();
     }
 
     private async Task RefreshCompletenessBadgeAsync()
@@ -120,6 +138,16 @@ public partial class MainViewModel : ObservableObject
     }
 
     private void RefreshCompletenessBadgeFireAndForget() => _ = RefreshCompletenessBadgeAsync();
+
+    private async Task RefreshIntakesBadgeAsync()
+    {
+        if (_intakesNavItem is null) return;
+        var overviews = await _intakeService.GetOverviewsAsync();
+        _intakesNavItem.BadgeCount = overviews.Count(i =>
+            i.Status is Models.Enums.IntakeStatus.Active or Models.Enums.IntakeStatus.Planned);
+    }
+
+    private void RefreshIntakesBadgeFireAndForget() => _ = RefreshIntakesBadgeAsync();
 
     [RelayCommand]
     private async Task SelectItemAsync(NavigationItem? item)
@@ -133,6 +161,21 @@ public partial class MainViewModel : ObservableObject
         SelectedItem = item;
         SelectedItem.IsActive = true;
         CurrentContent = item.ContentFactory();
+    }
+
+    private async Task NavigateAsync(NavigateToSectionMessage m)
+    {
+        var item = Groups.SelectMany(g => g.Items).FirstOrDefault(i => i.Title == m.SectionTitle);
+        if (item is null) return;
+
+        if (item != SelectedItem)
+        {
+            await SelectItemAsync(item);
+            if (SelectedItem != item) return; // IGuardedSection відмовив у переході
+        }
+
+        if (m.Payload is not null && CurrentContent is INavigationTarget target)
+            await target.ApplyNavigationPayloadAsync(m.Payload);
     }
 
     private static string ReadOrganizationDisplayName(IDbContextFactory<AppDbContext> dbFactory)

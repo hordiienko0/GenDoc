@@ -1,10 +1,12 @@
 using System.Windows;
 using GenDoc.ViewModels.Archive;
 using GenDoc.ViewModels.Completeness;
+using GenDoc.ViewModels.Intakes;
 using GenDoc.ViewModels.Personnel;
 using GenDoc.ViewModels.Recipients;
 using GenDoc.Views.Archive;
 using GenDoc.Views.Completeness;
+using GenDoc.Views.Intakes;
 using GenDoc.Views.Personnel;
 using GenDoc.Views.Recipients;
 
@@ -22,6 +24,7 @@ public class DialogService : IDialogService
         [typeof(ManualValuesDialogViewModel)] = typeof(ManualValuesDialog),
         [typeof(VersionHistoryViewModel)] = typeof(VersionHistoryWindow),
         [typeof(PackageRequirementsViewModel)] = typeof(PackageRequirementsWindow),
+        [typeof(CloseIntakeDialogViewModel)] = typeof(CloseIntakeDialog),
     };
 
     public bool? ShowDialog<TViewModel>(TViewModel viewModel, Window? owner = null)

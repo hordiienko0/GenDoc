@@ -10,6 +10,7 @@ using GenDoc.Models.Enums;
 using GenDoc.Services;
 using GenDoc.Services.Completeness;
 using GenDoc.Services.Documents;
+using GenDoc.Services.Navigation;
 using GenDoc.ViewModels.Archive;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
@@ -21,7 +22,7 @@ namespace GenDoc.ViewModels.Completeness
 
     // Singleton: фільтри живуть між перемиканнями розділів; матриця перебудовується
     // при зміні набору/пакета, а не тримається завжди в пам'яті.
-    public partial class CompletenessViewModel : ObservableObject, ICellActionCoordinator
+    public partial class CompletenessViewModel : ObservableObject, ICellActionCoordinator, INavigationTarget
     {
         private static readonly CompareInfo UkCompare = CultureInfo.GetCultureInfo("uk-UA").CompareInfo;
 
@@ -169,6 +170,22 @@ namespace GenDoc.ViewModels.Completeness
             }
             _initialized = true;
             await ReloadIntakesAsync();
+        }
+
+        public async Task ApplyNavigationPayloadAsync(object payload)
+        {
+            if (payload is not IntakeNavigationPayload nav) return;
+
+            await InitializeAsync();
+
+            var intakeOption = IntakeOptions.FirstOrDefault(o => o.Id == nav.IntakeId);
+            if (intakeOption is not null) SelectedIntake = intakeOption;
+
+            if (nav.PackageId is int packageId)
+            {
+                var packageOption = PackageOptions.FirstOrDefault(o => o.Id == packageId);
+                if (packageOption is not null) SelectedPackage = packageOption;
+            }
         }
 
         private async Task ReloadIntakesAsync()

@@ -6,7 +6,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 7;
+    private const int CurrentSchemaVersion = 8;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -68,6 +68,12 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     private static readonly (string Name, string Type)[] AppSettingsColumnsV7 =
     {
         ("DetectStaleDocuments", "INTEGER"), ("DefaultGenerationPackageId", "INTEGER")
+    };
+
+    private static readonly (string Name, string Type)[] IntakeColumnsV8 =
+    {
+        ("DateClosed", "TEXT"), ("ClosedBy", "TEXT"),
+        ("StatusIsPinned", "INTEGER NOT NULL DEFAULT 0"), ("DefaultPackageId", "INTEGER")
     };
 
     private readonly IDbContextFactory<AppDbContext> _dbFactory;
@@ -174,6 +180,17 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                     AppliedAt = DateTime.Now,
                     Description = "Комплектність: вимоги пакета, короткі назви, source-хеш"
                 });
+                currentVersion = 7;
+            }
+
+            if (currentVersion < 8)
+            {
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 8,
+                    AppliedAt = DateTime.Now,
+                    Description = "Набори: закриття/повторне відкриття, дефолтний пакет"
+                });
             }
         }
 
@@ -194,6 +211,8 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         AddMissingColumns(db, "GenerationPackageTemplates", PackageTemplateColumnsV7);
         AddMissingColumns(db, "GeneratedDocuments", GeneratedDocumentColumnsV7);
         AddMissingColumns(db, "AppSettings", AppSettingsColumnsV7);
+
+        AddMissingColumns(db, "Intakes", IntakeColumnsV8);
 
         // Ідемпотентно (IF NOT EXISTS) — самовідновлюється незалежно від SchemaVersion,
         // так само як EnsureExportTemplateTables. Обгорнуто в try/catch: якщо в

@@ -6,27 +6,42 @@ using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using GenDoc.Services;
 using GenDoc.Services.Generation;
+using GenDoc.Services.Navigation;
 using GenDoc.ViewModels.Completeness;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 
 namespace GenDoc.ViewModels.Generation;
 
-public partial class GenerationViewModel : ObservableObject
+public partial class GenerationViewModel : ObservableObject, INavigationTarget
 {
     private readonly IGenerationService _generationService;
     private readonly IDialogService _dialogService;
     private readonly IServiceProvider _serviceProvider;
+    private readonly Services.Completeness.ICompletenessService _completenessService;
 
     public GenerationViewModel(
         IGenerationService generationService,
         IDialogService dialogService,
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        Services.Completeness.ICompletenessService completenessService)
     {
         _generationService = generationService;
         _dialogService = dialogService;
         _serviceProvider = serviceProvider;
+        _completenessService = completenessService;
         RefreshPackages();
+    }
+
+    public async Task ApplyNavigationPayloadAsync(object payload)
+    {
+        if (payload is not IntakeNavigationPayload nav) return;
+
+        var packageId = nav.PackageId ?? await _completenessService.GetDefaultPackageIdAsync();
+        if (packageId is not int id) return;
+
+        var item = Packages.FirstOrDefault(p => p.Id == id);
+        if (item is not null) SelectPackage(item);
     }
 
     [ObservableProperty]

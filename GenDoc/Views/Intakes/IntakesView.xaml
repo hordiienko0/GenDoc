@@ -1,0 +1,197 @@
+<UserControl x:Class="GenDoc.Views.Intakes.IntakesView"
+             x:Name="IntakesRoot"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Loaded="IntakesView_Loaded">
+
+    <UserControl.Resources>
+        <Style x:Key="IntakeCardBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsCompleted}" Value="True">
+                    <Setter Property="Opacity" Value="0.72"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="StatusChipBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource SkySoftBrush}"/>
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="Margin" Value="0,0,10,0"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Status}" Value="Active">
+                    <Setter Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Completed">
+                    <Setter Property="Background" Value="{StaticResource BorderLineBrush}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="StatusChipTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10.5"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{StaticResource NavyBrush}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Status}" Value="Active">
+                    <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Status}" Value="Completed">
+                    <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="CardActionButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+            <Setter Property="Margin" Value="0,0,8,0"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="{StaticResource BackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Шапка -->
+        <Grid Grid.Row="0" Margin="0,0,0,22">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Набори" FontSize="19" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                <TextBlock Text="Потоки курсу БЗВП · тривалість 3 місяці" FontSize="12"
+                           Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <ComboBox Width="150" Margin="0,0,10,0" ItemsSource="{Binding StatusOptions}"
+                          SelectedItem="{Binding SelectedStatus}" DisplayMemberPath="Label"/>
+                <ComboBox Width="120" Margin="0,0,10,0" ItemsSource="{Binding YearOptions}"
+                          SelectedItem="{Binding SelectedYear}" DisplayMemberPath="Label"/>
+                <Button Content="+ Створити набір" Command="{Binding CreateIntakeCommand}"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- Список карток наборів -->
+        <Grid Grid.Row="1">
+            <TextBlock Text="{Binding EmptyText}" Foreground="{StaticResource TextSecondaryBrush}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" Padding="48"
+                       Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>
+
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Cards}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource IntakeCardBorderStyle}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="3"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Column="0" Background="{StaticResource AccentBrush}"
+                                            Visibility="{Binding IsActiveIntake, Converter={StaticResource BoolToVisibility}}"/>
+
+                                    <StackPanel Grid.Column="1" Margin="16,14">
+
+                                        <!-- Рядок 1: статус, номер, код -->
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                            <Border Style="{StaticResource StatusChipBorderStyle}">
+                                                <TextBlock Text="{Binding StatusText}" Style="{StaticResource StatusChipTextStyle}"/>
+                                            </Border>
+                                            <TextBlock Text="{Binding TitleText}" FontSize="15" FontWeight="Bold"
+                                                       Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding CodeText}" FontSize="12.5" Margin="6,0,0,0"
+                                                       Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+
+                                        <!-- Рядок 2: період -->
+                                        <TextBlock Text="{Binding PeriodText}" FontSize="12.5"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,10"/>
+
+                                        <!-- Рядок 3: особовий склад + комплектність -->
+                                        <Grid Margin="0,0,0,12">
+                                            <TextBlock Text="Завантаження…" FontSize="12.5"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       Visibility="{Binding IsSummaryLoading, Converter={StaticResource BoolToVisibility}}"/>
+
+                                            <StackPanel Orientation="Horizontal"
+                                                        Visibility="{Binding IsSummaryReady, Converter={StaticResource BoolToVisibility}}">
+                                                <TextBlock Text="{Binding PeopleText, StringFormat='Особового складу: {0}'}" FontSize="12.5"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,18,0"/>
+
+                                                <TextBlock Text="Комплектність:" FontSize="12.5"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" Margin="0,0,8,0"
+                                                           Visibility="{Binding HasPackage, Converter={StaticResource BoolToVisibility}}"/>
+
+                                                <Grid Width="120" Height="6" VerticalAlignment="Center" Margin="0,0,8,0"
+                                                      Visibility="{Binding HasPackage, Converter={StaticResource BoolToVisibility}}">
+                                                    <Border Background="#E6EBF1"/>
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="{Binding CompletenessFraction, Converter={StaticResource FractionToGridLength}}"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <Border Grid.Column="0">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Setter Property="Background" Value="{StaticResource WarningBrush}"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding CompletenessPercent}" Value="100">
+                                                                            <Setter Property="Background" Value="{StaticResource SuccessBrush}"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
+                                                        </Border>
+                                                    </Grid>
+                                                </Grid>
+
+                                                <TextBlock Text="{Binding CompletenessPercent, StringFormat='{}{0}%'}" FontSize="12.5" FontWeight="Bold"
+                                                           Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center" Margin="0,0,10,0"
+                                                           Visibility="{Binding HasPackage, Converter={StaticResource BoolToVisibility}}"/>
+
+                                                <TextBlock Text="{Binding IncompleteText}" FontSize="12.5"
+                                                           Foreground="{StaticResource WarningBrush}" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Рядок 4: дії -->
+                                        <WrapPanel>
+                                            <Button Content="Відкрити матрицю" Style="{StaticResource CardActionButtonStyle}"
+                                                    Command="{Binding DataContext.OpenMatrixCommand, ElementName=IntakesRoot}"
+                                                    CommandParameter="{Binding}"/>
+                                            <Button Content="Особовий склад набору" Style="{StaticResource CardActionButtonStyle}"
+                                                    Command="{Binding DataContext.OpenPersonnelCommand, ElementName=IntakesRoot}"
+                                                    CommandParameter="{Binding}"/>
+                                            <Button Content="Згенерувати пакет" Style="{StaticResource CardActionButtonStyle}"
+                                                    Command="{Binding DataContext.OpenGenerationCommand, ElementName=IntakesRoot}"
+                                                    CommandParameter="{Binding}"/>
+                                            <Button Content="Закрити набір" Style="{StaticResource CardActionButtonStyle}"
+                                                    Foreground="{StaticResource DangerBrush}"
+                                                    Command="{Binding DataContext.CloseIntakeCommand, ElementName=IntakesRoot}"
+                                                    CommandParameter="{Binding}"
+                                                    Visibility="{Binding IsNotCompleted, Converter={StaticResource BoolToVisibility}}"/>
+                                            <Button Content="Відкрити повторно" Style="{StaticResource CardActionButtonStyle}"
+                                                    Command="{Binding DataContext.ReopenIntakeCommand, ElementName=IntakesRoot}"
+                                                    CommandParameter="{Binding}"
+                                                    Visibility="{Binding IsCompleted, Converter={StaticResource BoolToVisibility}}"/>
+                                        </WrapPanel>
+
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </Grid>
+</UserControl>

@@ -25,6 +25,7 @@ namespace GenDoc.Services.Completeness
     public interface ICompletenessService
     {
         Task<MatrixData> BuildAsync(int intakeId, int packageId);
+        Task<(int Percent, int IncompletePeople, int RequiredCells, int SatisfiedCells)> GetIntakeSummaryAsync(int intakeId, int packageId);
         Task<MatrixDocDto?> GetCellAsync(int recipientId, int templateId);
         Task<ArchiveOpResult> GenerateForPairAsync(int recipientId, int templateId, Dictionary<string, string> manualValues);
         Task<(int People, int Files, List<string> Warnings)> ExportPackagesAsync(

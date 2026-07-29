@@ -14,6 +14,7 @@ using GenDoc.ViewModels.Audit;
 using GenDoc.ViewModels.Generation;
 using GenDoc.ViewModels.Import;
 using GenDoc.ViewModels.Archive;
+using GenDoc.ViewModels.Intakes;
 using GenDoc.ViewModels.Login;
 using GenDoc.ViewModels.Personnel;
 using GenDoc.ViewModels.Recipients;
@@ -78,6 +79,8 @@ namespace GenDoc
             services.AddTransient<Services.Completeness.ICompletenessService, Services.Completeness.CompletenessService>();
             services.AddTransient<Services.Completeness.IIntakeServiceAccessor, Services.Completeness.ActiveIntakeAccessor>();
             services.AddTransient<ViewModels.Completeness.PackageRequirementsViewModel>();
+            services.AddTransient<IntakesViewModel>();
+            services.AddTransient<CloseIntakeDialogViewModel>();
 
             services.AddTransient<LoginViewModel>();
             services.AddTransient<LoginWindow>();

@@ -18,6 +18,14 @@ namespace GenDoc.Models
         // Кореневий вузол гілки набору в дереві підрозділів.
         public int RootOrgNodeId { get; set; }
 
+        public DateOnly? DateClosed { get; set; }
+        public string? ClosedBy { get; set; }
+
+        // Статус виставлено вручну (закриття/повторне відкриття) — автоперехід за датами його не чіпає.
+        public bool StatusIsPinned { get; set; }
+
+        public int? DefaultPackageId { get; set; }
+
         public DateTime? DeletedAt { get; set; }
         public string? DeletedBy { get; set; }
     }

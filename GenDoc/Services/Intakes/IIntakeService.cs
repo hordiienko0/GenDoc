@@ -16,5 +16,11 @@ namespace GenDoc.Services.Intakes
         Task<int> GetNextNumberAsync();
         Task<string> GetNumberTemplateAsync();
         Task<Intake> CreateAsync(IntakeCreateRequest request);
+
+        Task<IReadOnlyList<IntakeOverview>> GetOverviewsAsync();
+        Task<IReadOnlyList<int>> GetYearsAsync();
+        Task<IntakeCloseInfo> GetCloseInfoAsync(int intakeId);
+        Task CloseAsync(IntakeCloseRequest request);
+        Task ReopenAsync(int intakeId);
     }
 }

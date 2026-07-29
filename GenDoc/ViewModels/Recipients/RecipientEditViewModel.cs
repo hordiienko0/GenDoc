@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Text.RegularExpressions;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -96,6 +98,9 @@ public partial class RecipientEditViewModel : ObservableObject
     [ObservableProperty] private string? foodCertificate;
     [ObservableProperty] private string? idDocumentNumber;
     [ObservableProperty] private string? medicalBoard;
+    [ObservableProperty] private string? medicalBoardNumber;
+    [ObservableProperty] private DateTime? medicalBoardDate;
+    private bool _isLoadingMedicalBoard;
     [ObservableProperty] private string? medicalBoardConclusion;
     [ObservableProperty] private string? originUnit;
     [ObservableProperty] private string? vehicle;
@@ -178,6 +183,7 @@ public partial class RecipientEditViewModel : ObservableObject
             FoodCertificate = model.FoodCertificate;
             IdDocumentNumber = model.IdDocumentNumber;
             MedicalBoard = model.MedicalBoard;
+            LoadMedicalBoardSubFields(model.MedicalBoard);
             MedicalBoardConclusion = model.MedicalBoardConclusion;
             OriginUnit = model.OriginUnit;
             Vehicle = model.Vehicle;
@@ -215,6 +221,7 @@ public partial class RecipientEditViewModel : ObservableObject
             FoodCertificate = null;
             IdDocumentNumber = null;
             MedicalBoard = null;
+            LoadMedicalBoardSubFields(null);
             MedicalBoardConclusion = null;
             OriginUnit = null;
             Vehicle = null;
@@ -228,6 +235,58 @@ public partial class RecipientEditViewModel : ObservableObject
     partial void OnRoomBuildingChanged(string? value) => UpdateRoomWarning();
     partial void OnRoomNumberChanged(string? value) => UpdateRoomWarning();
     partial void OnServiceNumberChanged(string value) => UpdateServiceNumberWarning();
+
+    private static readonly Regex MedicalBoardDatePattern = new(@"\d{1,2}\.\d{1,2}\.\d{2,4}", RegexOptions.Compiled);
+
+    partial void OnMedicalBoardNumberChanged(string? value) => RecomputeMedicalBoard();
+    partial void OnMedicalBoardDateChanged(DateTime? value) => RecomputeMedicalBoard();
+
+    private void RecomputeMedicalBoard()
+    {
+        if (_isLoadingMedicalBoard) return;
+
+        MedicalBoard = (MedicalBoardNumber, MedicalBoardDate) switch
+        {
+            (string n, DateTime d) when !string.IsNullOrWhiteSpace(n) => $"№ {n} від {d:dd.MM.yyyy}",
+            (string n, null) when !string.IsNullOrWhiteSpace(n) => $"№ {n}",
+            (_, DateTime d) => $"від {d:dd.MM.yyyy}",
+            _ => null
+        };
+    }
+
+    private void LoadMedicalBoardSubFields(string? value)
+    {
+        _isLoadingMedicalBoard = true;
+        try
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                MedicalBoardNumber = null;
+                MedicalBoardDate = null;
+                return;
+            }
+
+            var dateMatch = MedicalBoardDatePattern.Match(value);
+            if (dateMatch.Success
+                && DateTime.TryParseExact(dateMatch.Value, "dd.MM.yyyy", CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out var parsedDate))
+            {
+                MedicalBoardDate = parsedDate;
+                var remainder = value.Remove(dateMatch.Index, dateMatch.Length)
+                    .Replace("№", string.Empty).Replace("від", string.Empty).Trim(' ', ',', '-');
+                MedicalBoardNumber = string.IsNullOrWhiteSpace(remainder) ? null : remainder;
+            }
+            else
+            {
+                MedicalBoardDate = null;
+                MedicalBoardNumber = value;
+            }
+        }
+        finally
+        {
+            _isLoadingMedicalBoard = false;
+        }
+    }
     partial void OnRankChanged(string value) => UpdateRankSuggestions();
 
     private void UpdateRoomWarning()

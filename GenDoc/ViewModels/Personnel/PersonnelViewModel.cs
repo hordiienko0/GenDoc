@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using GenDoc.Services;
+using GenDoc.Services.Navigation;
 using GenDoc.Services.Personnel;
 using GenDoc.ViewModels.Shell;
 
@@ -18,7 +19,7 @@ namespace GenDoc.ViewModels.Personnel
     }
 
     // Singleton: зберігає стан списку/пошуку між перемиканнями розділів.
-    public partial class PersonnelViewModel : ObservableObject, IGuardedSection
+    public partial class PersonnelViewModel : ObservableObject, IGuardedSection, INavigationTarget
     {
         private static readonly CompareInfo UkCompare = CultureInfo.GetCultureInfo("uk-UA").CompareInfo;
 
@@ -122,6 +123,15 @@ namespace GenDoc.ViewModels.Personnel
             _initialized = true;
             await Tree.EnsureLoadedAsync();
             await ReloadListAsync();
+        }
+
+        public async Task ApplyNavigationPayloadAsync(object payload)
+        {
+            if (payload is not IntakeNavigationPayload nav) return;
+
+            await Tree.EnsureLoadedAsync();
+            var node = Tree.FindById(nav.RootOrgNodeId);
+            if (node is not null) Tree.SelectNode(node);
         }
 
         private async void OnTreeSelectionChanged(OrgNodeViewModel? node) => await ReloadListAsync();

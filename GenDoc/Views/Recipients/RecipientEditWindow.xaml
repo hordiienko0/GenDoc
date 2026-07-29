@@ -371,7 +371,17 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0">
                                 <TextBlock Text="ВЛК, №, дата" Style="{StaticResource FieldLabelStyle}"/>
-                                <TextBox Text="{Binding MedicalBoard, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="1*"/>
+                                        <ColumnDefinition Width="8"/>
+                                        <ColumnDefinition Width="1*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBox Grid.Column="0" Text="{Binding MedicalBoardNumber, UpdateSourceTrigger=PropertyChanged}"
+                                             Style="{StaticResource FieldTextBoxStyle}" Tag="№"/>
+                                    <DatePicker Grid.Column="2" SelectedDate="{Binding MedicalBoardDate}"
+                                                Style="{StaticResource FieldDatePickerStyle}"/>
+                                </Grid>
                             </StackPanel>
                             <StackPanel Grid.Column="2">
                                 <TextBlock Text="Висновок ВЛК" Style="{StaticResource FieldLabelStyle}"/>

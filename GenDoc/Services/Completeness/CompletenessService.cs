@@ -40,7 +40,41 @@ namespace GenDoc.Services.Completeness
         public async Task<MatrixData> BuildAsync(int intakeId, int packageId)
         {
             using var db = _dbFactory.CreateDbContext();
+            return await LoadAsync(db, intakeId, packageId);
+        }
 
+        public async Task<(int Percent, int IncompletePeople, int RequiredCells, int SatisfiedCells)> GetIntakeSummaryAsync(
+            int intakeId, int packageId)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var data = await LoadAsync(db, intakeId, packageId);
+
+            var requiredCells = 0;
+            var satisfiedCells = 0;
+            var incompletePeople = 0;
+
+            foreach (var person in data.People)
+            {
+                var personIncomplete = false;
+                foreach (var template in data.Templates)
+                {
+                    if (ICompletenessService.Resolve(template, person.FitnessCategory) != TemplateRequirement.Required)
+                        continue;
+
+                    requiredCells++;
+                    var hasDoc = data.Docs.TryGetValue((person.Id, template.TemplateId), out var doc);
+                    if (hasDoc && !doc!.IsStale) satisfiedCells++;
+                    else personIncomplete = true;
+                }
+                if (personIncomplete) incompletePeople++;
+            }
+
+            var percent = requiredCells == 0 ? 0 : (int)Math.Round(satisfiedCells * 100.0 / requiredCells);
+            return (percent, incompletePeople, requiredCells, satisfiedCells);
+        }
+
+        private async Task<MatrixData> LoadAsync(AppDbContext db, int intakeId, int packageId)
+        {
             // (a) люди набору
             var people = await db.Recipients
                 .Where(r => r.IntakeId == intakeId)
