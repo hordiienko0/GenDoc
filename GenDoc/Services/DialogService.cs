@@ -1,5 +1,11 @@
 using System.Windows;
+using GenDoc.ViewModels.Archive;
+using GenDoc.ViewModels.Completeness;
+using GenDoc.ViewModels.Personnel;
 using GenDoc.ViewModels.Recipients;
+using GenDoc.Views.Archive;
+using GenDoc.Views.Completeness;
+using GenDoc.Views.Personnel;
 using GenDoc.Views.Recipients;
 
 namespace GenDoc.Services;
@@ -9,6 +15,13 @@ public class DialogService : IDialogService
     private readonly Dictionary<Type, Type> _viewModelToWindow = new()
     {
         [typeof(RecipientEditViewModel)] = typeof(RecipientEditWindow),
+        [typeof(NodeEditDialogViewModel)] = typeof(NodeEditDialog),
+        [typeof(NodePickerDialogViewModel)] = typeof(NodePickerDialog),
+        [typeof(IntakeWizardViewModel)] = typeof(IntakeWizardWindow),
+        [typeof(NoteInputDialogViewModel)] = typeof(NoteInputDialog),
+        [typeof(ManualValuesDialogViewModel)] = typeof(ManualValuesDialog),
+        [typeof(VersionHistoryViewModel)] = typeof(VersionHistoryWindow),
+        [typeof(PackageRequirementsViewModel)] = typeof(PackageRequirementsWindow),
     };
 
     public bool? ShowDialog<TViewModel>(TViewModel viewModel, Window? owner = null)

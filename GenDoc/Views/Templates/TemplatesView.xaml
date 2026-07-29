@@ -81,6 +81,22 @@
                                             <Border Background="{StaticResource RowAltBrush}" BorderBrush="{StaticResource BorderLineBrush}"
                                                     BorderThickness="1" CornerRadius="0" Padding="16">
                                                 <StackPanel>
+                                                    <Grid Margin="0,0,0,12">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="200"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="Коротка назва (для колонок матриці):"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"
+                                                                   VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                                        <TextBox Grid.Column="1" Text="{Binding ShortNameEdit, UpdateSourceTrigger=PropertyChanged}"
+                                                                 Tag="напр. Рапорт"/>
+                                                        <Button Grid.Column="2" Content="Зберегти" Style="{StaticResource SecondaryButtonStyle}"
+                                                                Margin="10,0,0,0"
+                                                                Command="{Binding DataContext.SaveShortNameCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                CommandParameter="{Binding}"/>
+                                                    </Grid>
                                                     <Grid Margin="0,0,0,8">
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="1*"/>

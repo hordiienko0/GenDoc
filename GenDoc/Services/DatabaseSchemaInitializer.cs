@@ -6,7 +6,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 4;
+    private const int CurrentSchemaVersion = 7;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -19,6 +19,56 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 
     private static readonly string[] OrganizationSettingsColumnsV3 = { "HrOfficerFullName" };
     private static readonly string[] RoomColumnsV4 = { "Note", "CreatedAt", "CreatedBy" };
+
+    private static readonly (string Name, string Type)[] RecipientColumnsV5 =
+    {
+        ("OrgNodeId", "INTEGER"), ("IntakeId", "INTEGER"), ("FitnessCategory", "TEXT")
+    };
+    private static readonly (string Name, string Type)[] AppSettingsColumnsV5 =
+    {
+        ("IntakeNumberTemplate", "TEXT")
+    };
+
+    private static readonly (string Name, string Type)[] GeneratedDocumentColumnsV6 =
+    {
+        ("ContentHash", "TEXT"), ("SizeBytes", "INTEGER NOT NULL DEFAULT 0"),
+        ("Version", "INTEGER NOT NULL DEFAULT 1"), ("IsCurrent", "INTEGER NOT NULL DEFAULT 1"),
+        ("SourceType", "INTEGER NOT NULL DEFAULT 0"), ("RunId", "INTEGER"),
+        ("IntakeId", "INTEGER"), ("OrgNodeIdSnapshot", "INTEGER"), ("OrgPathSnapshot", "TEXT"),
+        ("HasContent", "INTEGER NOT NULL DEFAULT 0"), ("DeletedAt", "TEXT"), ("DeletedBy", "TEXT")
+    };
+
+    private static readonly (string Name, string Type)[] AppSettingsColumnsV6 =
+    {
+        ("ExportFileNameTemplate", "TEXT"), ("MaxDocumentSizeKb", "INTEGER")
+    };
+
+    private static readonly (string Name, string Type)[] RunColumnsV6 =
+    {
+        ("IntakeId", "INTEGER"), ("BranchName", "TEXT")
+    };
+
+    private static readonly (string Name, string Type)[] TemplateColumnsV7 =
+    {
+        ("ShortName", "TEXT")
+    };
+
+    // Default 0 = Required: наявні зв'язки поводяться як раніше.
+    private static readonly (string Name, string Type)[] PackageTemplateColumnsV7 =
+    {
+        ("RequirementRegular", "INTEGER NOT NULL DEFAULT 0"),
+        ("RequirementLimited", "INTEGER NOT NULL DEFAULT 0")
+    };
+
+    private static readonly (string Name, string Type)[] GeneratedDocumentColumnsV7 =
+    {
+        ("SourceHash", "TEXT")
+    };
+
+    private static readonly (string Name, string Type)[] AppSettingsColumnsV7 =
+    {
+        ("DetectStaleDocuments", "INTEGER"), ("DefaultGenerationPackageId", "INTEGER")
+    };
 
     private readonly IDbContextFactory<AppDbContext> _dbFactory;
     private readonly IExportTemplateService _exportTemplateService;
@@ -45,7 +95,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
             {
                 Version = CurrentSchemaVersion,
                 AppliedAt = DateTime.Now,
-                Description = "Початкова схема (v4, кімнати)"
+                Description = "Початкова схема (v5, дерево підрозділів)"
             });
         }
         else
@@ -88,8 +138,62 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                     AppliedAt = DateTime.Now,
                     Description = "Кімнати: примітка, дата створення"
                 });
+                currentVersion = 4;
+            }
+
+            if (currentVersion < 5)
+            {
+                AddMissingColumns(db, "Recipients", RecipientColumnsV5);
+                AddMissingColumns(db, "AppSettings", AppSettingsColumnsV5);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 5,
+                    AppliedAt = DateTime.Now,
+                    Description = "Дерево підрозділів і набори"
+                });
+                currentVersion = 5;
+            }
+
+            if (currentVersion < 6)
+            {
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 6,
+                    AppliedAt = DateTime.Now,
+                    Description = "Архів документів: версії, контент, вкладення"
+                });
+                currentVersion = 6;
+            }
+
+            if (currentVersion < 7)
+            {
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 7,
+                    AppliedAt = DateTime.Now,
+                    Description = "Комплектність: вимоги пакета, короткі назви, source-хеш"
+                });
             }
         }
+
+        // Ідемпотентно, як EnsureExportTemplateTables: таблиці, додані в модель після
+        // першого створення бази, EnsureCreated сам не створить.
+        EnsureOrgTables(db);
+        AddMissingColumns(db, "Recipients", RecipientColumnsV5);
+        AddMissingColumns(db, "AppSettings", AppSettingsColumnsV5);
+        SeedOrgTree(db);
+
+        AddMissingColumns(db, "GeneratedDocuments", GeneratedDocumentColumnsV6);
+        AddMissingColumns(db, "AppSettings", AppSettingsColumnsV6);
+        AddMissingColumns(db, "GenerationPackageRuns", RunColumnsV6);
+        EnsureArchiveTables(db);
+        EnsureArchiveIndexes(db);
+
+        AddMissingColumns(db, "Templates", TemplateColumnsV7);
+        AddMissingColumns(db, "GenerationPackageTemplates", PackageTemplateColumnsV7);
+        AddMissingColumns(db, "GeneratedDocuments", GeneratedDocumentColumnsV7);
+        AddMissingColumns(db, "AppSettings", AppSettingsColumnsV7);
 
         // Ідемпотентно (IF NOT EXISTS) — самовідновлюється незалежно від SchemaVersion,
         // так само як EnsureExportTemplateTables. Обгорнуто в try/catch: якщо в
@@ -147,6 +251,208 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
             string sql = "ALTER TABLE " + tableName + " ADD COLUMN " + column + " TEXT NULL;";
             db.Database.ExecuteSqlRaw(sql);
         }
+    }
+
+    private static void AddMissingColumns(AppDbContext db, string tableName, (string Name, string Type)[] columns)
+    {
+        var existingColumns = GetExistingColumns(db, tableName);
+
+        foreach (var (name, type) in columns)
+        {
+            if (existingColumns.Contains(name)) continue;
+            db.Database.ExecuteSqlRaw("ALTER TABLE " + tableName + " ADD COLUMN " + name + " " + type + ";");
+        }
+    }
+
+    private static HashSet<string> GetExistingColumns(AppDbContext db, string tableName)
+    {
+        var existingColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var connection = db.Database.GetDbConnection();
+        var wasClosed = connection.State != System.Data.ConnectionState.Open;
+        if (wasClosed) connection.Open();
+
+        try
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = $"PRAGMA table_info({tableName});";
+            using var reader = command.ExecuteReader();
+            var nameOrdinal = reader.GetOrdinal("name");
+            while (reader.Read())
+            {
+                existingColumns.Add(reader.GetString(nameOrdinal));
+            }
+        }
+        finally
+        {
+            if (wasClosed) connection.Close();
+        }
+
+        return existingColumns;
+    }
+
+    private static void EnsureOrgTables(AppDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        var wasClosed = connection.State != System.Data.ConnectionState.Open;
+        if (wasClosed) connection.Open();
+
+        try
+        {
+            if (!TableExists(connection, "OrgNodes"))
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    CREATE TABLE "OrgNodes" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_OrgNodes" PRIMARY KEY AUTOINCREMENT,
+                        "Name" TEXT NOT NULL,
+                        "DocumentName" TEXT NULL,
+                        "ParentId" INTEGER NULL,
+                        "Path" TEXT NOT NULL,
+                        "Depth" INTEGER NOT NULL,
+                        "SortOrder" INTEGER NOT NULL,
+                        "IntakeId" INTEGER NULL,
+                        "IsActive" INTEGER NOT NULL DEFAULT 1,
+                        "DeletedAt" TEXT NULL,
+                        "DeletedBy" TEXT NULL,
+                        CONSTRAINT "FK_OrgNodes_OrgNodes_ParentId"
+                            FOREIGN KEY ("ParentId") REFERENCES "OrgNodes" ("Id")
+                    );
+                    """;
+                command.ExecuteNonQuery();
+
+                using var indexCommand = connection.CreateCommand();
+                indexCommand.CommandText = """CREATE INDEX "IX_OrgNodes_Path" ON "OrgNodes" ("Path");""";
+                indexCommand.ExecuteNonQuery();
+            }
+
+            if (!TableExists(connection, "Intakes"))
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    CREATE TABLE "Intakes" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_Intakes" PRIMARY KEY AUTOINCREMENT,
+                        "Number" INTEGER NOT NULL,
+                        "DisplayNumber" TEXT NOT NULL,
+                        "DateStart" TEXT NOT NULL,
+                        "DateEnd" TEXT NOT NULL,
+                        "Status" INTEGER NOT NULL,
+                        "RootOrgNodeId" INTEGER NOT NULL,
+                        "DeletedAt" TEXT NULL,
+                        "DeletedBy" TEXT NULL
+                    );
+                    """;
+                command.ExecuteNonQuery();
+            }
+        }
+        finally
+        {
+            if (wasClosed) connection.Close();
+        }
+    }
+
+    // Корінь дерева + разова міграція плоских Units у вузли під коренем,
+    // з прив'язкою людей до відповідних вузлів.
+    private static void SeedOrgTree(AppDbContext db)
+    {
+        if (db.OrgNodes.IgnoreQueryFilters().Any()) return;
+
+        var orgName = db.OrganizationSettings.Select(o => o.UnitNumber).FirstOrDefault();
+        var root = new OrgNode
+        {
+            Name = string.IsNullOrWhiteSpace(orgName) ? "Військова частина" : orgName,
+            Depth = 0,
+            SortOrder = 0
+        };
+        db.OrgNodes.Add(root);
+        db.SaveChanges();
+        root.Path = $"/{root.Id}/";
+
+        var sortOrder = 0;
+        foreach (var unit in db.Units.OrderBy(u => u.Name).ToList())
+        {
+            var node = new OrgNode
+            {
+                Name = unit.Name,
+                Parent = root,
+                Depth = 1,
+                SortOrder = sortOrder++
+            };
+            db.OrgNodes.Add(node);
+            db.SaveChanges();
+            node.Path = $"{root.Path}{node.Id}/";
+
+            db.Database.ExecuteSqlRaw(
+                "UPDATE Recipients SET OrgNodeId = {0} WHERE UnitId = {1};", node.Id, unit.Id);
+        }
+
+        db.SaveChanges();
+    }
+
+    private static void EnsureArchiveTables(AppDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        var wasClosed = connection.State != System.Data.ConnectionState.Open;
+        if (wasClosed) connection.Open();
+
+        try
+        {
+            if (!TableExists(connection, "GeneratedDocumentContents"))
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    CREATE TABLE "GeneratedDocumentContents" (
+                        "GeneratedDocumentId" INTEGER NOT NULL CONSTRAINT "PK_GeneratedDocumentContents" PRIMARY KEY,
+                        "Content" BLOB NOT NULL,
+                        CONSTRAINT "FK_GeneratedDocumentContents_GeneratedDocuments_GeneratedDocumentId"
+                            FOREIGN KEY ("GeneratedDocumentId") REFERENCES "GeneratedDocuments" ("Id") ON DELETE CASCADE
+                    );
+                    """;
+                command.ExecuteNonQuery();
+            }
+
+            if (!TableExists(connection, "DocumentAttachments"))
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    CREATE TABLE "DocumentAttachments" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_DocumentAttachments" PRIMARY KEY AUTOINCREMENT,
+                        "GeneratedDocumentId" INTEGER NOT NULL,
+                        "FileName" TEXT NOT NULL,
+                        "Content" BLOB NOT NULL,
+                        "SizeBytes" INTEGER NOT NULL,
+                        "Note" TEXT NULL,
+                        "UploadedBy" TEXT NOT NULL,
+                        "UploadedAt" TEXT NOT NULL,
+                        "DeletedAt" TEXT NULL,
+                        "DeletedBy" TEXT NULL,
+                        CONSTRAINT "FK_DocumentAttachments_GeneratedDocuments_GeneratedDocumentId"
+                            FOREIGN KEY ("GeneratedDocumentId") REFERENCES "GeneratedDocuments" ("Id") ON DELETE CASCADE
+                    );
+                    """;
+                command.ExecuteNonQuery();
+
+                using var indexCommand = connection.CreateCommand();
+                indexCommand.CommandText =
+                    """CREATE INDEX "IX_DocumentAttachments_GeneratedDocumentId" ON "DocumentAttachments" ("GeneratedDocumentId");""";
+                indexCommand.ExecuteNonQuery();
+            }
+        }
+        finally
+        {
+            if (wasClosed) connection.Close();
+        }
+    }
+
+    private static void EnsureArchiveIndexes(AppDbContext db)
+    {
+        // Історичний унікальний індекс блокує версійність тієї самої пари.
+        db.Database.ExecuteSqlRaw("""DROP INDEX IF EXISTS "IX_GeneratedDocuments_RecipientId_TemplateId";""");
+        db.Database.ExecuteSqlRaw(
+            """CREATE INDEX IF NOT EXISTS "IX_GeneratedDocuments_RecipientId_TemplateId_IsCurrent" ON "GeneratedDocuments" ("RecipientId", "TemplateId", "IsCurrent");""");
+        db.Database.ExecuteSqlRaw(
+            """CREATE INDEX IF NOT EXISTS "IX_GeneratedDocuments_GeneratedAt" ON "GeneratedDocuments" ("GeneratedAt");""");
+        db.Database.ExecuteSqlRaw(
+            """CREATE INDEX IF NOT EXISTS "IX_GeneratedDocuments_RunId" ON "GeneratedDocuments" ("RunId");""");
     }
 
     private static void EnsureRoomUniqueIndex(AppDbContext db)

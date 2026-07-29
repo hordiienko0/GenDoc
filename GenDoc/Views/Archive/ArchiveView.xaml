@@ -1,0 +1,425 @@
+<UserControl x:Class="GenDoc.Views.Archive.ArchiveView"
+             x:Name="ArchiveRoot"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Loaded="ArchiveView_Loaded">
+
+    <UserControl.Resources>
+        <Style x:Key="ArchiveTabStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="BorderThickness" Value="0,0,0,2"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="20,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ArchiveActionButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+            <Setter Property="ToolTipService.ShowOnDisabled" Value="True"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+        </Style>
+
+        <Style x:Key="ArchiveFilterComboStyle" TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="MinWidth" Value="120"/>
+            <Setter Property="Margin" Value="0,0,7,0"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="{StaticResource BackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="Архів документів" FontSize="19" FontWeight="SemiBold"
+                       Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock Text="Уся згенерована документація з історією версій" FontSize="12"
+                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,10"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1"
+                Margin="0,0,0,10">
+            <StackPanel Orientation="Horizontal">
+                <Button Content="Документи" Command="{Binding SetTabCommand}" CommandParameter="0">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource ArchiveTabStyle}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsDocsTab}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <Button Content="Запуски" Command="{Binding SetTabCommand}" CommandParameter="1">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource ArchiveTabStyle}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsRunsTab}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+            </StackPanel>
+        </Border>
+
+        <!-- ТАБ «ДОКУМЕНТИ» -->
+        <Grid Grid.Row="2" Visibility="{Binding IsDocsTab, Converter={StaticResource BoolToVisibility}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Margin="0,0,0,9">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
+                    <ComboBox Style="{StaticResource ArchiveFilterComboStyle}" ItemsSource="{Binding IntakeOptions}"
+                              SelectedItem="{Binding SelectedIntake}" DisplayMemberPath="Label"/>
+                    <ComboBox Style="{StaticResource ArchiveFilterComboStyle}" ItemsSource="{Binding TemplateOptions}"
+                              SelectedItem="{Binding SelectedTemplate}" DisplayMemberPath="Label"/>
+                    <ComboBox Style="{StaticResource ArchiveFilterComboStyle}" ItemsSource="{Binding PackageOptions}"
+                              SelectedItem="{Binding SelectedPackage}" DisplayMemberPath="Label"/>
+                    <ComboBox Style="{StaticResource ArchiveFilterComboStyle}" ItemsSource="{Binding AuthorOptions}"
+                              SelectedItem="{Binding SelectedAuthor}" DisplayMemberPath="Label"/>
+                    <ComboBox Style="{StaticResource ArchiveFilterComboStyle}" ItemsSource="{Binding YearOptions}"
+                              SelectedItem="{Binding SelectedYear}" DisplayMemberPath="Label"/>
+                </StackPanel>
+                <TextBox Grid.Column="1" Tag="Пошук…" MinWidth="120"
+                         Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
+            </Grid>
+
+            <Border Grid.Row="1" Background="{StaticResource WarningSoftBrush}"
+                    BorderBrush="{StaticResource WarningBrush}" BorderThickness="3,0,0,0"
+                    Padding="12,7" Margin="0,0,0,8"
+                    Visibility="{Binding ShowOpenWarning, Converter={StaticResource BoolToVisibility}}">
+                <Grid>
+                    <TextBlock Text="Зміни у відкритій копії не зберігаються в архів. Виправлену версію додавайте через «Підгрузити версію»"
+                               FontSize="12" TextWrapping="Wrap" Margin="0,0,28,0"
+                               Foreground="{StaticResource WarnTextBrush}"/>
+                    <Button Content="✕" Style="{StaticResource CloseButtonStyle}"
+                            HorizontalAlignment="Right" VerticalAlignment="Center"
+                            Command="{Binding CloseOpenWarningCommand}"/>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="2" Background="{StaticResource PanelBrush}"
+                    BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1">
+                <Grid>
+                    <DataGrid x:Name="DocsGrid" ItemsSource="{Binding Rows}"
+                              AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+                              CanUserSortColumns="False"
+                              EnableRowVirtualization="True"
+                              MouseLeftButtonUp="DocsGrid_MouseLeftButtonUp"
+                              MouseDoubleClick="DocsGrid_MouseDoubleClick"
+                              Visibility="{Binding HasRows, Converter={StaticResource BoolToVisibility}}">
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsDim}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                        <Setter Property="Opacity" Value="0.75"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Width="36" CanUserResize="False">
+                                <DataGridTemplateColumn.HeaderTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsThreeState="True" HorizontalAlignment="Center"
+                                                  IsChecked="{Binding DataContext.HeaderChecked, ElementName=ArchiveRoot, Mode=TwoWay}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.HeaderTemplate>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <DataGridTextColumn Header="ПІБ" Binding="{Binding ShortName}" Width="1.3*">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="FontWeight" Value="Bold"/>
+                                        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <DataGridTextColumn Header="ШАБЛОН" Binding="{Binding TemplateDisplay}" Width="1.8*">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                        <Setter Property="ToolTip" Value="{Binding TemplateDisplay}"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <DataGridTemplateColumn Header="ВЕР." Width="52" CanUserResize="False">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border HorizontalAlignment="Left" VerticalAlignment="Center" Padding="5,1">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="Transparent"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding VersionIsChip}" Value="True">
+                                                            <Setter Property="Background" Value="{StaticResource AccentSoftBrush}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <TextBlock Text="{Binding VersionText}" FontSize="10.5">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding VersionIsChip}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                                                <Setter Property="FontWeight" Value="Bold"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <DataGridTextColumn Header="НАБІР" Binding="{Binding IntakeText}" Width="70">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <DataGridTextColumn Header="ПІДРОЗДІЛ" Binding="{Binding UnitLast}" Width="1.3*">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                        <Setter Property="ToolTip" Value="{Binding UnitFull}"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <DataGridTextColumn Header="ДАТА" Binding="{Binding DateText}" Width="86"/>
+                            <DataGridTextColumn Header="АВТОР" Binding="{Binding Author}" Width="1*">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="ВКЛ." Binding="{Binding AttachText}" Width="52">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Visibility="{Binding IsArchiveEmpty, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="Документи з'являться після першої генерації"
+                                   Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"
+                                   HorizontalAlignment="Center"/>
+                    </StackPanel>
+
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Visibility="{Binding IsFilteredEmpty, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="Нічого не знайдено. Змініть фільтри"
+                                   Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"
+                                   HorizontalAlignment="Center"/>
+                        <Button Content="Скинути фільтри" Style="{StaticResource SecondaryButtonStyle}"
+                                Margin="0,10,0,0" HorizontalAlignment="Center"
+                                Command="{Binding ResetFiltersCommand}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Button Grid.Row="3" Content="Завантажити ще" Style="{StaticResource SecondaryButtonStyle}"
+                    HorizontalAlignment="Center" Margin="0,8,0,0"
+                    Command="{Binding LoadMoreCommand}"
+                    Visibility="{Binding CanLoadMore, Converter={StaticResource BoolToVisibility}}"/>
+
+            <StackPanel Grid.Row="4" Margin="0,8,0,0">
+                <WrapPanel>
+                    <Button Content="Відкрити" Style="{StaticResource ArchiveActionButtonStyle}"
+                            IsEnabled="{Binding CanOpen}" ToolTip="{Binding OpenTooltip}"
+                            Command="{Binding OpenCommand}"/>
+                    <Button Content="Зберегти як…" Style="{StaticResource ArchiveActionButtonStyle}"
+                            IsEnabled="{Binding CanSaveAs}" ToolTip="{Binding SaveAsTooltip}"
+                            Command="{Binding SaveAsCommand}"/>
+                    <Button Content="Перегенерувати" Style="{StaticResource ArchiveActionButtonStyle}"
+                            IsEnabled="{Binding CanRegenerate}" ToolTip="{Binding RegenerateTooltip}"
+                            Command="{Binding RegenerateCommand}"/>
+                    <Button Content="Підгрузити версію" Style="{StaticResource ArchiveActionButtonStyle}"
+                            IsEnabled="{Binding CanUpload}" ToolTip="{Binding SingleSelectionTooltip}"
+                            Command="{Binding UploadCommand}"/>
+                    <Button Content="Прикріпити скан" Style="{StaticResource ArchiveActionButtonStyle}"
+                            IsEnabled="{Binding CanAttach}" ToolTip="{Binding SingleSelectionTooltip}"
+                            Command="{Binding AttachCommand}"/>
+                    <Button Content="Історія версій" Style="{StaticResource ArchiveActionButtonStyle}"
+                            IsEnabled="{Binding CanHistory}" ToolTip="{Binding SingleSelectionTooltip}"
+                            Command="{Binding HistoryCommand}"/>
+                    <Button Content="Видалити" Style="{StaticResource ArchiveActionButtonStyle}"
+                            Foreground="{StaticResource DangerBrush}"
+                            IsEnabled="{Binding CanDelete}" ToolTip="Оберіть документи"
+                            Command="{Binding DeleteCommand}"/>
+                </WrapPanel>
+                <TextBlock Text="{Binding StatsText}" FontSize="11.5" Margin="0,7,0,0"
+                           Foreground="{StaticResource TextSecondaryBrush}"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- ТАБ «ЗАПУСКИ» -->
+        <Grid Grid.Row="2" Visibility="{Binding IsRunsTab, Converter={StaticResource BoolToVisibility}}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding Runs}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Background="{StaticResource PanelBrush}"
+                                    BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1"
+                                    Margin="0,0,0,7">
+                                <StackPanel>
+                                    <Button Command="{Binding DataContext.ToggleRunCommand, ElementName=ArchiveRoot}"
+                                            CommandParameter="{Binding}" Cursor="Hand"
+                                            Background="Transparent" BorderThickness="0"
+                                            HorizontalContentAlignment="Stretch" Padding="13,10">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="Transparent" Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                        <Grid>
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Glyph}" FontSize="10" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,10,0"/>
+                                                <TextBlock Text="{Binding DateText}" FontWeight="SemiBold" FontSize="12.5"
+                                                           Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,10,0"/>
+                                                <Border Background="{StaticResource AccentSoftBrush}" Padding="7,1" Margin="0,0,10,0"
+                                                        Visibility="{Binding HasIntake, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="{Binding IntakeChip}" FontSize="11" FontWeight="Bold"
+                                                               Foreground="{StaticResource AccentBrush}"/>
+                                                </Border>
+                                                <TextBlock Text="{Binding PackageText}" FontSize="12.5" Margin="0,0,10,0"
+                                                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                <TextBlock Text="{Binding BranchText}" FontSize="12.5"
+                                                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            </StackPanel>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                                                <TextBlock Text="{Binding DocsText}" FontSize="12.5" Margin="0,0,12,0"
+                                                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                <TextBlock Text="{Binding ErrorsText}" FontSize="12.5" FontWeight="SemiBold">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasErrors}" Value="True">
+                                                                    <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Button>
+
+                                    <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,0,0"
+                                            Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}">
+                                        <ItemsControl ItemsSource="{Binding Items}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1"
+                                                            Padding="13,7">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="1.4*"/>
+                                                                <ColumnDefinition Width="1.8*"/>
+                                                                <ColumnDefinition Width="1.6*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Grid.Column="0" Text="{Binding Person}" FontSize="11.5"
+                                                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                                                       TextTrimming="CharacterEllipsis"/>
+                                                            <TextBlock Grid.Column="1" Text="{Binding TemplateName}" FontSize="11.5"
+                                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                                       TextTrimming="CharacterEllipsis"/>
+                                                            <TextBlock Grid.Column="2" Text="{Binding Status}" FontSize="11.5"
+                                                                       FontWeight="SemiBold" TextWrapping="Wrap">
+                                                                <TextBlock.Style>
+                                                                    <Style TargetType="TextBlock">
+                                                                        <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding IsError}" Value="True">
+                                                                                <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </TextBlock.Style>
+                                                            </TextBlock>
+                                                            <StackPanel Grid.Column="3" Orientation="Horizontal"
+                                                                        Visibility="{Binding CanOpen, Converter={StaticResource BoolToVisibility}}">
+                                                                <Button Content="Відкрити" Style="{StaticResource TextLinkButtonStyle}" FontSize="11.5"
+                                                                        Command="{Binding DataContext.OpenRunItemCommand, ElementName=ArchiveRoot}"
+                                                                        CommandParameter="{Binding}"/>
+                                                                <Button Content="Зберегти як…" Style="{StaticResource TextLinkButtonStyle}" FontSize="11.5"
+                                                                        Margin="10,0,0,0"
+                                                                        Command="{Binding DataContext.SaveRunItemAsCommand, ElementName=ArchiveRoot}"
+                                                                        CommandParameter="{Binding}"/>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <TextBlock Text="Запусків ще не було" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Visibility="{Binding RunsEmpty, Converter={StaticResource BoolToVisibility}}"/>
+        </Grid>
+    </Grid>
+</UserControl>

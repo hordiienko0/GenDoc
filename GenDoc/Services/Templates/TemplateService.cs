@@ -105,15 +105,23 @@ namespace GenDoc.Services.Templates
             return new UploadResult(true, null);
         }
 
-        public List<(int Id, string Name, string OriginalFileName, DateTime UploadedAt, int TagCount)> GetTemplateListItems()
+        public List<(int Id, string Name, string? ShortName, string OriginalFileName, DateTime UploadedAt, int TagCount)> GetTemplateListItems()
         {
             using var db = _dbFactory.CreateDbContext();
             return db.Templates
                 .OrderBy(t => t.Name)
-                .Select(t => new { t.Id, t.Name, t.OriginalFileName, t.UploadedAt, TagCount = t.FieldMappings.Count })
+                .Select(t => new { t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, TagCount = t.FieldMappings.Count })
                 .AsEnumerable()
-                .Select(t => (t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.TagCount))
+                .Select(t => (t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, t.TagCount))
                 .ToList();
+        }
+
+        public void SaveShortName(int templateId, string? shortName)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var template = db.Templates.First(t => t.Id == templateId);
+            template.ShortName = string.IsNullOrWhiteSpace(shortName) ? null : shortName.Trim();
+            db.SaveChanges();
         }
 
         public List<(int Id, string PlaceholderTag, MappingSourceType SourceType, string? FieldName)> GetMappings(int templateId)

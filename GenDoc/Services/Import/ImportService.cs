@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.IO;
 using ClosedXML.Excel;
+using CommunityToolkit.Mvvm.Messaging;
 using GenDoc.Data;
 using GenDoc.Models;
 using Microsoft.EntityFrameworkCore;
@@ -104,6 +105,7 @@ public class ImportService : IImportService
         var existingServiceNumbers = LoadExistingServiceNumbers(db);
         var seenInFile = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var unitCache = new Dictionary<string, Unit>(StringComparer.Ordinal);
+        var orgNodeCache = new Dictionary<string, OrgNode>(StringComparer.Ordinal);
         var roomCache = new Dictionary<(string Building, string Number), Room>();
 
         var imported = 0;
@@ -122,6 +124,7 @@ public class ImportService : IImportService
             try
             {
                 var unit = ResolveUnit(db, unitCache, row.Fields.UnitName);
+                var orgNode = ResolveOrgNode(db, orgNodeCache, row.Fields.UnitName);
                 var room = ResolveRoom(db, roomCache, row.Fields.Building, row.Fields.RoomNumber);
 
                 var recipient = new Recipient
@@ -134,6 +137,8 @@ public class ImportService : IImportService
                     ServiceNumber = row.Fields.ServiceNumber,
                     DateOfBirth = row.Fields.DateOfBirth,
                     UnitId = unit?.Id,
+                    OrgNodeId = orgNode?.Id,
+                    IntakeId = orgNode?.IntakeId,
                     RoomId = room?.Id,
 
                     Nationality = NullIfEmpty(row.Fields.Nationality),
@@ -172,6 +177,7 @@ public class ImportService : IImportService
         {
             _auditLogService.LogImport(db, "Recipient", imported, $"з файлу {Path.GetFileName(parsed.FilePath)}");
             db.SaveChanges();
+            WeakReferenceMessenger.Default.Send(new CountsChangedMessage());
         }
 
         return new ImportSummary(imported, skipped, errors);
@@ -414,6 +420,43 @@ public class ImportService : IImportService
         var created = new Unit { Name = trimmed };
         db.Units.Add(created);
         db.SaveChanges();
+        cache[trimmed] = created;
+        return created;
+    }
+
+    // Прив'язка до дерева підрозділів: вузол з назвою підрозділу шукається серед
+    // живих, за відсутності — створюється під коренем. Порожній підрозділ → корінь.
+    private static OrgNode? ResolveOrgNode(AppDbContext db, Dictionary<string, OrgNode> cache, string name)
+    {
+        var root = db.OrgNodes.OrderBy(n => n.Depth).ThenBy(n => n.Id).FirstOrDefault(n => n.ParentId == null);
+        if (root is null) return null;
+
+        var trimmed = name.Trim();
+        if (trimmed.Length == 0) return root;
+
+        if (cache.TryGetValue(trimmed, out var cached)) return cached;
+
+        var existing = db.OrgNodes.FirstOrDefault(n => n.Name == trimmed);
+        if (existing is not null)
+        {
+            cache[trimmed] = existing;
+            return existing;
+        }
+
+        var maxSort = db.OrgNodes.Where(n => n.ParentId == root.Id)
+            .Select(n => (int?)n.SortOrder).Max() ?? -1;
+        var created = new OrgNode
+        {
+            Name = trimmed,
+            ParentId = root.Id,
+            Depth = root.Depth + 1,
+            SortOrder = maxSort + 1
+        };
+        db.OrgNodes.Add(created);
+        db.SaveChanges();
+        created.Path = $"{root.Path}{created.Id}/";
+        db.SaveChanges();
+
         cache[trimmed] = created;
         return created;
     }

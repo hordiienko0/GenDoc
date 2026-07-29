@@ -1,0 +1,119 @@
+<UserControl x:Class="GenDoc.Views.Trash.TrashView"
+             x:Name="TrashRoot"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid Background="{StaticResource BackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,18">
+            <TextBlock Text="Кошик" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock Text="Видалені елементи можна відновити" FontSize="12" Margin="0,4,0,0"
+                       Foreground="{StaticResource TextSecondaryBrush}"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="{StaticResource PanelBrush}"
+                BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1" Padding="18">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <TextBlock Text="ПАПКИ" FontSize="11" FontWeight="Bold"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,10"/>
+
+                    <TextBlock Text="Видалених папок немає" FontSize="12.5"
+                               Foreground="{StaticResource TextSecondaryBrush}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasFolders}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <ItemsControl ItemsSource="{Binding Folders}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1" Padding="0,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                                            <TextBlock FontSize="11.5" Margin="0,3,0,0"
+                                                       Foreground="{StaticResource TextSecondaryBrush}">
+                                                <Run Text="{Binding DeletedAtDisplay, Mode=OneWay}"/>
+                                                <Run Text=" · "/>
+                                                <Run Text="{Binding DeletedByDisplay, Mode=OneWay}"/>
+                                            </TextBlock>
+                                            <TextBlock Text="батьківська папка видалена — оберіть нову при відновленні"
+                                                       FontSize="11" Margin="0,3,0,0"
+                                                       Foreground="{StaticResource WarnTextBrush}"
+                                                       Visibility="{Binding ParentDead, Converter={StaticResource BoolToVisibility}}"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Content="Відновити" VerticalAlignment="Center"
+                                                Style="{StaticResource SecondaryButtonStyle}"
+                                                Command="{Binding DataContext.RestoreCommand, ElementName=TrashRoot}"
+                                                CommandParameter="{Binding}"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock Text="ДОКУМЕНТИ" FontSize="11" FontWeight="Bold"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,22,0,10"/>
+
+                    <TextBlock Text="Видалених документів немає" FontSize="12.5"
+                               Foreground="{StaticResource TextSecondaryBrush}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasDocuments}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <ItemsControl ItemsSource="{Binding Documents}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1" Padding="0,10">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="SemiBold"
+                                                       Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock FontSize="11.5" Margin="0,3,0,0"
+                                                       Foreground="{StaticResource TextSecondaryBrush}">
+                                                <Run Text="{Binding DeletedAtDisplay, Mode=OneWay}"/>
+                                                <Run Text=" · "/>
+                                                <Run Text="{Binding DeletedByDisplay, Mode=OneWay}"/>
+                                            </TextBlock>
+                                        </StackPanel>
+                                        <Button Grid.Column="1" Content="Відновити" VerticalAlignment="Center"
+                                                Style="{StaticResource SecondaryButtonStyle}"
+                                                Command="{Binding DataContext.RestoreDocumentCommand, ElementName=TrashRoot}"
+                                                CommandParameter="{Binding}"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</UserControl>

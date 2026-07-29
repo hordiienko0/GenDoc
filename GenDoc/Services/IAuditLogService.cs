@@ -10,5 +10,6 @@ namespace GenDoc.Services
         void LogExport(AppDbContext db, string entityName, int count, string? details = null);
         void LogImport(AppDbContext db, string entityName, int count, string? details = null);
         void LogGenerate(AppDbContext db, string entityName, int entityId, string? details = null);
+        void Log(AppDbContext db, string action, string entityName, int entityId, string? oldValue = null, string? newValue = null, string? details = null);
     }
 }

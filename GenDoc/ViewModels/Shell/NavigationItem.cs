@@ -15,4 +15,10 @@ public partial class NavigationItem : ObservableObject
 
     [ObservableProperty]
     private bool isActive;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasBadge))]
+    private int badgeCount;
+
+    public bool HasBadge => BadgeCount > 0;
 }

@@ -6,6 +6,9 @@ namespace GenDoc.Models
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
+
+        // Коротка назва для заголовків колонок матриці комплектності.
+        public string? ShortName { get; set; }
         public string OriginalFileName { get; set; } = string.Empty;
         public byte[] Content { get; set; } = Array.Empty<byte>();
         public DateTime UploadedAt { get; set; }

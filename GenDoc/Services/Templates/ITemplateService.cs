@@ -8,7 +8,8 @@ namespace GenDoc.Services.Templates
     {
         UploadResult Upload(string filePath);
 
-        List<(int Id, string Name, string OriginalFileName, DateTime UploadedAt, int TagCount)> GetTemplateListItems();
+        List<(int Id, string Name, string? ShortName, string OriginalFileName, DateTime UploadedAt, int TagCount)> GetTemplateListItems();
+        void SaveShortName(int templateId, string? shortName);
         List<(int Id, string PlaceholderTag, MappingSourceType SourceType, string? FieldName)> GetMappings(int templateId);
         void SaveMappings(int templateId, List<(int Id, MappingSourceType SourceType, string? FieldName)> mappings);
         (bool Success, string? ErrorMessage) Delete(int templateId);

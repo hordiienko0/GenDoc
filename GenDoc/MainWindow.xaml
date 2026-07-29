@@ -16,6 +16,14 @@
         xmlns:generationView="clr-namespace:GenDoc.Views.Generation"
         xmlns:roomsVm="clr-namespace:GenDoc.ViewModels.Rooms"
         xmlns:roomsView="clr-namespace:GenDoc.Views.Rooms"
+        xmlns:personnelVm="clr-namespace:GenDoc.ViewModels.Personnel"
+        xmlns:personnelView="clr-namespace:GenDoc.Views.Personnel"
+        xmlns:trashVm="clr-namespace:GenDoc.ViewModels.Trash"
+        xmlns:trashView="clr-namespace:GenDoc.Views.Trash"
+        xmlns:archiveVm="clr-namespace:GenDoc.ViewModels.Archive"
+        xmlns:archiveView="clr-namespace:GenDoc.Views.Archive"
+        xmlns:completenessVm="clr-namespace:GenDoc.ViewModels.Completeness"
+        xmlns:completenessView="clr-namespace:GenDoc.Views.Completeness"
         Style="{StaticResource {x:Type Window}}"
         Title="GenDoc — Облік особового складу" Height="720" Width="1180"
         MinWidth="960" MinHeight="600"
@@ -53,6 +61,18 @@
         </DataTemplate>
         <DataTemplate DataType="{x:Type roomsVm:RoomsViewModel}">
             <roomsView:RoomsView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type personnelVm:PersonnelViewModel}">
+            <personnelView:PersonnelView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type trashVm:TrashViewModel}">
+            <trashView:TrashView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type archiveVm:ArchiveViewModel}">
+            <archiveView:ArchiveView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type completenessVm:CompletenessViewModel}">
+            <completenessView:CompletenessView/>
         </DataTemplate>
 
         <Style x:Key="WindowButtonStyle" TargetType="Button">
@@ -121,9 +141,16 @@
                 <TextBlock Text="{Binding StatusBarUserText}"
                            FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}"
                            VerticalAlignment="Center" HorizontalAlignment="Left"/>
-                <TextBlock Text="{Binding StatusBarConnectionText}"
-                           FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}"
-                           VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding StatusBarIntakeText}"
+                               FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text=" · " FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding StatusBarConnectionText}"
+                               FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -142,9 +169,25 @@
                                     <ItemsControl ItemsSource="{Binding Items}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate DataType="{x:Type shell:NavigationItem}">
-                                                <Button Content="{Binding Title}" Style="{StaticResource NavItemButtonStyle}"
+                                                <Button Style="{StaticResource NavItemButtonStyle}"
+                                                        HorizontalContentAlignment="Stretch"
                                                         Command="{Binding DataContext.SelectItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        CommandParameter="{Binding}"/>
+                                                        CommandParameter="{Binding}">
+                                                    <Grid HorizontalAlignment="Stretch">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{Binding Title}"/>
+                                                        <Border Grid.Column="1" Background="{StaticResource DangerBrush}"
+                                                                CornerRadius="8" MinWidth="17" Height="17" Padding="4,0"
+                                                                HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                                Visibility="{Binding HasBadge, Converter={StaticResource BoolToVisibility}}">
+                                                            <TextBlock Text="{Binding BadgeCount}" FontSize="10" FontWeight="Bold"
+                                                                       Foreground="White" HorizontalAlignment="Center"/>
+                                                        </Border>
+                                                    </Grid>
+                                                </Button>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>

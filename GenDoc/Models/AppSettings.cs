@@ -9,5 +9,20 @@
 
         public bool WatermarkEnabled { get; set; } = false;
         public string? WatermarkText { get; set; }
+
+        // Шаблон назви набору; {n} — порядковий номер.
+        public string? IntakeNumberTemplate { get; set; }
+
+        // Шаблон імені файлу при експорті з архіву; {ПІБ}, {Шаблон}, {Дата}.
+        public string? ExportFileNameTemplate { get; set; }
+
+        // Ліміт розміру завантажуваної версії документа, КБ.
+        public int? MaxDocumentSizeKb { get; set; }
+
+        // Показувати стан «застарів» у матриці комплектності (null = увімкнено).
+        public bool? DetectStaleDocuments { get; set; }
+
+        // Пакет за замовчуванням для матриці комплектності й бейджа.
+        public int? DefaultGenerationPackageId { get; set; }
     }
 }

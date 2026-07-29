@@ -17,5 +17,8 @@
         public int ErrorCount { get; set; }
 
         public string? Summary { get; set; }
+
+        public int? IntakeId { get; set; }
+        public string? BranchName { get; set; }
     }
 }

@@ -18,10 +18,14 @@ namespace GenDoc.Data
 
         public DbSet<Recipient> Recipients => Set<Recipient>();
         public DbSet<Unit> Units => Set<Unit>();
+        public DbSet<OrgNode> OrgNodes => Set<OrgNode>();
+        public DbSet<Intake> Intakes => Set<Intake>();
         public DbSet<Room> Rooms => Set<Room>();
         public DbSet<Template> Templates => Set<Template>();
         public DbSet<TemplateFieldMapping> TemplateFieldMappings => Set<TemplateFieldMapping>();
         public DbSet<GeneratedDocument> GeneratedDocuments => Set<GeneratedDocument>();
+        public DbSet<GeneratedDocumentContent> GeneratedDocumentContents => Set<GeneratedDocumentContent>();
+        public DbSet<DocumentAttachment> DocumentAttachments => Set<DocumentAttachment>();
         public DbSet<GenerationPackage> GenerationPackages => Set<GenerationPackage>();
         public DbSet<GenerationPackageTemplate> GenerationPackageTemplates => Set<GenerationPackageTemplate>();
         public DbSet<GenerationPackageRun> GenerationPackageRuns => Set<GenerationPackageRun>();
@@ -52,15 +56,45 @@ namespace GenDoc.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<GeneratedDocument>()
-                .HasIndex(g => new { g.RecipientId, g.TemplateId })
-                .IsUnique();
+            modelBuilder.Entity<GeneratedDocument>(b =>
+            {
+                b.Property(g => g.FileName).HasColumnName("OutputFileName");
+                b.HasIndex(g => new { g.RecipientId, g.TemplateId, g.IsCurrent });
+                b.HasIndex(g => g.GeneratedAt);
+                b.HasIndex(g => g.RunId);
+                b.HasOne(g => g.Content)
+                    .WithOne(c => c.GeneratedDocument)
+                    .HasForeignKey<GeneratedDocumentContent>(c => c.GeneratedDocumentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                b.HasMany(g => g.Attachments)
+                    .WithOne(a => a.GeneratedDocument)
+                    .HasForeignKey(a => a.GeneratedDocumentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<GeneratedDocumentContent>()
+                .HasKey(c => c.GeneratedDocumentId);
 
             modelBuilder.Entity<ExportTemplate>()
                 .HasMany(t => t.ColumnMappings)
                 .WithOne(m => m.ExportTemplate)
                 .HasForeignKey(m => m.ExportTemplateId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<OrgNode>()
+                .HasOne(n => n.Parent)
+                .WithMany(n => n.Children)
+                .HasForeignKey(n => n.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<OrgNode>()
+                .HasIndex(n => n.Path);
+
+            modelBuilder.Entity<Recipient>()
+                .HasOne(r => r.OrgNode)
+                .WithMany(n => n.Recipients)
+                .HasForeignKey(r => r.OrgNodeId)
+                .OnDelete(DeleteBehavior.SetNull);
 
             modelBuilder.Entity<Room>()
                 .HasIndex(r => new { r.Building, r.Number })

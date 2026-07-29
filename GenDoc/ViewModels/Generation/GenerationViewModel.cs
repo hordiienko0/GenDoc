@@ -3,7 +3,11 @@ using System.Diagnostics;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using GenDoc.Services;
 using GenDoc.Services.Generation;
+using GenDoc.ViewModels.Completeness;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 
 namespace GenDoc.ViewModels.Generation;
@@ -11,10 +15,17 @@ namespace GenDoc.ViewModels.Generation;
 public partial class GenerationViewModel : ObservableObject
 {
     private readonly IGenerationService _generationService;
+    private readonly IDialogService _dialogService;
+    private readonly IServiceProvider _serviceProvider;
 
-    public GenerationViewModel(IGenerationService generationService)
+    public GenerationViewModel(
+        IGenerationService generationService,
+        IDialogService dialogService,
+        IServiceProvider serviceProvider)
     {
         _generationService = generationService;
+        _dialogService = dialogService;
+        _serviceProvider = serviceProvider;
         RefreshPackages();
     }
 
@@ -164,6 +175,17 @@ public partial class GenerationViewModel : ObservableObject
         }
 
         RefreshPackages();
+    }
+
+    [RelayCommand]
+    private async Task OpenRequirementsAsync()
+    {
+        if (SelectedPackage is null) return;
+
+        var vm = _serviceProvider.GetRequiredService<PackageRequirementsViewModel>();
+        await vm.InitializeAsync(SelectedPackage.Id, null);
+        if (_dialogService.ShowDialog(vm, Application.Current.MainWindow) == true)
+            WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
     }
 
     [RelayCommand]

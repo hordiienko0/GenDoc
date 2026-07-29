@@ -22,6 +22,14 @@ namespace GenDoc.Models
         public int? RoomId { get; set; }
         public Room? Room { get; set; }
 
+        public int? OrgNodeId { get; set; }
+        public OrgNode? OrgNode { get; set; }
+
+        public int? IntakeId { get; set; }
+
+        // придатний · обмежено придатний · непридатний
+        public string? FitnessCategory { get; set; }
+
         // Анкетні дані (прикомандировані) — Б.1
         public string? Nationality { get; set; }
         public string? Vos { get; set; }

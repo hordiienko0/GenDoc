@@ -13,17 +13,20 @@ namespace GenDoc.Services.Generation
         private readonly IDocumentGenerationService _documentGenerationService;
         private readonly IAuditLogService _auditLogService;
         private readonly ICurrentUserContext _currentUserContext;
+        private readonly Documents.IDocumentHashService _documentHashService;
 
         public GenerationService(
             IDbContextFactory<AppDbContext> dbFactory,
             IDocumentGenerationService documentGenerationService,
             IAuditLogService auditLogService,
-            ICurrentUserContext currentUserContext)
+            ICurrentUserContext currentUserContext,
+            Documents.IDocumentHashService documentHashService)
         {
             _dbFactory = dbFactory;
             _documentGenerationService = documentGenerationService;
             _auditLogService = auditLogService;
             _currentUserContext = currentUserContext;
+            _documentHashService = documentHashService;
         }
 
         public List<(int Id, string Name, string? Description, int TemplateCount)> GetPackages()
@@ -152,14 +155,36 @@ namespace GenDoc.Services.Generation
                 t => t.Id,
                 t => db.TemplateFieldMappings.Where(m => m.TemplateId == t.Id).ToList());
 
-            var recipients = db.Recipients.Include(r => r.Unit).Include(r => r.Room).ToList();
+            var recipients = db.Recipients.Include(r => r.Unit).Include(r => r.Room).Include(r => r.OrgNode).ToList();
             var orgSettings = db.OrganizationSettings.FirstOrDefault();
 
+            // Anti-дубль: лише актуальні живі документи (видалені відсікає query filter).
             var existingPairs = new HashSet<(int RecipientId, int TemplateId)>(
                 db.GeneratedDocuments
+                    .Where(g => g.IsCurrent)
                     .Select(g => new { g.RecipientId, g.TemplateId })
                     .AsEnumerable()
                     .Select(g => (g.RecipientId, g.TemplateId)));
+
+            var maxVersions = db.GeneratedDocuments.IgnoreQueryFilters()
+                .GroupBy(g => new { g.RecipientId, g.TemplateId })
+                .Select(g => new { g.Key.RecipientId, g.Key.TemplateId, MaxVersion = g.Max(x => x.Version) })
+                .AsEnumerable()
+                .ToDictionary(g => (g.RecipientId, g.TemplateId), g => g.MaxVersion);
+
+            var orgNodeNames = db.OrgNodes.IgnoreQueryFilters()
+                .Select(o => new { o.Id, o.Name, o.ParentId })
+                .AsEnumerable()
+                .ToDictionary(o => o.Id, o => (o.Name, o.ParentId));
+
+            var run = new GenerationPackageRun
+            {
+                GenerationPackageId = packageId,
+                RunAt = DateTime.Now,
+                RunByUserId = _currentUserContext.CurrentUserId ?? 0
+            };
+            db.GenerationPackageRuns.Add(run);
+            db.SaveChanges();
 
             Directory.CreateDirectory(outputFolder);
             var usedFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -199,16 +224,44 @@ namespace GenDoc.Services.Generation
                             continue;
                         }
 
-                        db.GeneratedDocuments.Add(new GeneratedDocument
+                        var bytes = File.ReadAllBytes(outputPath);
+                        var pair = (recipient.Id, template.Id);
+                        var version = maxVersions.GetValueOrDefault(pair) + 1;
+                        maxVersions[pair] = version;
+
+                        if (version > 1)
+                        {
+                            foreach (var old in db.GeneratedDocuments.IgnoreQueryFilters()
+                                .Where(g => g.RecipientId == recipient.Id && g.TemplateId == template.Id && g.IsCurrent))
+                            {
+                                old.IsCurrent = false;
+                            }
+                        }
+
+                        var doc = new GeneratedDocument
                         {
                             RecipientId = recipient.Id,
                             TemplateId = template.Id,
                             GeneratedAt = DateTime.Now,
                             GeneratedByUserId = _currentUserContext.CurrentUserId ?? 0,
-                            OutputFileName = outputPath
-                        });
+                            FileName = fileName,
+                            SizeBytes = bytes.LongLength,
+                            ContentHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)),
+                            SourceHash = _documentHashService.ComputeSourceHash(
+                                mappingsByTemplate[template.Id], recipient, orgSettings),
+                            Version = version,
+                            IsCurrent = true,
+                            SourceType = Models.Enums.DocumentSourceType.Generated,
+                            RunId = run.Id,
+                            IntakeId = recipient.IntakeId,
+                            OrgNodeIdSnapshot = recipient.OrgNodeId,
+                            OrgPathSnapshot = BuildOrgPathSnapshot(recipient.OrgNodeId, orgNodeNames),
+                            HasContent = true,
+                            Content = new GeneratedDocumentContent { Content = bytes }
+                        };
+                        db.GeneratedDocuments.Add(doc);
 
-                        existingPairs.Add((recipient.Id, template.Id));
+                        existingPairs.Add(pair);
                         generated++;
                     }
                     catch (Exception ex)
@@ -219,16 +272,10 @@ namespace GenDoc.Services.Generation
                 }
             }
 
-            db.GenerationPackageRuns.Add(new GenerationPackageRun
-            {
-                GenerationPackageId = packageId,
-                RunAt = DateTime.Now,
-                RunByUserId = _currentUserContext.CurrentUserId ?? 0,
-                GeneratedCount = generated,
-                SkippedCount = skipped,
-                ErrorCount = errors,
-                Summary = errorMessages.Count == 0 ? null : string.Join("\n", errorMessages.Take(10))
-            });
+            run.GeneratedCount = generated;
+            run.SkippedCount = skipped;
+            run.ErrorCount = errors;
+            run.Summary = errorMessages.Count == 0 ? null : string.Join("\n", errorMessages);
 
             _auditLogService.LogGenerate(db, "GenerationPackage", packageId,
                 $"{package.Name}: згенеровано {generated}, пропущено {skipped}, помилок {errors}");
@@ -238,7 +285,21 @@ namespace GenDoc.Services.Generation
             return new RunResult(generated, skipped, errors);
         }
 
-        private static Dictionary<string, string> BuildValues(
+        private static string? BuildOrgPathSnapshot(int? orgNodeId, Dictionary<int, (string Name, int? ParentId)> nodes)
+        {
+            if (orgNodeId is not int id || !nodes.ContainsKey(id)) return null;
+
+            var names = new List<string>();
+            int? current = id;
+            while (current is int cid && nodes.TryGetValue(cid, out var node))
+            {
+                names.Insert(0, node.Name);
+                current = node.ParentId;
+            }
+            return string.Join(" / ", names);
+        }
+
+        internal static Dictionary<string, string> BuildValues(
             List<TemplateFieldMapping> mappings, Recipient recipient, OrganizationSettings? org, Dictionary<string, string> manualValues)
         {
             var values = new Dictionary<string, string>();

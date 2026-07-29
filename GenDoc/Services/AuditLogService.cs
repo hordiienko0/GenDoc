@@ -30,6 +30,9 @@ namespace GenDoc.Services
         public void LogGenerate(AppDbContext db, string entityName, int entityId, string? details = null)
             => Add(db, "Згенеровано", entityName, entityId, null, null, details);
 
+        public void Log(AppDbContext db, string action, string entityName, int entityId, string? oldValue = null, string? newValue = null, string? details = null)
+            => Add(db, action, entityName, entityId, oldValue, newValue, details);
+
         private void Add(AppDbContext db, string action, string entityName, int entityId, string? oldValue, string? newValue, string? details)
         {
             db.AuditLog.Add(new AuditLogEntry

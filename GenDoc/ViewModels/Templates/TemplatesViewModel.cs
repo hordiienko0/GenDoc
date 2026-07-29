@@ -39,7 +39,7 @@ public partial class TemplatesViewModel : ObservableObject
     {
         DocxTemplates = new ObservableCollection<DocxTemplateListItemViewModel>(
             _templateService.GetTemplateListItems()
-                .Select(t => new DocxTemplateListItemViewModel(t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.TagCount)));
+                .Select(t => new DocxTemplateListItemViewModel(t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, t.TagCount)));
     }
 
     [RelayCommand]
@@ -83,6 +83,13 @@ public partial class TemplatesViewModel : ObservableObject
         _templateService.SaveMappings(item.Id, mappings);
 
         MessageBox.Show("Мапінг міток збережено.", "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    [RelayCommand]
+    private void SaveShortName(DocxTemplateListItemViewModel? item)
+    {
+        if (item is null) return;
+        _templateService.SaveShortName(item.Id, item.ShortNameEdit);
     }
 
     [RelayCommand]

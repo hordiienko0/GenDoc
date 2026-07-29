@@ -130,7 +130,15 @@
 
                     <StackPanel Visibility="{Binding HasSelectedPackage, Converter={StaticResource BoolToVisibility}}">
 
-                        <TextBlock Text="ШАБЛОНИ ПАКЕТА" Style="{StaticResource SectionTitleStyle}"/>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="ШАБЛОНИ ПАКЕТА" Style="{StaticResource SectionTitleStyle}"/>
+                            <Button Grid.Column="1" Content="⚙ Вимоги" Style="{StaticResource SecondaryButtonStyle}"
+                                    ToolTip="Вимоги пакета…" Command="{Binding OpenRequirementsCommand}"/>
+                        </Grid>
                         <ItemsControl ItemsSource="{Binding PackageTemplates}" Margin="0,0,0,16">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>

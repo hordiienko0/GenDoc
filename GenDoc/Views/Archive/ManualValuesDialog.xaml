@@ -1,0 +1,33 @@
+<Window x:Class="GenDoc.Views.Archive.ManualValuesDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource {x:Type Window}}"
+        Title="Ручні поля шаблонів" Width="440" SizeToContent="Height" MaxHeight="600"
+        Background="{StaticResource PanelBrush}"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+
+    <DockPanel Margin="20">
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="Скасувати" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelCommand}"/>
+            <Button Content="Продовжити" Margin="8,0,0,0" MinWidth="110" Command="{Binding OkCommand}"/>
+        </StackPanel>
+
+        <TextBlock DockPanel.Dock="Top" Text="Одна форма на весь батч — значення підставляться в усі документи"
+                   FontSize="11.5" TextWrapping="Wrap"
+                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,10"/>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding Tags}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Margin="0,0,0,10">
+                            <TextBlock Text="{Binding Tag}" FontSize="11.5"
+                                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

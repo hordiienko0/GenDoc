@@ -2,9 +2,13 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using GenDoc.Data;
 using GenDoc.Services;
+using GenDoc.ViewModels.Archive;
 using GenDoc.ViewModels.Audit;
+using GenDoc.ViewModels.Personnel;
+using GenDoc.ViewModels.Trash;
 using GenDoc.ViewModels.Generation;
 using GenDoc.ViewModels.Import;
 using GenDoc.ViewModels.Recipients;
@@ -20,12 +24,32 @@ public partial class MainViewModel : ObservableObject
 {
     private readonly IServiceProvider _serviceProvider;
 
+    private readonly ActiveIntakeState _activeIntakeState;
+    private readonly Services.Completeness.ICompletenessService _completenessService;
+    private NavigationItem? _completenessNavItem;
+
     public MainViewModel(
         IServiceProvider serviceProvider,
         ICurrentUserContext currentUserContext,
-        IDbContextFactory<AppDbContext> dbFactory)
+        IDbContextFactory<AppDbContext> dbFactory,
+        ActiveIntakeState activeIntakeState,
+        Services.Completeness.ICompletenessService completenessService)
     {
         _serviceProvider = serviceProvider;
+        _activeIntakeState = activeIntakeState;
+        _completenessService = completenessService;
+
+        WeakReferenceMessenger.Default.Register<MainViewModel, ActiveIntakeChangedMessage>(this,
+            static (recipient, message) =>
+            {
+                recipient.StatusBarIntakeText = recipient._activeIntakeState.StatusText;
+                recipient.RefreshCompletenessBadgeFireAndForget();
+            });
+        WeakReferenceMessenger.Default.Register<MainViewModel, MatrixChangedMessage>(this,
+            static (recipient, message) => recipient.RefreshCompletenessBadgeFireAndForget());
+        WeakReferenceMessenger.Default.Register<MainViewModel, CountsChangedMessage>(this,
+            static (recipient, message) => recipient.RefreshCompletenessBadgeFireAndForget());
+        _ = InitializeIntakeStateAsync();
         CurrentUserFullName = currentUserContext.CurrentUserFullName ?? string.Empty;
         OrganizationDisplayName = ReadOrganizationDisplayName(dbFactory);
 
@@ -38,16 +62,19 @@ public partial class MainViewModel : ObservableObject
         {
             new(new[]
             {
-                new NavigationItem("Особовий склад", () => _serviceProvider.GetRequiredService<RecipientsViewModel>()),
+                new NavigationItem("Особовий склад", () => _serviceProvider.GetRequiredService<PersonnelViewModel>()),
                 new NavigationItem("Імпорт з Excel", () => _serviceProvider.GetRequiredService<ImportViewModel>()),
                 new NavigationItem("Шаблони", () => _serviceProvider.GetRequiredService<TemplatesViewModel>()),
                 new NavigationItem("Генерація", () => _serviceProvider.GetRequiredService<GenerationViewModel>()),
+                new NavigationItem("Архів документів", () => _serviceProvider.GetRequiredService<ArchiveViewModel>()),
+                (_completenessNavItem = new NavigationItem("Комплектність",
+                    () => _serviceProvider.GetRequiredService<GenDoc.ViewModels.Completeness.CompletenessViewModel>())),
                 new NavigationItem("Кімнати", () => _serviceProvider.GetRequiredService<RoomsViewModel>()),
             }, showDividerAfter: true),
             new(new[]
             {
                 new NavigationItem("Журнал дій", () => _serviceProvider.GetRequiredService<AuditLogViewModel>()),
-                new NavigationItem("Кошик", () => new PlaceholderViewModel("Кошик")),
+                new NavigationItem("Кошик", () => _serviceProvider.GetRequiredService<TrashViewModel>()),
             }, showDividerAfter: true),
             new(new[]
             {
@@ -56,7 +83,7 @@ public partial class MainViewModel : ObservableObject
         };
 
         var firstItem = Groups.SelectMany(g => g.Items).First();
-        SelectItem(firstItem);
+        _ = SelectItemAsync(firstItem);
     }
 
     [ObservableProperty]
@@ -77,10 +104,30 @@ public partial class MainViewModel : ObservableObject
     public string StatusBarUserText { get; private set; } = string.Empty;
     public string StatusBarConnectionText { get; private set; } = string.Empty;
 
+    [ObservableProperty]
+    private string statusBarIntakeText = "Активного набору немає";
+
+    private async Task InitializeIntakeStateAsync()
+    {
+        await _activeIntakeState.RefreshAsync();
+        await RefreshCompletenessBadgeAsync();
+    }
+
+    private async Task RefreshCompletenessBadgeAsync()
+    {
+        if (_completenessNavItem is null) return;
+        _completenessNavItem.BadgeCount = await _completenessService.GetBadgeCountAsync();
+    }
+
+    private void RefreshCompletenessBadgeFireAndForget() => _ = RefreshCompletenessBadgeAsync();
+
     [RelayCommand]
-    private void SelectItem(NavigationItem? item)
+    private async Task SelectItemAsync(NavigationItem? item)
     {
         if (item is null || item == SelectedItem) return;
+
+        // Розділ із незбереженими змінами може заблокувати перехід.
+        if (CurrentContent is IGuardedSection guarded && !await guarded.TryLeaveAsync()) return;
 
         if (SelectedItem is not null) SelectedItem.IsActive = false;
         SelectedItem = item;

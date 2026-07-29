@@ -5,10 +5,11 @@ namespace GenDoc.ViewModels.Templates;
 
 public partial class DocxTemplateListItemViewModel : ObservableObject
 {
-    public DocxTemplateListItemViewModel(int id, string name, string originalFileName, DateTime uploadedAt, int tagCount)
+    public DocxTemplateListItemViewModel(int id, string name, string? shortName, string originalFileName, DateTime uploadedAt, int tagCount)
     {
         Id = id;
         Name = name;
+        shortNameEdit = shortName ?? string.Empty;
         OriginalFileName = originalFileName;
         UploadedAtDisplay = uploadedAt.ToString("dd.MM.yyyy");
         TagCount = tagCount;
@@ -19,6 +20,9 @@ public partial class DocxTemplateListItemViewModel : ObservableObject
     public string OriginalFileName { get; }
     public string UploadedAtDisplay { get; }
     public int TagCount { get; }
+
+    [ObservableProperty]
+    private string shortNameEdit;
 
     [ObservableProperty]
     private bool isMappingExpanded;

@@ -1,4 +1,6 @@
-﻿namespace GenDoc.Models
+﻿using GenDoc.Models.Enums;
+
+namespace GenDoc.Models
 {
     public class GenerationPackageTemplate
     {
@@ -11,5 +13,11 @@
         public Template? Template { get; set; }
 
         public int SortOrder { get; set; }
+
+        // Вимога для FitnessCategory = «придатний».
+        public TemplateRequirement RequirementRegular { get; set; } = TemplateRequirement.Required;
+
+        // Вимога для «обмежено придатний» і «непридатний».
+        public TemplateRequirement RequirementLimited { get; set; } = TemplateRequirement.Required;
     }
 }
