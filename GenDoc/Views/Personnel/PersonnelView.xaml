@@ -317,7 +317,9 @@
                                   MouseLeftButtonUp="PeopleGrid_MouseLeftButtonUp"
                                   Visibility="{Binding HasRows, Converter={StaticResource BoolToVisibility}}">
                             <DataGrid.Columns>
-                                <DataGridTemplateColumn Width="40" CanUserResize="False">
+                                <DataGridTemplateColumn Width="40" CanUserResize="False"
+                                                         CellStyle="{StaticResource CheckboxCellStyle}"
+                                                         HeaderStyle="{StaticResource CheckboxHeaderStyle}">
                                     <DataGridTemplateColumn.HeaderTemplate>
                                         <DataTemplate>
                                             <CheckBox IsThreeState="True" HorizontalAlignment="Center"

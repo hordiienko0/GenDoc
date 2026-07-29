@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GenDoc.Services;
@@ -11,11 +12,20 @@ namespace GenDoc.ViewModels.Rooms;
 public partial class RoomsViewModel : ObservableObject
 {
     private readonly IRoomService _roomService;
+    private readonly DispatcherTimer _assignSearchDebounceTimer;
     private List<RoomCardViewModel> _allRooms = new();
 
     public RoomsViewModel(IRoomService roomService)
     {
         _roomService = roomService;
+
+        _assignSearchDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+        _assignSearchDebounceTimer.Tick += (_, _) =>
+        {
+            _assignSearchDebounceTimer.Stop();
+            RunAssignSearch();
+        };
+
         Load();
     }
 
@@ -98,7 +108,11 @@ public partial class RoomsViewModel : ObservableObject
 
     partial void OnSearchTextChanged(string? value) => ApplyFilter();
 
-    partial void OnAssignSearchTextChanged(string value) => RunAssignSearch();
+    partial void OnAssignSearchTextChanged(string value)
+    {
+        _assignSearchDebounceTimer.Stop();
+        _assignSearchDebounceTimer.Start();
+    }
 
     private void Load()
     {

@@ -108,6 +108,8 @@ namespace GenDoc.ViewModels.Completeness
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(GenerateMissingLabel))]
+        [NotifyPropertyChangedFor(nameof(CanGenerateMissing))]
+        [NotifyCanExecuteChangedFor(nameof(GenerateMissingCommand))]
         private int missingRequiredCount;
 
         [ObservableProperty]
@@ -116,6 +118,8 @@ namespace GenDoc.ViewModels.Completeness
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(RegenerateStaleLabel))]
+        [NotifyPropertyChangedFor(nameof(CanRegenerateStale))]
+        [NotifyCanExecuteChangedFor(nameof(RegenerateStaleCommand))]
         private int staleCount;
 
         public string GenerateMissingLabel => $"Згенерувати все, чого бракує ({MissingRequiredCount})";
@@ -126,6 +130,7 @@ namespace GenDoc.ViewModels.Completeness
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(CanExportSelected))]
+        [NotifyCanExecuteChangedFor(nameof(ExportSelectedCommand))]
         private int checkedCount;
 
         public bool CanExportSelected => CheckedCount > 0;
@@ -278,8 +283,6 @@ namespace GenDoc.ViewModels.Completeness
             MissingRequiredCount = Rows.Sum(r => r.Cells.Count(c => c.IsMissingRequired));
             MissingOptionalCount = Rows.Sum(r => r.Cells.Count(c => c.IsMissingOptional));
             StaleCount = Rows.Sum(r => r.Cells.Count(c => c.IsStale));
-            OnPropertyChanged(nameof(CanGenerateMissing));
-            OnPropertyChanged(nameof(CanRegenerateStale));
 
             var requiredPresentTotal = Rows.Sum(r => r.RequiredPresent);
             var requiredTotal = Rows.Sum(r => r.RequiredTotal);

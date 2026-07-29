@@ -131,9 +131,10 @@
 
                 <Grid Grid.Row="1">
                     <DataGrid x:Name="MatrixGrid" AutoGenerateColumns="False" IsReadOnly="True"
-                              SelectionMode="Extended" SelectionUnit="Cell" CanUserSortColumns="False"
+                              CanUserSortColumns="False"
                               EnableRowVirtualization="True"
                               HeadersVisibility="Column"
+                              ScrollViewer.HorizontalScrollBarVisibility="Auto"
                               Visibility="{Binding HasRows, Converter={StaticResource BoolToVisibility}}"/>
 
                     <TextBlock Text="Створіть набір, щоб бачити комплектність" FontSize="13"

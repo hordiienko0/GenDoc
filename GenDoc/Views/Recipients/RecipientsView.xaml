@@ -44,7 +44,8 @@
                 </Button>
 
                 <Button x:Name="ExportButton" Content="Експорт" Style="{StaticResource SecondaryButtonStyle}"
-                        Margin="10,0,0,0" Click="ExportButton_Click">
+                        Margin="10,0,0,0" Click="ExportButton_Click"
+                        Tag="{Binding}">
                     <Button.ContextMenu>
                         <ContextMenu ItemsSource="{Binding ExportOptions}"
                                      Style="{StaticResource AppContextMenuStyle}">
@@ -52,7 +53,7 @@
                                 <Style TargetType="MenuItem" BasedOn="{StaticResource AppContextMenuItemStyle}">
                                     <Setter Property="Header" Value="{Binding Header}"/>
                                     <Setter Property="Command"
-                                            Value="{Binding DataContext.ExportOptionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                            Value="{Binding PlacementTarget.Tag.ExportOptionCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                     <Setter Property="CommandParameter" Value="{Binding}"/>
                                 </Style>
                             </ContextMenu.ItemContainerStyle>
@@ -72,7 +73,8 @@
                           Visibility="{Binding HasResults, Converter={StaticResource BoolToVisibility}}"
                           Sorting="DataGrid_Sorting" PreviewKeyDown="DataGrid_PreviewKeyDown">
                     <DataGrid.Columns>
-                        <DataGridTemplateColumn Width="40" CanUserResize="False" CanUserSort="False">
+                        <DataGridTemplateColumn Width="40" CanUserResize="False" CanUserSort="False"
+                                                 CellStyle="{StaticResource CheckboxCellStyle}">
                             <DataGridTemplateColumn.HeaderTemplate>
                                 <DataTemplate>
                                     <TextBlock Text=""/>

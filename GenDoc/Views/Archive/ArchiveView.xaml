@@ -151,7 +151,9 @@
                             </Style>
                         </DataGrid.RowStyle>
                         <DataGrid.Columns>
-                            <DataGridTemplateColumn Width="36" CanUserResize="False">
+                            <DataGridTemplateColumn Width="36" CanUserResize="False"
+                                                     CellStyle="{StaticResource CheckboxCellStyle}"
+                                                     HeaderStyle="{StaticResource CheckboxHeaderStyle}">
                                 <DataGridTemplateColumn.HeaderTemplate>
                                     <DataTemplate>
                                         <CheckBox IsThreeState="True" HorizontalAlignment="Center"

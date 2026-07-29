@@ -82,14 +82,16 @@ public partial class CompletenessView : UserControl
             Width = 36,
             CanUserResize = false,
             HeaderTemplate = (DataTemplate)Resources["CheckBoxHeaderTemplate"],
-            CellTemplate = (DataTemplate)Resources["CheckBoxCellTemplate"]
+            CellTemplate = (DataTemplate)Resources["CheckBoxCellTemplate"],
+            CellStyle = (Style)Application.Current.Resources["CheckboxCellStyle"],
+            HeaderStyle = (Style)Application.Current.Resources["CheckboxHeaderStyle"]
         };
         MatrixGrid.Columns.Add(checkboxColumn);
 
         var personColumn = new DataGridTemplateColumn
         {
             Header = "ОСОБА",
-            Width = new DataGridLength(1.6, DataGridLengthUnitType.Star),
+            Width = new DataGridLength(180),
             MinWidth = 160,
             CellTemplate = (DataTemplate)Resources["PersonCellTemplate"]
         };
@@ -118,7 +120,7 @@ public partial class CompletenessView : UserControl
             var column = new DataGridTemplateColumn
             {
                 Header = headerText,
-                Width = new DataGridLength(1, DataGridLengthUnitType.Star),
+                Width = new DataGridLength(96),
                 MinWidth = 96,
                 CellTemplate = cellTemplate
             };
@@ -128,7 +130,7 @@ public partial class CompletenessView : UserControl
         var readinessColumn = new DataGridTemplateColumn
         {
             Header = "ГОТОВНІСТЬ",
-            Width = new DataGridLength(1.1, DataGridLengthUnitType.Star),
+            Width = new DataGridLength(130),
             MinWidth = 110,
             CellTemplate = (DataTemplate)Resources["ReadinessCellTemplate"]
         };

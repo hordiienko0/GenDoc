@@ -126,6 +126,7 @@ namespace GenDoc.ViewModels.Completeness
             await ReloadAvailableTemplatesAsync();
             RefreshPreview();
             Validate();
+            SaveCommand.NotifyCanExecuteChanged();
         }
 
         [RelayCommand]
@@ -145,6 +146,7 @@ namespace GenDoc.ViewModels.Completeness
             _ = ReloadAvailableTemplatesAsync();
             RefreshPreview();
             Validate();
+            SaveCommand.NotifyCanExecuteChanged();
         }
 
         [RelayCommand]
