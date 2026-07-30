@@ -1,0 +1,206 @@
+<UserControl x:Class="GenDoc.Views.Staff.StaffView"
+             x:Name="StaffRoot"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Loaded="StaffView_Loaded">
+
+    <UserControl.Resources>
+        <Style x:Key="DocsCountHeaderStyle" TargetType="DataGridColumnHeader" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+            <Setter Property="HorizontalContentAlignment" Value="Right"/>
+        </Style>
+        <Style x:Key="DocsCountCellStyle" TargetType="TextBlock">
+            <Setter Property="TextAlignment" Value="Right"/>
+        </Style>
+        <Style x:Key="QuickActionCardStyle" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
+            <Setter Property="BorderThickness" Value="1,1,1,1"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+        </Style>
+        <Style x:Key="StateChipBorderStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource SkySoftBrush}"/>
+            <Setter Property="Padding" Value="6,2"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding CurrentState}" Value="BusinessTrip">
+                    <Setter Property="Background" Value="{StaticResource WarningSoftBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding CurrentState}" Value="Leave">
+                    <Setter Property="Background" Value="{StaticResource AccentSoftBrush}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="StateChipTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10.5"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{StaticResource NavyBrush}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding CurrentState}" Value="BusinessTrip">
+                    <Setter Property="Foreground" Value="{StaticResource WarnTextBrush}"/>
+                </DataTrigger>
+                <DataTrigger Binding="{Binding CurrentState}" Value="Leave">
+                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="{StaticResource BackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Шапка -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,14">
+            <TextBlock Text="Постійний склад" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock Text="Офіцери, прапорщики та цивільний персонал — документи поза наборами" FontSize="12"
+                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <!-- Фільтри -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
+            <ComboBox Width="160" Margin="0,0,8,0" ItemsSource="{Binding UnitOptions}"
+                      SelectedItem="{Binding SelectedUnit}" DisplayMemberPath="Label"/>
+            <ComboBox Width="140" Margin="0,0,8,0" ItemsSource="{Binding StateOptions}"
+                      SelectedItem="{Binding SelectedState}" DisplayMemberPath="Label"/>
+            <TextBox Width="220" Tag="Пошук за ПІБ або посадою…"
+                     Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
+            <Button Content="+ Додати" Command="{Binding AddPersonCommand}" Margin="8,0,0,0"/>
+        </StackPanel>
+
+        <!-- Панель вибору -->
+        <Border Grid.Row="2" Background="{StaticResource AccentSoftBrush}" BorderBrush="{StaticResource SkyBrush}"
+                BorderThickness="1" Padding="12,7" Margin="0,0,0,10"
+                Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding SelectedCount, StringFormat='Обрано {0}'}" FontWeight="Bold" FontSize="12.5"
+                           VerticalAlignment="Center" Margin="0,0,16,0"/>
+                <Button Content="Оформити відрядження" Style="{StaticResource TextLinkButtonStyle}"
+                        Foreground="{StaticResource AccentBrush}" Command="{Binding OpenTripCommand}" Margin="0,0,16,0"/>
+                <Button Content="Оформити відпустку" Style="{StaticResource TextLinkButtonStyle}"
+                        Foreground="{StaticResource AccentBrush}" Command="{Binding OpenLeaveCommand}" Margin="0,0,16,0"/>
+                <Button Content="Зняти вибір" Style="{StaticResource TextLinkButtonStyle}"
+                        Foreground="{StaticResource TextSecondaryBrush}" Command="{Binding ClearSelectionCommand}"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Таблиця + бічна панель швидкого оформлення -->
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1">
+                <Grid>
+                    <TextBlock Text="Немає людей за обраними фільтрами" Foreground="{StaticResource TextSecondaryBrush}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>
+
+                    <DataGrid x:Name="StaffGrid" ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True"
+                              CanUserSortColumns="False" EnableRowVirtualization="True"
+                              Visibility="{Binding HasRows, Converter={StaticResource BoolToVisibility}}">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Width="36" CanUserResize="False"
+                                                     CellStyle="{StaticResource CheckboxCellStyle}">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <DataGridTextColumn Header="ПІБ" Binding="{Binding FullName}" Width="1.9*"/>
+                            <DataGridTextColumn Header="Звання" Binding="{Binding Rank}" Width="1.1*"/>
+                            <DataGridTextColumn Header="Посада" Binding="{Binding Position}" Width="1.6*"/>
+
+                            <DataGridTemplateColumn Header="Стан" Width="130">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Style="{StaticResource StateChipBorderStyle}" HorizontalAlignment="Left">
+                                            <TextBlock Text="{Binding StateText}" Style="{StaticResource StateChipTextStyle}"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <DataGridTextColumn Header="Документів" Binding="{Binding DocsCount}" Width="84"
+                                                 HeaderStyle="{StaticResource DocsCountHeaderStyle}">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource DocsCountCellStyle}"/>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Border>
+
+            <!-- Швидке оформлення -->
+            <Border Grid.Column="1" Width="296" Background="{StaticResource PanelBrush}"
+                    BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,1,1" Margin="-1,0,0,0">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Text="ШВИДКЕ ОФОРМЛЕННЯ" FontSize="11" FontWeight="Bold"
+                               Foreground="{StaticResource TextSecondaryBrush}" Padding="13,9"
+                               Background="{StaticResource BackgroundBrush}"/>
+
+                    <StackPanel DockPanel.Dock="Bottom" Margin="13">
+                        <Border Padding="9" Background="{StaticResource AccentBrush}" Cursor="Hand">
+                            <Border.InputBindings>
+                                <MouseBinding MouseAction="LeftClick" Command="{Binding OpenTripCommand}"/>
+                            </Border.InputBindings>
+                            <TextBlock Text="{Binding SelectedCount, StringFormat='Оформити для обраних ({0})'}"
+                                       Foreground="White" FontWeight="Bold" FontSize="12.5" HorizontalAlignment="Center"/>
+                        </Border>
+                        <TextBlock Text="Документи потраплять в архів → «Постійний склад»" FontSize="11"
+                                   Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"
+                                   HorizontalAlignment="Center" TextAlignment="Center" Margin="0,6,0,0"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="13">
+                        <Border Style="{StaticResource QuickActionCardStyle}" Margin="0,0,0,8" Cursor="Hand">
+                            <Border.InputBindings>
+                                <MouseBinding MouseAction="LeftClick" Command="{Binding OpenTripCommand}"/>
+                            </Border.InputBindings>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="3"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" Background="{StaticResource AccentBrush}" Margin="-12,-10,0,-10"/>
+                                <StackPanel Grid.Column="1" Margin="9,0,0,0">
+                                    <TextBlock Text="Оформити відрядження" FontSize="12.5" FontWeight="Bold"
+                                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                                    <TextBlock Text="Посвідчення, завдання, звіт" FontSize="11.5"
+                                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <Border Style="{StaticResource QuickActionCardStyle}" Cursor="Hand">
+                            <Border.InputBindings>
+                                <MouseBinding MouseAction="LeftClick" Command="{Binding OpenLeaveCommand}"/>
+                            </Border.InputBindings>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="3"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" Background="{StaticResource WarningBrush}" Margin="-12,-10,0,-10"/>
+                                <StackPanel Grid.Column="1" Margin="9,0,0,0">
+                                    <TextBlock Text="Оформити відпустку" FontSize="12.5" FontWeight="Bold"
+                                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                                    <TextBlock Text="Рапорт, довідка про використані дні" FontSize="11.5"
+                                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

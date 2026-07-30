@@ -78,6 +78,7 @@ public partial class MainViewModel : ObservableObject
             new(new[]
             {
                 new NavigationItem(PersonnelSectionTitle, () => _serviceProvider.GetRequiredService<PersonnelViewModel>()),
+                new NavigationItem("Постійний склад", () => _serviceProvider.GetRequiredService<GenDoc.ViewModels.Staff.StaffViewModel>()),
                 (_intakesNavItem = new NavigationItem(IntakesSectionTitle,
                     () => _serviceProvider.GetRequiredService<IntakesViewModel>())),
                 new NavigationItem("Імпорт з Excel", () => _serviceProvider.GetRequiredService<ImportViewModel>()),

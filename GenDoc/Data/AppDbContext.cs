@@ -36,6 +36,7 @@ namespace GenDoc.Data
         public DbSet<SchemaVersion> SchemaVersions => Set<SchemaVersion>();
         public DbSet<ExportTemplate> ExportTemplates => Set<ExportTemplate>();
         public DbSet<ExportTemplateColumnMapping> ExportTemplateColumnMappings => Set<ExportTemplateColumnMapping>();
+        public DbSet<StaffEvent> StaffEvents => Set<StaffEvent>();
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {

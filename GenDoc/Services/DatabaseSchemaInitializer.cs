@@ -6,7 +6,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 8;
+    private const int CurrentSchemaVersion = 9;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -191,6 +191,17 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                     AppliedAt = DateTime.Now,
                     Description = "Набори: закриття/повторне відкриття, дефолтний пакет"
                 });
+                currentVersion = 8;
+            }
+
+            if (currentVersion < 9)
+            {
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 9,
+                    AppliedAt = DateTime.Now,
+                    Description = "Постійний склад: відрядження/відпустки"
+                });
             }
         }
 
@@ -213,6 +224,8 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         AddMissingColumns(db, "AppSettings", AppSettingsColumnsV7);
 
         AddMissingColumns(db, "Intakes", IntakeColumnsV8);
+
+        EnsureStaffTables(db);
 
         // Ідемпотентно (IF NOT EXISTS) — самовідновлюється незалежно від SchemaVersion,
         // так само як EnsureExportTemplateTables. Обгорнуто в try/catch: якщо в
@@ -534,6 +547,45 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                 using var indexCommand = connection.CreateCommand();
                 indexCommand.CommandText =
                     """CREATE INDEX "IX_ExportTemplateColumnMappings_ExportTemplateId" ON "ExportTemplateColumnMappings" ("ExportTemplateId");""";
+                indexCommand.ExecuteNonQuery();
+            }
+        }
+        finally
+        {
+            if (wasClosed) connection.Close();
+        }
+    }
+
+    private static void EnsureStaffTables(AppDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        var wasClosed = connection.State != System.Data.ConnectionState.Open;
+        if (wasClosed) connection.Open();
+
+        try
+        {
+            if (!TableExists(connection, "StaffEvents"))
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    CREATE TABLE "StaffEvents" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_StaffEvents" PRIMARY KEY AUTOINCREMENT,
+                        "RecipientId" INTEGER NOT NULL,
+                        "Kind" INTEGER NOT NULL,
+                        "DateStart" TEXT NOT NULL,
+                        "DateEnd" TEXT NOT NULL,
+                        "Note" TEXT NULL,
+                        "CreatedAt" TEXT NOT NULL,
+                        "CreatedBy" TEXT NULL,
+                        CONSTRAINT "FK_StaffEvents_Recipients_RecipientId"
+                            FOREIGN KEY ("RecipientId") REFERENCES "Recipients" ("Id") ON DELETE CASCADE
+                    );
+                    """;
+                command.ExecuteNonQuery();
+
+                using var indexCommand = connection.CreateCommand();
+                indexCommand.CommandText =
+                    """CREATE INDEX "IX_StaffEvents_RecipientId" ON "StaffEvents" ("RecipientId");""";
                 indexCommand.ExecuteNonQuery();
             }
         }

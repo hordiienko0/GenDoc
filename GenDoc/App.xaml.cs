@@ -9,6 +9,7 @@ using GenDoc.Services.OrgTree;
 using GenDoc.Services.Personnel;
 using GenDoc.Services.Recipients;
 using GenDoc.Services.Rooms;
+using GenDoc.Services.Staff;
 using GenDoc.Services.Templates;
 using GenDoc.ViewModels.Audit;
 using GenDoc.ViewModels.Generation;
@@ -81,6 +82,9 @@ namespace GenDoc
             services.AddTransient<ViewModels.Completeness.PackageRequirementsViewModel>();
             services.AddTransient<IntakesViewModel>();
             services.AddTransient<CloseIntakeDialogViewModel>();
+            services.AddTransient<IStaffService, StaffService>();
+            services.AddTransient<ViewModels.Staff.StaffViewModel>();
+            services.AddTransient<ViewModels.Staff.StaffDocDialogViewModel>();
 
             services.AddTransient<LoginViewModel>();
             services.AddTransient<LoginWindow>();

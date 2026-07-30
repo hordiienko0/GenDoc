@@ -26,6 +26,8 @@
         xmlns:completenessView="clr-namespace:GenDoc.Views.Completeness"
         xmlns:intakesVm="clr-namespace:GenDoc.ViewModels.Intakes"
         xmlns:intakesView="clr-namespace:GenDoc.Views.Intakes"
+        xmlns:staffVm="clr-namespace:GenDoc.ViewModels.Staff"
+        xmlns:staffView="clr-namespace:GenDoc.Views.Staff"
         Style="{StaticResource {x:Type Window}}"
         Title="GenDoc — Облік особового складу" Height="720" Width="1180"
         MinWidth="960" MinHeight="600"
@@ -78,6 +80,9 @@
         </DataTemplate>
         <DataTemplate DataType="{x:Type intakesVm:IntakesViewModel}">
             <intakesView:IntakesView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type staffVm:StaffViewModel}">
+            <staffView:StaffView/>
         </DataTemplate>
 
         <Style x:Key="WindowButtonStyle" TargetType="Button">

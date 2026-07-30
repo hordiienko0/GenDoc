@@ -4,11 +4,13 @@ using GenDoc.ViewModels.Completeness;
 using GenDoc.ViewModels.Intakes;
 using GenDoc.ViewModels.Personnel;
 using GenDoc.ViewModels.Recipients;
+using GenDoc.ViewModels.Staff;
 using GenDoc.Views.Archive;
 using GenDoc.Views.Completeness;
 using GenDoc.Views.Intakes;
 using GenDoc.Views.Personnel;
 using GenDoc.Views.Recipients;
+using GenDoc.Views.Staff;
 
 namespace GenDoc.Services;
 
@@ -25,6 +27,7 @@ public class DialogService : IDialogService
         [typeof(VersionHistoryViewModel)] = typeof(VersionHistoryWindow),
         [typeof(PackageRequirementsViewModel)] = typeof(PackageRequirementsWindow),
         [typeof(CloseIntakeDialogViewModel)] = typeof(CloseIntakeDialog),
+        [typeof(StaffDocDialogViewModel)] = typeof(StaffDocDialog),
     };
 
     public bool? ShowDialog<TViewModel>(TViewModel viewModel, Window? owner = null)
