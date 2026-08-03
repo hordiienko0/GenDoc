@@ -1,8 +1,10 @@
 using System.IO;
+using System.Text.RegularExpressions;
 using ClosedXML.Excel;
 using GenDoc.Data;
 using GenDoc.Models;
 using GenDoc.Models.Enums;
+using GenDoc.Services.Templates;
 using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.Services
@@ -10,6 +12,8 @@ namespace GenDoc.Services
     public class ExportTemplateService : IExportTemplateService
     {
         public const string BuiltInTemplateName = "Анкетні дані (прикомандировані)";
+
+        private static readonly Regex PlaceholderRegex = new(@"\{\{[^{}]+\}\}", RegexOptions.Compiled);
 
         private static readonly string[] BuiltInHeaders =
         {
@@ -130,27 +134,41 @@ namespace GenDoc.Services
                 .ToList();
         }
 
-        public List<(int Id, string Name, string OriginalFileName, DateTime UploadedAt, bool IsBuiltIn)> GetTemplateListItems()
+        public List<(int Id, string Name, string OriginalFileName, DateTime UploadedAt, bool IsBuiltIn, bool UsesPlaceholders, int TagCount)> GetTemplateListItems()
         {
             using var db = _dbFactory.CreateDbContext();
             return db.ExportTemplates
                 .OrderByDescending(t => t.IsBuiltIn)
                 .ThenBy(t => t.Name)
-                .Select(t => new { t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.IsBuiltIn })
+                .Select(t => new
+                {
+                    t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.IsBuiltIn, t.UsesPlaceholders,
+                    TagCount = t.ColumnMappings.Count(m => m.PlaceholderTag != "")
+                })
                 .AsEnumerable()
-                .Select(t => (t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.IsBuiltIn))
+                .Select(t => (t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.IsBuiltIn, t.UsesPlaceholders, t.TagCount))
                 .ToList();
         }
 
-        public List<(int ColumnIndex, string HeaderText, string FieldKey)> GetMappings(int templateId)
+        public List<(int Id, int ColumnIndex, string HeaderText, string FieldKey, string PlaceholderTag, MappingSourceType SourceType)> GetMappings(int templateId)
         {
             using var db = _dbFactory.CreateDbContext();
             return db.ExportTemplateColumnMappings
                 .Where(m => m.ExportTemplateId == templateId)
                 .OrderBy(m => m.ColumnIndex)
-                .Select(m => new { m.ColumnIndex, m.HeaderText, m.FieldKey })
+                .Select(m => new { m.Id, m.ColumnIndex, m.HeaderText, m.FieldKey, m.PlaceholderTag, m.SourceType })
                 .AsEnumerable()
-                .Select(m => (m.ColumnIndex, m.HeaderText, m.FieldKey))
+                .Select(m => (m.Id, m.ColumnIndex, m.HeaderText, m.FieldKey, m.PlaceholderTag, m.SourceType))
+                .ToList();
+        }
+
+        public List<string> GetManualTags(int templateId)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            return db.ExportTemplateColumnMappings
+                .Where(m => m.ExportTemplateId == templateId && m.SourceType == MappingSourceType.Manual)
+                .Select(m => m.PlaceholderTag)
+                .Distinct()
                 .ToList();
         }
 
@@ -175,6 +193,28 @@ namespace GenDoc.Services
             db.SaveChanges();
         }
 
+        public void SavePlaceholderMappings(int templateId, List<(int Id, MappingSourceType SourceType, string? FieldKey)> mappings)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var existing = db.ExportTemplateColumnMappings.Where(m => m.ExportTemplateId == templateId).ToList();
+
+            var oldSnapshot = string.Join(", ", existing.OrderBy(m => m.ColumnIndex).Select(m => $"{m.PlaceholderTag}:{m.SourceType}/{m.FieldKey}"));
+
+            foreach (var (id, sourceType, fieldKey) in mappings)
+            {
+                var mapping = existing.FirstOrDefault(m => m.Id == id);
+                if (mapping is null) continue;
+
+                mapping.SourceType = sourceType;
+                mapping.FieldKey = sourceType == MappingSourceType.Manual ? string.Empty : fieldKey ?? string.Empty;
+            }
+
+            var newSnapshot = string.Join(", ", existing.OrderBy(m => m.ColumnIndex).Select(m => $"{m.PlaceholderTag}:{m.SourceType}/{m.FieldKey}"));
+
+            _auditLogService.LogUpdate(db, "ExportTemplate", templateId, oldSnapshot, newSnapshot, "Оновлено мапінг тегів");
+            db.SaveChanges();
+        }
+
         public void UploadTemplate(string filePath)
         {
             using var db = _dbFactory.CreateDbContext();
@@ -192,32 +232,134 @@ namespace GenDoc.Services
             {
                 var sheet = workbook.Worksheets.First();
                 var usedRange = sheet.RangeUsed();
-
-                if (usedRange is not null)
+                if (usedRange is null)
                 {
-                    var headerRow = usedRange.FirstRow();
-                    var columnCount = usedRange.ColumnCount();
-                    var noteAssigned = false;
+                    db.ExportTemplates.Add(template);
+                    db.SaveChanges();
+                    _auditLogService.LogCreate(db, "ExportTemplate", template.Id, template.Name, $"Завантажено файл {template.OriginalFileName}");
+                    db.SaveChanges();
+                    return;
+                }
 
-                    for (var c = 1; c <= columnCount; c++)
-                    {
-                        var header = headerRow.Cell(c).GetString().Trim();
-                        var fieldKey = AutoMapExportHeader(header, ref noteAssigned);
-                        template.ColumnMappings.Add(new ExportTemplateColumnMapping
-                        {
-                            ColumnIndex = c,
-                            HeaderText = header,
-                            FieldKey = fieldKey.ToString()
-                        });
-                    }
+                var templateRowIndex = FindTemplateRow(usedRange);
+
+                if (templateRowIndex is null)
+                {
+                    BuildHeaderRowMappings(template, usedRange);
+                }
+                else
+                {
+                    template.UsesPlaceholders = true;
+                    template.TemplateRowIndex = templateRowIndex.Value;
+                    BuildPlaceholderMappings(template, usedRange, templateRowIndex.Value);
                 }
             }
 
             db.ExportTemplates.Add(template);
             db.SaveChanges();
 
-            _auditLogService.LogCreate(db, "ExportTemplate", template.Id, template.Name, $"Завантажено файл {template.OriginalFileName}");
+            _auditLogService.LogCreate(db, "ExportTemplate", template.Id, template.Name,
+                $"Завантажено файл {template.OriginalFileName}" + (template.UsesPlaceholders ? $", рядок-шаблон {template.TemplateRowIndex}" : string.Empty));
             db.SaveChanges();
+        }
+
+        // Рядок-шаблон — той, де знайдено більше одного різного тегу; якщо теги
+        // трапляються лише в одному рядку взагалі (навіть по одному на клітинку),
+        // цей єдиний рядок і є шаблонним. Немає жодного {{тегу}} — не placeholder-шаблон.
+        private static int? FindTemplateRow(IXLRange usedRange)
+        {
+            var tagsByRow = new SortedDictionary<int, HashSet<string>>();
+
+            foreach (var cell in usedRange.CellsUsed())
+            {
+                var text = cell.GetString();
+                if (!text.Contains("{{")) continue;
+
+                foreach (Match match in PlaceholderRegex.Matches(text))
+                {
+                    var row = cell.Address.RowNumber;
+                    if (!tagsByRow.TryGetValue(row, out var set))
+                    {
+                        set = new HashSet<string>(StringComparer.Ordinal);
+                        tagsByRow[row] = set;
+                    }
+                    set.Add(match.Value);
+                }
+            }
+
+            if (tagsByRow.Count == 0) return null;
+
+            var multiTagRow = tagsByRow.FirstOrDefault(kv => kv.Value.Count > 1);
+            if (multiTagRow.Value is not null) return multiTagRow.Key;
+
+            return tagsByRow.Keys.First();
+        }
+
+        private static void BuildPlaceholderMappings(ExportTemplate template, IXLRange usedRange, int templateRowIndex)
+        {
+            var outsideTags = new HashSet<string>(StringComparer.Ordinal);
+
+            foreach (var cell in usedRange.CellsUsed())
+            {
+                var text = cell.GetString();
+                if (!text.Contains("{{")) continue;
+
+                var row = cell.Address.RowNumber;
+
+                foreach (Match match in PlaceholderRegex.Matches(text))
+                {
+                    var tag = match.Value;
+
+                    if (row == templateRowIndex)
+                    {
+                        var (sourceType, fieldName) = PlaceholderTagMaps.Classify(tag);
+                        template.ColumnMappings.Add(new ExportTemplateColumnMapping
+                        {
+                            ColumnIndex = cell.Address.ColumnNumber,
+                            HeaderText = string.Empty,
+                            FieldKey = fieldName ?? string.Empty,
+                            PlaceholderTag = tag,
+                            SourceType = sourceType
+                        });
+                    }
+                    else
+                    {
+                        outsideTags.Add(tag);
+                    }
+                }
+            }
+
+            foreach (var tag in outsideTags)
+            {
+                var (sourceType, fieldName) = PlaceholderTagMaps.Classify(tag);
+                template.ColumnMappings.Add(new ExportTemplateColumnMapping
+                {
+                    ColumnIndex = 0,
+                    HeaderText = string.Empty,
+                    FieldKey = fieldName ?? string.Empty,
+                    PlaceholderTag = tag,
+                    SourceType = sourceType
+                });
+            }
+        }
+
+        private static void BuildHeaderRowMappings(ExportTemplate template, IXLRange usedRange)
+        {
+            var headerRow = usedRange.FirstRow();
+            var columnCount = usedRange.ColumnCount();
+            var noteAssigned = false;
+
+            for (var c = 1; c <= columnCount; c++)
+            {
+                var header = headerRow.Cell(c).GetString().Trim();
+                var fieldKey = AutoMapExportHeader(header, ref noteAssigned);
+                template.ColumnMappings.Add(new ExportTemplateColumnMapping
+                {
+                    ColumnIndex = c,
+                    HeaderText = header,
+                    FieldKey = fieldKey.ToString()
+                });
+            }
         }
 
         public void Delete(int templateId)

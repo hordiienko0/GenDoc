@@ -8,6 +8,7 @@ using CommunityToolkit.Mvvm.Input;
 using GenDoc.Models;
 using GenDoc.Services;
 using GenDoc.Services.Recipients;
+using GenDoc.ViewModels.Archive;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 
@@ -192,6 +193,15 @@ namespace GenDoc.ViewModels.Recipients
                 return;
             }
 
+            var manualTags = _exportTemplateService.GetManualTags(option.TemplateId.Value);
+            var manualValues = new Dictionary<string, string>();
+            if (manualTags.Count > 0)
+            {
+                var manualDialog = new ManualValuesDialogViewModel(manualTags);
+                if (_dialogService.ShowDialog(manualDialog, Application.Current.MainWindow) != true) return;
+                manualValues = manualDialog.GetValues();
+            }
+
             var dialog = new SaveFileDialog
             {
                 FileName = option.IsBuiltIn ? $"анкетні_дані_{DateTime.Now:ddMMyyyy}.xlsx" : $"{option.Header}.xlsx",
@@ -201,13 +211,15 @@ namespace GenDoc.ViewModels.Recipients
             if (dialog.ShowDialog() != true) return;
 
             var items = _recipientService.SearchEntities(SearchText, SortColumn, SortDescending);
-            var result = await _exportService.ExportByTemplateAsync(option.TemplateId.Value, items, dialog.FileName);
+            var result = await _exportService.ExportByTemplateAsync(option.TemplateId.Value, items, manualValues, dialog.FileName);
 
             if (result.Success)
             {
-                MessageBox.Show(
-                    $"Експортовано {result.RowCount} записів у файл:\n{result.FilePath}",
-                    "Експорт завершено", MessageBoxButton.OK, MessageBoxImage.Information);
+                var message = $"Експортовано {result.RowCount} записів у файл:\n{result.FilePath}";
+                if (result.UnfilledTags is { Count: > 0 } unfilled)
+                    message += $"\n\nНе заповнено теги: {string.Join(", ", unfilled)}";
+
+                MessageBox.Show(message, "Експорт завершено", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             else
             {

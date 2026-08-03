@@ -107,5 +107,21 @@ namespace GenDoc.Services.Staff
                 }
             }
         }
+
+        public async Task DeleteManyAsync(IReadOnlyList<int> recipientIds)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var recipients = await db.Recipients.Where(r => recipientIds.Contains(r.Id)).ToListAsync();
+
+            foreach (var r in recipients)
+            {
+                var snapshot = $"{r.LastName} {r.FirstName} {r.MiddleName} · {r.Rank} · {r.Position}".Trim();
+                r.DeletedAt = DateTime.Now;
+                r.DeletedBy = _currentUserContext.CurrentUserFullName;
+                _auditLogService.LogDelete(db, "Recipient", r.Id, snapshot);
+            }
+
+            await db.SaveChangesAsync();
+        }
     }
 }

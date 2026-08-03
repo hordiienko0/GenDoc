@@ -12,6 +12,7 @@ namespace GenDoc.Models
         public string? DeletedBy { get; set; }
 
         public ICollection<GenerationPackageTemplate> Templates { get; set; } = new List<GenerationPackageTemplate>();
+        public ICollection<GenerationPackageExportTemplate> ExportTemplates { get; set; } = new List<GenerationPackageExportTemplate>();
         public ICollection<GenerationPackageRun> Runs { get; set; } = new List<GenerationPackageRun>();
     }
 }

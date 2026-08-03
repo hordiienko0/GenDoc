@@ -67,6 +67,7 @@ namespace GenDoc
             services.AddTransient<ITemplateService, TemplateService>();
             services.AddTransient<IDocumentGenerationService, DocumentGenerationService>();
             services.AddTransient<IGenerationService, GenerationService>();
+            services.AddSingleton<IXlsxGenerationService, XlsxGenerationService>();
             services.AddTransient<IRoomService, RoomService>();
             services.AddTransient<IOrgTreeService, OrgTreeService>();
             services.AddTransient<ICountService, CountService>();

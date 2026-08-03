@@ -69,6 +69,7 @@ namespace GenDoc.ViewModels.Staff
         [NotifyPropertyChangedFor(nameof(HasSelection))]
         [NotifyCanExecuteChangedFor(nameof(OpenTripCommand))]
         [NotifyCanExecuteChangedFor(nameof(OpenLeaveCommand))]
+        [NotifyCanExecuteChangedFor(nameof(DeleteSelectedCommand))]
         private int selectedCount;
 
         public bool HasSelection => SelectedCount > 0;
@@ -149,6 +150,22 @@ namespace GenDoc.ViewModels.Staff
         private void ClearSelection()
         {
             foreach (var row in Rows) row.IsChecked = false;
+        }
+
+        [RelayCommand(CanExecute = nameof(HasSelection))]
+        private async Task DeleteSelectedAsync()
+        {
+            var selected = Rows.Where(r => r.IsChecked).ToList();
+            if (selected.Count == 0) return;
+
+            var result = MessageBox.Show(
+                $"Видалити {selected.Count} записів до кошика?",
+                "Підтвердження видалення",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (result != MessageBoxResult.Yes) return;
+
+            await _staffService.DeleteManyAsync(selected.Select(r => r.Id).ToList());
+            await RefreshAsync();
         }
 
         [RelayCommand]

@@ -6,7 +6,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 9;
+    private const int CurrentSchemaVersion = 11;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -74,6 +74,21 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     {
         ("DateClosed", "TEXT"), ("ClosedBy", "TEXT"),
         ("StatusIsPinned", "INTEGER NOT NULL DEFAULT 0"), ("DefaultPackageId", "INTEGER")
+    };
+
+    private static readonly (string Name, string Type)[] ExportTemplateColumnsV10 =
+    {
+        ("TemplateRowIndex", "INTEGER NOT NULL DEFAULT 2"), ("UsesPlaceholders", "INTEGER NOT NULL DEFAULT 0")
+    };
+
+    private static readonly (string Name, string Type)[] ExportTemplateColumnMappingColumnsV10 =
+    {
+        ("PlaceholderTag", "TEXT NOT NULL DEFAULT ''"), ("SourceType", "INTEGER NOT NULL DEFAULT 0")
+    };
+
+    private static readonly (string Name, string Type)[] OrganizationSettingsColumnsV10 =
+    {
+        ("CommanderPosition", "TEXT"), ("UnitFullName", "TEXT")
     };
 
     private readonly IDbContextFactory<AppDbContext> _dbFactory;
@@ -202,6 +217,34 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                     AppliedAt = DateTime.Now,
                     Description = "Постійний склад: відрядження/відпустки"
                 });
+                currentVersion = 9;
+            }
+
+            if (currentVersion < 10)
+            {
+                AddMissingColumns(db, "ExportTemplates", ExportTemplateColumnsV10);
+                AddMissingColumns(db, "ExportTemplateColumnMappings", ExportTemplateColumnMappingColumnsV10);
+                AddMissingColumns(db, "OrganizationSettings", OrganizationSettingsColumnsV10);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 10,
+                    AppliedAt = DateTime.Now,
+                    Description = "Експорт за тегами: рядок-шаблон XLSX, посада/повна назва частини"
+                });
+                currentVersion = 10;
+            }
+
+            if (currentVersion < 11)
+            {
+                EnsureGroupDocumentTables(db);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 11,
+                    AppliedAt = DateTime.Now,
+                    Description = "XLSX-шаблони у пакетах генерації: групові документи, фільтр придатності"
+                });
             }
         }
 
@@ -227,6 +270,12 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 
         EnsureStaffTables(db);
 
+        AddMissingColumns(db, "ExportTemplates", ExportTemplateColumnsV10);
+        AddMissingColumns(db, "ExportTemplateColumnMappings", ExportTemplateColumnMappingColumnsV10);
+        AddMissingColumns(db, "OrganizationSettings", OrganizationSettingsColumnsV10);
+
+        EnsureGroupDocumentTables(db);
+
         // Ідемпотентно (IF NOT EXISTS) — самовідновлюється незалежно від SchemaVersion,
         // так само як EnsureExportTemplateTables. Обгорнуто в try/catch: якщо в
         // існуючих даних вже є дублікати (Building, Number), унікальний індекс
@@ -238,6 +287,8 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         // не-nullable властивість моделі, EF падає при читанні. На цьому етапі
         // колонка вже гарантовано існує (щойно мігровано або створено з нуля).
         db.Database.ExecuteSqlRaw("UPDATE OrganizationSettings SET HrOfficerFullName = '' WHERE HrOfficerFullName IS NULL;");
+        db.Database.ExecuteSqlRaw("UPDATE OrganizationSettings SET CommanderPosition = '' WHERE CommanderPosition IS NULL;");
+        db.Database.ExecuteSqlRaw("UPDATE OrganizationSettings SET UnitFullName = '' WHERE UnitFullName IS NULL;");
 
         if (!db.AppSettings.Any())
         {
@@ -521,6 +572,8 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                         "Content" BLOB NOT NULL,
                         "IsBuiltIn" INTEGER NOT NULL,
                         "UploadedAt" TEXT NOT NULL,
+                        "TemplateRowIndex" INTEGER NOT NULL DEFAULT 2,
+                        "UsesPlaceholders" INTEGER NOT NULL DEFAULT 0,
                         "DeletedAt" TEXT NULL,
                         "DeletedBy" TEXT NULL
                     );
@@ -538,6 +591,8 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                         "ColumnIndex" INTEGER NOT NULL,
                         "HeaderText" TEXT NOT NULL,
                         "FieldKey" TEXT NOT NULL,
+                        "PlaceholderTag" TEXT NOT NULL DEFAULT '',
+                        "SourceType" INTEGER NOT NULL DEFAULT 0,
                         CONSTRAINT "FK_ExportTemplateColumnMappings_ExportTemplates_ExportTemplateId"
                             FOREIGN KEY ("ExportTemplateId") REFERENCES "ExportTemplates" ("Id") ON DELETE CASCADE
                     );
@@ -548,6 +603,92 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                 indexCommand.CommandText =
                     """CREATE INDEX "IX_ExportTemplateColumnMappings_ExportTemplateId" ON "ExportTemplateColumnMappings" ("ExportTemplateId");""";
                 indexCommand.ExecuteNonQuery();
+            }
+        }
+        finally
+        {
+            if (wasClosed) connection.Close();
+        }
+    }
+
+    private static void EnsureGroupDocumentTables(AppDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        var wasClosed = connection.State != System.Data.ConnectionState.Open;
+        if (wasClosed) connection.Open();
+
+        try
+        {
+            if (!TableExists(connection, "GenerationPackageExportTemplates"))
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    CREATE TABLE "GenerationPackageExportTemplates" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_GenerationPackageExportTemplates" PRIMARY KEY AUTOINCREMENT,
+                        "GenerationPackageId" INTEGER NOT NULL,
+                        "ExportTemplateId" INTEGER NOT NULL,
+                        "SortOrder" INTEGER NOT NULL,
+                        "FitnessFilter" INTEGER NOT NULL DEFAULT 0,
+                        CONSTRAINT "FK_GenerationPackageExportTemplates_GenerationPackages_GenerationPackageId"
+                            FOREIGN KEY ("GenerationPackageId") REFERENCES "GenerationPackages" ("Id") ON DELETE CASCADE
+                    );
+                    """;
+                command.ExecuteNonQuery();
+
+                using var indexCommand = connection.CreateCommand();
+                indexCommand.CommandText =
+                    """CREATE INDEX "IX_GenerationPackageExportTemplates_GenerationPackageId" ON "GenerationPackageExportTemplates" ("GenerationPackageId");""";
+                indexCommand.ExecuteNonQuery();
+            }
+
+            if (!TableExists(connection, "GeneratedGroupDocuments"))
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    CREATE TABLE "GeneratedGroupDocuments" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_GeneratedGroupDocuments" PRIMARY KEY AUTOINCREMENT,
+                        "ExportTemplateId" INTEGER NOT NULL,
+                        "RunId" INTEGER NULL,
+                        "IntakeId" INTEGER NULL,
+                        "GeneratedAt" TEXT NOT NULL,
+                        "GeneratedByUserId" INTEGER NOT NULL,
+                        "FileName" TEXT NOT NULL,
+                        "ContentHash" TEXT NULL,
+                        "RosterHash" TEXT NULL,
+                        "SizeBytes" INTEGER NOT NULL DEFAULT 0,
+                        "RecipientCount" INTEGER NOT NULL DEFAULT 0,
+                        "Version" INTEGER NOT NULL DEFAULT 1,
+                        "IsCurrent" INTEGER NOT NULL DEFAULT 1,
+                        "HasContent" INTEGER NOT NULL DEFAULT 0,
+                        "DeletedAt" TEXT NULL,
+                        "DeletedBy" TEXT NULL
+                    );
+                    """;
+                command.ExecuteNonQuery();
+
+                using var indexCommand = connection.CreateCommand();
+                indexCommand.CommandText =
+                    """CREATE INDEX "IX_GeneratedGroupDocuments_ExportTemplateId_IntakeId_IsCurrent" ON "GeneratedGroupDocuments" ("ExportTemplateId", "IntakeId", "IsCurrent");""";
+                indexCommand.ExecuteNonQuery();
+
+                using var indexCommand2 = connection.CreateCommand();
+                indexCommand2.CommandText =
+                    """CREATE INDEX "IX_GeneratedGroupDocuments_RunId" ON "GeneratedGroupDocuments" ("RunId");""";
+                indexCommand2.ExecuteNonQuery();
+            }
+
+            if (!TableExists(connection, "GeneratedGroupDocumentContents"))
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    CREATE TABLE "GeneratedGroupDocumentContents" (
+                        "GeneratedGroupDocumentId" INTEGER NOT NULL CONSTRAINT "PK_GeneratedGroupDocumentContents" PRIMARY KEY,
+                        "Content" BLOB NOT NULL,
+                        CONSTRAINT "FK_GeneratedGroupDocumentContents_GeneratedGroupDocuments_GeneratedGroupDocumentId"
+                            FOREIGN KEY ("GeneratedGroupDocumentId") REFERENCES "GeneratedGroupDocuments" ("Id") ON DELETE CASCADE
+                    );
+                    """;
+                command.ExecuteNonQuery();
             }
         }
         finally

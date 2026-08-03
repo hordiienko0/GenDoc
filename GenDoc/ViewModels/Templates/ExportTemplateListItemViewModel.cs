@@ -5,13 +5,16 @@ namespace GenDoc.ViewModels.Templates;
 
 public partial class ExportTemplateListItemViewModel : ObservableObject
 {
-    public ExportTemplateListItemViewModel(int id, string name, string originalFileName, DateTime uploadedAt, bool isBuiltIn)
+    public ExportTemplateListItemViewModel(
+        int id, string name, string originalFileName, DateTime uploadedAt, bool isBuiltIn, bool usesPlaceholders, int tagCount)
     {
         Id = id;
         Name = name;
         OriginalFileName = originalFileName;
         UploadedAtDisplay = uploadedAt.ToString("dd.MM.yyyy");
         IsBuiltIn = isBuiltIn;
+        UsesPlaceholders = usesPlaceholders;
+        TagCount = tagCount;
     }
 
     public int Id { get; }
@@ -19,6 +22,8 @@ public partial class ExportTemplateListItemViewModel : ObservableObject
     public string OriginalFileName { get; }
     public string UploadedAtDisplay { get; }
     public bool IsBuiltIn { get; }
+    public bool UsesPlaceholders { get; }
+    public int TagCount { get; }
     public bool CanDelete => !IsBuiltIn;
 
     [ObservableProperty]

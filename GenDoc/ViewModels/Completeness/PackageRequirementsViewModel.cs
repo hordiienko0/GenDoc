@@ -4,11 +4,32 @@ using CommunityToolkit.Mvvm.Input;
 using GenDoc.Data;
 using GenDoc.Models.Enums;
 using GenDoc.Services.Completeness;
+using GenDoc.Services.Generation;
 using GenDoc.ViewModels.Personnel;
 using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.ViewModels.Completeness
 {
+    public partial class ExportTemplateLinkRowViewModel : ObservableObject
+    {
+        public ExportTemplateLinkRowViewModel(int? linkId, int exportTemplateId, string name, int sortOrder, FitnessFilter filter)
+        {
+            LinkId = linkId;
+            ExportTemplateId = exportTemplateId;
+            Name = name;
+            SortOrder = sortOrder;
+            this.filter = filter;
+        }
+
+        public int? LinkId { get; }
+        public int ExportTemplateId { get; }
+        public string Name { get; }
+        public int SortOrder { get; set; }
+
+        [ObservableProperty]
+        private FitnessFilter filter;
+    }
+
     public partial class RequirementTemplateRowViewModel : ObservableObject
     {
         public RequirementTemplateRowViewModel(MatrixTemplateInfo info, bool hasDocuments)
@@ -38,14 +59,17 @@ namespace GenDoc.ViewModels.Completeness
     public partial class PackageRequirementsViewModel : DialogViewModelBase
     {
         private readonly ICompletenessService _completenessService;
+        private readonly IGenerationService _generationService;
         private readonly IDbContextFactory<AppDbContext> _dbFactory;
 
         private int _packageId;
         private List<(int TemplateId, TemplateRequirement Regular, TemplateRequirement Limited)> _snapshot = new();
 
-        public PackageRequirementsViewModel(ICompletenessService completenessService, IDbContextFactory<AppDbContext> dbFactory)
+        public PackageRequirementsViewModel(
+            ICompletenessService completenessService, IGenerationService generationService, IDbContextFactory<AppDbContext> dbFactory)
         {
             _completenessService = completenessService;
+            _generationService = generationService;
             _dbFactory = dbFactory;
         }
 
@@ -53,8 +77,14 @@ namespace GenDoc.ViewModels.Completeness
         public ObservableCollection<RequirementTemplateRowViewModel> Rows { get; } = new();
         public ObservableCollection<(int Id, string Name)> AvailableTemplates { get; } = new();
 
+        public ObservableCollection<ExportTemplateLinkRowViewModel> ExportRows { get; } = new();
+        public ObservableCollection<(int Id, string Name)> AvailableExportTemplates { get; } = new();
+
         [ObservableProperty]
         private (int Id, string Name)? selectedTemplateToAdd;
+
+        [ObservableProperty]
+        private (int Id, string Name)? selectedExportTemplateToAdd;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasPreview))]
@@ -86,7 +116,12 @@ namespace GenDoc.ViewModels.Completeness
 
             _snapshot = links.Select(l => (l.TemplateId, l.RequirementRegular, l.RequirementLimited)).ToList();
 
+            ExportRows.Clear();
+            foreach (var link in _generationService.GetPackageExportTemplates(packageId))
+                ExportRows.Add(new ExportTemplateLinkRowViewModel(link.LinkId, link.ExportTemplateId, link.Name, link.SortOrder, link.FitnessFilter));
+
             await ReloadAvailableTemplatesAsync();
+            await ReloadAvailableExportTemplatesAsync();
             RefreshPreview();
         }
 
@@ -98,6 +133,56 @@ namespace GenDoc.ViewModels.Completeness
             AvailableTemplates.Clear();
             foreach (var t in available) AvailableTemplates.Add(t);
             SelectedTemplateToAdd = AvailableTemplates.FirstOrDefault();
+        }
+
+        private Task ReloadAvailableExportTemplatesAsync()
+        {
+            var available = _generationService.GetExportTemplatesNotInPackage(_packageId);
+            AvailableExportTemplates.Clear();
+            foreach (var t in available) AvailableExportTemplates.Add(t);
+            SelectedExportTemplateToAdd = AvailableExportTemplates.FirstOrDefault();
+            return Task.CompletedTask;
+        }
+
+        [RelayCommand]
+        private void AddExportTemplate()
+        {
+            if (SelectedExportTemplateToAdd is not (int id, string name)) return;
+
+            ExportRows.Add(new ExportTemplateLinkRowViewModel(null, id, name, ExportRows.Count, FitnessFilter.All));
+
+            _ = ReloadAvailableExportTemplatesAsync();
+            Validate();
+            SaveCommand.NotifyCanExecuteChanged();
+        }
+
+        [RelayCommand]
+        private void RemoveExportTemplate(ExportTemplateLinkRowViewModel? row)
+        {
+            if (row is null) return;
+
+            ExportRows.Remove(row);
+            _ = ReloadAvailableExportTemplatesAsync();
+            Validate();
+            SaveCommand.NotifyCanExecuteChanged();
+        }
+
+        [RelayCommand]
+        private void SetFitnessAll(ExportTemplateLinkRowViewModel? row)
+        {
+            if (row is not null) row.Filter = FitnessFilter.All;
+        }
+
+        [RelayCommand]
+        private void SetFitnessRegular(ExportTemplateLinkRowViewModel? row)
+        {
+            if (row is not null) row.Filter = FitnessFilter.RegularOnly;
+        }
+
+        [RelayCommand]
+        private void SetFitnessLimited(ExportTemplateLinkRowViewModel? row)
+        {
+            if (row is not null) row.Filter = FitnessFilter.LimitedOnly;
         }
 
         private void AddRow(RequirementTemplateRowViewModel row)
@@ -229,6 +314,16 @@ namespace GenDoc.ViewModels.Completeness
 
         private void Validate()
         {
+            if (Rows.Count == 0)
+            {
+                // Пакет без docx-шаблонів (лише групові XLSX-відомості) не бере участі
+                // в матриці комплектності — вимоги нема до чого застосовувати.
+                ValidationError = Rows.Count == 0 && ExportRows.Count == 0
+                    ? "Пакет повинен мати хоча б один шаблон"
+                    : null;
+                return;
+            }
+
             var hasAnyRegular = Rows.Any(r => r.Regular != TemplateRequirement.NotApplicable);
             var hasAnyLimited = Rows.Any(r => r.Limited != TemplateRequirement.NotApplicable);
 
@@ -237,7 +332,7 @@ namespace GenDoc.ViewModels.Completeness
                 : null;
         }
 
-        public bool CanSave => ValidationError is null && Rows.Count > 0;
+        public bool CanSave => ValidationError is null && (Rows.Count > 0 || ExportRows.Count > 0);
 
         [RelayCommand(CanExecute = nameof(CanSave))]
         private async Task SaveAsync()
@@ -248,6 +343,10 @@ namespace GenDoc.ViewModels.Completeness
             var rows = Rows.Select(r => new RequirementRow(
                 r.LinkId, r.TemplateId, r.Regular, r.Limited, r.SortOrder)).ToList();
             await _completenessService.SaveRequirementsAsync(_packageId, rows);
+
+            var exportRows = ExportRows.Select((r, i) => (r.LinkId, r.ExportTemplateId, i, r.Filter)).ToList();
+            _generationService.SaveExportTemplates(_packageId, exportRows);
+
             CloseDialog(true);
         }
 

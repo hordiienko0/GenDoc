@@ -32,7 +32,7 @@ public partial class TemplatesViewModel : ObservableObject
     {
         Templates = new ObservableCollection<ExportTemplateListItemViewModel>(
             _exportTemplateService.GetTemplateListItems()
-                .Select(t => new ExportTemplateListItemViewModel(t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.IsBuiltIn)));
+                .Select(t => new ExportTemplateListItemViewModel(t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.IsBuiltIn, t.UsesPlaceholders, t.TagCount)));
     }
 
     private void RefreshDocxTemplates()
@@ -131,8 +131,11 @@ public partial class TemplatesViewModel : ObservableObject
 
         if (!item.MappingsLoaded)
         {
-            var mappings = _exportTemplateService.GetMappings(item.Id)
-                .Select(m => new TemplateMappingRowViewModel(m.ColumnIndex, m.HeaderText, Enum.Parse<ExportFieldKey>(m.FieldKey)));
+            var mappings = item.UsesPlaceholders
+                ? _exportTemplateService.GetMappings(item.Id)
+                    .Select(m => new TemplateMappingRowViewModel(m.Id, m.PlaceholderTag, m.SourceType, m.FieldKey))
+                : _exportTemplateService.GetMappings(item.Id)
+                    .Select(m => new TemplateMappingRowViewModel(m.ColumnIndex, m.HeaderText, Enum.Parse<ExportFieldKey>(m.FieldKey)));
             item.Mappings = new ObservableCollection<TemplateMappingRowViewModel>(mappings);
             item.MappingsLoaded = true;
         }
@@ -145,8 +148,16 @@ public partial class TemplatesViewModel : ObservableObject
     {
         if (item is null) return;
 
-        var mappings = item.Mappings.Select(m => (m.ColumnIndex, m.SelectedField.ToString())).ToList();
-        _exportTemplateService.SaveMappings(item.Id, mappings);
+        if (item.UsesPlaceholders)
+        {
+            var placeholderMappings = item.Mappings.Select(m => (m.Id, m.SourceType, m.SelectedFieldName)).ToList();
+            _exportTemplateService.SavePlaceholderMappings(item.Id, placeholderMappings);
+        }
+        else
+        {
+            var mappings = item.Mappings.Select(m => (m.ColumnIndex, m.SelectedField.ToString())).ToList();
+            _exportTemplateService.SaveMappings(item.Id, mappings);
+        }
 
         MessageBox.Show("Мапінг колонок збережено.", "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
     }

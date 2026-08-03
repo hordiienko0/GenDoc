@@ -40,6 +40,7 @@ namespace GenDoc.Services.Personnel
         Task<PersonEditModel?> GetForEditAsync(int id);
         Task<PersonSaveResult> SaveAsync(PersonEditModel model);
         Task MoveManyAsync(IReadOnlyList<int> recipientIds, int targetNodeId, string sourceBranchName);
+        Task DeleteManyAsync(IReadOnlyList<int> recipientIds);
         Task<List<PersonDocumentItem>> GetDocumentsAsync(int recipientId);
     }
 }

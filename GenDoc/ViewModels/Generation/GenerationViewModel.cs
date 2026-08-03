@@ -4,6 +4,7 @@ using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using GenDoc.Models.Enums;
 using GenDoc.Services;
 using GenDoc.Services.Generation;
 using GenDoc.Services.Navigation;
@@ -57,7 +58,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     public bool NoSelectedPackage => !HasSelectedPackage;
 
     [ObservableProperty]
-    private ObservableCollection<string> packageTemplates = new();
+    private ObservableCollection<PackageTemplateSummaryItemViewModel> packageTemplates = new();
 
     [ObservableProperty]
     private int recipientCount;
@@ -119,8 +120,13 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         item.IsSelected = true;
         SelectedPackage = item;
 
-        PackageTemplates = new ObservableCollection<string>(
-            _generationService.GetPackageTemplates(item.Id).Select(t => t.TemplateName));
+        var summary = new List<PackageTemplateSummaryItemViewModel>();
+        summary.AddRange(_generationService.GetPackageTemplates(item.Id)
+            .Select(t => new PackageTemplateSummaryItemViewModel(t.TemplateName)));
+        summary.AddRange(_generationService.GetPackageExportTemplates(item.Id)
+            .Select(t => new PackageTemplateSummaryItemViewModel(
+                t.Name, t.FitnessFilter, _generationService.GetRecipientCount(t.FitnessFilter))));
+        PackageTemplates = new ObservableCollection<PackageTemplateSummaryItemViewModel>(summary);
 
         ManualTagInputs = new ObservableCollection<ManualTagInputViewModel>(
             _generationService.GetManualTags(item.Id).Select(t => new ManualTagInputViewModel(t)));
@@ -136,12 +142,16 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         IsCreatingPackage = true;
         NewPackageName = string.Empty;
         NewPackageDescription = string.Empty;
-        TemplateCheckItems = new ObservableCollection<GenerationTemplateCheckItemViewModel>(
-            _generationService.GetAllTemplates().Select(t => new GenerationTemplateCheckItemViewModel(t.Id, t.Name)));
+        var checkItems = new List<GenerationTemplateCheckItemViewModel>();
+        checkItems.AddRange(_generationService.GetAllTemplates()
+            .Select(t => new GenerationTemplateCheckItemViewModel(t.Id, t.Name, TemplateKind.Docx)));
+        checkItems.AddRange(_generationService.GetAllExportTemplates()
+            .Select(t => new GenerationTemplateCheckItemViewModel(t.Id, t.Name, TemplateKind.Xlsx)));
+        TemplateCheckItems = new ObservableCollection<GenerationTemplateCheckItemViewModel>(checkItems);
 
         foreach (var p in Packages) p.IsSelected = false;
         SelectedPackage = null;
-        PackageTemplates = new ObservableCollection<string>();
+        PackageTemplates = new ObservableCollection<PackageTemplateSummaryItemViewModel>();
         ManualTagInputs = new ObservableCollection<ManualTagInputViewModel>();
     }
 
@@ -157,14 +167,16 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
             return;
         }
 
-        var templateIds = TemplateCheckItems.Where(t => t.IsChecked).Select(t => t.Id).ToList();
-        if (templateIds.Count == 0)
+        var templateIds = TemplateCheckItems.Where(t => t.IsChecked && t.Kind == TemplateKind.Docx).Select(t => t.Id).ToList();
+        var exportTemplateIds = TemplateCheckItems.Where(t => t.IsChecked && t.Kind == TemplateKind.Xlsx)
+            .Select(t => (t.Id, FitnessFilter.All)).ToList();
+        if (templateIds.Count == 0 && exportTemplateIds.Count == 0)
         {
             MessageBox.Show("Оберіть хоча б один шаблон.", "Помилка", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        _generationService.CreatePackage(NewPackageName, NewPackageDescription, templateIds);
+        _generationService.CreatePackage(NewPackageName, NewPackageDescription, templateIds, exportTemplateIds);
         IsCreatingPackage = false;
 
         RefreshPackages();
@@ -185,7 +197,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         if (SelectedPackage?.Id == item.Id)
         {
             SelectedPackage = null;
-            PackageTemplates = new ObservableCollection<string>();
+            PackageTemplates = new ObservableCollection<PackageTemplateSummaryItemViewModel>();
             ManualTagInputs = new ObservableCollection<ManualTagInputViewModel>();
         }
 
@@ -200,7 +212,10 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         var vm = _serviceProvider.GetRequiredService<PackageRequirementsViewModel>();
         await vm.InitializeAsync(SelectedPackage.Id, null);
         if (_dialogService.ShowDialog(vm, Application.Current.MainWindow) == true)
+        {
             WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
+            SelectPackage(SelectedPackage);
+        }
     }
 
     [RelayCommand]
@@ -233,9 +248,11 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         IsBusy = false;
         ProgressText = string.Empty;
 
-        MessageBox.Show(
-            $"Згенеровано: {result.Generated}\nПропущено (вже існували): {result.Skipped}\nПомилок: {result.Errors}",
-            "Генерація завершена", MessageBoxButton.OK, MessageBoxImage.Information);
+        var summary = $"DOCX — згенеровано: {result.Generated}, пропущено: {result.Skipped}, помилок: {result.Errors}";
+        if (result.GroupGenerated + result.GroupSkipped + result.GroupErrors > 0)
+            summary += $"\nXLSX (відомості) — згенеровано: {result.GroupGenerated}, пропущено: {result.GroupSkipped}, помилок: {result.GroupErrors}";
+
+        MessageBox.Show(summary, "Генерація завершена", MessageBoxButton.OK, MessageBoxImage.Information);
 
         var openFolder = MessageBox.Show(
             "Відкрити папку з документами?", "Готово", MessageBoxButton.YesNo, MessageBoxImage.Question);

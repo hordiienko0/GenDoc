@@ -9,5 +9,7 @@
         public string CommanderRank { get; set; } = string.Empty;
         public string CommanderFullName { get; set; } = string.Empty;
         public string HrOfficerFullName { get; set; } = string.Empty;
+        public string CommanderPosition { get; set; } = string.Empty;
+        public string UnitFullName { get; set; } = string.Empty;
     }
 }

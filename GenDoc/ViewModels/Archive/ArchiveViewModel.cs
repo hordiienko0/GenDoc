@@ -81,10 +81,12 @@ namespace GenDoc.ViewModels.Archive
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(IsDocsTab))]
         [NotifyPropertyChangedFor(nameof(IsRunsTab))]
+        [NotifyPropertyChangedFor(nameof(IsGroupTab))]
         private int selectedTabIndex;
 
         public bool IsDocsTab => SelectedTabIndex == 0;
         public bool IsRunsTab => SelectedTabIndex == 1;
+        public bool IsGroupTab => SelectedTabIndex == 2;
 
         [RelayCommand]
         private async Task SetTabAsync(string index)
@@ -92,6 +94,7 @@ namespace GenDoc.ViewModels.Archive
             if (!int.TryParse(index, out var i) || i == SelectedTabIndex) return;
             SelectedTabIndex = i;
             if (i == 1) await ReloadRunsAsync();
+            if (i == 2) await ReloadGroupAsync();
         }
 
         [ObservableProperty] private string statsText = string.Empty;
@@ -655,6 +658,190 @@ namespace GenDoc.ViewModels.Archive
             if (dialog.ShowDialog() != true) return;
 
             await _archiveService.SaveAsAsync(docId, dialog.FileName);
+        }
+
+        // ── Таб «Групові» ────────────────────────────────────────────────
+
+        public ObservableCollection<GroupDocumentRowViewModel> GroupRows { get; } = new();
+        public ObservableCollection<FilterOption> GroupTemplateOptions { get; } = new();
+
+        [ObservableProperty]
+        private FilterOption? selectedGroupTemplate;
+
+        partial void OnSelectedGroupTemplateChanged(FilterOption? value) => _ = ReloadGroupAsync();
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(GroupIsEmpty))]
+        [NotifyPropertyChangedFor(nameof(GroupHasRows))]
+        private int groupRowCount;
+
+        public bool GroupIsEmpty => GroupRowCount == 0;
+        public bool GroupHasRows => GroupRowCount > 0;
+
+        private bool _suppressGroupFilterReload;
+
+        private async Task ReloadGroupAsync()
+        {
+            if (_suppressGroupFilterReload) return;
+
+            if (GroupTemplateOptions.Count == 0)
+            {
+                _suppressGroupFilterReload = true;
+                var options = await _archiveService.GetGroupTemplateOptionsAsync();
+                GroupTemplateOptions.Clear();
+                GroupTemplateOptions.Add(new FilterOption(null, "Шаблон: усі"));
+                foreach (var (id, name) in options)
+                    GroupTemplateOptions.Add(new FilterOption(id, name));
+                SelectedGroupTemplate = GroupTemplateOptions[0];
+                _suppressGroupFilterReload = false;
+            }
+
+            IsBusy = true;
+            try
+            {
+                ClearGroupChecked();
+                var rows = await _archiveService.QueryGroupAsync(new GroupArchiveFilter(SelectedGroupTemplate?.Id, null, 0, PageSize));
+                GroupRows.Clear();
+                foreach (var dto in rows)
+                {
+                    var row = new GroupDocumentRowViewModel(dto);
+                    row.PropertyChanged += OnGroupRowPropertyChanged;
+                    GroupRows.Add(row);
+                }
+                GroupRowCount = GroupRows.Count;
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(CanOpenGroup))]
+        [NotifyPropertyChangedFor(nameof(CanSaveGroupAs))]
+        [NotifyPropertyChangedFor(nameof(CanHistoryGroup))]
+        [NotifyPropertyChangedFor(nameof(CanDeleteGroup))]
+        private int groupCheckedCount;
+
+        private bool _suppressGroupHeaderCheck;
+
+        private void OnGroupRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(GroupDocumentRowViewModel.IsChecked) && !_suppressGroupHeaderCheck)
+                GroupCheckedCount = GroupRows.Count(r => r.IsChecked);
+        }
+
+        private List<GroupDocumentRowViewModel> CheckedGroupRows => GroupRows.Where(r => r.IsChecked).ToList();
+
+        public void HandleGroupRowClick(GroupDocumentRowViewModel row, bool ctrl)
+        {
+            _suppressGroupHeaderCheck = true;
+            if (!ctrl)
+            {
+                foreach (var other in GroupRows.Where(r => r.IsChecked && r != row))
+                    other.IsChecked = false;
+                row.IsChecked = true;
+            }
+            else
+            {
+                row.IsChecked = !row.IsChecked;
+            }
+            _suppressGroupHeaderCheck = false;
+            GroupCheckedCount = GroupRows.Count(r => r.IsChecked);
+        }
+
+        private void ClearGroupChecked()
+        {
+            _suppressGroupHeaderCheck = true;
+            foreach (var row in GroupRows) row.IsChecked = false;
+            _suppressGroupHeaderCheck = false;
+            GroupCheckedCount = 0;
+        }
+
+        public bool CanOpenGroup => GroupCheckedCount == 1 && CheckedGroupRows.All(r => r.HasContent);
+        public bool CanSaveGroupAs => GroupCheckedCount >= 1 && CheckedGroupRows.All(r => r.HasContent);
+        public bool CanHistoryGroup => GroupCheckedCount == 1;
+        public bool CanDeleteGroup => GroupCheckedCount >= 1;
+
+        [RelayCommand]
+        private async Task OpenGroupAsync()
+        {
+            var row = CheckedGroupRows.FirstOrDefault();
+            if (row is null || !CanOpenGroup) return;
+
+            try
+            {
+                await _archiveService.OpenGroupAsync(row.Id);
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                MessageBox.Show(
+                    "Не вдалося відкрити: немає програми для .xlsx. Скористайтесь «Зберегти як…».",
+                    "Відкриття документа", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        [RelayCommand]
+        private async Task SaveGroupAsAsync()
+        {
+            var rows = CheckedGroupRows;
+            if (rows.Count == 0 || !CanSaveGroupAs) return;
+
+            if (rows.Count == 1)
+            {
+                var dialog = new SaveFileDialog { FileName = rows[0].Dto.FileName };
+                if (dialog.ShowDialog() != true) return;
+
+                IsBusy = true;
+                try { await _archiveService.SaveGroupAsAsync(rows[0].Id, dialog.FileName); }
+                finally { IsBusy = false; }
+                return;
+            }
+
+            var folderDialog = new OpenFolderDialog { Title = "Папка для експорту" };
+            if (folderDialog.ShowDialog() != true) return;
+
+            IsBusy = true;
+            try
+            {
+                foreach (var row in rows)
+                    await _archiveService.SaveGroupAsAsync(row.Id, System.IO.Path.Combine(folderDialog.FolderName, row.Dto.FileName));
+
+                MessageBox.Show($"Збережено {rows.Count} відомостей у {folderDialog.FolderName}",
+                    "Експорт завершено", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        [RelayCommand]
+        private async Task HistoryGroupAsync()
+        {
+            var row = CheckedGroupRows.FirstOrDefault();
+            if (row is null || !CanHistoryGroup) return;
+
+            var vm = new GroupVersionHistoryViewModel(_archiveService, row.ExportTemplateId, row.Dto.TemplateName);
+            await vm.InitializeAsync();
+            _dialogService.ShowDialog(vm, Application.Current.MainWindow);
+
+            if (vm.HasChanges) await ReloadGroupAsync();
+        }
+
+        [RelayCommand]
+        private async Task DeleteGroupAsync()
+        {
+            var rows = CheckedGroupRows;
+            if (rows.Count == 0) return;
+
+            var confirm = MessageBox.Show(
+                $"Перемістити {rows.Count} відомост(ей) у кошик?",
+                "Видалення відомостей", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (confirm != MessageBoxResult.Yes) return;
+
+            await _archiveService.DeleteGroupAsync(rows.Select(r => r.Id).ToList());
+            await ReloadGroupAsync();
         }
     }
 }

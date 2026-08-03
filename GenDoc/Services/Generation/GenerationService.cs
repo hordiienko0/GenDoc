@@ -11,6 +11,7 @@ namespace GenDoc.Services.Generation
     {
         private readonly IDbContextFactory<AppDbContext> _dbFactory;
         private readonly IDocumentGenerationService _documentGenerationService;
+        private readonly IXlsxGenerationService _xlsxGenerationService;
         private readonly IAuditLogService _auditLogService;
         private readonly ICurrentUserContext _currentUserContext;
         private readonly Documents.IDocumentHashService _documentHashService;
@@ -18,12 +19,14 @@ namespace GenDoc.Services.Generation
         public GenerationService(
             IDbContextFactory<AppDbContext> dbFactory,
             IDocumentGenerationService documentGenerationService,
+            IXlsxGenerationService xlsxGenerationService,
             IAuditLogService auditLogService,
             ICurrentUserContext currentUserContext,
             Documents.IDocumentHashService documentHashService)
         {
             _dbFactory = dbFactory;
             _documentGenerationService = documentGenerationService;
+            _xlsxGenerationService = xlsxGenerationService;
             _auditLogService = auditLogService;
             _currentUserContext = currentUserContext;
             _documentHashService = documentHashService;
@@ -34,7 +37,7 @@ namespace GenDoc.Services.Generation
             using var db = _dbFactory.CreateDbContext();
             return db.GenerationPackages
                 .OrderBy(p => p.Name)
-                .Select(p => new { p.Id, p.Name, p.Description, TemplateCount = p.Templates.Count })
+                .Select(p => new { p.Id, p.Name, p.Description, TemplateCount = p.Templates.Count + p.ExportTemplates.Count })
                 .AsEnumerable()
                 .Select(p => (p.Id, p.Name, p.Description, p.TemplateCount))
                 .ToList();
@@ -51,7 +54,21 @@ namespace GenDoc.Services.Generation
                 .ToList();
         }
 
-        public void CreatePackage(string name, string? description, List<int> templateIds)
+        public List<(int Id, string Name)> GetAllExportTemplates()
+        {
+            using var db = _dbFactory.CreateDbContext();
+            return db.ExportTemplates
+                .Where(t => t.UsesPlaceholders)
+                .OrderBy(t => t.Name)
+                .Select(t => new { t.Id, t.Name })
+                .AsEnumerable()
+                .Select(t => (t.Id, t.Name))
+                .ToList();
+        }
+
+        public void CreatePackage(
+            string name, string? description, List<int> templateIds,
+            List<(int ExportTemplateId, FitnessFilter Filter)> exportTemplates)
         {
             using var db = _dbFactory.CreateDbContext();
 
@@ -66,10 +83,21 @@ namespace GenDoc.Services.Generation
                 package.Templates.Add(new GenerationPackageTemplate { TemplateId = templateIds[i], SortOrder = i });
             }
 
+            for (var i = 0; i < exportTemplates.Count; i++)
+            {
+                package.ExportTemplates.Add(new GenerationPackageExportTemplate
+                {
+                    ExportTemplateId = exportTemplates[i].ExportTemplateId,
+                    FitnessFilter = exportTemplates[i].Filter,
+                    SortOrder = i
+                });
+            }
+
             db.GenerationPackages.Add(package);
             db.SaveChanges();
 
-            _auditLogService.LogCreate(db, "GenerationPackage", package.Id, package.Name, $"Шаблонів: {templateIds.Count}");
+            _auditLogService.LogCreate(db, "GenerationPackage", package.Id, package.Name,
+                $"Шаблонів: {templateIds.Count}, XLSX: {exportTemplates.Count}");
             db.SaveChanges();
         }
 
@@ -96,6 +124,79 @@ namespace GenDoc.Services.Generation
                 .AsEnumerable()
                 .Select(pt => (pt.TemplateId, pt.Name))
                 .ToList();
+        }
+
+        public List<(int LinkId, int ExportTemplateId, string Name, int SortOrder, FitnessFilter FitnessFilter)> GetPackageExportTemplates(int packageId)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            return db.GenerationPackageExportTemplates
+                .Where(pt => pt.GenerationPackageId == packageId)
+                .OrderBy(pt => pt.SortOrder)
+                .Select(pt => new { pt.Id, pt.ExportTemplateId, Name = pt.ExportTemplate!.Name, pt.SortOrder, pt.FitnessFilter })
+                .AsEnumerable()
+                .Select(pt => (pt.Id, pt.ExportTemplateId, pt.Name, pt.SortOrder, pt.FitnessFilter))
+                .ToList();
+        }
+
+        public List<(int Id, string Name)> GetExportTemplatesNotInPackage(int packageId)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var usedIds = db.GenerationPackageExportTemplates
+                .Where(pt => pt.GenerationPackageId == packageId)
+                .Select(pt => pt.ExportTemplateId)
+                .ToList();
+
+            return db.ExportTemplates
+                .Where(t => t.UsesPlaceholders && !usedIds.Contains(t.Id))
+                .OrderBy(t => t.Name)
+                .Select(t => new { t.Id, t.Name })
+                .AsEnumerable()
+                .Select(t => (t.Id, t.Name))
+                .ToList();
+        }
+
+        public void SaveExportTemplates(int packageId, List<(int? LinkId, int ExportTemplateId, int SortOrder, FitnessFilter FitnessFilter)> rows)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var existing = db.GenerationPackageExportTemplates.Where(pt => pt.GenerationPackageId == packageId).ToList();
+
+            var oldSnapshot = string.Join(", ", existing.OrderBy(e => e.SortOrder).Select(e => $"{e.ExportTemplateId}:{e.FitnessFilter}"));
+
+            var keptIds = new HashSet<int>();
+            foreach (var row in rows)
+            {
+                if (row.LinkId is int linkId)
+                {
+                    var link = existing.First(e => e.Id == linkId);
+                    link.SortOrder = row.SortOrder;
+                    link.FitnessFilter = row.FitnessFilter;
+                    keptIds.Add(link.Id);
+                }
+                else
+                {
+                    var link = new GenerationPackageExportTemplate
+                    {
+                        GenerationPackageId = packageId,
+                        ExportTemplateId = row.ExportTemplateId,
+                        SortOrder = row.SortOrder,
+                        FitnessFilter = row.FitnessFilter
+                    };
+                    db.GenerationPackageExportTemplates.Add(link);
+                }
+            }
+
+            foreach (var stale in existing.Where(e => !keptIds.Contains(e.Id)))
+                db.GenerationPackageExportTemplates.Remove(stale);
+
+            db.SaveChanges();
+
+            var newSnapshot = string.Join(", ", db.GenerationPackageExportTemplates
+                .Where(pt => pt.GenerationPackageId == packageId)
+                .OrderBy(e => e.SortOrder)
+                .Select(e => $"{e.ExportTemplateId}:{e.FitnessFilter}"));
+
+            _auditLogService.LogUpdate(db, "GenerationPackage", packageId, oldSnapshot, newSnapshot, "Оновлено XLSX-шаблони пакета");
+            db.SaveChanges();
         }
 
         public List<string> GetManualTags(int packageId)
@@ -125,6 +226,26 @@ namespace GenDoc.Services.Generation
                 }
             }
 
+            var exportTemplateIds = db.GenerationPackageExportTemplates
+                .Where(pt => pt.GenerationPackageId == packageId)
+                .OrderBy(pt => pt.SortOrder)
+                .Select(pt => pt.ExportTemplateId)
+                .ToList();
+
+            foreach (var templateId in exportTemplateIds)
+            {
+                var manualTags = db.ExportTemplateColumnMappings
+                    .Where(m => m.ExportTemplateId == templateId && m.SourceType == MappingSourceType.Manual)
+                    .OrderBy(m => m.PlaceholderTag)
+                    .Select(m => m.PlaceholderTag)
+                    .ToList();
+
+                foreach (var tag in manualTags)
+                {
+                    if (seen.Add(tag)) tags.Add(tag);
+                }
+            }
+
             return tags;
         }
 
@@ -132,6 +253,15 @@ namespace GenDoc.Services.Generation
         {
             using var db = _dbFactory.CreateDbContext();
             return db.Recipients.Count();
+        }
+
+        public int GetRecipientCount(FitnessFilter filter)
+        {
+            if (filter == FitnessFilter.All) return GetRecipientCount();
+
+            using var db = _dbFactory.CreateDbContext();
+            return db.Recipients.Select(r => r.FitnessCategory).AsEnumerable()
+                .Count(f => FitnessCategoryHelper.Matches(filter, f));
         }
 
         public RunResult RunPackage(
@@ -151,12 +281,66 @@ namespace GenDoc.Services.Generation
                 .Select(pt => pt.Template!)
                 .ToList();
 
-            var mappingsByTemplate = templates.ToDictionary(
-                t => t.Id,
-                t => db.TemplateFieldMappings.Where(m => m.TemplateId == t.Id).ToList());
+            var exportLinks = db.GenerationPackageExportTemplates
+                .Where(pt => pt.GenerationPackageId == packageId)
+                .OrderBy(pt => pt.SortOrder)
+                .Include(pt => pt.ExportTemplate)
+                .ToList();
 
             var recipients = db.Recipients.Include(r => r.Unit).Include(r => r.Room).Include(r => r.OrgNode).ToList();
             var orgSettings = db.OrganizationSettings.FirstOrDefault();
+
+            var run = new GenerationPackageRun
+            {
+                GenerationPackageId = packageId,
+                RunAt = DateTime.Now,
+                RunByUserId = _currentUserContext.CurrentUserId ?? 0
+            };
+            db.GenerationPackageRuns.Add(run);
+            db.SaveChanges();
+
+            Directory.CreateDirectory(outputFolder);
+            var usedFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            var docx = RunDocxPhase(db, templates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, regenerateExisting, progress);
+            var xlsx = RunXlsxPhase(db, exportLinks, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, regenerateExisting, progress);
+
+            run.GeneratedCount = docx.Generated;
+            run.SkippedCount = docx.Skipped;
+            run.ErrorCount = docx.Errors;
+
+            var summaryLines = new List<string>(docx.ErrorMessages);
+            summaryLines.AddRange(xlsx.SummaryLines);
+            run.Summary = summaryLines.Count == 0 ? null : string.Join("\n", summaryLines);
+
+            _auditLogService.LogGenerate(db, "GenerationPackage", packageId,
+                $"{package.Name}: docx — згенеровано {docx.Generated}, пропущено {docx.Skipped}, помилок {docx.Errors}; " +
+                $"xlsx — згенеровано {xlsx.Generated}, пропущено {xlsx.Skipped}, помилок {xlsx.Errors}");
+
+            db.SaveChanges();
+
+            return new RunResult(docx.Generated, docx.Skipped, docx.Errors, xlsx.Generated, xlsx.Skipped, xlsx.Errors);
+        }
+
+        private sealed record DocxPhaseResult(int Generated, int Skipped, int Errors, List<string> ErrorMessages);
+
+        // Phase A — по одному документу на людину. Чистий перенос попередньої логіки RunPackage,
+        // без змін поведінки: anti-дубль за (RecipientId, TemplateId), версійність, SourceHash.
+        private DocxPhaseResult RunDocxPhase(
+            AppDbContext db,
+            List<Template> templates,
+            List<Recipient> recipients,
+            OrganizationSettings? orgSettings,
+            GenerationPackageRun run,
+            Dictionary<string, string> manualValues,
+            string outputFolder,
+            HashSet<string> usedFileNames,
+            bool regenerateExisting,
+            IProgress<string> progress)
+        {
+            var mappingsByTemplate = templates.ToDictionary(
+                t => t.Id,
+                t => db.TemplateFieldMappings.Where(m => m.TemplateId == t.Id).ToList());
 
             // Anti-дубль: лише актуальні живі документи (видалені відсікає query filter).
             var existingPairs = new HashSet<(int RecipientId, int TemplateId)>(
@@ -176,18 +360,6 @@ namespace GenDoc.Services.Generation
                 .Select(o => new { o.Id, o.Name, o.ParentId })
                 .AsEnumerable()
                 .ToDictionary(o => o.Id, o => (o.Name, o.ParentId));
-
-            var run = new GenerationPackageRun
-            {
-                GenerationPackageId = packageId,
-                RunAt = DateTime.Now,
-                RunByUserId = _currentUserContext.CurrentUserId ?? 0
-            };
-            db.GenerationPackageRuns.Add(run);
-            db.SaveChanges();
-
-            Directory.CreateDirectory(outputFolder);
-            var usedFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
             var generated = 0;
             var skipped = 0;
@@ -272,18 +444,141 @@ namespace GenDoc.Services.Generation
                 }
             }
 
-            run.GeneratedCount = generated;
-            run.SkippedCount = skipped;
-            run.ErrorCount = errors;
-            run.Summary = errorMessages.Count == 0 ? null : string.Join("\n", errorMessages);
-
-            _auditLogService.LogGenerate(db, "GenerationPackage", packageId,
-                $"{package.Name}: згенеровано {generated}, пропущено {skipped}, помилок {errors}");
-
-            db.SaveChanges();
-
-            return new RunResult(generated, skipped, errors);
+            return new DocxPhaseResult(generated, skipped, errors, errorMessages);
         }
+
+        private sealed record XlsxPhaseResult(int Generated, int Skipped, int Errors, List<string> SummaryLines);
+
+        // Phase B — один документ на весь список людей (форма-відомість). Немає єдиного
+        // Recipient, тому anti-дубль тримається на RosterHash складу, а не на парі (Recipient, Template).
+        private XlsxPhaseResult RunXlsxPhase(
+            AppDbContext db,
+            List<GenerationPackageExportTemplate> exportLinks,
+            List<Recipient> allRecipients,
+            OrganizationSettings? orgSettings,
+            GenerationPackageRun run,
+            Dictionary<string, string> manualValues,
+            string outputFolder,
+            HashSet<string> usedFileNames,
+            bool regenerateExisting,
+            IProgress<string> progress)
+        {
+            var generated = 0;
+            var skipped = 0;
+            var errors = 0;
+            var summaryLines = new List<string>();
+
+            foreach (var link in exportLinks)
+            {
+                var template = link.ExportTemplate;
+                if (template is null) continue;
+
+                progress.Report($"Групова відомість «{template.Name}»…");
+
+                // Сортування — так само, як за замовчуванням на екрані «Особовий склад».
+                var roster = allRecipients
+                    .Where(r => FitnessCategoryHelper.Matches(link.FitnessFilter, r.FitnessCategory))
+                    .OrderBy(r => r.LastName, StringComparer.Ordinal)
+                    .ThenBy(r => r.FirstName, StringComparer.Ordinal)
+                    .ToList();
+
+                if (roster.Count == 0)
+                {
+                    skipped++;
+                    summaryLines.Add($"ГРУПА: {template.Name}: пропущено — немає людей за фільтром придатності");
+                    continue;
+                }
+
+                try
+                {
+                    var mappings = db.ExportTemplateColumnMappings
+                        .Where(m => m.ExportTemplateId == template.Id)
+                        .OrderBy(m => m.ColumnIndex)
+                        .ToList();
+
+                    var rosterEntries = roster.Select(r => (r.Id, SourceHash: ComputeRecipientSourceHash(mappings, r, orgSettings))).ToList();
+                    var rosterHash = _documentHashService.ComputeRosterHash(template.Id, rosterEntries);
+
+                    var current = db.GeneratedGroupDocuments
+                        .FirstOrDefault(g => g.ExportTemplateId == template.Id && g.IntakeId == null && g.IsCurrent);
+
+                    if (!regenerateExisting && current is not null && current.RosterHash == rosterHash)
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    var result = _xlsxGenerationService.Generate(
+                        template.Content, template.TemplateRowIndex, template.UsesPlaceholders,
+                        mappings, roster, orgSettings, manualValues);
+
+                    if (!result.Success)
+                    {
+                        errors++;
+                        summaryLines.Add($"ГРУПА: {template.Name}: {result.ErrorMessage}");
+                        continue;
+                    }
+
+                    var fileName = BuildGroupFileName(template.Name, usedFileNames);
+                    var outputPath = Path.Combine(outputFolder, fileName);
+                    File.WriteAllBytes(outputPath, result.Content!);
+
+                    var maxVersion = db.GeneratedGroupDocuments.IgnoreQueryFilters()
+                        .Where(g => g.ExportTemplateId == template.Id && g.IntakeId == null)
+                        .Select(g => (int?)g.Version)
+                        .Max() ?? 0;
+
+                    if (current is not null) current.IsCurrent = false;
+
+                    db.GeneratedGroupDocuments.Add(new GeneratedGroupDocument
+                    {
+                        ExportTemplateId = template.Id,
+                        RunId = run.Id,
+                        IntakeId = null,
+                        GeneratedAt = DateTime.Now,
+                        GeneratedByUserId = _currentUserContext.CurrentUserId ?? 0,
+                        FileName = fileName,
+                        SizeBytes = result.Content!.LongLength,
+                        ContentHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(result.Content)),
+                        RosterHash = rosterHash,
+                        RecipientCount = roster.Count,
+                        Version = maxVersion + 1,
+                        IsCurrent = true,
+                        HasContent = true,
+                        Content = new GeneratedGroupDocumentContent { Content = result.Content }
+                    });
+
+                    generated++;
+
+                    if (result.UnfilledTags.Count > 0)
+                        summaryLines.Add($"ГРУПА: {template.Name}: не заповнено теги — {string.Join(", ", result.UnfilledTags)}");
+                }
+                catch (Exception ex)
+                {
+                    errors++;
+                    summaryLines.Add($"ГРУПА: {template.Name}: {ex.Message}");
+                }
+            }
+
+            return new XlsxPhaseResult(generated, skipped, errors, summaryLines);
+
+            string ComputeRecipientSourceHash(List<ExportTemplateColumnMapping> mappings, Recipient r, OrganizationSettings? org)
+            {
+                // Той самий підхід, що ComputeSourceHash для docx: тільки автоматичні
+                // (не Manual) значення визначають, чи "застаріла" людина у відомості.
+                var auto = mappings.Where(m => m.SourceType != MappingSourceType.Manual);
+                return string.Join("|", auto
+                    .OrderBy(m => m.PlaceholderTag, StringComparer.Ordinal)
+                    .Select(m => $"{m.PlaceholderTag}={ResolveHashField(m, r, org)}"));
+            }
+        }
+
+        private static string ResolveHashField(ExportTemplateColumnMapping mapping, Recipient r, OrganizationSettings? org) => mapping.SourceType switch
+        {
+            MappingSourceType.Recipient => GetRecipientFieldValue(r, mapping.FieldKey),
+            MappingSourceType.Organization => GetOrganizationFieldValue(org, mapping.FieldKey),
+            _ => string.Empty
+        };
 
         private static string? BuildOrgPathSnapshot(int? orgNodeId, Dictionary<int, (string Name, int? ParentId)> nodes)
         {
@@ -350,6 +645,9 @@ namespace GenDoc.Services.Generation
             "OriginUnit" => r.OriginUnit ?? string.Empty,
             "Vehicle" => r.Vehicle ?? string.Empty,
             "RoomDisplay" => FormatRoom(r.Room),
+            "ShortName" => Services.NameFormatter.ShortName(r.LastName, r.FirstName, r.MiddleName),
+            "FitnessCategory" => r.FitnessCategory ?? string.Empty,
+            "RowNumber" => string.Empty,
             _ => string.Empty
         };
 
@@ -364,6 +662,8 @@ namespace GenDoc.Services.Generation
                 "CommanderRank" => org.CommanderRank,
                 "CommanderFullName" => org.CommanderFullName,
                 "HrOfficerFullName" => org.HrOfficerFullName,
+                "CommanderPosition" => org.CommanderPosition,
+                "UnitFullName" => org.UnitFullName,
                 _ => string.Empty
             };
         }
@@ -391,6 +691,23 @@ namespace GenDoc.Services.Generation
             while (!usedFileNames.Add(fileName))
             {
                 fileName = $"{baseName}_{suffix}.docx";
+                suffix++;
+            }
+
+            return fileName;
+        }
+
+        private static string BuildGroupFileName(string templateName, HashSet<string> usedFileNames)
+        {
+            var baseName = templateName;
+            foreach (var invalidChar in Path.GetInvalidFileNameChars())
+                baseName = baseName.Replace(invalidChar, '_');
+
+            var fileName = baseName + ".xlsx";
+            var suffix = 2;
+            while (!usedFileNames.Add(fileName))
+            {
+                fileName = $"{baseName}_{suffix}.xlsx";
                 suffix++;
             }
 

@@ -610,5 +610,180 @@ namespace GenDoc.Services.Documents
 
             return items;
         }
+
+        // ── Групові документи ───────────────────────────────────────────
+
+        public async Task<List<GroupDocumentRowDto>> QueryGroupAsync(GroupArchiveFilter filter)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var query = db.GeneratedGroupDocuments.Where(g => g.IsCurrent);
+
+            if (filter.ExportTemplateId is int templateId)
+                query = query.Where(g => g.ExportTemplateId == templateId);
+            if (filter.Year is int year)
+                query = query.Where(g => g.GeneratedAt.Year == year);
+
+            return await query
+                .OrderByDescending(g => g.GeneratedAt)
+                .Skip(filter.Skip)
+                .Take(filter.Take)
+                .Select(g => new GroupDocumentRowDto(
+                    g.Id,
+                    g.ExportTemplateId,
+                    g.ExportTemplate != null ? g.ExportTemplate.Name : "—",
+                    g.ExportTemplate != null && g.ExportTemplate.DeletedAt == null,
+                    g.Version,
+                    g.RecipientCount,
+                    g.GeneratedAt,
+                    g.GeneratedByUser != null ? g.GeneratedByUser.FullName : "—",
+                    g.HasContent,
+                    g.FileName,
+                    g.SizeBytes))
+                .ToListAsync();
+        }
+
+        public async Task<List<(int Id, string Name)>> GetGroupTemplateOptionsAsync()
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var ids = await db.GeneratedGroupDocuments.Select(g => g.ExportTemplateId).Distinct().ToListAsync();
+            return (await db.ExportTemplates.IgnoreQueryFilters()
+                    .Where(t => ids.Contains(t.Id))
+                    .OrderBy(t => t.Name)
+                    .Select(t => new { t.Id, t.Name })
+                    .ToListAsync())
+                .Select(t => (t.Id, t.Name))
+                .ToList();
+        }
+
+        public async Task OpenGroupAsync(int groupDocumentId)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var doc = await db.GeneratedGroupDocuments.FirstAsync(g => g.Id == groupDocumentId);
+            var content = await db.GeneratedGroupDocumentContents.FirstAsync(c => c.GeneratedGroupDocumentId == groupDocumentId);
+
+            await _tempFileService.OpenAsync(doc.FileName, content.Content);
+
+            _auditLogService.Log(db, "Відкрито документ", "GeneratedGroupDocument", groupDocumentId, null, doc.FileName);
+            await db.SaveChangesAsync();
+        }
+
+        public async Task<ArchiveOpResult> SaveGroupAsAsync(int groupDocumentId, string targetPath)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var doc = await db.GeneratedGroupDocuments.FirstAsync(g => g.Id == groupDocumentId);
+            var content = await db.GeneratedGroupDocumentContents.FirstAsync(c => c.GeneratedGroupDocumentId == groupDocumentId);
+
+            var bytes = _watermarkService.Apply(content.Content, doc.FileName);
+            await File.WriteAllBytesAsync(targetPath, bytes);
+
+            _auditLogService.LogExport(db, "GeneratedGroupDocument", 1, $"1 групова відомість → {Path.GetFileName(targetPath)}");
+            await db.SaveChangesAsync();
+            return new ArchiveOpResult(true, null);
+        }
+
+        public async Task DeleteGroupAsync(IReadOnlyList<int> groupDocumentIds)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var docs = await db.GeneratedGroupDocuments.Where(g => groupDocumentIds.Contains(g.Id)).ToListAsync();
+            var now = DateTime.Now;
+            var user = _currentUserContext.CurrentUserFullName;
+
+            foreach (var doc in docs)
+            {
+                doc.DeletedAt = now;
+                doc.DeletedBy = user;
+
+                if (doc.IsCurrent)
+                {
+                    doc.IsCurrent = false;
+                    var previous = await db.GeneratedGroupDocuments
+                        .Where(g => g.ExportTemplateId == doc.ExportTemplateId && g.IntakeId == doc.IntakeId
+                            && g.Id != doc.Id && g.DeletedAt == null)
+                        .OrderByDescending(g => g.Version)
+                        .FirstOrDefaultAsync();
+                    if (previous is not null) previous.IsCurrent = true;
+                }
+
+                _auditLogService.Log(db, "Видалено групову відомість", "GeneratedGroupDocument", doc.Id,
+                    $"{doc.FileName} (в.{doc.Version})", null);
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        public async Task<List<GroupVersionDto>> GetGroupVersionsAsync(int exportTemplateId)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            return await db.GeneratedGroupDocuments
+                .Where(g => g.ExportTemplateId == exportTemplateId)
+                .OrderByDescending(g => g.Version)
+                .Select(g => new GroupVersionDto(
+                    g.Id, g.Version, g.GeneratedAt,
+                    g.GeneratedByUser != null ? g.GeneratedByUser.FullName : "—",
+                    g.SizeBytes, g.IsCurrent, g.HasContent, g.FileName, g.RecipientCount))
+                .ToListAsync();
+        }
+
+        public async Task<int> MakeGroupCurrentAsync(int versionDocumentId)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var target = await db.GeneratedGroupDocuments.FirstAsync(g => g.Id == versionDocumentId);
+
+            foreach (var current in db.GeneratedGroupDocuments
+                .Where(g => g.ExportTemplateId == target.ExportTemplateId && g.IntakeId == target.IntakeId && g.IsCurrent)
+                .ToList())
+            {
+                current.IsCurrent = false;
+            }
+            target.IsCurrent = true;
+
+            _auditLogService.Log(db, "Змінено актуальну версію", "GeneratedGroupDocument", target.Id,
+                null, $"в.{target.Version}");
+            await db.SaveChangesAsync();
+            return target.Id;
+        }
+
+        public async Task<List<DeletedGroupDocumentInfo>> GetDeletedGroupDocumentsAsync()
+        {
+            using var db = _dbFactory.CreateDbContext();
+            return await db.GeneratedGroupDocuments.IgnoreQueryFilters()
+                .Where(g => g.DeletedAt != null)
+                .OrderByDescending(g => g.DeletedAt)
+                .Select(g => new DeletedGroupDocumentInfo(
+                    g.Id,
+                    g.ExportTemplate != null ? g.ExportTemplate.Name : "—",
+                    g.Version,
+                    g.RecipientCount,
+                    g.DeletedAt!.Value,
+                    g.DeletedBy))
+                .ToListAsync();
+        }
+
+        public async Task RestoreGroupAsync(int groupDocumentId)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var doc = await db.GeneratedGroupDocuments.IgnoreQueryFilters().FirstAsync(g => g.Id == groupDocumentId);
+            doc.DeletedAt = null;
+            doc.DeletedBy = null;
+
+            var maxAliveVersion = await db.GeneratedGroupDocuments
+                .Where(g => g.ExportTemplateId == doc.ExportTemplateId && g.IntakeId == doc.IntakeId && g.Id != doc.Id)
+                .MaxAsync(g => (int?)g.Version) ?? 0;
+
+            if (doc.Version >= maxAliveVersion)
+            {
+                foreach (var current in db.GeneratedGroupDocuments
+                    .Where(g => g.ExportTemplateId == doc.ExportTemplateId && g.IntakeId == doc.IntakeId && g.IsCurrent)
+                    .ToList())
+                {
+                    current.IsCurrent = false;
+                }
+                doc.IsCurrent = true;
+            }
+
+            _auditLogService.Log(db, "Відновлено групову відомість", "GeneratedGroupDocument", doc.Id, null,
+                $"{doc.FileName} (в.{doc.Version})");
+            await db.SaveChangesAsync();
+        }
     }
 }

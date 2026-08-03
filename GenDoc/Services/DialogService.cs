@@ -25,6 +25,7 @@ public class DialogService : IDialogService
         [typeof(NoteInputDialogViewModel)] = typeof(NoteInputDialog),
         [typeof(ManualValuesDialogViewModel)] = typeof(ManualValuesDialog),
         [typeof(VersionHistoryViewModel)] = typeof(VersionHistoryWindow),
+        [typeof(GroupVersionHistoryViewModel)] = typeof(GroupVersionHistoryWindow),
         [typeof(PackageRequirementsViewModel)] = typeof(PackageRequirementsWindow),
         [typeof(CloseIntakeDialogViewModel)] = typeof(CloseIntakeDialog),
         [typeof(StaffDocDialogViewModel)] = typeof(StaffDocDialog),

@@ -13,5 +13,6 @@ namespace GenDoc.Services.Staff
         Task IssueDocumentsAsync(
             StaffEventKind kind, IReadOnlyList<int> recipientIds, IReadOnlyList<int> templateIds,
             DateOnly dateStart, DateOnly dateEnd, string? note);
+        Task DeleteManyAsync(IReadOnlyList<int> recipientIds);
     }
 }

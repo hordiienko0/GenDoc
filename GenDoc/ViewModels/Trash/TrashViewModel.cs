@@ -37,6 +37,19 @@ namespace GenDoc.ViewModels.Trash
         public string DeletedByDisplay => Info.DeletedBy ?? "—";
     }
 
+    public partial class DeletedGroupDocumentRowViewModel : ObservableObject
+    {
+        public DeletedGroupDocumentRowViewModel(DeletedGroupDocumentInfo info)
+        {
+            Info = info;
+        }
+
+        public DeletedGroupDocumentInfo Info { get; }
+        public string Title => $"{Info.TemplateName} — {Info.RecipientCount} осіб (в.{Info.Version})";
+        public string DeletedAtDisplay => Info.DeletedAt.ToString("dd.MM.yyyy HH:mm");
+        public string DeletedByDisplay => Info.DeletedBy ?? "—";
+    }
+
     public partial class TrashViewModel : ObservableObject
     {
         private readonly IOrgTreeService _orgTreeService;
@@ -59,6 +72,7 @@ namespace GenDoc.ViewModels.Trash
 
         public ObservableCollection<DeletedFolderRowViewModel> Folders { get; } = new();
         public ObservableCollection<DeletedDocumentRowViewModel> Documents { get; } = new();
+        public ObservableCollection<DeletedGroupDocumentRowViewModel> GroupDocuments { get; } = new();
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasFolders))]
@@ -71,6 +85,12 @@ namespace GenDoc.ViewModels.Trash
         private int documentCount;
 
         public bool HasDocuments => DocumentCount > 0;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasGroupDocuments))]
+        private int groupDocumentCount;
+
+        public bool HasGroupDocuments => GroupDocumentCount > 0;
 
         public async Task LoadAsync()
         {
@@ -85,6 +105,12 @@ namespace GenDoc.ViewModels.Trash
             foreach (var document in documents)
                 Documents.Add(new DeletedDocumentRowViewModel(document));
             DocumentCount = Documents.Count;
+
+            var groupDocuments = await _archiveService.GetDeletedGroupDocumentsAsync();
+            GroupDocuments.Clear();
+            foreach (var document in groupDocuments)
+                GroupDocuments.Add(new DeletedGroupDocumentRowViewModel(document));
+            GroupDocumentCount = GroupDocuments.Count;
         }
 
         [RelayCommand]
@@ -92,6 +118,14 @@ namespace GenDoc.ViewModels.Trash
         {
             if (row is null) return;
             await _archiveService.RestoreAsync(row.Info.Id);
+            await LoadAsync();
+        }
+
+        [RelayCommand]
+        private async Task RestoreGroupDocumentAsync(DeletedGroupDocumentRowViewModel? row)
+        {
+            if (row is null) return;
+            await _archiveService.RestoreGroupAsync(row.Info.Id);
             await LoadAsync();
         }
 

@@ -1,3 +1,5 @@
+using GenDoc.Models.Enums;
+
 namespace GenDoc.Models
 {
     public class ExportTemplateColumnMapping
@@ -10,5 +12,9 @@ namespace GenDoc.Models
         public int ColumnIndex { get; set; }
         public string HeaderText { get; set; } = string.Empty;
         public string FieldKey { get; set; } = string.Empty;
+
+        // {{tag}} з тексту шаблону; порожній для старих (header-driven) мапінгів.
+        public string PlaceholderTag { get; set; } = string.Empty;
+        public MappingSourceType SourceType { get; set; }
     }
 }

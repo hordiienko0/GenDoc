@@ -38,6 +38,15 @@ public partial class ArchiveView : UserControl
             await vm.OpenByRowAsync(rowVm);
     }
 
+    private void GroupGrid_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (FindAncestor<CheckBox>(e.OriginalSource as DependencyObject) is not null) return;
+
+        var row = FindAncestor<DataGridRow>(e.OriginalSource as DependencyObject);
+        if (row?.Item is GroupDocumentRowViewModel rowVm && DataContext is ArchiveViewModel vm)
+            vm.HandleGroupRowClick(rowVm, Keyboard.Modifiers.HasFlag(ModifierKeys.Control));
+    }
+
     private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
     {
         while (current is not null)

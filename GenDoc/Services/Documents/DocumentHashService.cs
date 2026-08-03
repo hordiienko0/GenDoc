@@ -12,6 +12,10 @@ namespace GenDoc.Services.Documents
         // порівнюється з GeneratedDocument.SourceHash для стану «застарів».
         string ComputeSourceHash(
             List<TemplateFieldMapping> mappings, Recipient recipient, OrganizationSettings? orgSettings);
+
+        // Анти-дубль групового документа: хеш впорядкованого складу відомості —
+        // (RecipientId, SourceHash) кожної людини у списку + Id шаблону.
+        string ComputeRosterHash(int exportTemplateId, IReadOnlyList<(int RecipientId, string SourceHash)> roster);
     }
 
     public class DocumentHashService : IDocumentHashService
@@ -26,6 +30,14 @@ namespace GenDoc.Services.Documents
             var joined = string.Join("", values
                 .OrderBy(v => v.Key, StringComparer.Ordinal)
                 .Select(v => $"{v.Key}={v.Value}"));
+
+            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(joined)));
+        }
+
+        public string ComputeRosterHash(int exportTemplateId, IReadOnlyList<(int RecipientId, string SourceHash)> roster)
+        {
+            var joined = $"template={exportTemplateId};" + string.Join(
+                ";", roster.Select(r => $"{r.RecipientId}={r.SourceHash}"));
 
             return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(joined)));
         }

@@ -1,5 +1,3 @@
-using System.Collections.ObjectModel;
-using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -9,17 +7,17 @@ using GenDoc.Services.Intakes;
 using GenDoc.Services.Navigation;
 using GenDoc.ViewModels.Archive;
 using GenDoc.ViewModels.Audit;
-using GenDoc.ViewModels.Intakes;
-using GenDoc.ViewModels.Personnel;
-using GenDoc.ViewModels.Trash;
 using GenDoc.ViewModels.Generation;
 using GenDoc.ViewModels.Import;
-using GenDoc.ViewModels.Recipients;
+using GenDoc.ViewModels.Intakes;
+using GenDoc.ViewModels.Personnel;
 using GenDoc.ViewModels.Rooms;
 using GenDoc.ViewModels.Settings;
 using GenDoc.ViewModels.Templates;
+using GenDoc.ViewModels.Trash;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using System.Collections.ObjectModel;
 
 namespace GenDoc.ViewModels.Shell;
 

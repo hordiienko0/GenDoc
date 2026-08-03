@@ -33,6 +33,8 @@ namespace GenDoc.Models.Enums
         ServiceNumber,
         UnitName,
         RoomDisplay,
+        ShortName,
+        FitnessCategory,
         Empty
     }
 
@@ -71,6 +73,8 @@ namespace GenDoc.Models.Enums
             [ExportFieldKey.ServiceNumber] = "Особовий номер",
             [ExportFieldKey.UnitName] = "Підрозділ",
             [ExportFieldKey.RoomDisplay] = "Кімната",
+            [ExportFieldKey.ShortName] = "ПІБ скорочено (ПРІЗВИЩЕ І.П.)",
+            [ExportFieldKey.FitnessCategory] = "Категорія придатності",
             [ExportFieldKey.Empty] = "— не заповнювати —"
         };
     }

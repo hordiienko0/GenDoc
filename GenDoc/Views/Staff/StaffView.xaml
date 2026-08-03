@@ -82,6 +82,8 @@
                         Foreground="{StaticResource AccentBrush}" Command="{Binding OpenTripCommand}" Margin="0,0,16,0"/>
                 <Button Content="Оформити відпустку" Style="{StaticResource TextLinkButtonStyle}"
                         Foreground="{StaticResource AccentBrush}" Command="{Binding OpenLeaveCommand}" Margin="0,0,16,0"/>
+                <Button Content="Видалити" Background="{StaticResource DangerBrush}" Foreground="White"
+                        Command="{Binding DeleteSelectedCommand}" Margin="0,0,16,0"/>
                 <Button Content="Зняти вибір" Style="{StaticResource TextLinkButtonStyle}"
                         Foreground="{StaticResource TextSecondaryBrush}" Command="{Binding ClearSelectionCommand}"/>
             </StackPanel>

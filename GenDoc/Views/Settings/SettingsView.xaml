@@ -39,9 +39,17 @@
                         <TextBlock Text="ПІБ командира" Style="{StaticResource SettingsFieldLabelStyle}"/>
                         <TextBox Text="{Binding CommanderFullName, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
-                    <StackPanel Margin="0,0,0,18">
+                    <StackPanel Margin="0,0,0,14">
+                        <TextBlock Text="Посада командира" Style="{StaticResource SettingsFieldLabelStyle}"/>
+                        <TextBox Text="{Binding CommanderPosition, UpdateSourceTrigger=PropertyChanged}" Tag="напр. Начальник курсів підвищення кваліфікації"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,0,14">
                         <TextBlock Text="ПІБ начальника служби персоналу" Style="{StaticResource SettingsFieldLabelStyle}"/>
                         <TextBox Text="{Binding HrOfficerFullName, UpdateSourceTrigger=PropertyChanged}"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,0,0,18">
+                        <TextBlock Text="Повна назва частини/закладу" Style="{StaticResource SettingsFieldLabelStyle}"/>
+                        <TextBox Text="{Binding UnitFullName, UpdateSourceTrigger=PropertyChanged}" Tag="напр. Військова частина А1234"/>
                     </StackPanel>
 
                     <Button Content="Зберегти" Command="{Binding SaveCommand}" HorizontalAlignment="Left"/>

@@ -284,6 +284,24 @@ namespace GenDoc.ViewModels.Personnel
         }
 
         [RelayCommand]
+        private async Task DeleteCheckedAsync()
+        {
+            var checkedRows = Rows.Where(r => r.IsChecked).ToList();
+            if (checkedRows.Count == 0) return;
+
+            var result = MessageBox.Show(
+                $"Видалити {checkedRows.Count} записів до кошика?",
+                "Підтвердження видалення",
+                MessageBoxButton.YesNo, MessageBoxImage.Warning);
+            if (result != MessageBoxResult.Yes) return;
+
+            await _personnelService.DeleteManyAsync(checkedRows.Select(r => r.Id).ToList());
+
+            ClearChecked();
+            WeakReferenceMessenger.Default.Send(new CountsChangedMessage());
+        }
+
+        [RelayCommand]
         private async Task OpenRowAsync(PersonRowViewModel? row)
         {
             if (row is null) return;

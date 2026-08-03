@@ -48,6 +48,8 @@ public static class TemplateFieldCatalog
         new("City", "Місто"),
         new("CommanderRank", "Звання командира"),
         new("CommanderFullName", "ПІБ командира"),
-        new("HrOfficerFullName", "ПІБ начальника служби персоналу")
+        new("CommanderPosition", "Посада командира"),
+        new("HrOfficerFullName", "ПІБ начальника служби персоналу"),
+        new("UnitFullName", "Повна назва частини/закладу")
     };
 }

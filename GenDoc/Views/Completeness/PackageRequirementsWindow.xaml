@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:GenDoc.ViewModels.Completeness"
         Style="{StaticResource {x:Type Window}}"
-        Title="Вимоги пакета" Width="620" Height="640"
+        Title="Вимоги пакета" Width="620" Height="760"
         Background="{StaticResource PanelBrush}"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
 
@@ -67,6 +67,9 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
@@ -215,6 +218,85 @@
                           DisplayMemberPath="Name"/>
                 <Button Content="+ Додати шаблон до пакета" Style="{StaticResource SecondaryButtonStyle}"
                         Margin="10,0,0,0" Command="{Binding AddTemplateCommand}"/>
+            </StackPanel>
+
+            <TextBlock Grid.Row="3" Text="ШАБЛОНИ ЕКСПОРТУ (.XLSX) — ГРУПОВІ ВІДОМОСТІ" FontSize="10.5" FontWeight="Bold"
+                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,20,0,8"/>
+
+            <ItemsControl Grid.Row="4" ItemsSource="{Binding ExportRows}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:ExportTemplateLinkRowViewModel}">
+                        <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1" Padding="0,8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="300"/>
+                                    <ColumnDefinition Width="30"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="12.5" VerticalAlignment="Center"
+                                           Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+
+                                <UniformGrid Grid.Column="1" Columns="3" VerticalAlignment="Center">
+                                    <Button Content="Усі"
+                                            Command="{Binding DataContext.SetFitnessAllCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource RequirementSegmentStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Filter}" Value="All">
+                                                        <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                                                        <Setter Property="Foreground" Value="White"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <Button Content="Придатні"
+                                            Command="{Binding DataContext.SetFitnessRegularCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource RequirementSegmentStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Filter}" Value="RegularOnly">
+                                                        <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                                                        <Setter Property="Foreground" Value="White"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <Button Content="Обмежено придатні"
+                                            Command="{Binding DataContext.SetFitnessLimitedCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                            CommandParameter="{Binding}">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource RequirementSegmentStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Filter}" Value="LimitedOnly">
+                                                        <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                                                        <Setter Property="Foreground" Value="White"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </UniformGrid>
+
+                                <Button Grid.Column="2" Content="✕" Style="{StaticResource RowIconButtonStyle}"
+                                        Foreground="{StaticResource DangerBrush}" HorizontalAlignment="Right"
+                                        Command="{Binding DataContext.RemoveExportTemplateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                        CommandParameter="{Binding}"/>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,12,0,0">
+                <ComboBox Width="260" ItemsSource="{Binding AvailableExportTemplates}" SelectedItem="{Binding SelectedExportTemplateToAdd}"
+                          DisplayMemberPath="Name"/>
+                <Button Content="+ Додати шаблон експорту" Style="{StaticResource SecondaryButtonStyle}"
+                        Margin="10,0,0,0" Command="{Binding AddExportTemplateCommand}"/>
             </StackPanel>
         </Grid>
     </DockPanel>

@@ -8,11 +8,16 @@ namespace GenDoc.Services.Personnel
     {
         private readonly IDbContextFactory<AppDbContext> _dbFactory;
         private readonly IAuditLogService _auditLogService;
+        private readonly ICurrentUserContext _currentUserContext;
 
-        public PersonnelService(IDbContextFactory<AppDbContext> dbFactory, IAuditLogService auditLogService)
+        public PersonnelService(
+            IDbContextFactory<AppDbContext> dbFactory,
+            IAuditLogService auditLogService,
+            ICurrentUserContext currentUserContext)
         {
             _dbFactory = dbFactory;
             _auditLogService = auditLogService;
+            _currentUserContext = currentUserContext;
         }
 
         public async Task<List<PersonListItem>> QueryByNodeAsync(int nodeId, bool includeDescendants)
@@ -131,6 +136,36 @@ namespace GenDoc.Services.Personnel
 
                 _auditLogService.Log(db, "Переміщено (масово)", "Recipient", 0, null, null,
                     $"Переміщено {recipients.Count} осіб: {sourceBranchName} → {target.Name}");
+                await db.SaveChangesAsync();
+            }
+
+            if (db.Database.CurrentTransaction is null)
+            {
+                using var tx = await db.Database.BeginTransactionAsync();
+                await ApplyAsync();
+                await tx.CommitAsync();
+            }
+            else
+            {
+                await ApplyAsync();
+            }
+        }
+
+        public async Task DeleteManyAsync(IReadOnlyList<int> recipientIds)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var recipients = await db.Recipients.Where(r => recipientIds.Contains(r.Id)).ToListAsync();
+
+            async Task ApplyAsync()
+            {
+                foreach (var r in recipients)
+                {
+                    var snapshot = BuildSnapshot(r);
+                    r.DeletedAt = DateTime.Now;
+                    r.DeletedBy = _currentUserContext.CurrentUserFullName;
+                    _auditLogService.LogDelete(db, "Recipient", r.Id, snapshot);
+                }
+
                 await db.SaveChangesAsync();
             }
 

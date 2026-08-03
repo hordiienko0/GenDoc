@@ -4,7 +4,7 @@ namespace GenDoc.Services
 {
     public sealed record ExportColumn<T>(string Header, Func<T, object?> Selector);
 
-    public sealed record ExportResult(bool Success, int RowCount, string? FilePath, string? ErrorMessage);
+    public sealed record ExportResult(bool Success, int RowCount, string? FilePath, string? ErrorMessage, IReadOnlyList<string>? UnfilledTags = null);
 
     public interface IExportService
     {
@@ -14,6 +14,10 @@ namespace GenDoc.Services
             string filePath,
             string sheetName = "Аркуш1");
 
-        Task<ExportResult> ExportByTemplateAsync(int templateId, IReadOnlyList<Recipient> items, string filePath);
+        Task<ExportResult> ExportByTemplateAsync(
+            int templateId,
+            IReadOnlyList<Recipient> items,
+            IDictionary<string, string> manualValues,
+            string filePath);
     }
 }

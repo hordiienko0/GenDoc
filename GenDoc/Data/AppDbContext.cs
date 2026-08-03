@@ -37,6 +37,9 @@ namespace GenDoc.Data
         public DbSet<ExportTemplate> ExportTemplates => Set<ExportTemplate>();
         public DbSet<ExportTemplateColumnMapping> ExportTemplateColumnMappings => Set<ExportTemplateColumnMapping>();
         public DbSet<StaffEvent> StaffEvents => Set<StaffEvent>();
+        public DbSet<GenerationPackageExportTemplate> GenerationPackageExportTemplates => Set<GenerationPackageExportTemplate>();
+        public DbSet<GeneratedGroupDocument> GeneratedGroupDocuments => Set<GeneratedGroupDocument>();
+        public DbSet<GeneratedGroupDocumentContent> GeneratedGroupDocumentContents => Set<GeneratedGroupDocumentContent>();
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -80,6 +83,26 @@ namespace GenDoc.Data
                 .HasMany(t => t.ColumnMappings)
                 .WithOne(m => m.ExportTemplate)
                 .HasForeignKey(m => m.ExportTemplateId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<GeneratedGroupDocument>(b =>
+            {
+                b.HasIndex(g => new { g.ExportTemplateId, g.IntakeId, g.IsCurrent });
+                b.HasIndex(g => g.GeneratedAt);
+                b.HasIndex(g => g.RunId);
+                b.HasOne(g => g.Content)
+                    .WithOne(c => c.GeneratedGroupDocument)
+                    .HasForeignKey<GeneratedGroupDocumentContent>(c => c.GeneratedGroupDocumentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<GeneratedGroupDocumentContent>()
+                .HasKey(c => c.GeneratedGroupDocumentId);
+
+            modelBuilder.Entity<GenerationPackageExportTemplate>()
+                .HasOne(t => t.GenerationPackage)
+                .WithMany(p => p.ExportTemplates)
+                .HasForeignKey(t => t.GenerationPackageId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<OrgNode>()

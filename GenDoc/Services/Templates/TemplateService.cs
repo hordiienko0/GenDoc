@@ -12,36 +12,6 @@ namespace GenDoc.Services.Templates
     {
         private static readonly Regex PlaceholderRegex = new(@"\{\{[^{}]+\}\}", RegexOptions.Compiled);
 
-        private static readonly Dictionary<string, string> RecipientTagMap = new()
-        {
-            ["піб"] = "FullNameFormatted",
-            ["звання"] = "Rank",
-            ["посада"] = "Position",
-            ["підрозділ"] = "UnitName",
-            ["особовий_номер"] = "ServiceNumber",
-            ["дата_народження"] = "DateOfBirth",
-            ["національність"] = "Nationality",
-            ["вос"] = "Vos",
-            ["сімейний_стан"] = "MaritalStatus",
-            ["адреса_реєстрації"] = "RegistrationAddress",
-            ["адреса_проживання"] = "ResidenceAddress",
-            ["телефон"] = "Phone",
-            ["примітка"] = "Note",
-            ["група"] = "GroupName",
-            ["піб_іноземною"] = "NameTransliterated",
-            ["служив"] = "ServedBefore",
-            ["автомобіль"] = "Vehicle"
-        };
-
-        private static readonly Dictionary<string, string> OrganizationTagMap = new()
-        {
-            ["номер_вч"] = "UnitNumber",
-            ["місто"] = "City",
-            ["звання_командира"] = "CommanderRank",
-            ["піб_командира"] = "CommanderFullName",
-            ["піб_кадровика"] = "HrOfficerFullName"
-        };
-
         private readonly IDbContextFactory<AppDbContext> _dbFactory;
         private readonly IAuditLogService _auditLogService;
         private readonly ICurrentUserContext _currentUserContext;
@@ -185,17 +155,7 @@ namespace GenDoc.Services.Templates
         }
 
         private static (MappingSourceType SourceType, string? FieldName) ClassifyTag(string tagWithBraces)
-        {
-            var inner = tagWithBraces.Trim('{', '}').Trim().ToLowerInvariant();
-
-            if (RecipientTagMap.TryGetValue(inner, out var recipientField))
-                return (MappingSourceType.Recipient, recipientField);
-
-            if (OrganizationTagMap.TryGetValue(inner, out var organizationField))
-                return (MappingSourceType.Organization, organizationField);
-
-            return (MappingSourceType.Manual, null);
-        }
+            => PlaceholderTagMaps.Classify(tagWithBraces);
 
         private static List<string> ScanPlaceholders(WordprocessingDocument doc)
         {

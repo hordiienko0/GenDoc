@@ -26,6 +26,8 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty] private string commanderRank = string.Empty;
     [ObservableProperty] private string commanderFullName = string.Empty;
     [ObservableProperty] private string hrOfficerFullName = string.Empty;
+    [ObservableProperty] private string commanderPosition = string.Empty;
+    [ObservableProperty] private string unitFullName = string.Empty;
 
     private void Load()
     {
@@ -39,6 +41,8 @@ public partial class SettingsViewModel : ObservableObject
         CommanderRank = settings.CommanderRank;
         CommanderFullName = settings.CommanderFullName;
         HrOfficerFullName = settings.HrOfficerFullName;
+        CommanderPosition = settings.CommanderPosition;
+        UnitFullName = settings.UnitFullName;
     }
 
     [RelayCommand]
@@ -54,12 +58,16 @@ public partial class SettingsViewModel : ObservableObject
         AddIfChanged(oldParts, newParts, "Звання командира", settings.CommanderRank, CommanderRank);
         AddIfChanged(oldParts, newParts, "ПІБ командира", settings.CommanderFullName, CommanderFullName);
         AddIfChanged(oldParts, newParts, "ПІБ кадровика", settings.HrOfficerFullName, HrOfficerFullName);
+        AddIfChanged(oldParts, newParts, "Посада командира", settings.CommanderPosition, CommanderPosition);
+        AddIfChanged(oldParts, newParts, "Повна назва частини", settings.UnitFullName, UnitFullName);
 
         settings.UnitNumber = UnitNumber.Trim();
         settings.City = City.Trim();
         settings.CommanderRank = CommanderRank.Trim();
         settings.CommanderFullName = CommanderFullName.Trim();
         settings.HrOfficerFullName = HrOfficerFullName.Trim();
+        settings.CommanderPosition = CommanderPosition.Trim();
+        settings.UnitFullName = UnitFullName.Trim();
 
         db.SaveChanges();
 

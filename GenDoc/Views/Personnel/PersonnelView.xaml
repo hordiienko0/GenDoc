@@ -303,6 +303,9 @@
                                    Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
                         <Button Content="Перемістити до…" Margin="16,0,0,0" Style="{StaticResource SecondaryButtonStyle}"
                                 Command="{Binding MoveCheckedCommand}"/>
+                        <Button Content="Видалити" Margin="8,0,0,0"
+                                Background="{StaticResource DangerBrush}" Foreground="White"
+                                Command="{Binding DeleteCheckedCommand}"/>
                         <Button Content="Зняти вибір" Margin="8,0,0,0" Style="{StaticResource GhostButtonStyle}"
                                 Command="{Binding ClearCheckedCommand}"/>
                     </StackPanel>

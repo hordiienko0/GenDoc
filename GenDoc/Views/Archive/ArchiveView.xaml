@@ -69,6 +69,19 @@
                         </Style>
                     </Button.Style>
                 </Button>
+                <Button Content="Групові" Command="{Binding SetTabCommand}" CommandParameter="2">
+                    <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource ArchiveTabStyle}">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsGroupTab}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
                 <Button Content="Запуски" Command="{Binding SetTabCommand}" CommandParameter="1">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource ArchiveTabStyle}">
@@ -422,6 +435,110 @@
             <TextBlock Text="Запусків ще не було" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"
                        HorizontalAlignment="Center" VerticalAlignment="Center"
                        Visibility="{Binding RunsEmpty, Converter={StaticResource BoolToVisibility}}"/>
+        </Grid>
+
+        <!-- ТАБ «ГРУПОВІ» -->
+        <Grid Grid.Row="2" Visibility="{Binding IsGroupTab, Converter={StaticResource BoolToVisibility}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Margin="0,0,0,9">
+                <TextBlock Text="Групові документи охоплюють кількох людей в одному аркуші (відомості) — не плутати з персональними документами на вкладці «Документи»."
+                           FontSize="11.5" TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                <ComboBox Style="{StaticResource ArchiveFilterComboStyle}" ItemsSource="{Binding GroupTemplateOptions}"
+                          SelectedItem="{Binding SelectedGroupTemplate}" DisplayMemberPath="Label" Margin="0,26,0,0"/>
+            </Grid>
+
+            <Border Grid.Row="1" Background="{StaticResource PanelBrush}"
+                    BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1">
+                <Grid>
+                    <DataGrid x:Name="GroupGrid" ItemsSource="{Binding GroupRows}"
+                              AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+                              CanUserSortColumns="False" EnableRowVirtualization="True"
+                              MouseLeftButtonUp="GroupGrid_MouseLeftButtonUp"
+                              Visibility="{Binding GroupHasRows, Converter={StaticResource BoolToVisibility}}">
+                        <DataGrid.Columns>
+                            <DataGridTemplateColumn Width="36" CanUserResize="False"
+                                                     CellStyle="{StaticResource CheckboxCellStyle}">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <DataGridTextColumn Header="ШАБЛОН (ВІДОМІСТЬ)" Binding="{Binding TemplateDisplay}" Width="1.8*">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="FontWeight" Value="Bold"/>
+                                        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <DataGridTemplateColumn Header="ОСІБ" Width="90">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border Background="{StaticResource AccentSoftBrush}" HorizontalAlignment="Left"
+                                                Padding="6,2" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding PeopleText}" FontSize="11" FontWeight="Bold"
+                                                       Foreground="{StaticResource AccentBrush}"/>
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <DataGridTextColumn Header="ВЕР." Binding="{Binding VersionText}" Width="60">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <DataGridTextColumn Header="ДАТА" Binding="{Binding DateText}" Width="86"/>
+                            <DataGridTextColumn Header="АВТОР" Binding="{Binding Author}" Width="1*">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="РОЗМІР" Binding="{Binding SizeText}" Width="80">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+
+                    <TextBlock Text="Групових документів ще немає" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Visibility="{Binding GroupIsEmpty, Converter={StaticResource BoolToVisibility}}"/>
+                </Grid>
+            </Border>
+
+            <WrapPanel Grid.Row="2" Margin="0,8,0,0">
+                <Button Content="Відкрити" Style="{StaticResource ArchiveActionButtonStyle}"
+                        IsEnabled="{Binding CanOpenGroup}" ToolTip="Оберіть одну відомість"
+                        Command="{Binding OpenGroupCommand}"/>
+                <Button Content="Зберегти як…" Style="{StaticResource ArchiveActionButtonStyle}"
+                        IsEnabled="{Binding CanSaveGroupAs}" ToolTip="Оберіть відомості"
+                        Command="{Binding SaveGroupAsCommand}"/>
+                <Button Content="Історія версій" Style="{StaticResource ArchiveActionButtonStyle}"
+                        IsEnabled="{Binding CanHistoryGroup}" ToolTip="Оберіть одну відомість"
+                        Command="{Binding HistoryGroupCommand}"/>
+                <Button Content="Видалити" Style="{StaticResource ArchiveActionButtonStyle}"
+                        Foreground="{StaticResource DangerBrush}"
+                        IsEnabled="{Binding CanDeleteGroup}" ToolTip="Оберіть відомості"
+                        Command="{Binding DeleteGroupCommand}"/>
+            </WrapPanel>
         </Grid>
     </Grid>
 </UserControl>

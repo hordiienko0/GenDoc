@@ -69,4 +69,25 @@ namespace GenDoc.Services.Documents
     public record DeletedDocumentInfo(int Id, string Person, string TemplateName, int Version, DateTime DeletedAt, string? DeletedBy);
 
     public record ArchiveOpResult(bool Success, string? ErrorMessage);
+
+    public record GroupArchiveFilter(int? ExportTemplateId, int? Year, int Skip, int Take);
+
+    public record GroupDocumentRowDto(
+        int Id,
+        int ExportTemplateId,
+        string TemplateName,
+        bool TemplateAlive,
+        int Version,
+        int RecipientCount,
+        DateTime GeneratedAt,
+        string Author,
+        bool HasContent,
+        string FileName,
+        long SizeBytes);
+
+    public record GroupVersionDto(
+        int Id, int Version, DateTime CreatedAt, string Author, long SizeBytes,
+        bool IsCurrent, bool HasContent, string FileName, int RecipientCount);
+
+    public record DeletedGroupDocumentInfo(int Id, string TemplateName, int Version, int RecipientCount, DateTime DeletedAt, string? DeletedBy);
 }
