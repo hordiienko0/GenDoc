@@ -12,7 +12,10 @@ namespace GenDoc.Services.Staff
         Task<IReadOnlyList<string>> GetUnitsAsync();
         Task IssueDocumentsAsync(
             StaffEventKind kind, IReadOnlyList<int> recipientIds, IReadOnlyList<int> templateIds,
-            DateOnly dateStart, DateOnly dateEnd, string? note);
+            DateOnly dateStart, DateOnly dateEnd, string? note, Dictionary<string, string> manualValues);
+        Task<int> GenerateDocumentsAsync(
+            IReadOnlyList<int> recipientIds, IReadOnlyList<int> templateIds, Dictionary<string, string> manualValues);
+        Task<Dictionary<string, string>> GetLastManualValuesAsync();
         Task DeleteManyAsync(IReadOnlyList<int> recipientIds);
     }
 }

@@ -6,8 +6,15 @@ namespace GenDoc.Models
     {
         public int Id { get; set; }
 
-        public int ExportTemplateId { get; set; }
+        // Рівно одне з двох має бути заповнене: ExportTemplateId — для XLSX-відомості,
+        // TemplateId — для групового DOCX (повторюваний блок). Перевіряється в
+        // сервісах генерації, а не на рівні БД (SQLite не підтримує CHECK-обмеження
+        // на вже існуючій таблиці без повного її перестворення).
+        public int? ExportTemplateId { get; set; }
         public ExportTemplate? ExportTemplate { get; set; }
+
+        public int? TemplateId { get; set; }
+        public Template? Template { get; set; }
 
         public int? RunId { get; set; }
         public int? IntakeId { get; set; }

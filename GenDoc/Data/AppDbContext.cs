@@ -88,8 +88,17 @@ namespace GenDoc.Data
             modelBuilder.Entity<GeneratedGroupDocument>(b =>
             {
                 b.HasIndex(g => new { g.ExportTemplateId, g.IntakeId, g.IsCurrent });
+                b.HasIndex(g => new { g.TemplateId, g.IntakeId, g.IsCurrent });
                 b.HasIndex(g => g.GeneratedAt);
                 b.HasIndex(g => g.RunId);
+                b.HasOne(g => g.ExportTemplate)
+                    .WithMany()
+                    .HasForeignKey(g => g.ExportTemplateId)
+                    .OnDelete(DeleteBehavior.Restrict);
+                b.HasOne(g => g.Template)
+                    .WithMany()
+                    .HasForeignKey(g => g.TemplateId)
+                    .OnDelete(DeleteBehavior.Restrict);
                 b.HasOne(g => g.Content)
                     .WithOne(c => c.GeneratedGroupDocument)
                     .HasForeignKey<GeneratedGroupDocumentContent>(c => c.GeneratedGroupDocumentId)

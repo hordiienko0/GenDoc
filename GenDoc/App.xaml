@@ -10,6 +10,7 @@
             </ResourceDictionary.MergedDictionaries>
 
             <conv:BoolToVisibilityConverter x:Key="BoolToVisibility"/>
+            <conv:InverseBooleanConverter x:Key="InverseBoolean"/>
             <conv:EnumToVisibilityConverter x:Key="EnumToVisibility"/>
             <conv:FractionToGridLengthConverter x:Key="FractionToGridLength"/>
             <conv:OccupancyToWidthConverter x:Key="OccupancyToWidth"/>

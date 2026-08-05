@@ -161,7 +161,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <Button Content="+ Завантажити шаблон (.docx)" Style="{StaticResource SecondaryButtonStyle}"
+                    <Button Content="+ Завантажити шаблон" Style="{StaticResource SecondaryButtonStyle}"
                             Command="{Binding UploadDocxTemplateCommand}" HorizontalAlignment="Left" Margin="20,16"/>
                 </StackPanel>
             </Border>
@@ -323,7 +323,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <Button Content="+ Завантажити шаблон експорту" Style="{StaticResource SecondaryButtonStyle}"
+                    <Button Content="+ Завантажити шаблон" Style="{StaticResource SecondaryButtonStyle}"
                             Command="{Binding UploadTemplateCommand}" HorizontalAlignment="Left" Margin="20,16"/>
                 </StackPanel>
             </Border>

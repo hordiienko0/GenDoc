@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -43,19 +44,39 @@ public partial class TemplatesViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void UploadDocxTemplate()
+    private void UploadDocxTemplate() => UploadAnyTemplate();
+
+    private void UploadAnyTemplate()
     {
-        var dialog = new OpenFileDialog { Filter = "Документи Word (*.docx)|*.docx" };
+        var dialog = new OpenFileDialog
+        {
+            Filter = "Шаблони (*.docx;*.xlsx)|*.docx;*.xlsx|Документи Word (*.docx)|*.docx|Excel файли (*.xlsx)|*.xlsx"
+        };
         if (dialog.ShowDialog() != true) return;
 
-        var result = _templateService.Upload(dialog.FileName);
-        if (!result.Success)
+        var extension = Path.GetExtension(dialog.FileName).ToLowerInvariant();
+        switch (extension)
         {
-            MessageBox.Show(result.ErrorMessage, "Помилка завантаження", MessageBoxButton.OK, MessageBoxImage.Error);
-            return;
-        }
+            case ".docx":
+                var result = _templateService.Upload(dialog.FileName);
+                if (!result.Success)
+                {
+                    MessageBox.Show(result.ErrorMessage, "Помилка завантаження", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
 
-        RefreshDocxTemplates();
+                RefreshDocxTemplates();
+                break;
+
+            case ".xlsx":
+                _exportTemplateService.UploadTemplate(dialog.FileName);
+                Refresh();
+                break;
+
+            default:
+                MessageBox.Show("Підтримуються лише файли .docx та .xlsx.", "Непідтримуваний формат", MessageBoxButton.OK, MessageBoxImage.Error);
+                break;
+        }
     }
 
     [RelayCommand]
@@ -117,11 +138,7 @@ public partial class TemplatesViewModel : ObservableObject
     [RelayCommand]
     private void UploadTemplate()
     {
-        var dialog = new OpenFileDialog { Filter = "Excel файли (*.xlsx)|*.xlsx" };
-        if (dialog.ShowDialog() != true) return;
-
-        _exportTemplateService.UploadTemplate(dialog.FileName);
-        Refresh();
+        UploadAnyTemplate();
     }
 
     [RelayCommand]

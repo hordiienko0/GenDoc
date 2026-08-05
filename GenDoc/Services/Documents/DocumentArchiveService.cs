@@ -629,7 +629,9 @@ namespace GenDoc.Services.Documents
                 .Take(filter.Take)
                 .Select(g => new GroupDocumentRowDto(
                     g.Id,
-                    g.ExportTemplateId,
+                    // TODO: цей екран поки показує лише XLSX-групи; підтримку групового
+                    // DOCX (g.TemplateId) в архіві додамо разом з UI вибору складу.
+                    g.ExportTemplateId ?? 0,
                     g.ExportTemplate != null ? g.ExportTemplate.Name : "—",
                     g.ExportTemplate != null && g.ExportTemplate.DeletedAt == null,
                     g.Version,

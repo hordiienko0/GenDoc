@@ -27,7 +27,15 @@ namespace GenDoc.Services.Templates
             ["група"] = "GroupName",
             ["піб_іноземною"] = "NameTransliterated",
             ["служив"] = "ServedBefore",
-            ["автомобіль"] = "Vehicle"
+            ["автомобіль"] = "Vehicle",
+            ["кімната"] = "RoomDisplay",
+            ["номер_посвідчення"] = "TravelCertificateNumber",
+            ["прод_атестат"] = "FoodCertificate",
+            ["звання_зв"] = "RankAccusative",
+            ["піб_зв"] = "FullNameAccusative",
+            ["посада_зв"] = "PositionAccusative",
+            ["прибув"] = "ArrivedVerb",
+            ["таким"] = "SuchPronoun"
         };
 
         public static readonly IReadOnlyDictionary<string, string> OrganizationTagMap = new Dictionary<string, string>

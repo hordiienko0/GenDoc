@@ -6,7 +6,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 11;
+    private const int CurrentSchemaVersion = 14;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -89,6 +89,27 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     private static readonly (string Name, string Type)[] OrganizationSettingsColumnsV10 =
     {
         ("CommanderPosition", "TEXT"), ("UnitFullName", "TEXT")
+    };
+
+    private static readonly (string Name, string Type)[] TemplateColumnsV12 =
+    {
+        ("Kind", "INTEGER NOT NULL DEFAULT 0")
+    };
+
+    private static readonly (string Name, string Type)[] TemplateFieldMappingColumnsV12 =
+    {
+        ("IsInsideRepeatingBlock", "INTEGER NOT NULL DEFAULT 0")
+    };
+
+    private static readonly (string Name, string Type)[] AppSettingsColumnsV13 =
+    {
+        ("LastManualValuesJson", "TEXT")
+    };
+
+    private static readonly (string Name, string Type)[] RecipientColumnsV14 =
+    {
+        ("Gender", "INTEGER"), ("RankAccusative", "TEXT"),
+        ("FullNameAccusative", "TEXT"), ("PositionAccusative", "TEXT")
     };
 
     private readonly IDbContextFactory<AppDbContext> _dbFactory;
@@ -245,6 +266,47 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                     AppliedAt = DateTime.Now,
                     Description = "XLSX-шаблони у пакетах генерації: групові документи, фільтр придатності"
                 });
+                currentVersion = 11;
+            }
+
+            if (currentVersion < 12)
+            {
+                AddMissingColumns(db, "Templates", TemplateColumnsV12);
+                AddMissingColumns(db, "TemplateFieldMappings", TemplateFieldMappingColumnsV12);
+                MigrateGeneratedGroupDocumentsForDocxSupport(db);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 12,
+                    AppliedAt = DateTime.Now,
+                    Description = "Груповий DOCX: тип шаблону, повторювані блоки, GeneratedGroupDocument.TemplateId"
+                });
+                currentVersion = 12;
+            }
+
+            if (currentVersion < 13)
+            {
+                AddMissingColumns(db, "AppSettings", AppSettingsColumnsV13);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 13,
+                    AppliedAt = DateTime.Now,
+                    Description = "Генерація в догонку: збереження останніх ручних міток"
+                });
+                currentVersion = 13;
+            }
+
+            if (currentVersion < 14)
+            {
+                AddMissingColumns(db, "Recipients", RecipientColumnsV14);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 14,
+                    AppliedAt = DateTime.Now,
+                    Description = "Граматика: стать, уточнення відмінків (звання/ПІБ/посада у знахідному)"
+                });
             }
         }
 
@@ -275,6 +337,13 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         AddMissingColumns(db, "OrganizationSettings", OrganizationSettingsColumnsV10);
 
         EnsureGroupDocumentTables(db);
+
+        AddMissingColumns(db, "Templates", TemplateColumnsV12);
+        AddMissingColumns(db, "TemplateFieldMappings", TemplateFieldMappingColumnsV12);
+        MigrateGeneratedGroupDocumentsForDocxSupport(db);
+
+        AddMissingColumns(db, "AppSettings", AppSettingsColumnsV13);
+        AddMissingColumns(db, "Recipients", RecipientColumnsV14);
 
         // Ідемпотентно (IF NOT EXISTS) — самовідновлюється незалежно від SchemaVersion,
         // так само як EnsureExportTemplateTables. Обгорнуто в try/catch: якщо в
@@ -349,25 +418,33 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 
     private static HashSet<string> GetExistingColumns(AppDbContext db, string tableName)
     {
-        var existingColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var connection = db.Database.GetDbConnection();
         var wasClosed = connection.State != System.Data.ConnectionState.Open;
         if (wasClosed) connection.Open();
 
         try
         {
-            using var command = connection.CreateCommand();
-            command.CommandText = $"PRAGMA table_info({tableName});";
-            using var reader = command.ExecuteReader();
-            var nameOrdinal = reader.GetOrdinal("name");
-            while (reader.Read())
-            {
-                existingColumns.Add(reader.GetString(nameOrdinal));
-            }
+            return GetExistingColumns(connection, tableName);
         }
         finally
         {
             if (wasClosed) connection.Close();
+        }
+    }
+
+    // Перевантаження напряму на з'єднанні — потрібне там, де AppDbContext ще нема
+    // (юніт-тести) або де з'єднання вже підняте окремо (перебудова таблиці).
+    internal static HashSet<string> GetExistingColumns(System.Data.Common.DbConnection connection, string tableName)
+    {
+        var existingColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        using var command = connection.CreateCommand();
+        command.CommandText = $"PRAGMA table_info({tableName});";
+        using var reader = command.ExecuteReader();
+        var nameOrdinal = reader.GetOrdinal("name");
+        while (reader.Read())
+        {
+            existingColumns.Add(reader.GetString(nameOrdinal));
         }
 
         return existingColumns;
@@ -647,7 +724,8 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                 command.CommandText = """
                     CREATE TABLE "GeneratedGroupDocuments" (
                         "Id" INTEGER NOT NULL CONSTRAINT "PK_GeneratedGroupDocuments" PRIMARY KEY AUTOINCREMENT,
-                        "ExportTemplateId" INTEGER NOT NULL,
+                        "ExportTemplateId" INTEGER NULL,
+                        "TemplateId" INTEGER NULL,
                         "RunId" INTEGER NULL,
                         "IntakeId" INTEGER NULL,
                         "GeneratedAt" TEXT NOT NULL,
@@ -670,6 +748,11 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                 indexCommand.CommandText =
                     """CREATE INDEX "IX_GeneratedGroupDocuments_ExportTemplateId_IntakeId_IsCurrent" ON "GeneratedGroupDocuments" ("ExportTemplateId", "IntakeId", "IsCurrent");""";
                 indexCommand.ExecuteNonQuery();
+
+                using var indexCommand1b = connection.CreateCommand();
+                indexCommand1b.CommandText =
+                    """CREATE INDEX "IX_GeneratedGroupDocuments_TemplateId_IntakeId_IsCurrent" ON "GeneratedGroupDocuments" ("TemplateId", "IntakeId", "IsCurrent");""";
+                indexCommand1b.ExecuteNonQuery();
 
                 using var indexCommand2 = connection.CreateCommand();
                 indexCommand2.CommandText =
@@ -695,6 +778,114 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         {
             if (wasClosed) connection.Close();
         }
+    }
+
+    // GeneratedGroupDocuments (до v12) мала ExportTemplateId INTEGER NOT NULL і без
+    // TemplateId — лише XLSX-відомості. Груповий DOCX вимагає, щоб рівно одне з двох
+    // полів було заповнене, тобто ExportTemplateId має стати nullable. SQLite не вміє
+    // ALTER COLUMN, тому перебудовуємо таблицю за офіційно рекомендованою процедурою
+    // (create-copy-drop-rename), з вимкненими на час операції foreign keys — інакше
+    // DROP TABLE з увімкненим PRAGMA foreign_keys каскадно видалить вміст із
+    // GeneratedGroupDocumentContents (ON DELETE CASCADE спрацьовує і на DROP TABLE).
+    // Наявність колонки TemplateId — ознака того, що таблиця вже в кінцевому вигляді
+    // (і для щойно створених БД, де EnsureGroupDocumentTables одразу створює її
+    // правильно, і для вже мігрованих) — тоді нічого не робимо.
+    private static void MigrateGeneratedGroupDocumentsForDocxSupport(AppDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        var wasClosed = connection.State != System.Data.ConnectionState.Open;
+        if (wasClosed) connection.Open();
+
+        try
+        {
+            MigrateGeneratedGroupDocumentsForDocxSupport(connection);
+        }
+        finally
+        {
+            if (wasClosed) connection.Close();
+        }
+    }
+
+    // Винесено окремо від AppDbContext-обгортки, щоб можна було перевірити юніт-тестом
+    // на звичайному (незашифрованому) SQLite-з'єднанні — сам SQL не залежить від SQLCipher.
+    internal static void MigrateGeneratedGroupDocumentsForDocxSupport(System.Data.Common.DbConnection connection)
+    {
+        if (!TableExists(connection, "GeneratedGroupDocuments")) return;
+        if (GetExistingColumns(connection, "GeneratedGroupDocuments").Contains("TemplateId")) return;
+
+        using (var pragmaOff = connection.CreateCommand())
+        {
+            pragmaOff.CommandText = "PRAGMA foreign_keys=OFF;";
+            pragmaOff.ExecuteNonQuery();
+        }
+
+        using var transaction = connection.BeginTransaction();
+        try
+        {
+            Exec(connection, transaction, """
+                CREATE TABLE "GeneratedGroupDocuments_New" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_GeneratedGroupDocuments" PRIMARY KEY AUTOINCREMENT,
+                    "ExportTemplateId" INTEGER NULL,
+                    "TemplateId" INTEGER NULL,
+                    "RunId" INTEGER NULL,
+                    "IntakeId" INTEGER NULL,
+                    "GeneratedAt" TEXT NOT NULL,
+                    "GeneratedByUserId" INTEGER NOT NULL,
+                    "FileName" TEXT NOT NULL,
+                    "ContentHash" TEXT NULL,
+                    "RosterHash" TEXT NULL,
+                    "SizeBytes" INTEGER NOT NULL DEFAULT 0,
+                    "RecipientCount" INTEGER NOT NULL DEFAULT 0,
+                    "Version" INTEGER NOT NULL DEFAULT 1,
+                    "IsCurrent" INTEGER NOT NULL DEFAULT 1,
+                    "HasContent" INTEGER NOT NULL DEFAULT 0,
+                    "DeletedAt" TEXT NULL,
+                    "DeletedBy" TEXT NULL
+                );
+                """);
+
+            Exec(connection, transaction, """
+                INSERT INTO "GeneratedGroupDocuments_New"
+                    ("Id", "ExportTemplateId", "TemplateId", "RunId", "IntakeId", "GeneratedAt", "GeneratedByUserId",
+                     "FileName", "ContentHash", "RosterHash", "SizeBytes", "RecipientCount", "Version", "IsCurrent",
+                     "HasContent", "DeletedAt", "DeletedBy")
+                SELECT "Id", "ExportTemplateId", NULL, "RunId", "IntakeId", "GeneratedAt", "GeneratedByUserId",
+                       "FileName", "ContentHash", "RosterHash", "SizeBytes", "RecipientCount", "Version", "IsCurrent",
+                       "HasContent", "DeletedAt", "DeletedBy"
+                FROM "GeneratedGroupDocuments";
+                """);
+
+            Exec(connection, transaction, """DROP TABLE "GeneratedGroupDocuments";""");
+            Exec(connection, transaction, """ALTER TABLE "GeneratedGroupDocuments_New" RENAME TO "GeneratedGroupDocuments";""");
+
+            Exec(connection, transaction,
+                """CREATE INDEX "IX_GeneratedGroupDocuments_ExportTemplateId_IntakeId_IsCurrent" ON "GeneratedGroupDocuments" ("ExportTemplateId", "IntakeId", "IsCurrent");""");
+            Exec(connection, transaction,
+                """CREATE INDEX "IX_GeneratedGroupDocuments_TemplateId_IntakeId_IsCurrent" ON "GeneratedGroupDocuments" ("TemplateId", "IntakeId", "IsCurrent");""");
+            Exec(connection, transaction,
+                """CREATE INDEX "IX_GeneratedGroupDocuments_RunId" ON "GeneratedGroupDocuments" ("RunId");""");
+
+            transaction.Commit();
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+        finally
+        {
+            using var pragmaOn = connection.CreateCommand();
+            pragmaOn.CommandText = "PRAGMA foreign_keys=ON;";
+            pragmaOn.ExecuteNonQuery();
+        }
+    }
+
+    private static void Exec(System.Data.Common.DbConnection connection, System.Data.Common.DbTransaction transaction, string sql)
+    {
+        using var command = connection.CreateCommand();
+        command.Transaction = transaction;
+        command.CommandText = sql;
+        command.ExecuteNonQuery();
     }
 
     private static void EnsureStaffTables(AppDbContext db)

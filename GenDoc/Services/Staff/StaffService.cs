@@ -1,3 +1,4 @@
+using System.Text.Json;
 using GenDoc.Data;
 using GenDoc.Models;
 using GenDoc.Models.Enums;
@@ -76,7 +77,7 @@ namespace GenDoc.Services.Staff
 
         public async Task IssueDocumentsAsync(
             StaffEventKind kind, IReadOnlyList<int> recipientIds, IReadOnlyList<int> templateIds,
-            DateOnly dateStart, DateOnly dateEnd, string? note)
+            DateOnly dateStart, DateOnly dateEnd, string? note, Dictionary<string, string> manualValues)
         {
             using var db = _dbFactory.CreateDbContext();
 
@@ -97,15 +98,66 @@ namespace GenDoc.Services.Staff
             var kindLabel = kind == StaffEventKind.BusinessTrip ? "відрядження" : "відпустку";
             _auditLogService.Log(db, $"Оформлено {kindLabel}", "StaffEvent", 0, null, null,
                 $"{recipientIds.Count} осіб, {templateIds.Count} шаблонів, {dateStart:dd.MM.yyyy}–{dateEnd:dd.MM.yyyy}");
+            await SaveLastManualValuesAsync(db, manualValues);
             await db.SaveChangesAsync();
 
             foreach (var recipientId in recipientIds)
             {
                 foreach (var templateId in templateIds)
                 {
-                    await _completenessService.GenerateForPairAsync(recipientId, templateId, new Dictionary<string, string>());
+                    await _completenessService.GenerateForPairAsync(recipientId, templateId, manualValues);
                 }
             }
+        }
+
+        // Генерація «в догонку»: без оформлення StaffEvent, для окремих людей і шаблонів PerRecipient.
+        public async Task<int> GenerateDocumentsAsync(
+            IReadOnlyList<int> recipientIds, IReadOnlyList<int> templateIds, Dictionary<string, string> manualValues)
+        {
+            using var db = _dbFactory.CreateDbContext();
+
+            _auditLogService.Log(db, "Згенеровано документи (в догонку)", "Recipient", 0, null, null,
+                $"{recipientIds.Count} осіб, {templateIds.Count} шаблонів");
+            await SaveLastManualValuesAsync(db, manualValues);
+            await db.SaveChangesAsync();
+
+            var generated = 0;
+            foreach (var recipientId in recipientIds)
+            {
+                foreach (var templateId in templateIds)
+                {
+                    var result = await _completenessService.GenerateForPairAsync(recipientId, templateId, manualValues);
+                    if (result.Success) generated++;
+                }
+            }
+            return generated;
+        }
+
+        public async Task<Dictionary<string, string>> GetLastManualValuesAsync()
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var json = await db.AppSettings.Select(s => s.LastManualValuesJson).FirstOrDefaultAsync();
+            if (string.IsNullOrWhiteSpace(json)) return new Dictionary<string, string>();
+            return JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new Dictionary<string, string>();
+        }
+
+        private static async Task SaveLastManualValuesAsync(AppDbContext db, Dictionary<string, string> manualValues)
+        {
+            if (manualValues.Count == 0) return;
+
+            var settings = await db.AppSettings.FirstOrDefaultAsync();
+            if (settings is null) return;
+
+            var merged = string.IsNullOrWhiteSpace(settings.LastManualValuesJson)
+                ? new Dictionary<string, string>()
+                : JsonSerializer.Deserialize<Dictionary<string, string>>(settings.LastManualValuesJson) ?? new Dictionary<string, string>();
+
+            foreach (var (tag, value) in manualValues)
+            {
+                if (!string.IsNullOrWhiteSpace(value)) merged[tag] = value;
+            }
+
+            settings.LastManualValuesJson = JsonSerializer.Serialize(merged);
         }
 
         public async Task DeleteManyAsync(IReadOnlyList<int> recipientIds)

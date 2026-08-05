@@ -168,8 +168,94 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
 
-                        <TextBlock Text="{Binding RecipientCount, StringFormat='Буде згенеровано для {0} осіб'}"
-                                   Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5" Margin="0,0,0,20"/>
+                        <TextBlock Text="ОСОБОВИЙ СКЛАД" Style="{StaticResource SectionTitleStyle}"/>
+                        <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                                BorderThickness="1" CornerRadius="0" Padding="16" Margin="0,0,0,20">
+                            <StackPanel>
+                                <RadioButton GroupName="RosterMode" Content="{Binding RecipientCount, StringFormat='Весь особовий склад ({0})'}"
+                                             IsChecked="{Binding UseAllRecipients}" Margin="0,0,0,8"/>
+                                <RadioButton GroupName="RosterMode" Content="Вибрані"
+                                             IsChecked="{Binding UseAllRecipients, Converter={StaticResource InverseBoolean}}"/>
+
+                                <!-- Фільтр звань — звужує обидва варіанти вище однаково -->
+                                <StackPanel Margin="0,14,0,0">
+                                    <TextBlock Text="Звання" Style="{StaticResource FieldLabelStyle}"/>
+                                    <ItemsControl ItemsSource="{Binding RankCategoryChips}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <WrapPanel/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Style="{StaticResource ChipStyle}">
+                                                    <CheckBox Content="{Binding Label}" IsThreeState="True"
+                                                              IsChecked="{Binding IsChecked, Mode=TwoWay}"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <ToggleButton x:Name="RankListToggle" Content="Окремі звання ▾" HorizontalAlignment="Left"
+                                                  Style="{StaticResource TextLinkButtonStyle}" Foreground="{StaticResource AccentBrush}"
+                                                  IsChecked="{Binding IsRankListExpanded}" Margin="0,4,0,0"/>
+
+                                    <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1" MaxHeight="180" Margin="0,6,0,0"
+                                            Visibility="{Binding IsRankListExpanded, Converter={StaticResource BoolToVisibility}}">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                            <ItemsControl ItemsSource="{Binding RankOptions}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <CheckBox Content="{Binding Label}" IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                                                                  Padding="8,5" Margin="4,2"/>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </Border>
+                                </StackPanel>
+
+                                <StackPanel Visibility="{Binding UseSelectedRecipients, Converter={StaticResource BoolToVisibility}}"
+                                            Margin="24,10,0,0">
+                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                        <TextBlock Text="{Binding SelectedRecipientsCountLabel}"
+                                                   Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5"
+                                                   VerticalAlignment="Center" Margin="0,0,14,0"/>
+                                        <Button Content="Позначити всіх" Style="{StaticResource TextLinkButtonStyle}"
+                                                Foreground="{StaticResource AccentBrush}" Command="{Binding CheckAllRecipientsCommand}"
+                                                Margin="0,0,10,0"/>
+                                        <Button Content="Зняти позначки" Style="{StaticResource TextLinkButtonStyle}"
+                                                Foreground="{StaticResource TextSecondaryBrush}" Command="{Binding UncheckAllRecipientsCommand}"/>
+                                    </StackPanel>
+
+                                    <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1" MaxHeight="220">
+                                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                            <ItemsControl ItemsSource="{Binding RecipientOptions}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Padding="8,6" Margin="4,2"
+                                                                  Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibility}}">
+                                                            <StackPanel Orientation="Horizontal">
+                                                                <TextBlock Text="{Binding Rank}" Foreground="{StaticResource TextSecondaryBrush}"
+                                                                           FontSize="12" Margin="0,0,8,0" Width="130" TextTrimming="CharacterEllipsis"/>
+                                                                <TextBlock Text="{Binding FullName}" Foreground="{StaticResource TextPrimaryBrush}"
+                                                                           FontSize="12.5" Width="220" TextTrimming="CharacterEllipsis"/>
+                                                                <TextBlock Text="{Binding UnitName}" Foreground="{StaticResource TextSecondaryBrush}"
+                                                                           FontSize="11.5" TextTrimming="CharacterEllipsis"/>
+                                                            </StackPanel>
+                                                        </CheckBox>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </Border>
+
+                                    <TextBlock Text="Оберіть хоча б одну людину, щоб згенерувати документи."
+                                               Foreground="{StaticResource WarnTextBrush}" FontSize="11.5" Margin="0,8,0,0"
+                                               Visibility="{Binding ShowNoRecipientsSelectedHint, Converter={StaticResource BoolToVisibility}}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
 
                         <StackPanel Visibility="{Binding HasManualTags, Converter={StaticResource BoolToVisibility}}" Margin="0,0,0,20">
                             <TextBlock Text="ЗНАЧЕННЯ ДЛЯ ЦІЄЇ ГЕНЕРАЦІЇ" Style="{StaticResource SectionTitleStyle}"/>

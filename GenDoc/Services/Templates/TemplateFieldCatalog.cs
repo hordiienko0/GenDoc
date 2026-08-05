@@ -39,7 +39,12 @@ public static class TemplateFieldCatalog
         new("MedicalBoardConclusion", "Висновок ВЛК"),
         new("OriginUnit", "З якої частини прибув"),
         new("Vehicle", "Автомобіль, номер авто"),
-        new("RoomDisplay", "Кімната")
+        new("RoomDisplay", "Кімната"),
+        new("RankAccusative", "Звання (знахідний відмінок)"),
+        new("FullNameAccusative", "ПІБ (знахідний відмінок)"),
+        new("PositionAccusative", "Посада (знахідний відмінок)"),
+        new("ArrivedVerb", "«прибув/прибула» (узгодження за родом)"),
+        new("SuchPronoun", "«таким/такою» (узгодження за родом)")
     };
 
     public static readonly IReadOnlyList<TemplateFieldOption> OrganizationFields = new List<TemplateFieldOption>

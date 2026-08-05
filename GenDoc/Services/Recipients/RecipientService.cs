@@ -1,6 +1,7 @@
 ﻿using System.IO;
 using GenDoc.Data;
 using GenDoc.Models;
+using GenDoc.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.Services.Recipients
@@ -74,7 +75,9 @@ namespace GenDoc.Services.Recipients
                 RecipientSortColumn.Room => sortDescending
                     ? entities.OrderByDescending(r => FormatRoom(r.Room))
                     : entities.OrderBy(r => FormatRoom(r.Room)),
-                _ => sortDescending ? entities.OrderByDescending(r => r.FullName) : entities.OrderBy(r => r.FullName),
+                _ => sortDescending
+                    ? entities.OrderByDescending(r => r.LastName, UkrainianCollation.Surname).ThenByDescending(r => r.FirstName, UkrainianCollation.Surname)
+                    : entities.OrderBy(r => r.LastName, UkrainianCollation.Surname).ThenBy(r => r.FirstName, UkrainianCollation.Surname),
             };
 
             return sorted.ToList();
@@ -155,7 +158,12 @@ namespace GenDoc.Services.Recipients
                 MedicalBoard = r.MedicalBoard,
                 MedicalBoardConclusion = r.MedicalBoardConclusion,
                 OriginUnit = r.OriginUnit,
-                Vehicle = r.Vehicle
+                Vehicle = r.Vehicle,
+
+                Gender = r.Gender,
+                RankAccusative = r.RankAccusative,
+                FullNameAccusative = r.FullNameAccusative,
+                PositionAccusative = r.PositionAccusative
             };
         }
 
@@ -235,6 +243,11 @@ namespace GenDoc.Services.Recipients
             recipient.MedicalBoardConclusion = TrimOrNull(model.MedicalBoardConclusion);
             recipient.OriginUnit = TrimOrNull(model.OriginUnit);
             recipient.Vehicle = TrimOrNull(model.Vehicle);
+
+            recipient.Gender = model.Gender;
+            recipient.RankAccusative = TrimOrNull(model.RankAccusative);
+            recipient.FullNameAccusative = TrimOrNull(model.FullNameAccusative);
+            recipient.PositionAccusative = TrimOrNull(model.PositionAccusative);
 
             if (isNew) db.Recipients.Add(recipient);
             db.SaveChanges();

@@ -1,6 +1,8 @@
 using System.IO;
 using System.Text.RegularExpressions;
+using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
 using GenDoc.Data;
 using GenDoc.Models;
 using GenDoc.Models.Enums;
@@ -11,6 +13,17 @@ namespace GenDoc.Services.Templates
     public class TemplateService : ITemplateService
     {
         private static readonly Regex PlaceholderRegex = new(@"\{\{[^{}]+\}\}", RegexOptions.Compiled);
+
+        // Ті самі маркери повторюваного блоку, що й у DocumentGenerationService —
+        // тримати регекси в синхроні, якщо синтаксис блоку колись зміниться.
+        private static readonly Regex BlockOpenRegex = new(@"^\{\{#([^{}]+)\}\}$", RegexOptions.Compiled);
+        private static readonly Regex BlockCloseRegex = new(@"^\{\{/([^{}]+)\}\}$", RegexOptions.Compiled);
+
+        // Обчислювані тегі рушія блоків — не поля, тому в мапінг не потрапляють.
+        private static readonly HashSet<string> ReservedBlockTags = new(StringComparer.Ordinal)
+        {
+            "{{роздільник}}", "{{номер}}", "{{кількість_осіб}}"
+        };
 
         private readonly IDbContextFactory<AppDbContext> _dbFactory;
         private readonly IAuditLogService _auditLogService;
@@ -29,14 +42,14 @@ namespace GenDoc.Services.Templates
         public UploadResult Upload(string filePath)
         {
             byte[] content;
-            List<string> tags;
+            ScanResult scan;
 
             try
             {
                 content = File.ReadAllBytes(filePath);
                 using var stream = new MemoryStream(content);
                 using var doc = WordprocessingDocument.Open(stream, false);
-                tags = ScanPlaceholders(doc);
+                scan = ScanPlaceholders(doc);
             }
             catch
             {
@@ -51,17 +64,19 @@ namespace GenDoc.Services.Templates
                 Name = Path.GetFileNameWithoutExtension(filePath),
                 OriginalFileName = Path.GetFileName(filePath),
                 Content = content,
-                UploadedAt = DateTime.Now
+                UploadedAt = DateTime.Now,
+                Kind = scan.HasBlock ? TemplateKind.Group : TemplateKind.PerRecipient
             };
 
-            foreach (var tag in tags)
+            foreach (var (tag, isInsideBlock) in scan.Tags)
             {
                 var (sourceType, fieldName) = ClassifyTag(tag);
                 template.FieldMappings.Add(new TemplateFieldMapping
                 {
                     PlaceholderTag = tag,
                     SourceType = sourceType,
-                    FieldName = fieldName
+                    FieldName = fieldName,
+                    IsInsideRepeatingBlock = isInsideBlock
                 });
             }
 
@@ -69,7 +84,7 @@ namespace GenDoc.Services.Templates
             db.SaveChanges();
 
             _auditLogService.LogCreate(db, "Template", template.Id, template.Name,
-                $"Завантажено файл {template.OriginalFileName}, міток: {tags.Count}");
+                $"Завантажено файл {template.OriginalFileName}, міток: {scan.Tags.Count}, тип: {template.Kind}");
             db.SaveChanges();
 
             return new UploadResult(true, null);
@@ -157,34 +172,71 @@ namespace GenDoc.Services.Templates
         private static (MappingSourceType SourceType, string? FieldName) ClassifyTag(string tagWithBraces)
             => PlaceholderTagMaps.Classify(tagWithBraces);
 
-        private static List<string> ScanPlaceholders(WordprocessingDocument doc)
-        {
-            var seen = new HashSet<string>(StringComparer.Ordinal);
-            var tags = new List<string>();
+        internal sealed record ScanResult(List<(string Tag, bool IsInsideBlock)> Tags, bool HasBlock);
 
-            void Scan(string? text)
+        // Абзац-за-абзацом (а не InnerText усього контейнера) — інакше не видно меж
+        // повторюваного блоку {{#…}}/{{/…}}, які завжди займають цілий абзац.
+        internal static ScanResult ScanPlaceholders(WordprocessingDocument doc)
+        {
+            var seen = new Dictionary<string, int>(StringComparer.Ordinal); // тег → індекс у tags
+            var tags = new List<(string Tag, bool IsInsideBlock)>();
+            var hasBlock = false;
+
+            void ScanContainer(OpenXmlCompositeElement? container)
             {
-                if (string.IsNullOrEmpty(text)) return;
-                foreach (Match match in PlaceholderRegex.Matches(text))
+                if (container is null) return;
+
+                string? openBlockName = null;
+                foreach (var paragraph in container.Descendants<Paragraph>())
                 {
-                    if (seen.Add(match.Value)) tags.Add(match.Value);
+                    var text = string.Concat(paragraph.Descendants<Text>().Select(t => t.Text)).Trim();
+
+                    if (BlockOpenRegex.IsMatch(text))
+                    {
+                        openBlockName = BlockOpenRegex.Match(text).Groups[1].Value;
+                        hasBlock = true;
+                        continue;
+                    }
+
+                    if (BlockCloseRegex.IsMatch(text))
+                    {
+                        openBlockName = null;
+                        continue;
+                    }
+
+                    var insideBlock = openBlockName is not null;
+                    foreach (Match match in PlaceholderRegex.Matches(text))
+                    {
+                        if (ReservedBlockTags.Contains(match.Value)) continue;
+
+                        if (seen.TryGetValue(match.Value, out var index))
+                        {
+                            if (insideBlock && !tags[index].IsInsideBlock)
+                                tags[index] = (match.Value, true);
+                        }
+                        else
+                        {
+                            seen[match.Value] = tags.Count;
+                            tags.Add((match.Value, insideBlock));
+                        }
+                    }
                 }
             }
 
             var mainPart = doc.MainDocumentPart;
             if (mainPart?.Document?.Body is not null)
-                Scan(mainPart.Document.Body.InnerText);
+                ScanContainer(mainPart.Document.Body);
 
             if (mainPart is not null)
             {
                 foreach (var header in mainPart.HeaderParts)
-                    Scan(header.Header?.InnerText);
+                    ScanContainer(header.Header);
 
                 foreach (var footer in mainPart.FooterParts)
-                    Scan(footer.Footer?.InnerText);
+                    ScanContainer(footer.Footer);
             }
 
-            return tags;
+            return new ScanResult(tags, hasBlock);
         }
     }
 }

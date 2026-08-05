@@ -3,12 +3,10 @@ using System.Globalization;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using CommunityToolkit.Mvvm.Messaging;
 using GenDoc.Models.Enums;
 using GenDoc.Services;
-using GenDoc.Services.Navigation;
 using GenDoc.Services.Staff;
-using GenDoc.ViewModels.Shell;
+using GenDoc.ViewModels.Recipients;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace GenDoc.ViewModels.Staff
@@ -69,6 +67,7 @@ namespace GenDoc.ViewModels.Staff
         [NotifyPropertyChangedFor(nameof(HasSelection))]
         [NotifyCanExecuteChangedFor(nameof(OpenTripCommand))]
         [NotifyCanExecuteChangedFor(nameof(OpenLeaveCommand))]
+        [NotifyCanExecuteChangedFor(nameof(GenerateDocumentCommand))]
         [NotifyCanExecuteChangedFor(nameof(DeleteSelectedCommand))]
         private int selectedCount;
 
@@ -169,8 +168,14 @@ namespace GenDoc.ViewModels.Staff
         }
 
         [RelayCommand]
-        private void AddPerson() => WeakReferenceMessenger.Default.Send(
-            new NavigateToSectionMessage(MainViewModel.PersonnelSectionTitle, null));
+        private async Task AddPersonAsync()
+        {
+            var vm = _serviceProvider.GetRequiredService<RecipientEditViewModel>();
+            vm.Initialize(null);
+
+            var result = _dialogService.ShowDialog(vm, Application.Current.MainWindow);
+            if (result == true) await RefreshAsync();
+        }
 
         [RelayCommand(CanExecute = nameof(HasSelection))]
         private async Task OpenTripAsync() => await OpenDocDialogAsync(StaffEventKind.BusinessTrip);
@@ -178,9 +183,21 @@ namespace GenDoc.ViewModels.Staff
         [RelayCommand(CanExecute = nameof(HasSelection))]
         private async Task OpenLeaveAsync() => await OpenDocDialogAsync(StaffEventKind.Leave);
 
-        private async Task OpenDocDialogAsync(StaffEventKind kind)
+        // «В догонку»: генерація документів PerRecipient без оформлення відрядження/відпустки.
+        [RelayCommand(CanExecute = nameof(HasSelection))]
+        private async Task GenerateDocumentAsync() => await OpenDocDialogAsync(null);
+
+        // Пункт контекстного меню рядка — генерація для однієї людини без чекбоксів.
+        [RelayCommand]
+        private async Task GenerateDocumentForRowAsync(StaffRowViewModel? row)
         {
-            var selected = Rows.Where(r => r.IsChecked).Select(r => (r.Id, r.FullName)).ToList();
+            if (row is null) return;
+            await OpenDocDialogAsync(null, new List<(int Id, string FullName)> { (row.Id, row.FullName) });
+        }
+
+        private async Task OpenDocDialogAsync(StaffEventKind? kind, IReadOnlyList<(int Id, string FullName)>? people = null)
+        {
+            var selected = people ?? Rows.Where(r => r.IsChecked).Select(r => (r.Id, r.FullName)).ToList();
             if (selected.Count == 0) return;
 
             var vm = _serviceProvider.GetRequiredService<StaffDocDialogViewModel>();
@@ -188,8 +205,16 @@ namespace GenDoc.ViewModels.Staff
             if (_dialogService.ShowDialog(vm, Application.Current.MainWindow) != true) return;
 
             var request = vm.BuildRequest();
-            await _staffService.IssueDocumentsAsync(
-                kind, request.RecipientIds, request.TemplateIds, request.DateStart, request.DateEnd, request.Note);
+            if (kind is null)
+            {
+                await _staffService.GenerateDocumentsAsync(request.RecipientIds, request.TemplateIds, request.ManualValues);
+            }
+            else
+            {
+                await _staffService.IssueDocumentsAsync(
+                    kind.Value, request.RecipientIds, request.TemplateIds, request.DateStart, request.DateEnd,
+                    request.Note, request.ManualValues);
+            }
 
             await RefreshAsync();
         }

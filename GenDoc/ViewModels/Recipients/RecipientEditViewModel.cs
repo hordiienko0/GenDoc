@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GenDoc.Models.Enums;
 using GenDoc.Services.Recipients;
 
 namespace GenDoc.ViewModels.Recipients;
@@ -105,6 +106,28 @@ public partial class RecipientEditViewModel : ObservableObject
     [ObservableProperty] private string? originUnit;
     [ObservableProperty] private string? vehicle;
 
+    // Уточнення відмінків — Part F
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsGenderMale))]
+    [NotifyPropertyChangedFor(nameof(IsGenderFemale))]
+    private Gender? gender;
+
+    [ObservableProperty] private string? rankAccusative;
+    [ObservableProperty] private string? fullNameAccusative;
+    [ObservableProperty] private string? positionAccusative;
+
+    public bool IsGenderMale
+    {
+        get => Gender == GenDoc.Models.Enums.Gender.Male;
+        set { if (value) Gender = GenDoc.Models.Enums.Gender.Male; }
+    }
+
+    public bool IsGenderFemale
+    {
+        get => Gender == GenDoc.Models.Enums.Gender.Female;
+        set { if (value) Gender = GenDoc.Models.Enums.Gender.Female; }
+    }
+
     [ObservableProperty] private string? errorMessage;
 
     [ObservableProperty]
@@ -187,6 +210,11 @@ public partial class RecipientEditViewModel : ObservableObject
             MedicalBoardConclusion = model.MedicalBoardConclusion;
             OriginUnit = model.OriginUnit;
             Vehicle = model.Vehicle;
+
+            Gender = model.Gender;
+            RankAccusative = model.RankAccusative;
+            FullNameAccusative = model.FullNameAccusative;
+            PositionAccusative = model.PositionAccusative;
         }
         else
         {
@@ -225,6 +253,11 @@ public partial class RecipientEditViewModel : ObservableObject
             MedicalBoardConclusion = null;
             OriginUnit = null;
             Vehicle = null;
+
+            Gender = null;
+            RankAccusative = null;
+            FullNameAccusative = null;
+            PositionAccusative = null;
         }
 
         UpdateRoomWarning();
@@ -408,6 +441,11 @@ public partial class RecipientEditViewModel : ObservableObject
             MedicalBoardConclusion = MedicalBoardConclusion,
             OriginUnit = OriginUnit,
             Vehicle = Vehicle,
+
+            Gender = Gender,
+            RankAccusative = RankAccusative,
+            FullNameAccusative = FullNameAccusative,
+            PositionAccusative = PositionAccusative,
         }, out var saveError);
 
         if (saveError is not null)

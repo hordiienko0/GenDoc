@@ -1,4 +1,5 @@
 ﻿using GenDoc.Models.Common;
+using GenDoc.Models.Enums;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace GenDoc.Models
@@ -51,6 +52,16 @@ namespace GenDoc.Models
         public string? MedicalBoardConclusion { get; set; }
         public string? OriginUnit { get; set; }
         public string? Vehicle { get; set; }
+
+        // Стать — для узгодження форм (прибув/прибула, таким/такою) і відмінювання,
+        // коли по батькові відсутнє або не дає однозначної відповіді.
+        public Gender? Gender { get; set; }
+
+        // Уточнення відмінків: якщо задано, використовується замість
+        // автоматичного відмінювання (Services/UkrainianGrammar.cs).
+        public string? RankAccusative { get; set; }
+        public string? FullNameAccusative { get; set; }
+        public string? PositionAccusative { get; set; }
 
         public DateTime? DeletedAt { get; set; }
         public string? DeletedBy { get; set; }

@@ -3,6 +3,7 @@ using System.IO;
 using GenDoc.Data;
 using GenDoc.Models;
 using GenDoc.Models.Enums;
+using GenDoc.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.Services.Generation
@@ -47,6 +48,18 @@ namespace GenDoc.Services.Generation
         {
             using var db = _dbFactory.CreateDbContext();
             return db.Templates
+                .OrderBy(t => t.Name)
+                .Select(t => new { t.Id, t.Name })
+                .AsEnumerable()
+                .Select(t => (t.Id, t.Name))
+                .ToList();
+        }
+
+        public List<(int Id, string Name)> GetPerRecipientTemplates()
+        {
+            using var db = _dbFactory.CreateDbContext();
+            return db.Templates
+                .Where(t => t.Kind == Models.Enums.TemplateKind.PerRecipient)
                 .OrderBy(t => t.Name)
                 .Select(t => new { t.Id, t.Name })
                 .AsEnumerable()
@@ -215,7 +228,7 @@ namespace GenDoc.Services.Generation
             foreach (var templateId in templateIds)
             {
                 var manualTags = db.TemplateFieldMappings
-                    .Where(m => m.TemplateId == templateId && m.SourceType == MappingSourceType.Manual)
+                    .Where(m => m.TemplateId == templateId && m.SourceType == MappingSourceType.Manual && !m.IsInsideRepeatingBlock)
                     .OrderBy(m => m.PlaceholderTag)
                     .Select(m => m.PlaceholderTag)
                     .ToList();
@@ -269,17 +282,21 @@ namespace GenDoc.Services.Generation
             string outputFolder,
             Dictionary<string, string> manualValues,
             bool regenerateExisting,
+            RosterSelection rosterSelection,
             IProgress<string> progress)
         {
             using var db = _dbFactory.CreateDbContext();
 
             var package = db.GenerationPackages.First(p => p.Id == packageId);
 
-            var templates = db.GenerationPackageTemplates
+            var allTemplates = db.GenerationPackageTemplates
                 .Where(pt => pt.GenerationPackageId == packageId)
                 .OrderBy(pt => pt.SortOrder)
                 .Select(pt => pt.Template!)
                 .ToList();
+
+            var templates = allTemplates.Where(t => t.Kind == TemplateKind.PerRecipient).ToList();
+            var groupDocxTemplates = allTemplates.Where(t => t.Kind == TemplateKind.Group).ToList();
 
             var exportLinks = db.GenerationPackageExportTemplates
                 .Where(pt => pt.GenerationPackageId == packageId)
@@ -287,7 +304,7 @@ namespace GenDoc.Services.Generation
                 .Include(pt => pt.ExportTemplate)
                 .ToList();
 
-            var recipients = db.Recipients.Include(r => r.Unit).Include(r => r.Room).Include(r => r.OrgNode).ToList();
+            var recipients = LoadRosterRecipients(db, rosterSelection);
             var orgSettings = db.OrganizationSettings.FirstOrDefault();
 
             var run = new GenerationPackageRun
@@ -304,6 +321,7 @@ namespace GenDoc.Services.Generation
 
             var docx = RunDocxPhase(db, templates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, regenerateExisting, progress);
             var xlsx = RunXlsxPhase(db, exportLinks, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, regenerateExisting, progress);
+            var docxGroup = RunDocxGroupPhase(db, groupDocxTemplates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, regenerateExisting, progress);
 
             run.GeneratedCount = docx.Generated;
             run.SkippedCount = docx.Skipped;
@@ -311,15 +329,50 @@ namespace GenDoc.Services.Generation
 
             var summaryLines = new List<string>(docx.ErrorMessages);
             summaryLines.AddRange(xlsx.SummaryLines);
+            summaryLines.AddRange(docxGroup.SummaryLines);
             run.Summary = summaryLines.Count == 0 ? null : string.Join("\n", summaryLines);
 
             _auditLogService.LogGenerate(db, "GenerationPackage", packageId,
                 $"{package.Name}: docx — згенеровано {docx.Generated}, пропущено {docx.Skipped}, помилок {docx.Errors}; " +
-                $"xlsx — згенеровано {xlsx.Generated}, пропущено {xlsx.Skipped}, помилок {xlsx.Errors}");
+                $"xlsx — згенеровано {xlsx.Generated}, пропущено {xlsx.Skipped}, помилок {xlsx.Errors}; " +
+                $"груповий docx — згенеровано {docxGroup.Generated}, пропущено {docxGroup.Skipped}, помилок {docxGroup.Errors}");
 
             db.SaveChanges();
 
-            return new RunResult(docx.Generated, docx.Skipped, docx.Errors, xlsx.Generated, xlsx.Skipped, xlsx.Errors);
+            return new RunResult(
+                docx.Generated, docx.Skipped, docx.Errors,
+                xlsx.Generated, xlsx.Skipped, xlsx.Errors,
+                docxGroup.Generated, docxGroup.Skipped, docxGroup.Errors);
+        }
+
+        // Особовий склад для запуску: весь або лише позначені, завжди звужений
+        // фільтром придатності, "лише постійний склад" (IntakeId == null), категоріями
+        // звань і/або конкретними званнями — усе через AND.
+        private static List<Recipient> LoadRosterRecipients(AppDbContext db, RosterSelection selection)
+        {
+            IQueryable<Recipient> query = db.Recipients.Include(r => r.Unit).Include(r => r.Room).Include(r => r.OrgNode);
+
+            if (!selection.AllRecipients)
+                query = query.Where(r => selection.RecipientIds.Contains(r.Id));
+
+            if (selection.PermanentStaffOnly)
+                query = query.Where(r => r.IntakeId == null);
+
+            var recipients = query.ToList();
+
+            if (selection.FitnessFilter != FitnessFilter.All)
+                recipients = recipients.Where(r => FitnessCategoryHelper.Matches(selection.FitnessFilter, r.FitnessCategory)).ToList();
+
+            if (selection.RankCategories.Count > 0)
+                recipients = recipients.Where(r => selection.RankCategories.Contains(RankOrder.Category(r.Rank))).ToList();
+
+            if (selection.Ranks.Count > 0)
+            {
+                var normalizedRanks = new HashSet<string>(selection.Ranks.Select(RankOrder.Normalize), StringComparer.Ordinal);
+                recipients = recipients.Where(r => normalizedRanks.Contains(RankOrder.Normalize(r.Rank))).ToList();
+            }
+
+            return recipients;
         }
 
         private sealed record DocxPhaseResult(int Generated, int Skipped, int Errors, List<string> ErrorMessages);
@@ -475,11 +528,10 @@ namespace GenDoc.Services.Generation
 
                 progress.Report($"Групова відомість «{template.Name}»…");
 
-                // Сортування — так само, як за замовчуванням на екрані «Особовий склад».
-                var roster = allRecipients
-                    .Where(r => FitnessCategoryHelper.Matches(link.FitnessFilter, r.FitnessCategory))
-                    .OrderBy(r => r.LastName, StringComparer.Ordinal)
-                    .ThenBy(r => r.FirstName, StringComparer.Ordinal)
+                // Старшинство звання, потім прізвище/ім'я за українською абеткою —
+                // так само, як у джерельному паперовому звіті.
+                var roster = RosterOrdering.Apply(
+                        allRecipients.Where(r => FitnessCategoryHelper.Matches(link.FitnessFilter, r.FitnessCategory)))
                     .ToList();
 
                 if (roster.Count == 0)
@@ -580,6 +632,122 @@ namespace GenDoc.Services.Generation
             _ => string.Empty
         };
 
+        private sealed record DocxGroupPhaseResult(int Generated, int Skipped, int Errors, List<string> SummaryLines);
+
+        // Phase C — груповий DOCX (Template.Kind == Group): один документ на весь
+        // список, з повторюваним блоком. Анти-дубль так само на RosterHash, як і в
+        // Phase B (xlsx), але прив'язка — TemplateId, а не ExportTemplateId.
+        private DocxGroupPhaseResult RunDocxGroupPhase(
+            AppDbContext db,
+            List<Template> groupTemplates,
+            List<Recipient> allRecipients,
+            OrganizationSettings? orgSettings,
+            GenerationPackageRun run,
+            Dictionary<string, string> manualValues,
+            string outputFolder,
+            HashSet<string> usedFileNames,
+            bool regenerateExisting,
+            IProgress<string> progress)
+        {
+            var generated = 0;
+            var skipped = 0;
+            var errors = 0;
+            var summaryLines = new List<string>();
+
+            // Старшинство звання, потім прізвище/ім'я за українською абеткою —
+            // так само, як у джерельному паперовому звіті.
+            var roster = RosterOrdering.Apply(allRecipients).ToList();
+
+            foreach (var template in groupTemplates)
+            {
+                progress.Report($"Груповий DOCX «{template.Name}»…");
+
+                if (roster.Count == 0)
+                {
+                    skipped++;
+                    summaryLines.Add($"ГРУПА DOCX: {template.Name}: пропущено — немає людей за обраним складом");
+                    continue;
+                }
+
+                try
+                {
+                    var mappings = db.TemplateFieldMappings.Where(m => m.TemplateId == template.Id).ToList();
+                    var perRecipientMappings = mappings.Where(m => m.IsInsideRepeatingBlock).ToList();
+                    var sharedMappings = mappings.Where(m => !m.IsInsideRepeatingBlock).ToList();
+
+                    var perRecipientValues = roster
+                        .Select(r => (IDictionary<string, string>)BuildValues(perRecipientMappings, r, orgSettings, manualValues))
+                        .ToList();
+                    var sharedValues = BuildValues(sharedMappings, roster[0], orgSettings, manualValues);
+
+                    var rosterEntries = roster
+                        .Select(r => (r.Id, SourceHash: _documentHashService.ComputeSourceHash(perRecipientMappings, r, orgSettings)))
+                        .ToList();
+                    var rosterHash = _documentHashService.ComputeRosterHash(template.Id, rosterEntries);
+
+                    var current = db.GeneratedGroupDocuments
+                        .FirstOrDefault(g => g.TemplateId == template.Id && g.IntakeId == null && g.IsCurrent);
+
+                    if (!regenerateExisting && current is not null && current.RosterHash == rosterHash)
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    var fileName = BuildGroupFileName(template.Name, usedFileNames, ".docx");
+                    var outputPath = Path.Combine(outputFolder, fileName);
+
+                    var result = _documentGenerationService.GenerateGroup(
+                        template, template.Content, perRecipientValues, sharedValues, outputPath);
+
+                    if (!result.Success)
+                    {
+                        errors++;
+                        summaryLines.Add($"ГРУПА DOCX: {template.Name}: {result.ErrorMessage}");
+                        continue;
+                    }
+
+                    var bytes = File.ReadAllBytes(outputPath);
+                    var maxVersion = db.GeneratedGroupDocuments.IgnoreQueryFilters()
+                        .Where(g => g.TemplateId == template.Id && g.IntakeId == null)
+                        .Select(g => (int?)g.Version).Max() ?? 0;
+
+                    if (current is not null) current.IsCurrent = false;
+
+                    db.GeneratedGroupDocuments.Add(new GeneratedGroupDocument
+                    {
+                        TemplateId = template.Id,
+                        ExportTemplateId = null,
+                        RunId = run.Id,
+                        IntakeId = null,
+                        GeneratedAt = DateTime.Now,
+                        GeneratedByUserId = _currentUserContext.CurrentUserId ?? 0,
+                        FileName = fileName,
+                        SizeBytes = bytes.LongLength,
+                        ContentHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)),
+                        RosterHash = rosterHash,
+                        RecipientCount = roster.Count,
+                        Version = maxVersion + 1,
+                        IsCurrent = true,
+                        HasContent = true,
+                        Content = new GeneratedGroupDocumentContent { Content = bytes }
+                    });
+
+                    generated++;
+
+                    if (result.UnfilledTags.Count > 0)
+                        summaryLines.Add($"ГРУПА DOCX: {template.Name}: не заповнено теги — {string.Join(", ", result.UnfilledTags)}");
+                }
+                catch (Exception ex)
+                {
+                    errors++;
+                    summaryLines.Add($"ГРУПА DOCX: {template.Name}: {ex.Message}");
+                }
+            }
+
+            return new DocxGroupPhaseResult(generated, skipped, errors, summaryLines);
+        }
+
         private static string? BuildOrgPathSnapshot(int? orgNodeId, Dictionary<int, (string Name, int? ParentId)> nodes)
         {
             if (orgNodeId is not int id || !nodes.ContainsKey(id)) return null;
@@ -648,8 +816,31 @@ namespace GenDoc.Services.Generation
             "ShortName" => Services.NameFormatter.ShortName(r.LastName, r.FirstName, r.MiddleName),
             "FitnessCategory" => r.FitnessCategory ?? string.Empty,
             "RowNumber" => string.Empty,
+            "RankAccusative" => r.RankAccusative is { Length: > 0 }
+                ? r.RankAccusative
+                : Services.UkrainianGrammar.Accusative(r.Rank, Models.Enums.GrammaticalKind.Rank, Services.UkrainianGrammar.Detect(r)),
+            "FullNameAccusative" => r.FullNameAccusative is { Length: > 0 }
+                ? r.FullNameAccusative
+                : FormatFullNameAccusative(r),
+            "PositionAccusative" => r.PositionAccusative is { Length: > 0 }
+                ? r.PositionAccusative
+                : Services.UkrainianGrammar.Accusative(r.Position, Models.Enums.GrammaticalKind.Rank, Services.UkrainianGrammar.Detect(r)),
+            "ArrivedVerb" => Services.UkrainianGrammar.ArrivedVerb(Services.UkrainianGrammar.Detect(r)),
+            "SuchPronoun" => Services.UkrainianGrammar.SuchPronoun(Services.UkrainianGrammar.Detect(r)),
             _ => string.Empty
         };
+
+        private static string FormatFullNameAccusative(Recipient r)
+        {
+            var gender = Services.UkrainianGrammar.Detect(r);
+            var lastName = Services.UkrainianGrammar.Accusative(r.LastName, Models.Enums.GrammaticalKind.Surname, gender)
+                .ToUpper(new CultureInfo("uk-UA"));
+            var firstName = Services.UkrainianGrammar.Accusative(r.FirstName, Models.Enums.GrammaticalKind.GivenName, gender);
+            var middleName = string.IsNullOrWhiteSpace(r.MiddleName)
+                ? null
+                : Services.UkrainianGrammar.Accusative(r.MiddleName, Models.Enums.GrammaticalKind.Patronymic, gender);
+            return string.Join(' ', new[] { lastName, firstName, middleName }.Where(p => !string.IsNullOrWhiteSpace(p)));
+        }
 
         private static string GetOrganizationFieldValue(OrganizationSettings? org, string? fieldName)
         {
@@ -697,17 +888,17 @@ namespace GenDoc.Services.Generation
             return fileName;
         }
 
-        private static string BuildGroupFileName(string templateName, HashSet<string> usedFileNames)
+        private static string BuildGroupFileName(string templateName, HashSet<string> usedFileNames, string extension = ".xlsx")
         {
             var baseName = templateName;
             foreach (var invalidChar in Path.GetInvalidFileNameChars())
                 baseName = baseName.Replace(invalidChar, '_');
 
-            var fileName = baseName + ".xlsx";
+            var fileName = baseName + extension;
             var suffix = 2;
             while (!usedFileNames.Add(fileName))
             {
-                fileName = $"{baseName}_{suffix}.xlsx";
+                fileName = $"{baseName}_{suffix}{extension}";
                 suffix++;
             }
 

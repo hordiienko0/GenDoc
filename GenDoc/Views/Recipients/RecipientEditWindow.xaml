@@ -408,6 +408,46 @@
                     </StackPanel>
                 </Expander>
 
+                <Expander Header="Уточнення відмінків" IsExpanded="False" Margin="0,10,0,0">
+                    <StackPanel Margin="0,10,0,0">
+                        <TextBlock Text="Використовуються для {{звання_зв}}, {{піб_зв}}, {{посада_зв}}, {{прибув}}, {{таким}} у шаблонах. Якщо поле порожнє — форма обчислюється автоматично."
+                                   Style="{StaticResource FieldLabelStyle}" TextWrapping="Wrap" Margin="0,0,0,10"/>
+
+                        <Grid Style="{StaticResource QuestionnaireRowStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Стать" Style="{StaticResource FieldLabelStyle}"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton Content="Чоловіча" IsChecked="{Binding IsGenderMale}" Margin="0,4,20,0"/>
+                                    <RadioButton Content="Жіноча" IsChecked="{Binding IsGenderFemale}" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Style="{StaticResource QuestionnaireRowStyle}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="10"/>
+                                <ColumnDefinition Width="1*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Звання (знахідний відмінок)" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding RankAccusative, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Посада (знахідний відмінок)" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding PositionAccusative, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <Grid Style="{StaticResource QuestionnaireRowStyle}">
+                            <StackPanel>
+                                <TextBlock Text="ПІБ (знахідний відмінок)" Style="{StaticResource FieldLabelStyle}"/>
+                                <TextBox Text="{Binding FullNameAccusative, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Expander>
+
                 <TextBlock Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}"
                            TextWrapping="Wrap" Margin="0,14,0,18"/>
             </StackPanel>

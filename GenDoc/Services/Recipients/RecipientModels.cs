@@ -1,4 +1,6 @@
-﻿namespace GenDoc.Services.Recipients
+﻿using GenDoc.Models.Enums;
+
+namespace GenDoc.Services.Recipients
 {
     public record RecipientListItem(int Id, string FullName, string Rank, string Position, string UnitName, string RoomDisplay);
 
@@ -48,5 +50,11 @@
         public string? MedicalBoardConclusion { get; set; }
         public string? OriginUnit { get; set; }
         public string? Vehicle { get; set; }
+
+        // Уточнення відмінків
+        public Gender? Gender { get; set; }
+        public string? RankAccusative { get; set; }
+        public string? FullNameAccusative { get; set; }
+        public string? PositionAccusative { get; set; }
     }
 }

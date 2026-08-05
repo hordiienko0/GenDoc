@@ -17,6 +17,9 @@ public class ImportService : IImportService
     // тож ставимо стандартну на 6 місць замість 1.
     private const int DefaultImportedRoomCapacity = 6;
 
+    private static readonly StringComparer UkIgnoreCase =
+        StringComparer.Create(CultureInfo.GetCultureInfo("uk-UA"), ignoreCase: true);
+
     private readonly IDbContextFactory<AppDbContext> _dbFactory;
     private readonly IAuditLogService _auditLogService;
 
@@ -75,14 +78,21 @@ public class ImportService : IImportService
 
     public List<ImportRowPreview> Validate(ImportParseResult parsed)
     {
+        using var db = _dbFactory.CreateDbContext();
+
         var rows = ParseRows(parsed);
-        var existingServiceNumbers = LoadExistingServiceNumbers();
+        var existingServiceNumbers = LoadExistingServiceNumbers(db);
+        var orgNodeIntakeMap = LoadOrgNodeIntakeMap(db);
+        var existingNameKeys = LoadExistingNameKeys(db);
         var seenInFile = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var seenNameKeysInFile = new HashSet<string>(StringComparer.Ordinal);
 
         var previews = new List<ImportRowPreview>();
         foreach (var row in rows)
         {
-            var (status, note) = EvaluateRow(row.Fields, row.IncompleteFullName, row.CourseArrivalDateInvalid, existingServiceNumbers, seenInFile);
+            var intakeId = ResolveIntakeId(orgNodeIntakeMap, row.Fields.UnitName);
+            var (status, note) = EvaluateRow(row.Fields, row.IncompleteFullName, row.CourseArrivalDateInvalid,
+                existingServiceNumbers, seenInFile, intakeId, existingNameKeys, seenNameKeysInFile);
             previews.Add(new ImportRowPreview
             {
                 RowNumber = row.RowNumber,
@@ -103,9 +113,12 @@ public class ImportService : IImportService
         using var db = _dbFactory.CreateDbContext();
 
         var existingServiceNumbers = LoadExistingServiceNumbers(db);
+        var orgNodeIntakeMap = LoadOrgNodeIntakeMap(db);
+        var existingNameKeys = LoadExistingNameKeys(db);
         var seenInFile = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var unitCache = new Dictionary<string, Unit>(StringComparer.Ordinal);
-        var orgNodeCache = new Dictionary<string, OrgNode>(StringComparer.Ordinal);
+        var seenNameKeysInFile = new HashSet<string>(StringComparer.Ordinal);
+        var unitCache = new Dictionary<string, Unit>(UkIgnoreCase);
+        var orgNodeCache = new Dictionary<string, OrgNode>(UkIgnoreCase);
         var roomCache = new Dictionary<(string Building, string Number), Room>();
 
         var imported = 0;
@@ -114,7 +127,9 @@ public class ImportService : IImportService
 
         foreach (var row in rows)
         {
-            var (status, _) = EvaluateRow(row.Fields, row.IncompleteFullName, row.CourseArrivalDateInvalid, existingServiceNumbers, seenInFile);
+            var intakeId = ResolveIntakeId(orgNodeIntakeMap, row.Fields.UnitName);
+            var (status, _) = EvaluateRow(row.Fields, row.IncompleteFullName, row.CourseArrivalDateInvalid,
+                existingServiceNumbers, seenInFile, intakeId, existingNameKeys, seenNameKeysInFile);
             if (status is ImportRowStatus.Error or ImportRowStatus.Duplicate)
             {
                 skipped++;
@@ -350,7 +365,8 @@ public class ImportService : IImportService
 
     private static (ImportRowStatus Status, string Note) EvaluateRow(
         RowFields fields, bool incompleteFullName, bool courseArrivalDateInvalid,
-        HashSet<string> existingServiceNumbers, HashSet<string> seenInFile)
+        HashSet<string> existingServiceNumbers, HashSet<string> seenInFile,
+        int? intakeId, HashSet<string> existingNameKeys, HashSet<string> seenNameKeysInFile)
     {
         if (string.IsNullOrWhiteSpace(fields.LastName) && string.IsNullOrWhiteSpace(fields.FirstName))
             return (ImportRowStatus.Error, "Порожнє поле ПІБ");
@@ -359,6 +375,7 @@ public class ImportService : IImportService
             return (ImportRowStatus.Error, "Некоректна дата народження");
 
         var serviceNumber = fields.ServiceNumber.Trim();
+        var nameCheckedInstead = false;
         if (serviceNumber.Length > 0)
         {
             if (existingServiceNumbers.Contains(serviceNumber))
@@ -366,6 +383,20 @@ public class ImportService : IImportService
 
             if (!seenInFile.Add(serviceNumber))
                 return (ImportRowStatus.Duplicate, "Дублюється в файлі — рядок пропущено");
+        }
+        else
+        {
+            // Без особового номера єдиний спосіб відсіяти дубль — ПІБ + дата
+            // народження в межах того самого набору (в іншому наборі однакове
+            // ПІБ — це не обов'язково та сама людина).
+            var nameKey = BuildNameKey(intakeId, fields.LastName, fields.FirstName, fields.MiddleName, fields.DateOfBirth);
+            if (existingNameKeys.Contains(nameKey))
+                return (ImportRowStatus.Duplicate, "Схожий запис (ПІБ і дата народження) вже є в наборі — рядок пропущено");
+
+            if (!seenNameKeysInFile.Add(nameKey))
+                return (ImportRowStatus.Duplicate, "Дублюється в файлі — рядок пропущено");
+
+            nameCheckedInstead = true;
         }
 
         if (incompleteFullName)
@@ -377,20 +408,61 @@ public class ImportService : IImportService
         if (string.IsNullOrWhiteSpace(fields.RoomNumber))
             return (ImportRowStatus.Warning, "Немає поля «Кімната» — додасться без розміщення");
 
-        if (serviceNumber.Length == 0)
-            return (ImportRowStatus.Warning, "Без особового номера — дубль не перевірено");
+        if (nameCheckedInstead)
+            return (ImportRowStatus.Warning, "Без особового номера — дубль перевірено за ПІБ і датою народження");
 
         return (ImportRowStatus.Ok, string.Empty);
+    }
+
+    private static string BuildNameKey(int? intakeId, string lastName, string firstName, string? middleName, DateOnly? dateOfBirth)
+    {
+        var normalizedName = string.Join(' ', new[] { lastName, firstName, middleName }
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Select(p => p!.Trim()))
+            .ToUpper(CultureInfo.GetCultureInfo("uk-UA"));
+        var intakePart = intakeId?.ToString(CultureInfo.InvariantCulture) ?? "-";
+        var dobPart = dateOfBirth?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "-";
+        return $"{intakePart}|{normalizedName}|{dobPart}";
+    }
+
+    private static int? ResolveIntakeId(Dictionary<string, int?> orgNodeIntakeMap, string unitName)
+    {
+        var trimmed = unitName.Trim();
+        return trimmed.Length > 0 && orgNodeIntakeMap.TryGetValue(trimmed, out var intakeId) ? intakeId : null;
     }
 
     private static string BuildFullNameDisplay(RowFields fields)
         => string.Join(' ', new[] { fields.LastName, fields.FirstName, fields.MiddleName }
             .Where(p => !string.IsNullOrWhiteSpace(p)));
 
-    private HashSet<string> LoadExistingServiceNumbers()
+    private static Dictionary<string, int?> LoadOrgNodeIntakeMap(AppDbContext db)
     {
-        using var db = _dbFactory.CreateDbContext();
-        return LoadExistingServiceNumbers(db);
+        var nodes = db.OrgNodes
+            .Select(n => new { n.Name, n.IntakeId })
+            .ToList();
+
+        var map = new Dictionary<string, int?>(UkIgnoreCase);
+        foreach (var node in nodes)
+        {
+            var key = node.Name.Trim();
+            if (key.Length > 0)
+                map[key] = node.IntakeId;
+        }
+
+        return map;
+    }
+
+    private static HashSet<string> LoadExistingNameKeys(AppDbContext db)
+    {
+        var recipients = db.Recipients
+            .Select(r => new { r.IntakeId, r.LastName, r.FirstName, r.MiddleName, r.DateOfBirth })
+            .ToList();
+
+        var keys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var r in recipients)
+            keys.Add(BuildNameKey(r.IntakeId, r.LastName, r.FirstName, r.MiddleName, r.DateOfBirth));
+
+        return keys;
     }
 
     private static HashSet<string> LoadExistingServiceNumbers(AppDbContext db)
@@ -410,7 +482,7 @@ public class ImportService : IImportService
 
         if (cache.TryGetValue(trimmed, out var cached)) return cached;
 
-        var existing = db.Units.FirstOrDefault(u => u.Name == trimmed);
+        var existing = db.Units.AsEnumerable().FirstOrDefault(u => UkIgnoreCase.Equals(u.Name, trimmed));
         if (existing is not null)
         {
             cache[trimmed] = existing;
@@ -436,7 +508,7 @@ public class ImportService : IImportService
 
         if (cache.TryGetValue(trimmed, out var cached)) return cached;
 
-        var existing = db.OrgNodes.FirstOrDefault(n => n.Name == trimmed);
+        var existing = db.OrgNodes.AsEnumerable().FirstOrDefault(n => UkIgnoreCase.Equals(n.Name, trimmed));
         if (existing is not null)
         {
             cache[trimmed] = existing;

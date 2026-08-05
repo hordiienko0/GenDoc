@@ -1,4 +1,5 @@
 ﻿using GenDoc.Models.Common;
+using GenDoc.Models.Enums;
 
 namespace GenDoc.Models
 {
@@ -12,6 +13,11 @@ namespace GenDoc.Models
         public string OriginalFileName { get; set; } = string.Empty;
         public byte[] Content { get; set; } = Array.Empty<byte>();
         public DateTime UploadedAt { get; set; }
+
+        // PerRecipient — документ на людину (як завжди); Group — один документ
+        // на весь список, з повторюваним блоком {{#…}}/{{/…}}. Визначається
+        // автоматично при завантаженні, користувач може перевизначити вручну.
+        public TemplateKind Kind { get; set; } = TemplateKind.PerRecipient;
 
         public DateTime? DeletedAt { get; set; }
         public string? DeletedBy { get; set; }

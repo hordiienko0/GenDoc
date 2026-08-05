@@ -1,13 +1,34 @@
 using GenDoc.Models.Enums;
+using GenDoc.Services;
 
 namespace GenDoc.Services.Generation
 {
-    public record RunResult(int Generated, int Skipped, int Errors, int GroupGenerated, int GroupSkipped, int GroupErrors);
+    public record RunResult(
+        int Generated, int Skipped, int Errors,
+        int GroupGenerated, int GroupSkipped, int GroupErrors,
+        int DocxGroupGenerated, int DocxGroupSkipped, int DocxGroupErrors);
+
+    // AllRecipients=true — весь особовий склад (RecipientIds ігнорується);
+    // AllRecipients=false — лише RecipientIds. FitnessFilter, PermanentStaffOnly,
+    // RankCategories і Ranks застосовуються завжди, поверх будь-якого з двох варіантів,
+    // усі фільтри комбінуються через AND. Порожні RankCategories/Ranks = без обмеження.
+    public sealed record RosterSelection(
+        bool AllRecipients,
+        IReadOnlyList<int> RecipientIds,
+        FitnessFilter FitnessFilter,
+        bool PermanentStaffOnly,
+        IReadOnlyList<RankCategory> RankCategories,
+        IReadOnlyList<string> Ranks)
+    {
+        public static RosterSelection Everyone { get; } =
+            new(true, Array.Empty<int>(), FitnessFilter.All, false, Array.Empty<RankCategory>(), Array.Empty<string>());
+    }
 
     public interface IGenerationService
     {
         List<(int Id, string Name, string? Description, int TemplateCount)> GetPackages();
         List<(int Id, string Name)> GetAllTemplates();
+        List<(int Id, string Name)> GetPerRecipientTemplates();
         List<(int Id, string Name)> GetAllExportTemplates();
 
         void CreatePackage(
@@ -30,6 +51,7 @@ namespace GenDoc.Services.Generation
             string outputFolder,
             Dictionary<string, string> manualValues,
             bool regenerateExisting,
+            RosterSelection rosterSelection,
             IProgress<string> progress);
     }
 }

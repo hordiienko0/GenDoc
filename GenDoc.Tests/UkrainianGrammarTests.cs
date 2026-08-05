@@ -1,0 +1,106 @@
+using GenDoc.Models;
+using GenDoc.Models.Enums;
+using GenDoc.Services;
+
+namespace GenDoc.Tests;
+
+public class UkrainianGrammarTests
+{
+    [Theory]
+    [InlineData("Олександрович", Gender.Male)]
+    [InlineData("Ігорович", Gender.Male)]
+    [InlineData("Андрійович", Gender.Male)]
+    [InlineData("Олександрівна", Gender.Female)]
+    [InlineData("Іванівна", Gender.Female)]
+    [InlineData("Andriyivna", Gender.Male)] // не українська форма — падає на дефолт/override нижче
+    public void Detect_FromPatronymicSuffix(string middleName, Gender expected)
+    {
+        var recipient = new Recipient { LastName = "Тест", FirstName = "Тест", MiddleName = middleName };
+        Assert.Equal(expected, UkrainianGrammar.Detect(recipient));
+    }
+
+    [Fact]
+    public void Detect_FallsBackToExplicitGender_WhenPatronymicMissing()
+    {
+        var recipient = new Recipient { LastName = "Тест", FirstName = "Тест", MiddleName = null, Gender = Gender.Female };
+        Assert.Equal(Gender.Female, UkrainianGrammar.Detect(recipient));
+    }
+
+    [Fact]
+    public void Detect_DefaultsToMale_WhenNothingKnown()
+    {
+        var recipient = new Recipient { LastName = "Тест", FirstName = "Тест" };
+        Assert.Equal(Gender.Male, UkrainianGrammar.Detect(recipient));
+    }
+
+    [Theory]
+    [InlineData("Шевченко", GrammaticalKind.Surname, Gender.Male, "Шевченко")]
+    [InlineData("Шевченко", GrammaticalKind.Surname, Gender.Female, "Шевченко")]
+    [InlineData("Ковальський", GrammaticalKind.Surname, Gender.Male, "Ковальського")]
+    [InlineData("Ковальська", GrammaticalKind.Surname, Gender.Female, "Ковальську")]
+    [InlineData("Кравчук", GrammaticalKind.Surname, Gender.Male, "Кравчука")]
+    [InlineData("Кравчук", GrammaticalKind.Surname, Gender.Female, "Кравчук")]
+    [InlineData("Мельник", GrammaticalKind.Surname, Gender.Male, "Мельника")]
+    public void Accusative_Surname(string nominative, GrammaticalKind kind, Gender gender, string expected)
+        => Assert.Equal(expected, UkrainianGrammar.Accusative(nominative, kind, gender));
+
+    [Theory]
+    [InlineData("Олександр", Gender.Male, "Олександра")]
+    [InlineData("Юрій", Gender.Male, "Юрія")]
+    [InlineData("Андрій", Gender.Male, "Андрія")]
+    [InlineData("Павло", Gender.Male, "Павла")]
+    [InlineData("Ольга", Gender.Female, "Ольгу")]
+    [InlineData("Марія", Gender.Female, "Марію")]
+    public void Accusative_GivenName(string nominative, Gender gender, string expected)
+        => Assert.Equal(expected, UkrainianGrammar.Accusative(nominative, GrammaticalKind.GivenName, gender));
+
+    [Theory]
+    [InlineData("майор", Gender.Male, "майора")]
+    [InlineData("капітан", Gender.Male, "капітана")]
+    [InlineData("лейтенант", Gender.Male, "лейтенанта")]
+    [InlineData("старший лейтенант", Gender.Male, "старшого лейтенанта")]
+    [InlineData("молодший лейтенант", Gender.Male, "молодшого лейтенанта")]
+    [InlineData("сержант", Gender.Male, "сержанта")]
+    [InlineData("солдат", Gender.Male, "солдата")]
+    public void Accusative_Rank(string nominative, Gender gender, string expected)
+        => Assert.Equal(expected, UkrainianGrammar.Accusative(nominative, GrammaticalKind.Rank, gender));
+
+    [Fact]
+    public void ArrivedVerb_AgreesWithGender()
+    {
+        Assert.Equal("прибув", UkrainianGrammar.ArrivedVerb(Gender.Male));
+        Assert.Equal("прибула", UkrainianGrammar.ArrivedVerb(Gender.Female));
+    }
+
+    [Fact]
+    public void SuchPronoun_AgreesWithGender()
+    {
+        Assert.Equal("таким", UkrainianGrammar.SuchPronoun(Gender.Male));
+        Assert.Equal("такою", UkrainianGrammar.SuchPronoun(Gender.Female));
+    }
+
+    // 32 прізвища з джерела групового рапорту (Шаблон_Рапорт_котлове_ГРУПОВИЙ) —
+    // ті самі, що йдуть у RosterOrdering; перевіряємо, що жодне не падає в
+    // виняток і що типові закінчення відмінюються за правилом, а не залишаються
+    // незмінними без потреби.
+    [Theory]
+    [InlineData("Іваненко")] [InlineData("Петренко")] [InlineData("Бондаренко")]
+    [InlineData("Кравченко")] [InlineData("Шевченко")] [InlineData("Ткаченко")]
+    [InlineData("Гончаренко")] [InlineData("Захарченко")] [InlineData("Марченко")]
+    [InlineData("Романенко")] [InlineData("Савченко")] [InlineData("Тимошенко")]
+    [InlineData("Литвиненко")] [InlineData("Дяченко")] [InlineData("Клименко")]
+    [InlineData("Науменко")] [InlineData("Панченко")] [InlineData("Руденко")]
+    [InlineData("Сидоренко")] [InlineData("Степаненко")] [InlineData("Юрченко")]
+    [InlineData("Яременко")] [InlineData("Бойко")] [InlineData("Гриценко")]
+    [InlineData("Демченко")] [InlineData("Іщенко")] [InlineData("Коваленко")]
+    [InlineData("Лисенко")] [InlineData("Онищенко")] [InlineData("Прокопенко")]
+    public void Accusative_KoSuffixSurnames_AreInvariant(string surname)
+        => Assert.Equal(surname, UkrainianGrammar.Accusative(surname, GrammaticalKind.Surname, Gender.Male));
+
+    [Theory]
+    [InlineData("Ковальчук", "Ковальчука")]
+    [InlineData("Мельник", "Мельника")]
+    [InlineData("Кравчук", "Кравчука")]
+    public void Accusative_ConsonantEndingSurnames_DeclineForMale(string surname, string expected)
+        => Assert.Equal(expected, UkrainianGrammar.Accusative(surname, GrammaticalKind.Surname, Gender.Male));
+}
