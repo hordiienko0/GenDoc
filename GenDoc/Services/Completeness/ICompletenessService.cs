@@ -22,6 +22,10 @@ namespace GenDoc.Services.Completeness
         int? LinkId, int TemplateId, TemplateRequirement RequirementRegular,
         TemplateRequirement RequirementLimited, int SortOrder);
 
+    // Стан одного шаблону пакета для однієї людини — картка «Особовий склад» → вкладка «Документи».
+    public record RecipientDocStatus(
+        int TemplateId, string TemplateName, int? DocumentId, int Version, bool HasContent, bool IsStale);
+
     public interface ICompletenessService
     {
         Task<MatrixData> BuildAsync(int intakeId, int packageId);
@@ -32,6 +36,10 @@ namespace GenDoc.Services.Completeness
             IReadOnlyList<int> recipientIds, int packageId, string targetFolder);
         Task<int> GetBadgeCountAsync();
         Task<int?> GetDefaultPackageIdAsync();
+
+        Task<List<RecipientDocStatus>> GetRecipientStatusAsync(int recipientId, int packageId);
+        Task<(int Generated, int Skipped, List<string> Errors)> GenerateMissingForRecipientAsync(
+            int recipientId, int packageId, Dictionary<string, string> manualValues);
 
         Task<List<MatrixTemplateInfo>> GetPackageLinksAsync(int packageId);
         Task<List<(int Id, string Name)>> GetTemplatesNotInPackageAsync(int packageId);

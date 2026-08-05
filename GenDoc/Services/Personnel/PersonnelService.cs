@@ -181,21 +181,6 @@ namespace GenDoc.Services.Personnel
             }
         }
 
-        public async Task<List<PersonDocumentItem>> GetDocumentsAsync(int recipientId)
-        {
-            using var db = _dbFactory.CreateDbContext();
-            return await db.GeneratedDocuments
-                .Where(d => d.RecipientId == recipientId)
-                .OrderByDescending(d => d.GeneratedAt)
-                .Select(d => new PersonDocumentItem(
-                    d.Id,
-                    d.Template != null ? d.Template.Name : "—",
-                    d.GeneratedAt,
-                    d.GeneratedByUser != null ? d.GeneratedByUser.FullName : "—",
-                    d.FileName))
-                .ToListAsync();
-        }
-
         private static async Task<int?> ResolveRoomIdAsync(AppDbContext db, string? building, string? number)
         {
             if (string.IsNullOrWhiteSpace(building) || string.IsNullOrWhiteSpace(number)) return null;

@@ -7,6 +7,10 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using GenDoc.Services;
+using GenDoc.Services.Completeness;
+using GenDoc.Services.Documents;
+using GenDoc.Services.Generation;
+using GenDoc.Services.Intakes;
 using GenDoc.Services.Navigation;
 using GenDoc.Services.Personnel;
 using GenDoc.ViewModels.Shell;
@@ -24,6 +28,10 @@ namespace GenDoc.ViewModels.Personnel
         private static readonly CompareInfo UkCompare = CultureInfo.GetCultureInfo("uk-UA").CompareInfo;
 
         private readonly IPersonnelService _personnelService;
+        private readonly ICompletenessService _completenessService;
+        private readonly IDocumentArchiveService _archiveService;
+        private readonly IGenerationService _generationService;
+        private readonly IIntakeService _intakeService;
         private readonly IDialogService _dialogService;
         private readonly DispatcherTimer _searchDebounceTimer;
 
@@ -34,10 +42,18 @@ namespace GenDoc.ViewModels.Personnel
         public PersonnelViewModel(
             OrgTreeViewModel tree,
             IPersonnelService personnelService,
+            ICompletenessService completenessService,
+            IDocumentArchiveService archiveService,
+            IGenerationService generationService,
+            IIntakeService intakeService,
             IDialogService dialogService)
         {
             Tree = tree;
             _personnelService = personnelService;
+            _completenessService = completenessService;
+            _archiveService = archiveService;
+            _generationService = generationService;
+            _intakeService = intakeService;
             _dialogService = dialogService;
 
             _searchDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
@@ -334,7 +350,9 @@ namespace GenDoc.ViewModels.Personnel
                 ? "—"
                 : nodeVm.DocumentName ?? Tree.GetFullPathNames(nodeVm);
 
-            var card = new PersonCardViewModel(_personnelService, model, unitDisplay);
+            var card = new PersonCardViewModel(
+                _personnelService, _completenessService, _archiveService, _generationService, _intakeService,
+                _dialogService, model, unitDisplay);
             card.Saved += OnCardSaved;
             card.CloseRequested += () => Card = null;
             Card = card;

@@ -32,8 +32,6 @@ namespace GenDoc.Services.Personnel
 
     public record PersonSaveResult(bool Success, int Id, Dictionary<string, string> Errors);
 
-    public record PersonDocumentItem(int Id, string TemplateName, DateTime GeneratedAt, string Author, string OutputFileName);
-
     public interface IPersonnelService
     {
         Task<List<PersonListItem>> QueryByNodeAsync(int nodeId, bool includeDescendants);
@@ -41,6 +39,5 @@ namespace GenDoc.Services.Personnel
         Task<PersonSaveResult> SaveAsync(PersonEditModel model);
         Task MoveManyAsync(IReadOnlyList<int> recipientIds, int targetNodeId, string sourceBranchName);
         Task DeleteManyAsync(IReadOnlyList<int> recipientIds);
-        Task<List<PersonDocumentItem>> GetDocumentsAsync(int recipientId);
     }
 }

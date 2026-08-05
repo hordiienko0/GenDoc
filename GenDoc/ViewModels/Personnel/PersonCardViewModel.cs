@@ -1,8 +1,15 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GenDoc.Services;
+using GenDoc.Services.Completeness;
+using GenDoc.Services.Documents;
+using GenDoc.Services.Generation;
+using GenDoc.Services.Intakes;
 using GenDoc.Services.Personnel;
+using GenDoc.ViewModels.Archive;
 
 namespace GenDoc.ViewModels.Personnel
 {
@@ -18,12 +25,32 @@ namespace GenDoc.ViewModels.Personnel
         };
 
         private readonly IPersonnelService _personnelService;
+        private readonly ICompletenessService _completenessService;
+        private readonly IDocumentArchiveService _archiveService;
+        private readonly IGenerationService _generationService;
+        private readonly IIntakeService _intakeService;
+        private readonly IDialogService _dialogService;
         private string _snapshot = string.Empty;
         private bool _documentsLoaded;
+        private int? _packageId;
 
-        public PersonCardViewModel(IPersonnelService personnelService, PersonEditModel model, string unitDisplay)
+        private record CleanValues(
+            string LastName, string FirstMiddle, string Rank, string Position, string ServiceNumber,
+            string? RoomBuilding, string? RoomNumber, string? Fitness);
+        private CleanValues _clean = null!;
+
+        public PersonCardViewModel(
+            IPersonnelService personnelService, ICompletenessService completenessService,
+            IDocumentArchiveService archiveService, IGenerationService generationService,
+            IIntakeService intakeService, IDialogService dialogService,
+            PersonEditModel model, string unitDisplay)
         {
             _personnelService = personnelService;
+            _completenessService = completenessService;
+            _archiveService = archiveService;
+            _generationService = generationService;
+            _intakeService = intakeService;
+            _dialogService = dialogService;
             Id = model.Id;
             OrgNodeId = model.OrgNodeId;
             IntakeId = model.IntakeId;
@@ -41,6 +68,10 @@ namespace GenDoc.ViewModels.Personnel
 
             HeaderName = Id == 0 ? "Нова особа" : BuildShortName(model.LastName, model.FirstName, model.MiddleName);
             HeaderSub = string.Join(" · ", new[] { model.Rank, model.Position }.Where(p => !string.IsNullOrWhiteSpace(p)));
+
+            // Нова особа — картка одразу відкривається в режимі редагування,
+            // бо переглядати ще нічого.
+            isEditing = IsNew;
 
             TakeSnapshot();
         }
@@ -78,14 +109,18 @@ namespace GenDoc.ViewModels.Personnel
         public bool IsDataTab => SelectedTabIndex == 0;
         public bool IsDocumentsTab => SelectedTabIndex == 1;
 
-        public ObservableCollection<PersonDocumentItem> Documents { get; } = new();
+        public ObservableCollection<RecipientDocRowViewModel> DocumentRows { get; } = new();
 
-        [ObservableProperty]
-        private bool hasDocuments;
+        [ObservableProperty] private bool documentsLoading;
+        [ObservableProperty] private bool hasMissingDocuments;
+        [ObservableProperty] private string? documentsFooterNote;
+        [ObservableProperty] private string? documentsEmptyNote;
 
         [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(SaveClickCommand))]
         private bool isDirty;
+
+        [ObservableProperty] private bool isEditing;
 
         protected override void OnPropertyChanged(PropertyChangedEventArgs e)
         {
@@ -103,11 +138,108 @@ namespace GenDoc.ViewModels.Personnel
         {
             if (_documentsLoaded || IsNew) return;
             _documentsLoaded = true;
+            await RefreshDocumentsAsync();
+        }
 
-            var docs = await _personnelService.GetDocumentsAsync(Id);
-            Documents.Clear();
-            foreach (var doc in docs) Documents.Add(doc);
-            HasDocuments = Documents.Count > 0;
+        private async Task RefreshDocumentsAsync()
+        {
+            if (IsNew) return;
+            DocumentsLoading = true;
+            try
+            {
+                var packageId = await _completenessService.GetDefaultPackageIdAsync();
+                _packageId = packageId;
+                if (packageId is null)
+                {
+                    DocumentRows.Clear();
+                    HasMissingDocuments = false;
+                    DocumentsFooterNote = null;
+                    DocumentsEmptyNote = "Пакет генерації за замовчуванням не налаштовано.";
+                    return;
+                }
+
+                var statuses = await _completenessService.GetRecipientStatusAsync(Id, packageId.Value);
+                DocumentRows.Clear();
+                foreach (var status in statuses) DocumentRows.Add(new RecipientDocRowViewModel(status));
+
+                HasMissingDocuments = statuses.Any(s => !s.HasContent);
+                DocumentsEmptyNote = statuses.Count == 0 ? "У пакеті немає шаблонів." : null;
+                DocumentsFooterNote = await BuildDocumentsFooterNoteAsync(packageId.Value);
+            }
+            finally
+            {
+                DocumentsLoading = false;
+            }
+        }
+
+        private async Task<string> BuildDocumentsFooterNoteAsync(int packageId)
+        {
+            var packageName = _generationService.GetPackages().FirstOrDefault(p => p.Id == packageId).Name ?? "—";
+
+            if (IntakeId is int intakeId)
+            {
+                var intake = await _intakeService.GetByIdAsync(intakeId);
+                if (intake is not null) return $"Пакет: {packageName} · Набір: {intake.DisplayNumber}";
+            }
+
+            return $"Пакет: {packageName}";
+        }
+
+        [RelayCommand]
+        private async Task OpenDocumentAsync(RecipientDocRowViewModel? row)
+        {
+            if (row?.DocumentId is not int documentId) return;
+            await _archiveService.OpenAsync(documentId);
+        }
+
+        [RelayCommand]
+        private async Task GenerateDocumentAsync(RecipientDocRowViewModel? row)
+        {
+            if (row is null) return;
+
+            var manualValues = await CollectManualValuesAsync(new[] { row.TemplateId });
+            if (manualValues is null) return;
+
+            var result = await _completenessService.GenerateForPairAsync(Id, row.TemplateId, manualValues);
+            if (!result.Success)
+            {
+                MessageBox.Show(result.ErrorMessage ?? "Не вдалося згенерувати документ.", "Помилка",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+
+            await RefreshDocumentsAsync();
+        }
+
+        [RelayCommand]
+        private async Task GenerateMissingAsync()
+        {
+            if (_packageId is not int packageId) return;
+
+            var missingTemplateIds = DocumentRows.Where(r => !r.HasContent).Select(r => r.TemplateId).ToList();
+            if (missingTemplateIds.Count == 0) return;
+
+            var manualValues = await CollectManualValuesAsync(missingTemplateIds);
+            if (manualValues is null) return;
+
+            var (generated, _, errors) = await _completenessService.GenerateMissingForRecipientAsync(Id, packageId, manualValues);
+            if (errors.Count > 0)
+            {
+                MessageBox.Show(string.Join("\n", errors), $"Згенеровано {generated}, помилок {errors.Count}",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+
+            await RefreshDocumentsAsync();
+        }
+
+        // Повертає null, якщо оператор скасував діалог ручних міток — виклик генерації тоді пропускається.
+        private async Task<Dictionary<string, string>?> CollectManualValuesAsync(IReadOnlyList<int> templateIds)
+        {
+            var manualTags = await _archiveService.GetManualTagsAsync(templateIds);
+            if (manualTags.Count == 0) return new Dictionary<string, string>();
+
+            var dialog = new ManualValuesDialogViewModel(manualTags);
+            if (_dialogService.ShowDialog(dialog, Application.Current.MainWindow) != true) return null;
+            return dialog.GetValues();
         }
 
         private string CurrentState()
@@ -117,7 +249,22 @@ namespace GenDoc.ViewModels.Personnel
         private void TakeSnapshot()
         {
             _snapshot = CurrentState();
+            _clean = new CleanValues(LastName, FirstMiddle, Rank, Position, ServiceNumber, RoomBuilding, RoomNumber, Fitness);
             IsDirty = false;
+        }
+
+        private void RevertToClean()
+        {
+            LastName = _clean.LastName;
+            FirstMiddle = _clean.FirstMiddle;
+            Rank = _clean.Rank;
+            Position = _clean.Position;
+            ServiceNumber = _clean.ServiceNumber;
+            RoomBuilding = _clean.RoomBuilding;
+            RoomNumber = _clean.RoomNumber;
+            Fitness = _clean.Fitness;
+            LastNameError = null;
+            ServiceNumberError = null;
         }
 
         public async Task<bool> SaveAsync()
@@ -154,6 +301,7 @@ namespace GenDoc.ViewModels.Personnel
 
             Id = result.Id;
             TakeSnapshot();
+            IsEditing = false;
             Saved?.Invoke(result.Id);
             return true;
         }
@@ -168,7 +316,22 @@ namespace GenDoc.ViewModels.Personnel
         }
 
         [RelayCommand]
-        private void Cancel() => CloseRequested?.Invoke();
+        private void Edit() => IsEditing = true;
+
+        // У режимі редагування — відкат незбережених змін без закриття картки.
+        // Поза режимом редагування (не має статись, кнопка ховається) — закрити картку.
+        [RelayCommand]
+        private void Cancel()
+        {
+            if (IsEditing)
+            {
+                RevertToClean();
+                IsEditing = false;
+                return;
+            }
+
+            CloseRequested?.Invoke();
+        }
 
         public static string BuildShortName(string lastName, string? firstName, string? middleName)
         {

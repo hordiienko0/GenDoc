@@ -323,6 +323,42 @@ namespace GenDoc.Services.Completeness
             return (peopleExported, filesExported, warnings);
         }
 
+        public async Task<List<RecipientDocStatus>> GetRecipientStatusAsync(int recipientId, int packageId)
+        {
+            var templates = await GetPackageLinksAsync(packageId);
+            var result = new List<RecipientDocStatus>(templates.Count);
+
+            foreach (var template in templates)
+            {
+                var cell = await GetCellAsync(recipientId, template.TemplateId);
+                result.Add(cell is null
+                    ? new RecipientDocStatus(template.TemplateId, template.Name, null, 0, false, false)
+                    : new RecipientDocStatus(template.TemplateId, template.Name, cell.Id, cell.Version, cell.HasContent, cell.IsStale));
+            }
+
+            return result;
+        }
+
+        public async Task<(int Generated, int Skipped, List<string> Errors)> GenerateMissingForRecipientAsync(
+            int recipientId, int packageId, Dictionary<string, string> manualValues)
+        {
+            var statuses = await GetRecipientStatusAsync(recipientId, packageId);
+            var generated = 0;
+            var skipped = 0;
+            var errors = new List<string>();
+
+            foreach (var status in statuses)
+            {
+                if (status.HasContent) { skipped++; continue; }
+
+                var result = await GenerateForPairAsync(recipientId, status.TemplateId, manualValues);
+                if (result.Success) generated++;
+                else errors.Add($"{status.TemplateName}: {result.ErrorMessage}");
+            }
+
+            return (generated, skipped, errors);
+        }
+
         public async Task<int?> GetDefaultPackageIdAsync()
         {
             using var db = _dbFactory.CreateDbContext();
