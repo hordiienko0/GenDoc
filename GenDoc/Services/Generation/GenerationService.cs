@@ -806,6 +806,7 @@ namespace GenDoc.Services.Generation
             "ExtraNote" => r.ExtraNote ?? string.Empty,
             "CommanderContact" => r.CommanderContact ?? string.Empty,
             "TravelCertificateNumber" => r.TravelCertificateNumber ?? string.Empty,
+            "TravelCertificateDate" => r.TravelCertificateDate is { } tcd ? UkrainianDate.Long(tcd) : string.Empty,
             "FoodCertificate" => r.FoodCertificate ?? string.Empty,
             "IdDocumentNumber" => r.IdDocumentNumber ?? string.Empty,
             "MedicalBoard" => r.MedicalBoard ?? string.Empty,
@@ -822,9 +823,6 @@ namespace GenDoc.Services.Generation
             "FullNameAccusative" => r.FullNameAccusative is { Length: > 0 }
                 ? r.FullNameAccusative
                 : FormatFullNameAccusative(r),
-            "PositionAccusative" => r.PositionAccusative is { Length: > 0 }
-                ? r.PositionAccusative
-                : Services.UkrainianGrammar.Accusative(r.Position, Models.Enums.GrammaticalKind.Rank, Services.UkrainianGrammar.Detect(r)),
             "ArrivedVerb" => Services.UkrainianGrammar.ArrivedVerb(Services.UkrainianGrammar.Detect(r)),
             "SuchPronoun" => Services.UkrainianGrammar.SuchPronoun(Services.UkrainianGrammar.Detect(r)),
             _ => string.Empty

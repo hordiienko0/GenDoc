@@ -6,7 +6,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 14;
+    private const int CurrentSchemaVersion = 15;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -110,6 +110,16 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     {
         ("Gender", "INTEGER"), ("RankAccusative", "TEXT"),
         ("FullNameAccusative", "TEXT"), ("PositionAccusative", "TEXT")
+    };
+
+    private static readonly (string Name, string Type)[] RecipientColumnsV15 =
+    {
+        ("TravelCertificateDate", "TEXT")
+    };
+
+    private static readonly (string Name, string Type)[] AppSettingsColumnsV15 =
+    {
+        ("LastSignerByTemplateJson", "TEXT")
     };
 
     private readonly IDbContextFactory<AppDbContext> _dbFactory;
@@ -307,6 +317,20 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                     AppliedAt = DateTime.Now,
                     Description = "Граматика: стать, уточнення відмінків (звання/ПІБ/посада у знахідному)"
                 });
+                currentVersion = 14;
+            }
+
+            if (currentVersion < 15)
+            {
+                AddMissingColumns(db, "Recipients", RecipientColumnsV15);
+                AddMissingColumns(db, "AppSettings", AppSettingsColumnsV15);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 15,
+                    AppliedAt = DateTime.Now,
+                    Description = "Рапорти на котлове: дата посвідчення, пам'ять підписанта"
+                });
             }
         }
 
@@ -344,6 +368,8 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 
         AddMissingColumns(db, "AppSettings", AppSettingsColumnsV13);
         AddMissingColumns(db, "Recipients", RecipientColumnsV14);
+        AddMissingColumns(db, "Recipients", RecipientColumnsV15);
+        AddMissingColumns(db, "AppSettings", AppSettingsColumnsV15);
 
         // Ідемпотентно (IF NOT EXISTS) — самовідновлюється незалежно від SchemaVersion,
         // так само як EnsureExportTemplateTables. Обгорнуто в try/catch: якщо в

@@ -33,6 +33,7 @@ public static class TemplateFieldCatalog
         new("ExtraNote", "Примітка (2)"),
         new("CommanderContact", "Командир (ПІП та телефон)"),
         new("TravelCertificateNumber", "№ посвідчення про відрядження"),
+        new("TravelCertificateDate", "Дата посвідчення про відрядження"),
         new("FoodCertificate", "Прод атестат"),
         new("IdDocumentNumber", "Номер посвідчення офіцера/військового квитка"),
         new("MedicalBoard", "ВЛК, №, дата"),
@@ -42,7 +43,6 @@ public static class TemplateFieldCatalog
         new("RoomDisplay", "Кімната"),
         new("RankAccusative", "Звання (знахідний відмінок)"),
         new("FullNameAccusative", "ПІБ (знахідний відмінок)"),
-        new("PositionAccusative", "Посада (знахідний відмінок)"),
         new("ArrivedVerb", "«прибув/прибула» (узгодження за родом)"),
         new("SuchPronoun", "«таким/такою» (узгодження за родом)")
     };

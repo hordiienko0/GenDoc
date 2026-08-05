@@ -44,6 +44,7 @@ namespace GenDoc.Services.Recipients
         public string? ExtraNote { get; set; }
         public string? CommanderContact { get; set; }
         public string? TravelCertificateNumber { get; set; }
+        public DateOnly? TravelCertificateDate { get; set; }
         public string? FoodCertificate { get; set; }
         public string? IdDocumentNumber { get; set; }
         public string? MedicalBoard { get; set; }
@@ -55,6 +56,5 @@ namespace GenDoc.Services.Recipients
         public Gender? Gender { get; set; }
         public string? RankAccusative { get; set; }
         public string? FullNameAccusative { get; set; }
-        public string? PositionAccusative { get; set; }
     }
 }

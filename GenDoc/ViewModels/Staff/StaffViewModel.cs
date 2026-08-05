@@ -216,6 +216,7 @@ namespace GenDoc.ViewModels.Staff
                     request.Note, request.ManualValues);
             }
 
+            await vm.SaveManualValuesAsync();
             await RefreshAsync();
         }
     }

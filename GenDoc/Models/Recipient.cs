@@ -61,7 +61,9 @@ namespace GenDoc.Models
         // автоматичного відмінювання (Services/UkrainianGrammar.cs).
         public string? RankAccusative { get; set; }
         public string? FullNameAccusative { get; set; }
-        public string? PositionAccusative { get; set; }
+
+        // Дата посвідчення про відрядження — джерело для {{дата_посвідчення}} (UkrainianDate.Long).
+        public DateOnly? TravelCertificateDate { get; set; }
 
         public DateTime? DeletedAt { get; set; }
         public string? DeletedBy { get; set; }

@@ -153,6 +153,7 @@ namespace GenDoc.Services.Recipients
                 ExtraNote = r.ExtraNote,
                 CommanderContact = r.CommanderContact,
                 TravelCertificateNumber = r.TravelCertificateNumber,
+                TravelCertificateDate = r.TravelCertificateDate,
                 FoodCertificate = r.FoodCertificate,
                 IdDocumentNumber = r.IdDocumentNumber,
                 MedicalBoard = r.MedicalBoard,
@@ -162,8 +163,7 @@ namespace GenDoc.Services.Recipients
 
                 Gender = r.Gender,
                 RankAccusative = r.RankAccusative,
-                FullNameAccusative = r.FullNameAccusative,
-                PositionAccusative = r.PositionAccusative
+                FullNameAccusative = r.FullNameAccusative
             };
         }
 
@@ -237,6 +237,7 @@ namespace GenDoc.Services.Recipients
             recipient.ExtraNote = TrimOrNull(model.ExtraNote);
             recipient.CommanderContact = TrimOrNull(model.CommanderContact);
             recipient.TravelCertificateNumber = TrimOrNull(model.TravelCertificateNumber);
+            recipient.TravelCertificateDate = model.TravelCertificateDate;
             recipient.FoodCertificate = TrimOrNull(model.FoodCertificate);
             recipient.IdDocumentNumber = TrimOrNull(model.IdDocumentNumber);
             recipient.MedicalBoard = TrimOrNull(model.MedicalBoard);
@@ -247,7 +248,6 @@ namespace GenDoc.Services.Recipients
             recipient.Gender = model.Gender;
             recipient.RankAccusative = TrimOrNull(model.RankAccusative);
             recipient.FullNameAccusative = TrimOrNull(model.FullNameAccusative);
-            recipient.PositionAccusative = TrimOrNull(model.PositionAccusative);
 
             if (isNew) db.Recipients.Add(recipient);
             db.SaveChanges();

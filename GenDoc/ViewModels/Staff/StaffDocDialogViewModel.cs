@@ -4,8 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using GenDoc.Models.Enums;
 using GenDoc.Services.Documents;
 using GenDoc.Services.Generation;
-using GenDoc.Services.Staff;
-using GenDoc.ViewModels.Archive;
+using GenDoc.ViewModels.Generation;
 using GenDoc.ViewModels.Personnel;
 
 namespace GenDoc.ViewModels.Staff
@@ -29,14 +28,15 @@ namespace GenDoc.ViewModels.Staff
     {
         private readonly IGenerationService _generationService;
         private readonly IDocumentArchiveService _archiveService;
-        private readonly IStaffService _staffService;
+        private readonly IManualTagFormBuilder _manualTagFormBuilder;
 
         public StaffDocDialogViewModel(
-            IGenerationService generationService, IDocumentArchiveService archiveService, IStaffService staffService)
+            IGenerationService generationService, IDocumentArchiveService archiveService,
+            IManualTagFormBuilder manualTagFormBuilder)
         {
             _generationService = generationService;
             _archiveService = archiveService;
-            _staffService = staffService;
+            _manualTagFormBuilder = manualTagFormBuilder;
         }
 
         public StaffEventKind? Kind { get; private set; }
@@ -47,9 +47,12 @@ namespace GenDoc.ViewModels.Staff
         [ObservableProperty] private bool showDateRange = true;
 
         public ObservableCollection<TemplateCheckOptionViewModel> Templates { get; } = new();
-        public ObservableCollection<ManualTagRowViewModel> ManualTags { get; } = new();
 
-        [ObservableProperty] private bool hasManualTags;
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasManualTags))]
+        private ManualTagFormViewModel? manualTagForm;
+
+        public bool HasManualTags => ManualTagForm?.HasContent == true;
 
         [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(ConfirmCommand))]
@@ -85,7 +88,7 @@ namespace GenDoc.ViewModels.Staff
                     if (e.PropertyName == nameof(TemplateCheckOptionViewModel.IsChecked))
                     {
                         ConfirmCommand.NotifyCanExecuteChanged();
-                        await RefreshManualTagsAsync();
+                        await RefreshManualTagFormAsync();
                     }
                 };
                 Templates.Add(item);
@@ -95,31 +98,22 @@ namespace GenDoc.ViewModels.Staff
             DateEnd = DateTime.Today;
             Note = null;
             ErrorText = null;
-            ManualTags.Clear();
-            HasManualTags = false;
+            ManualTagForm = null;
         }
 
-        private async Task RefreshManualTagsAsync()
+        private async Task RefreshManualTagFormAsync()
         {
-            var templateIds = Templates.Where(t => t.IsChecked).Select(t => t.Id).ToList();
-            var tags = templateIds.Count == 0
-                ? new List<string>()
-                : await _archiveService.GetManualTagsAsync(templateIds);
-
-            // Зберегти вже введене операторм; для нових тегів — підставити останнє використане значення.
-            var kept = ManualTags.ToDictionary(t => t.Tag, t => t.Value);
-            var lastUsed = tags.Count > 0 ? await _staffService.GetLastManualValuesAsync() : new Dictionary<string, string>();
-
-            ManualTags.Clear();
-            foreach (var tag in tags)
+            var checkedTemplateIds = Templates.Where(t => t.IsChecked).Select(t => t.Id).ToList();
+            if (checkedTemplateIds.Count == 0)
             {
-                var row = new ManualTagRowViewModel(tag)
-                {
-                    Value = kept.TryGetValue(tag, out var value) ? value : lastUsed.GetValueOrDefault(tag, string.Empty)
-                };
-                ManualTags.Add(row);
+                ManualTagForm = null;
+                return;
             }
-            HasManualTags = ManualTags.Count > 0;
+
+            var tags = await _archiveService.GetManualTagsAsync(checkedTemplateIds);
+            ManualTagForm = tags.Count > 0
+                ? await _manualTagFormBuilder.BuildAsync(tags, $"tpl:{checkedTemplateIds[0]}")
+                : null;
         }
 
         private bool CanConfirm =>
@@ -132,12 +126,20 @@ namespace GenDoc.ViewModels.Staff
         [RelayCommand]
         private void Cancel() => CloseDialog(false);
 
+        public async Task SaveManualValuesAsync()
+        {
+            if (ManualTagForm is null) return;
+            var checkedTemplateIds = Templates.Where(t => t.IsChecked).Select(t => t.Id).ToList();
+            if (checkedTemplateIds.Count == 0) return;
+            await _manualTagFormBuilder.SaveAsync($"tpl:{checkedTemplateIds[0]}", ManualTagForm);
+        }
+
         public (IReadOnlyList<int> RecipientIds, IReadOnlyList<int> TemplateIds, DateOnly DateStart, DateOnly DateEnd, string? Note, Dictionary<string, string> ManualValues) BuildRequest()
             => (_recipientIds,
                 Templates.Where(t => t.IsChecked).Select(t => t.Id).ToList(),
                 DateOnly.FromDateTime(DateStart!.Value),
                 DateOnly.FromDateTime(DateEnd!.Value),
                 Note,
-                ManualTags.ToDictionary(t => t.Tag, t => t.Value));
+                ManualTagForm?.GetValues() ?? new Dictionary<string, string>());
     }
 }

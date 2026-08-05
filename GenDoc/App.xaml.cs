@@ -84,6 +84,7 @@ namespace GenDoc
             services.AddTransient<IntakesViewModel>();
             services.AddTransient<CloseIntakeDialogViewModel>();
             services.AddTransient<IStaffService, StaffService>();
+            services.AddTransient<Services.Generation.IManualTagFormBuilder, Services.Generation.ManualTagFormBuilder>();
             services.AddTransient<ViewModels.Staff.StaffViewModel>();
             services.AddTransient<ViewModels.Staff.StaffDocDialogViewModel>();
 

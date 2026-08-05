@@ -1,0 +1,89 @@
+using System.Collections.ObjectModel;
+using CommunityToolkit.Mvvm.ComponentModel;
+
+namespace GenDoc.ViewModels.Generation
+{
+    public enum ManualTagKind { Text, Date }
+
+    // Один рядок форми ручних міток. Value завжди тримає кінцевий рядок для підстановки —
+    // для Date-рядків він перераховується з DateValue при зміні.
+    public partial class ManualTagRowViewModel : ObservableObject
+    {
+        private readonly Func<DateOnly, string>? _dateFormatter;
+
+        public ManualTagRowViewModel(string tag, string? initialValue)
+        {
+            Tag = tag;
+            Kind = ManualTagKind.Text;
+            value = initialValue ?? string.Empty;
+        }
+
+        public ManualTagRowViewModel(string tag, DateOnly initialDate, Func<DateOnly, string> formatter)
+        {
+            Tag = tag;
+            Kind = ManualTagKind.Date;
+            _dateFormatter = formatter;
+            dateValue = initialDate.ToDateTime(TimeOnly.MinValue);
+            value = formatter(initialDate);
+        }
+
+        public string Tag { get; }
+        public ManualTagKind Kind { get; }
+
+        [ObservableProperty] private string value = string.Empty;
+        [ObservableProperty] private DateTime? dateValue;
+
+        partial void OnDateValueChanged(DateTime? oldValue, DateTime? newValue)
+        {
+            if (Kind == ManualTagKind.Date && newValue is DateTime dt && _dateFormatter is not null)
+                Value = _dateFormatter(DateOnly.FromDateTime(dt));
+        }
+    }
+
+    public record StaffPickerOption(int RecipientId, string Rank, string SignatureName, string DisplayLabel);
+
+    public partial class SignerPickerViewModel : ObservableObject
+    {
+        public SignerPickerViewModel(IEnumerable<StaffPickerOption> options, StaffPickerOption? initial)
+        {
+            Options = new ObservableCollection<StaffPickerOption>(options);
+            selected = initial;
+        }
+
+        public ObservableCollection<StaffPickerOption> Options { get; }
+
+        [ObservableProperty] private StaffPickerOption? selected;
+    }
+
+    // Форма ручних міток для групового запуску й ad-hoc діалогу: звичайні тексти,
+    // дати з префілом і формою, та (за наявності пари тегів) пікер підписанта.
+    public class ManualTagFormViewModel
+    {
+        public const string SignerRankTag = "звання_підписанта";
+        public const string SignerNameTag = "піб_підписанта";
+
+        public ManualTagFormViewModel(ObservableCollection<ManualTagRowViewModel> rows, SignerPickerViewModel? signer)
+        {
+            Rows = rows;
+            Signer = signer;
+        }
+
+        public ObservableCollection<ManualTagRowViewModel> Rows { get; }
+        public SignerPickerViewModel? Signer { get; }
+
+        public bool HasContent => Rows.Count > 0 || Signer is not null;
+
+        public Dictionary<string, string> GetValues()
+        {
+            var values = Rows.ToDictionary(r => r.Tag, r => r.Value);
+
+            if (Signer?.Selected is { } signer)
+            {
+                values[SignerRankTag] = signer.Rank;
+                values[SignerNameTag] = signer.SignatureName;
+            }
+
+            return values;
+        }
+    }
+}

@@ -23,19 +23,22 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     private readonly IServiceProvider _serviceProvider;
     private readonly Services.Completeness.ICompletenessService _completenessService;
     private readonly IRecipientService _recipientService;
+    private readonly IManualTagFormBuilder _manualTagFormBuilder;
 
     public GenerationViewModel(
         IGenerationService generationService,
         IDialogService dialogService,
         IServiceProvider serviceProvider,
         Services.Completeness.ICompletenessService completenessService,
-        IRecipientService recipientService)
+        IRecipientService recipientService,
+        IManualTagFormBuilder manualTagFormBuilder)
     {
         _generationService = generationService;
         _dialogService = dialogService;
         _serviceProvider = serviceProvider;
         _completenessService = completenessService;
         _recipientService = recipientService;
+        _manualTagFormBuilder = manualTagFormBuilder;
         RefreshPackages();
         RefreshRecipientOptions();
     }
@@ -48,7 +51,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         if (packageId is not int id) return;
 
         var item = Packages.FirstOrDefault(p => p.Id == id);
-        if (item is not null) SelectPackage(item);
+        if (item is not null) await SelectPackageAsync(item);
     }
 
     [ObservableProperty]
@@ -71,9 +74,9 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasManualTags))]
-    private ObservableCollection<ManualTagInputViewModel> manualTagInputs = new();
+    private ManualTagFormViewModel? manualTagForm;
 
-    public bool HasManualTags => ManualTagInputs.Count > 0;
+    public bool HasManualTags => ManualTagForm?.HasContent == true;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NotCreatingPackage))]
@@ -287,7 +290,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     }
 
     [RelayCommand]
-    private void SelectPackage(GenerationPackageListItemViewModel? item)
+    private async Task SelectPackageAsync(GenerationPackageListItemViewModel? item)
     {
         if (item is null) return;
 
@@ -305,8 +308,10 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
                 t.Name, t.FitnessFilter, _generationService.GetRecipientCount(t.FitnessFilter))));
         PackageTemplates = new ObservableCollection<PackageTemplateSummaryItemViewModel>(summary);
 
-        ManualTagInputs = new ObservableCollection<ManualTagInputViewModel>(
-            _generationService.GetManualTags(item.Id).Select(t => new ManualTagInputViewModel(t)));
+        var tags = _generationService.GetManualTags(item.Id);
+        ManualTagForm = tags.Count > 0
+            ? await _manualTagFormBuilder.BuildAsync(tags, $"pkg:{item.Id}")
+            : null;
 
         RecipientCount = _generationService.GetRecipientCount();
         RefreshRecipientOptions();
@@ -330,7 +335,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         foreach (var p in Packages) p.IsSelected = false;
         SelectedPackage = null;
         PackageTemplates = new ObservableCollection<PackageTemplateSummaryItemViewModel>();
-        ManualTagInputs = new ObservableCollection<ManualTagInputViewModel>();
+        ManualTagForm = null;
     }
 
     [RelayCommand]
@@ -376,7 +381,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         {
             SelectedPackage = null;
             PackageTemplates = new ObservableCollection<PackageTemplateSummaryItemViewModel>();
-            ManualTagInputs = new ObservableCollection<ManualTagInputViewModel>();
+            ManualTagForm = null;
         }
 
         RefreshPackages();
@@ -392,7 +397,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         if (_dialogService.ShowDialog(vm, Application.Current.MainWindow) == true)
         {
             WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
-            SelectPackage(SelectedPackage);
+            await SelectPackageAsync(SelectedPackage);
         }
     }
 
@@ -416,7 +421,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         var packageId = SelectedPackage.Id;
         var outputFolderPath = OutputFolder;
         var regenerate = RegenerateExisting;
-        var manualValues = ManualTagInputs.ToDictionary(m => m.Tag, m => m.Value ?? string.Empty);
+        var manualValues = ManualTagForm?.GetValues() ?? new Dictionary<string, string>();
         var progress = new Progress<string>(message => ProgressText = message);
 
         // Фільтр звань — орthogonal до вибору "весь склад / позначені": звужує
@@ -437,6 +442,9 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
 
         var result = await Task.Run(() =>
             _generationService.RunPackage(packageId, outputFolderPath, manualValues, regenerate, rosterSelection, progress));
+
+        if (ManualTagForm is not null)
+            await _manualTagFormBuilder.SaveAsync($"pkg:{packageId}", ManualTagForm);
 
         IsBusy = false;
         ProgressText = string.Empty;

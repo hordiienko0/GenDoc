@@ -28,5 +28,9 @@
         // JSON-словник тег → останнє введене значення для ручних міток
         // (форма «в догонку» та оформлення відрядження/відпустки), щоб не вводити повторно.
         public string? LastManualValuesJson { get; set; }
+
+        // JSON-словник contextKey ("pkg:{id}"/"tpl:{id}") → RecipientId останнього
+        // обраного підписанта рапорту — щоб не обирати заново щоразу.
+        public string? LastSignerByTemplateJson { get; set; }
     }
 }

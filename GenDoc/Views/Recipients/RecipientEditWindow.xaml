@@ -354,10 +354,17 @@
                                 <ColumnDefinition Width="1*"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0">
+                                <TextBlock Text="Дата посвідчення про відрядження" Style="{StaticResource FieldLabelStyle}"/>
+                                <DatePicker SelectedDate="{Binding TravelCertificateDate}" Style="{StaticResource FieldDatePickerStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
                                 <TextBlock Text="Прод атестат" Style="{StaticResource FieldLabelStyle}"/>
                                 <TextBox Text="{Binding FoodCertificate, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
                             </StackPanel>
-                            <StackPanel Grid.Column="2">
+                        </Grid>
+
+                        <Grid Style="{StaticResource QuestionnaireRowStyle}">
+                            <StackPanel>
                                 <TextBlock Text="Номер посвідчення офіцера/військового квитка" Style="{StaticResource FieldLabelStyle}"/>
                                 <TextBox Text="{Binding IdDocumentNumber, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
                             </StackPanel>
@@ -410,7 +417,7 @@
 
                 <Expander Header="Уточнення відмінків" IsExpanded="False" Margin="0,10,0,0">
                     <StackPanel Margin="0,10,0,0">
-                        <TextBlock Text="Використовуються для {{звання_зв}}, {{піб_зв}}, {{посада_зв}}, {{прибув}}, {{таким}} у шаблонах. Якщо поле порожнє — форма обчислюється автоматично."
+                        <TextBlock Text="Використовуються для {{звання_зв}}, {{піб_зв}}, {{прибув}}, {{таким}} у шаблонах. Якщо поле порожнє — форма обчислюється автоматично."
                                    Style="{StaticResource FieldLabelStyle}" TextWrapping="Wrap" Margin="0,0,0,10"/>
 
                         <Grid Style="{StaticResource QuestionnaireRowStyle}">
@@ -434,13 +441,6 @@
                                 <TextBox Text="{Binding RankAccusative, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
                             </StackPanel>
                             <StackPanel Grid.Column="2">
-                                <TextBlock Text="Посада (знахідний відмінок)" Style="{StaticResource FieldLabelStyle}"/>
-                                <TextBox Text="{Binding PositionAccusative, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
-                            </StackPanel>
-                        </Grid>
-
-                        <Grid Style="{StaticResource QuestionnaireRowStyle}">
-                            <StackPanel>
                                 <TextBlock Text="ПІБ (знахідний відмінок)" Style="{StaticResource FieldLabelStyle}"/>
                                 <TextBox Text="{Binding FullNameAccusative, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldTextBoxStyle}"/>
                             </StackPanel>

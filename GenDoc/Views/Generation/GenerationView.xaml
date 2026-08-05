@@ -257,25 +257,70 @@
                             </StackPanel>
                         </Border>
 
-                        <StackPanel Visibility="{Binding HasManualTags, Converter={StaticResource BoolToVisibility}}" Margin="0,0,0,20">
+                        <StackPanel Visibility="{Binding HasManualTags, Converter={StaticResource BoolToVisibility}}" Margin="0,0,0,20"
+                                    DataContext="{Binding ManualTagForm}">
                             <TextBlock Text="ЗНАЧЕННЯ ДЛЯ ЦІЄЇ ГЕНЕРАЦІЇ" Style="{StaticResource SectionTitleStyle}"/>
                             <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
                                     BorderThickness="1" CornerRadius="0" Padding="16">
-                                <ItemsControl ItemsSource="{Binding ManualTagInputs}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Grid Margin="0,0,0,10">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="1*"/>
-                                                    <ColumnDefinition Width="1.4*"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Grid.Column="0" Text="{Binding Tag}" FontFamily="Consolas"
-                                                           Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
-                                                <TextBox Grid.Column="1" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"/>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                <StackPanel>
+                                    <ItemsControl ItemsSource="{Binding Rows}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,0,0,10">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="1*"/>
+                                                        <ColumnDefinition Width="1.4*"/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Grid.Column="0" Text="{Binding Tag}" FontFamily="Consolas"
+                                                               Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
+                                                    <DatePicker Grid.Column="1" SelectedDate="{Binding DateValue}">
+                                                        <DatePicker.Style>
+                                                            <Style TargetType="DatePicker">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Kind}" Value="Text">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </DatePicker.Style>
+                                                    </DatePicker>
+                                                    <TextBox Grid.Column="1" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}">
+                                                        <TextBox.Style>
+                                                            <Style TargetType="TextBox">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Kind}" Value="Date">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBox.Style>
+                                                    </TextBox>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+
+                                    <Grid>
+                                        <Grid.Style>
+                                            <Style TargetType="Grid">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Signer}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Grid.Style>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="1*"/>
+                                            <ColumnDefinition Width="1.4*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="підписант" FontFamily="Consolas"
+                                                   Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
+                                        <ComboBox Grid.Column="1" DataContext="{Binding Signer}"
+                                                  ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}"
+                                                  DisplayMemberPath="DisplayLabel"/>
+                                    </Grid>
+                                </StackPanel>
                             </Border>
                         </StackPanel>
 

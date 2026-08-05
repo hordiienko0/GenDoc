@@ -64,6 +64,16 @@ namespace GenDoc.Services.Staff
             return rows;
         }
 
+        public async Task<IReadOnlyList<StaffPickerPerson>> GetPermanentStaffForPickerAsync()
+        {
+            using var db = _dbFactory.CreateDbContext();
+            return await db.Recipients
+                .Where(r => r.IntakeId == null)
+                .OrderBy(r => r.LastName).ThenBy(r => r.FirstName)
+                .Select(r => new StaffPickerPerson(r.Id, r.LastName, r.FirstName, r.Rank))
+                .ToListAsync();
+        }
+
         public async Task<IReadOnlyList<string>> GetUnitsAsync()
         {
             using var db = _dbFactory.CreateDbContext();

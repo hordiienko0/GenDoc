@@ -19,4 +19,9 @@ public static class NameFormatter
 
         return string.Join(' ', parts);
     }
+
+    // «Ім'я ПРІЗВИЩЕ» — формат підпису (не FullNameFormatted: без по батькові,
+    // прізвище другим, а не першим).
+    public static string SignatureName(string lastName, string firstName)
+        => $"{firstName} {lastName.ToUpper(new System.Globalization.CultureInfo("uk-UA"))}";
 }

@@ -96,6 +96,7 @@ public partial class RecipientEditViewModel : ObservableObject
     [ObservableProperty] private string? extraNote;
     [ObservableProperty] private string? commanderContact;
     [ObservableProperty] private string? travelCertificateNumber;
+    [ObservableProperty] private DateTime? travelCertificateDate;
     [ObservableProperty] private string? foodCertificate;
     [ObservableProperty] private string? idDocumentNumber;
     [ObservableProperty] private string? medicalBoard;
@@ -114,7 +115,6 @@ public partial class RecipientEditViewModel : ObservableObject
 
     [ObservableProperty] private string? rankAccusative;
     [ObservableProperty] private string? fullNameAccusative;
-    [ObservableProperty] private string? positionAccusative;
 
     public bool IsGenderMale
     {
@@ -203,6 +203,7 @@ public partial class RecipientEditViewModel : ObservableObject
             ExtraNote = model.ExtraNote;
             CommanderContact = model.CommanderContact;
             TravelCertificateNumber = model.TravelCertificateNumber;
+            TravelCertificateDate = model.TravelCertificateDate?.ToDateTime(TimeOnly.MinValue);
             FoodCertificate = model.FoodCertificate;
             IdDocumentNumber = model.IdDocumentNumber;
             MedicalBoard = model.MedicalBoard;
@@ -214,7 +215,6 @@ public partial class RecipientEditViewModel : ObservableObject
             Gender = model.Gender;
             RankAccusative = model.RankAccusative;
             FullNameAccusative = model.FullNameAccusative;
-            PositionAccusative = model.PositionAccusative;
         }
         else
         {
@@ -246,6 +246,7 @@ public partial class RecipientEditViewModel : ObservableObject
             ExtraNote = null;
             CommanderContact = null;
             TravelCertificateNumber = null;
+            TravelCertificateDate = null;
             FoodCertificate = null;
             IdDocumentNumber = null;
             MedicalBoard = null;
@@ -257,7 +258,6 @@ public partial class RecipientEditViewModel : ObservableObject
             Gender = null;
             RankAccusative = null;
             FullNameAccusative = null;
-            PositionAccusative = null;
         }
 
         UpdateRoomWarning();
@@ -435,6 +435,7 @@ public partial class RecipientEditViewModel : ObservableObject
             ExtraNote = ExtraNote,
             CommanderContact = CommanderContact,
             TravelCertificateNumber = TravelCertificateNumber,
+            TravelCertificateDate = TravelCertificateDate.HasValue ? DateOnly.FromDateTime(TravelCertificateDate.Value) : null,
             FoodCertificate = FoodCertificate,
             IdDocumentNumber = IdDocumentNumber,
             MedicalBoard = MedicalBoard,
@@ -445,7 +446,6 @@ public partial class RecipientEditViewModel : ObservableObject
             Gender = Gender,
             RankAccusative = RankAccusative,
             FullNameAccusative = FullNameAccusative,
-            PositionAccusative = PositionAccusative,
         }, out var saveError);
 
         if (saveError is not null)

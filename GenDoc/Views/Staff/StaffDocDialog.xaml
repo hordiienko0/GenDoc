@@ -66,21 +66,62 @@
                 </ScrollViewer>
             </Border>
 
-            <StackPanel Visibility="{Binding HasManualTags, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel Visibility="{Binding HasManualTags, Converter={StaticResource BoolToVisibility}}"
+                        DataContext="{Binding ManualTagForm}">
                 <TextBlock Text="Ручні поля обраних шаблонів" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
-                <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1" MaxHeight="180" Margin="0,0,0,14">
+                <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1" MaxHeight="220" Margin="0,0,0,14">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <ItemsControl ItemsSource="{Binding ManualTags}" Margin="8">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Margin="0,0,0,8">
-                                        <TextBlock Text="{Binding Tag}" FontSize="11.5"
-                                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
-                                        <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                        <StackPanel Margin="8">
+                            <ItemsControl ItemsSource="{Binding Rows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="0,0,0,8">
+                                            <TextBlock Text="{Binding Tag}" FontSize="11.5"
+                                                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                                            <DatePicker SelectedDate="{Binding DateValue}">
+                                                <DatePicker.Style>
+                                                    <Style TargetType="DatePicker">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Kind}" Value="Text">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </DatePicker.Style>
+                                            </DatePicker>
+                                            <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}">
+                                                <TextBox.Style>
+                                                    <Style TargetType="TextBox">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Kind}" Value="Date">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBox.Style>
+                                            </TextBox>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <StackPanel Margin="0,0,0,8">
+                                <StackPanel.Style>
+                                    <Style TargetType="StackPanel">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Signer}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </StackPanel.Style>
+                                <TextBlock Text="підписант" FontSize="11.5"
+                                           Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                                <ComboBox DataContext="{Binding Signer}"
+                                          ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}"
+                                          DisplayMemberPath="DisplayLabel"/>
+                            </StackPanel>
+                        </StackPanel>
                     </ScrollViewer>
                 </Border>
             </StackPanel>
