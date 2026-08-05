@@ -183,6 +183,33 @@
         </Setter>
     </Style>
 
+    <!-- Той самий вигляд, що TextLinkButtonStyle, але для ToggleButton (розгортання списків тощо). -->
+    <Style x:Key="TextLinkToggleButtonStyle" TargetType="ToggleButton">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Border Background="{TemplateBinding Background}">
+                        <ContentPresenter x:Name="content" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          TextBlock.Foreground="{TemplateBinding Foreground}"
+                                          TextBlock.FontSize="{TemplateBinding FontSize}"
+                                          TextBlock.FontWeight="{TemplateBinding FontWeight}"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="content" Property="TextBlock.TextDecorations" Value="Underline"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- Кнопка "✕" закриття (модалка, вікно) — 23-24px квадрат, hover Danger -->
     <Style x:Key="CloseButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="Transparent"/>

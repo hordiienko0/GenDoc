@@ -197,7 +197,7 @@
                                     </ItemsControl>
 
                                     <ToggleButton x:Name="RankListToggle" Content="Окремі звання ▾" HorizontalAlignment="Left"
-                                                  Style="{StaticResource TextLinkButtonStyle}" Foreground="{StaticResource AccentBrush}"
+                                                  Style="{StaticResource TextLinkToggleButtonStyle}" Foreground="{StaticResource AccentBrush}"
                                                   IsChecked="{Binding IsRankListExpanded}" Margin="0,4,0,0"/>
 
                                     <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1" MaxHeight="180" Margin="0,6,0,0"

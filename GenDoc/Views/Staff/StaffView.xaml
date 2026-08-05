@@ -68,7 +68,7 @@
                       SelectedItem="{Binding SelectedState}" DisplayMemberPath="Label"/>
             <TextBox Width="220" Tag="Пошук за ПІБ або посадою…"
                      Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
-            <Button Content="+ Додати" Command="{Binding AddPersonAsyncCommand}" Margin="8,0,0,0"/>
+            <Button Content="+ Додати" Command="{Binding AddPersonCommand}" Margin="8,0,0,0"/>
         </StackPanel>
 
         <!-- Панель вибору -->
@@ -109,12 +109,17 @@
                               Visibility="{Binding HasRows, Converter={StaticResource BoolToVisibility}}">
                         <DataGrid.RowStyle>
                             <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                                <!-- ContextMenu живе у власному піддереві — ані RelativeSource AncestorType, ані
+                                     ElementName з кореня UserControl його не дістають, коли меню задане через
+                                     Setter (не інлайном у видимому дереві). Tag рядка несе ViewModel;
+                                     PlacementTarget у прив'язках MenuItem — сам рядок. -->
+                                <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=DataGrid}}"/>
                                 <Setter Property="ContextMenu">
                                     <Setter.Value>
                                         <ContextMenu>
                                             <MenuItem Header="Згенерувати документ…"
-                                                      Command="{Binding DataContext.GenerateDocumentForRowCommand, ElementName=StaffRoot}"
-                                                      CommandParameter="{Binding}"/>
+                                                      Command="{Binding PlacementTarget.Tag.GenerateDocumentForRowCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                         </ContextMenu>
                                     </Setter.Value>
                                 </Setter>
