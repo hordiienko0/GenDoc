@@ -104,6 +104,9 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     private bool regenerateExisting;
 
     [ObservableProperty]
+    private DateTime? documentDate = DateTime.Today;
+
+    [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NotBusy))]
     private bool isBusy;
 
@@ -422,6 +425,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         var outputFolderPath = OutputFolder;
         var regenerate = RegenerateExisting;
         var manualValues = ManualTagForm?.GetValues() ?? new Dictionary<string, string>();
+        ApplyDocumentDate(manualValues, DocumentDate);
         var progress = new Progress<string>(message => ProgressText = message);
 
         // Фільтр звань — орthogonal до вибору "весь склад / позначені": звужує
@@ -464,5 +468,13 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         {
             Process.Start("explorer.exe", outputFolderPath);
         }
+    }
+
+    // Тег "дата" зарезервований під це поле — підставляється в кожен документ
+    // пакета незалежно від шаблону; якщо шаблон явно мапить {{дата}} вручну,
+    // це поле є єдиним джерелом значення (перекриває будь-який попередній запис).
+    internal static void ApplyDocumentDate(Dictionary<string, string> manualValues, DateTime? documentDate)
+    {
+        manualValues["дата"] = (documentDate ?? DateTime.Today).ToString("dd.MM.yyyy");
     }
 }
