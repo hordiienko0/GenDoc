@@ -209,21 +209,8 @@ namespace GenDoc.ViewModels.Staff
 
             var vm = _serviceProvider.GetRequiredService<StaffDocDialogViewModel>();
             vm.Initialize(kind, selected);
-            if (_dialogService.ShowDialog(vm, Application.Current.MainWindow) != true) return;
+            _dialogService.ShowDialog(vm, Application.Current.MainWindow);
 
-            var request = vm.BuildRequest();
-            if (kind is null)
-            {
-                await _staffService.GenerateDocumentsAsync(request.RecipientIds, request.TemplateIds, request.ManualValues);
-            }
-            else
-            {
-                await _staffService.IssueDocumentsAsync(
-                    kind.Value, request.RecipientIds, request.TemplateIds, request.DateStart, request.DateEnd,
-                    request.Note, request.ManualValues);
-            }
-
-            await vm.SaveManualValuesAsync();
             await RefreshAsync();
         }
     }
