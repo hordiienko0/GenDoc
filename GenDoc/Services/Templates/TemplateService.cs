@@ -109,32 +109,33 @@ namespace GenDoc.Services.Templates
             db.SaveChanges();
         }
 
-        public List<(int Id, string PlaceholderTag, MappingSourceType SourceType, string? FieldName)> GetMappings(int templateId)
+        public List<(int Id, string PlaceholderTag, MappingSourceType SourceType, string? FieldName, string? DateFormat)> GetMappings(int templateId)
         {
             using var db = _dbFactory.CreateDbContext();
             return db.TemplateFieldMappings
                 .Where(m => m.TemplateId == templateId)
                 .OrderBy(m => m.PlaceholderTag)
-                .Select(m => new { m.Id, m.PlaceholderTag, m.SourceType, m.FieldName })
+                .Select(m => new { m.Id, m.PlaceholderTag, m.SourceType, m.FieldName, m.DateFormat })
                 .AsEnumerable()
-                .Select(m => (m.Id, m.PlaceholderTag, m.SourceType, m.FieldName))
+                .Select(m => (m.Id, m.PlaceholderTag, m.SourceType, m.FieldName, m.DateFormat))
                 .ToList();
         }
 
-        public void SaveMappings(int templateId, List<(int Id, MappingSourceType SourceType, string? FieldName)> mappings)
+        public void SaveMappings(int templateId, List<(int Id, MappingSourceType SourceType, string? FieldName, string? DateFormat)> mappings)
         {
             using var db = _dbFactory.CreateDbContext();
             var existing = db.TemplateFieldMappings.Where(m => m.TemplateId == templateId).ToList();
 
             var oldSnapshot = string.Join(", ", existing.OrderBy(m => m.PlaceholderTag).Select(m => $"{m.PlaceholderTag}:{m.SourceType}/{m.FieldName}"));
 
-            foreach (var (id, sourceType, fieldName) in mappings)
+            foreach (var (id, sourceType, fieldName, dateFormat) in mappings)
             {
                 var mapping = existing.FirstOrDefault(m => m.Id == id);
                 if (mapping is null) continue;
 
                 mapping.SourceType = sourceType;
                 mapping.FieldName = sourceType == MappingSourceType.Manual ? null : fieldName;
+                mapping.DateFormat = sourceType == MappingSourceType.Manual ? null : dateFormat;
             }
 
             var newSnapshot = string.Join(", ", existing.OrderBy(m => m.PlaceholderTag).Select(m => $"{m.PlaceholderTag}:{m.SourceType}/{m.FieldName}"));
