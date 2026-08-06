@@ -102,10 +102,12 @@
                                                             <ColumnDefinition Width="1*"/>
                                                             <ColumnDefinition Width="1.1*"/>
                                                             <ColumnDefinition Width="1.4*"/>
+                                                            <ColumnDefinition Width="150"/>
                                                         </Grid.ColumnDefinitions>
                                                         <TextBlock Grid.Column="0" Text="Мітка" Style="{StaticResource TemplatesHeaderTextStyle}"/>
                                                         <TextBlock Grid.Column="1" Text="Джерело" Style="{StaticResource TemplatesHeaderTextStyle}"/>
                                                         <TextBlock Grid.Column="2" Text="Поле" Style="{StaticResource TemplatesHeaderTextStyle}"/>
+                                                        <TextBlock Grid.Column="3" Text="Формат дати" Style="{StaticResource TemplatesHeaderTextStyle}"/>
                                                     </Grid>
 
                                                     <ItemsControl ItemsSource="{Binding Mappings}">
@@ -116,6 +118,7 @@
                                                                         <ColumnDefinition Width="1*"/>
                                                                         <ColumnDefinition Width="1.1*"/>
                                                                         <ColumnDefinition Width="1.4*"/>
+                                                                        <ColumnDefinition Width="150"/>
                                                                     </Grid.ColumnDefinitions>
 
                                                                     <TextBlock Grid.Column="0" Text="{Binding PlaceholderTag}"
@@ -141,6 +144,18 @@
                                                                         <ComboBox.ItemTemplate>
                                                                             <DataTemplate>
                                                                                 <TextBlock Text="{Binding DisplayName}"/>
+                                                                            </DataTemplate>
+                                                                        </ComboBox.ItemTemplate>
+                                                                    </ComboBox>
+
+                                                                    <ComboBox Grid.Column="3" ItemsSource="{Binding DateFormatOptions}"
+                                                                              SelectedValuePath="Key"
+                                                                              SelectedValue="{Binding SelectedDateFormat, Mode=TwoWay}"
+                                                                              Visibility="{Binding IsDateField, Converter={StaticResource BoolToVisibility}}"
+                                                                              Width="140" HorizontalAlignment="Left">
+                                                                        <ComboBox.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <TextBlock Text="{Binding Display}"/>
                                                                             </DataTemplate>
                                                                         </ComboBox.ItemTemplate>
                                                                     </ComboBox>
