@@ -813,6 +813,7 @@ namespace GenDoc.Services.Generation
             "MedicalBoardConclusion" => r.MedicalBoardConclusion ?? string.Empty,
             "OriginUnit" => r.OriginUnit ?? string.Empty,
             "Vehicle" => r.Vehicle ?? string.Empty,
+            "IsCourseOfficer" => r.IsCourseOfficer ? "Так" : "Ні",
             "RoomDisplay" => FormatRoom(r.Room),
             "ShortName" => Services.NameFormatter.ShortName(r.LastName, r.FirstName, r.MiddleName),
             "FitnessCategory" => r.FitnessCategory ?? string.Empty,

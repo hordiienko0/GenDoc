@@ -40,6 +40,7 @@ public static class TemplateFieldCatalog
         new("MedicalBoardConclusion", "Висновок ВЛК"),
         new("OriginUnit", "З якої частини прибув"),
         new("Vehicle", "Автомобіль, номер авто"),
+        new("IsCourseOfficer", "Курсовий офіцер (Так/Ні)"),
         new("RoomDisplay", "Кімната"),
         new("RankAccusative", "Звання (знахідний відмінок)"),
         new("FullNameAccusative", "ПІБ (знахідний відмінок)"),
