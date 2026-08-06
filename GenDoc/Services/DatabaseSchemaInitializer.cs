@@ -6,7 +6,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 16;
+    private const int CurrentSchemaVersion = 17;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -115,6 +115,11 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     private static readonly (string Name, string Type)[] RecipientColumnsV15 =
     {
         ("TravelCertificateDate", "TEXT")
+    };
+
+    private static readonly (string Name, string Type)[] RecipientColumnsV17 =
+    {
+        ("IsCourseOfficer", "INTEGER NOT NULL DEFAULT 0")
     };
 
     private static readonly (string Name, string Type)[] AppSettingsColumnsV15 =
@@ -350,6 +355,19 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                 });
                 currentVersion = 16;
             }
+
+            if (currentVersion < 17)
+            {
+                AddMissingColumns(db, "Recipients", RecipientColumnsV17);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 17,
+                    AppliedAt = DateTime.Now,
+                    Description = "Постійний склад: ознака «курсовий офіцер»"
+                });
+                currentVersion = 17;
+            }
         }
 
         // Ідемпотентно, як EnsureExportTemplateTables: таблиці, додані в модель після
@@ -389,6 +407,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         AddMissingColumns(db, "Recipients", RecipientColumnsV15);
         AddMissingColumns(db, "AppSettings", AppSettingsColumnsV15);
         AddMissingColumns(db, "TemplateFieldMappings", TemplateFieldMappingColumnsV16);
+        AddMissingColumns(db, "Recipients", RecipientColumnsV17);
 
         // Ідемпотентно (IF NOT EXISTS) — самовідновлюється незалежно від SchemaVersion,
         // так само як EnsureExportTemplateTables. Обгорнуто в try/catch: якщо в
