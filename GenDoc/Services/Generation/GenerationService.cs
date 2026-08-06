@@ -627,7 +627,7 @@ namespace GenDoc.Services.Generation
 
         private static string ResolveHashField(ExportTemplateColumnMapping mapping, Recipient r, OrganizationSettings? org) => mapping.SourceType switch
         {
-            MappingSourceType.Recipient => GetRecipientFieldValue(r, mapping.FieldKey),
+            MappingSourceType.Recipient => GetRecipientFieldValue(r, mapping.FieldKey, dateFormat: null),
             MappingSourceType.Organization => GetOrganizationFieldValue(org, mapping.FieldKey),
             _ => string.Empty
         };
@@ -771,7 +771,7 @@ namespace GenDoc.Services.Generation
             {
                 values[mapping.PlaceholderTag] = mapping.SourceType switch
                 {
-                    MappingSourceType.Recipient => GetRecipientFieldValue(recipient, mapping.FieldName),
+                    MappingSourceType.Recipient => GetRecipientFieldValue(recipient, mapping.FieldName, mapping.DateFormat),
                     MappingSourceType.Organization => GetOrganizationFieldValue(org, mapping.FieldName),
                     MappingSourceType.Manual => manualValues.TryGetValue(mapping.PlaceholderTag, out var manualValue) ? manualValue : string.Empty,
                     _ => string.Empty
@@ -781,7 +781,7 @@ namespace GenDoc.Services.Generation
             return values;
         }
 
-        private static string GetRecipientFieldValue(Recipient r, string? fieldName) => fieldName switch
+        private static string GetRecipientFieldValue(Recipient r, string? fieldName, string? dateFormat) => fieldName switch
         {
             "FullNameFormatted" => FormatFullName(r),
             "LastName" => r.LastName,
@@ -791,10 +791,10 @@ namespace GenDoc.Services.Generation
             "Position" => r.Position,
             "UnitName" => r.Unit?.Name ?? string.Empty,
             "ServiceNumber" => r.ServiceNumber,
-            "DateOfBirth" => r.DateOfBirth?.ToString("dd.MM.yyyy") ?? string.Empty,
+            "DateOfBirth" => r.DateOfBirth is { } dob ? DateFormatCatalog.Format(dob, dateFormat, DateFormatCatalog.DdMmYyyy) : string.Empty,
             "Nationality" => r.Nationality ?? string.Empty,
             "Vos" => r.Vos ?? string.Empty,
-            "CourseArrivalDate" => r.CourseArrivalDate?.ToString("dd.MM.yyyy") ?? string.Empty,
+            "CourseArrivalDate" => r.CourseArrivalDate is { } cad ? DateFormatCatalog.Format(cad, dateFormat, DateFormatCatalog.DdMmYyyy) : string.Empty,
             "MaritalStatus" => r.MaritalStatus ?? string.Empty,
             "RegistrationAddress" => r.RegistrationAddress ?? string.Empty,
             "ResidenceAddress" => r.ResidenceAddress ?? string.Empty,
@@ -806,7 +806,7 @@ namespace GenDoc.Services.Generation
             "ExtraNote" => r.ExtraNote ?? string.Empty,
             "CommanderContact" => r.CommanderContact ?? string.Empty,
             "TravelCertificateNumber" => r.TravelCertificateNumber ?? string.Empty,
-            "TravelCertificateDate" => r.TravelCertificateDate is { } tcd ? UkrainianDate.Long(tcd) : string.Empty,
+            "TravelCertificateDate" => r.TravelCertificateDate is { } tcd ? DateFormatCatalog.Format(tcd, dateFormat, DateFormatCatalog.Long) : string.Empty,
             "FoodCertificate" => r.FoodCertificate ?? string.Empty,
             "IdDocumentNumber" => r.IdDocumentNumber ?? string.Empty,
             "MedicalBoard" => r.MedicalBoard ?? string.Empty,
