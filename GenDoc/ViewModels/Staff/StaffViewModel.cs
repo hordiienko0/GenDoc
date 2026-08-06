@@ -56,6 +56,9 @@ namespace GenDoc.ViewModels.Staff
         private string? searchText;
 
         [ObservableProperty]
+        private bool showOnlyCourseOfficers;
+
+        [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(IsEmpty))]
         [NotifyPropertyChangedFor(nameof(HasRows))]
         private int rowCount;
@@ -78,6 +81,7 @@ namespace GenDoc.ViewModels.Staff
         partial void OnSelectedStateChanged(StaffStateFilterOption? value) => ApplyFilter();
         partial void OnSelectedUnitChanged(StaffUnitFilterOption? value) => ApplyFilter();
         partial void OnSearchTextChanged(string? value) => ApplyFilter();
+        partial void OnShowOnlyCourseOfficersChanged(bool value) => ApplyFilter();
 
         [RelayCommand]
         private async Task InitializeAsync() => await RefreshAsync();
@@ -119,6 +123,9 @@ namespace GenDoc.ViewModels.Staff
                 StaffStateFilter.Leave => filtered.Where(o => o.CurrentState == StaffEventKind.Leave),
                 _ => filtered
             };
+
+            if (ShowOnlyCourseOfficers)
+                filtered = filtered.Where(o => o.IsCourseOfficer);
 
             var query = SearchText?.Trim();
             if (!string.IsNullOrEmpty(query))

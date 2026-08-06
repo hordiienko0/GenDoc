@@ -66,6 +66,8 @@
                       SelectedItem="{Binding SelectedUnit}" DisplayMemberPath="Label"/>
             <ComboBox Width="140" Margin="0,0,8,0" ItemsSource="{Binding StateOptions}"
                       SelectedItem="{Binding SelectedState}" DisplayMemberPath="Label"/>
+            <CheckBox Content="Тільки курсові офіцери" IsChecked="{Binding ShowOnlyCourseOfficers}"
+                      VerticalAlignment="Center" Margin="0,0,8,0"/>
             <TextBox Width="220" Tag="Пошук за ПІБ або посадою…"
                      Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
             <Button Content="+ Додати" Command="{Binding AddPersonCommand}" Margin="8,0,0,0"/>
@@ -139,6 +141,16 @@
                             <DataGridTextColumn Header="ПІБ" Binding="{Binding FullName}" Width="1.9*"/>
                             <DataGridTextColumn Header="Звання" Binding="{Binding Rank}" Width="1.1*"/>
                             <DataGridTextColumn Header="Посада" Binding="{Binding Position}" Width="1.6*"/>
+
+                            <DataGridTemplateColumn Header="КО" Width="40">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="✓" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Visibility="{Binding IsCourseOfficer, Converter={StaticResource BoolToVisibility}}"/>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
 
                             <DataGridTemplateColumn Header="Стан" Width="130">
                                 <DataGridTemplateColumn.CellTemplate>
