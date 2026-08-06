@@ -1,0 +1,129 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Дата-пікер — патч для Військовий облік v4</title></head>
+<body style="font-family:Consolas,monospace; font-size:12.5px; padding:20px; max-width:900px; margin:0 auto; line-height:1.5;">
+
+<h1 style="font-family:'Segoe UI',sans-serif;">Дата-пікер (квадратний календарик) — готовий патч</h1>
+<p style="font-family:'Segoe UI',sans-serif; color:#666;">
+  «Військовий облік v4 - standalone.html» перевищує 256 KiB, тому MCP-читання файлу обрізається
+  на середині (десь у секції клас-методів після getters). Повний безпечний перезапис файла звідси
+  неможливий без ризику втратити «хвіст» файла, якого я не бачив. Цей файл містить усе, що потрібно
+  вставити вручну в основний файл (5 локацій + стан/методи компонента) — підтверджено з макета,
+  розміри й кольори взято 1:1 з дизайн-системи проєкту (--navy/--accent/--border/--panel).
+</p>
+
+<h2 style="font-family:'Segoe UI',sans-serif;">1. Додати в <code>state = {'{'} ... {'}'}</code> (клас Component, поруч з іншими полями)</h2>
+<pre style="background:#f5f5f5; padding:12px; overflow-x:auto; border:1px solid #ddd;">
+datePickerFor: null,  // ключ поля, чий попап-календар зараз відкритий, або null
+</pre>
+
+<h2 style="font-family:'Segoe UI',sans-serif;">2. Додати в блок computed-геттерів (поруч з <code>isTemplates</code>, <code>isGeneration</code> тощо)</h2>
+<pre style="background:#f5f5f5; padding:12px; overflow-x:auto; border:1px solid #ddd;">
+dpOpenNaboryStart: s.datePickerFor==='naboryStart',
+dpOpenNaboryEnd: s.datePickerFor==='naboryEnd',
+dpOpenTripStart: s.datePickerFor==='tripStart',
+dpOpenTripEnd: s.datePickerFor==='tripEnd',
+dpOpenImportStart: s.datePickerFor==='importStart',
+dpOpenGenDoc: s.datePickerFor==='genDoc',
+</pre>
+
+<h2 style="font-family:'Segoe UI',sans-serif;">3. Додати методи класу (поруч з <code>onToggleErrors</code> — той самий паттерн toggle-стану)</h2>
+<pre style="background:#f5f5f5; padding:12px; overflow-x:auto; border:1px solid #ddd;">
+onToggleDpNaboryStart() { this.set({ datePickerFor: this.state.datePickerFor==='naboryStart' ? null : 'naboryStart' }); }
+onToggleDpNaboryEnd()   { this.set({ datePickerFor: this.state.datePickerFor==='naboryEnd'   ? null : 'naboryEnd'   }); }
+onToggleDpTripStart()   { this.set({ datePickerFor: this.state.datePickerFor==='tripStart'   ? null : 'tripStart'   }); }
+onToggleDpTripEnd()     { this.set({ datePickerFor: this.state.datePickerFor==='tripEnd'     ? null : 'tripEnd'     }); }
+onToggleDpImportStart() { this.set({ datePickerFor: this.state.datePickerFor==='importStart' ? null : 'importStart' }); }
+onToggleDpGenDoc()      { this.set({ datePickerFor: this.state.datePickerFor==='genDoc'      ? null : 'genDoc'      }); }
+</pre>
+
+<h2 style="font-family:'Segoe UI',sans-serif;">4. Спільний фрагмент розмітки (поле + кнопка + попап)</h2>
+<p style="font-family:'Segoe UI',sans-serif; color:#666;">Шаблон одного поля — підставляти замість наявного <code>&lt;input value="..."&gt;</code>, змінюючи лише
+<code>VALUE</code>, <code>DPKEY</code> (naboryStart / naboryEnd / tripStart / tripEnd / importStart / genDoc),
+<code>MONTHLABEL</code> та сітку днів.</p>
+<pre style="background:#f5f5f5; padding:12px; overflow-x:auto; border:1px solid #ddd; white-space:pre-wrap;">
+&lt;div style="position:relative;"&gt;
+  &lt;div style="display:flex; width:100%;"&gt;
+    &lt;input value="VALUE" style="flex:1; min-width:0; box-sizing:border-box; padding:7px 10px; border:1px solid var(--border); border-right:none; background:var(--panel); color:var(--text); font-size:13px;"&gt;
+    &lt;div sc-camel-on-click="{{ onToggleDpDPKEY }}" style="width:30px; flex-shrink:0; display:flex; align-items:center; justify-content:center; border:1px solid var(--border); background:var(--panel); cursor:pointer; color:var(--accent); font-size:13px;" style-hover="background:var(--accent-soft); border-color:var(--accent);"&gt;▦&lt;/div&gt;
+  &lt;/div&gt;
+  &lt;sc-if value="{{ dpOpenDPKEY }}" hint-placeholder-val="{{ false }}"&gt;
+    &lt;div style="position:absolute; top:calc(100% + 4px); left:0; width:216px; background:var(--panel); border:1px solid var(--border); box-shadow:0 4px 14px rgba(20,30,60,0.16); z-index:5; padding:10px;"&gt;
+      &lt;div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; font-weight:700; font-size:12.5px;"&gt;
+        &lt;div style="width:20px; height:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--dim);"&gt;‹&lt;/div&gt;
+        &lt;div&gt;MONTHLABEL&lt;/div&gt;
+        &lt;div style="width:20px; height:20px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--dim);"&gt;›&lt;/div&gt;
+      &lt;/div&gt;
+      &lt;div style="display:grid; grid-template-columns:repeat(7,1fr); gap:2px; font-size:11px;"&gt;
+        &lt;div style="text-align:center; color:var(--dim); font-weight:700; padding:2px 0;"&gt;Пн&lt;/div&gt;
+        &lt;div style="text-align:center; color:var(--dim); font-weight:700; padding:2px 0;"&gt;Вт&lt;/div&gt;
+        &lt;div style="text-align:center; color:var(--dim); font-weight:700; padding:2px 0;"&gt;Ср&lt;/div&gt;
+        &lt;div style="text-align:center; color:var(--dim); font-weight:700; padding:2px 0;"&gt;Чт&lt;/div&gt;
+        &lt;div style="text-align:center; color:var(--dim); font-weight:700; padding:2px 0;"&gt;Пт&lt;/div&gt;
+        &lt;div style="text-align:center; color:var(--dim); font-weight:700; padding:2px 0;"&gt;Сб&lt;/div&gt;
+        &lt;div style="text-align:center; color:var(--dim); font-weight:700; padding:2px 0;"&gt;Нд&lt;/div&gt;
+        &lt;!-- ... дні місяця; клітинка обраного дня отримує background:var(--accent); color:white; font-weight:700; --&gt;
+      &lt;/div&gt;
+      &lt;div style="display:flex; justify-content:space-between; margin-top:8px; padding-top:8px; border-top:1px solid var(--border); font-size:11.5px;"&gt;
+        &lt;span style="color:var(--accent); cursor:pointer; font-weight:600;"&gt;Сьогодні&lt;/span&gt;
+        &lt;span style="color:var(--accent); cursor:pointer; font-weight:600;"&gt;Очистити&lt;/span&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/sc-if&gt;
+&lt;/div&gt;
+</pre>
+
+<h2 style="font-family:'Segoe UI',sans-serif;">5. Точки застосування в «Військовий облік v4 - standalone.html»</h2>
+<p style="font-family:'Segoe UI',sans-serif; color:#666;">Замінити відповідний <code>&lt;input value="..."&gt;</code> на шаблон із п.4 (DPKEY вказано для кожного):</p>
+
+<h3 style="font-family:'Segoe UI',sans-serif;">5.1 Набори — модалка «Новий набір»</h3>
+<pre style="background:#f5f5f5; padding:12px; overflow-x:auto; border:1px solid #ddd; white-space:pre-wrap;">Було:  &lt;input value="01.03.2027" style="width:100%; box-sizing:border-box; padding:7px 10px; ..."&gt;
+DPKEY: naboryStart
+
+Було:  &lt;input value="31.05.2027" style="..."&gt;
+DPKEY: naboryEnd</pre>
+
+<h3 style="font-family:'Segoe UI',sans-serif;">5.2 Швидке оформлення — модалка «Відрядження»</h3>
+<pre style="background:#f5f5f5; padding:12px; overflow-x:auto; border:1px solid #ddd; white-space:pre-wrap;">Було:  &lt;input value="03.08.2026" style="..."&gt;
+DPKEY: tripStart
+
+Було:  &lt;input value="07.08.2026" style="..."&gt;
+DPKEY: tripEnd</pre>
+
+<h3 style="font-family:'Segoe UI',sans-serif;">5.3 Імпорт — крок «Призначити в набір»</h3>
+<pre style="background:#f5f5f5; padding:12px; overflow-x:auto; border:1px solid #ddd; white-space:pre-wrap;">Було:  &lt;input value="01.03.2027" style="..."&gt;  (поруч з полем «Номер набору»)
+DPKEY: importStart</pre>
+
+<h3 style="font-family:'Segoe UI',sans-serif;">5.4 Шаблони — рядок мапінгу {{дата_початку_набору}}</h3>
+<p style="font-family:'Segoe UI',sans-serif; color:#666;">
+  Тут немає текстового поля з датою — лише dropdown-мапінг поля бази. За рішенням з бренштормінгу
+  іконка ▦ тут відкриває вибір ФОРМАТУ дати (дд.мм.рррр / дд місяця рррр / рррр-мм-дд), а не значення.
+  Додати статичну квадратну кнопку праворуч від рядка мапінгу з <code>title="Формат дати"</code>
+  (повноцінний dropdown формату — окрема майбутня ітерація, не блокує решту патчу).
+</p>
+
+<h3 style="font-family:'Segoe UI',sans-serif;">5.5 Генерація — нове поле «Дата документа»</h3>
+<p style="font-family:'Segoe UI',sans-serif; color:#666;">
+  Це НОВЕ поле (наразі в блоці <code>genForm</code> його немає) — додати одразу після блоку
+  «Пакет документів» (dropdown docPackages) і перед підсумковим блоком
+  <code>packageContents</code>, зі своїм лейблом:
+</p>
+<pre style="background:#f5f5f5; padding:12px; overflow-x:auto; border:1px solid #ddd; white-space:pre-wrap;">
+&lt;div style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--dim); margin-bottom:5px;"&gt;Дата документа&lt;/div&gt;
+&lt;!-- сюди фрагмент з п.4, DPKEY: genDoc, VALUE = сьогоднішня дата (dd.mm.yyyy), звичайне редаговане поле --&gt;
+</pre>
+<p style="font-family:'Segoe UI',sans-serif; color:#666;">
+  Значення за замовчуванням — поточна дата на момент відкриття форми генерації; поле лишається звичайним
+  редагованим текстовим полем (не readonly), користувач може ввести іншу дату або обрати в календарику.
+  Підставляється в плейсхолдер <code>{'{{'}дата{'}}'}</code> згенерованих документів.
+</p>
+
+<h2 style="font-family:'Segoe UI',sans-serif;">Примітка</h2>
+<p style="font-family:'Segoe UI',sans-serif; color:#666;">
+  Сітка днів у попапі — статичний мокап (як у затвердженому прев'ю), без реальної логіки обчислення
+  місяця/днів і без запису обраного дня назад у поле — цього достатньо для дизайн-огляду. Повноцінна
+  логіка вибору дня — окрема задача під час реалізації в реальному застосунку.
+</p>
+
+</body>
+</html>

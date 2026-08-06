@@ -35,7 +35,9 @@ public enum ImportTargetField
     MedicalBoard,
     MedicalBoardConclusion,
     OriginUnit,
-    Vehicle
+    Vehicle,
+    Weapon,
+    Fitness
 }
 
 public static class ImportTargetFieldNames
@@ -74,7 +76,9 @@ public static class ImportTargetFieldNames
         [ImportTargetField.MedicalBoard] = "ВЛК, №, дата",
         [ImportTargetField.MedicalBoardConclusion] = "Висновок ВЛК",
         [ImportTargetField.OriginUnit] = "З якої частини прибув",
-        [ImportTargetField.Vehicle] = "Автомобіль, номер авто"
+        [ImportTargetField.Vehicle] = "Автомобіль, номер авто",
+        [ImportTargetField.Weapon] = "Особиста зброя (найменування, серія, номер)",
+        [ImportTargetField.Fitness] = "Категорія придатності"
     };
 }
 

@@ -6,7 +6,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 17;
+    private const int CurrentSchemaVersion = 19;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -120,6 +120,16 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     private static readonly (string Name, string Type)[] RecipientColumnsV17 =
     {
         ("IsCourseOfficer", "INTEGER NOT NULL DEFAULT 0")
+    };
+
+    private static readonly (string Name, string Type)[] RecipientColumnsV18 =
+    {
+        ("AssignedVehicleId", "INTEGER")
+    };
+
+    private static readonly (string Name, string Type)[] ExportTemplateColumnsV19 =
+    {
+        ("RepeatSheetPerDate", "INTEGER NOT NULL DEFAULT 0")
     };
 
     private static readonly (string Name, string Type)[] AppSettingsColumnsV15 =
@@ -368,6 +378,33 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                 });
                 currentVersion = 17;
             }
+
+            if (currentVersion < 18)
+            {
+                EnsureWeaponVehicleTables(db);
+                AddMissingColumns(db, "Recipients", RecipientColumnsV18);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 18,
+                    AppliedAt = DateTime.Now,
+                    Description = "Окремі моделі зброї та автомобіля, закріплених за людиною"
+                });
+                currentVersion = 18;
+            }
+
+            if (currentVersion < 19)
+            {
+                AddMissingColumns(db, "ExportTemplates", ExportTemplateColumnsV19);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 19,
+                    AppliedAt = DateTime.Now,
+                    Description = "Xlsx-шаблони: аркуш-на-дату (RepeatSheetPerDate)"
+                });
+                currentVersion = 19;
+            }
         }
 
         // Ідемпотентно, як EnsureExportTemplateTables: таблиці, додані в модель після
@@ -408,6 +445,11 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         AddMissingColumns(db, "AppSettings", AppSettingsColumnsV15);
         AddMissingColumns(db, "TemplateFieldMappings", TemplateFieldMappingColumnsV16);
         AddMissingColumns(db, "Recipients", RecipientColumnsV17);
+
+        EnsureWeaponVehicleTables(db);
+        AddMissingColumns(db, "Recipients", RecipientColumnsV18);
+
+        AddMissingColumns(db, "ExportTemplates", ExportTemplateColumnsV19);
 
         // Ідемпотентно (IF NOT EXISTS) — самовідновлюється незалежно від SchemaVersion,
         // так само як EnsureExportTemplateTables. Обгорнуто в try/catch: якщо в
@@ -983,6 +1025,64 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                 indexCommand.CommandText =
                     """CREATE INDEX "IX_StaffEvents_RecipientId" ON "StaffEvents" ("RecipientId");""";
                 indexCommand.ExecuteNonQuery();
+            }
+        }
+        finally
+        {
+            if (wasClosed) connection.Close();
+        }
+    }
+
+    private static void EnsureWeaponVehicleTables(AppDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        var wasClosed = connection.State != System.Data.ConnectionState.Open;
+        if (wasClosed) connection.Open();
+
+        try
+        {
+            if (!TableExists(connection, "Weapons"))
+            {
+                // Одна людина може мати кілька одиниць зброї (автомат + пістолет) —
+                // тому власник тут (RecipientId), а не навпаки.
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    CREATE TABLE "Weapons" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_Weapons" PRIMARY KEY AUTOINCREMENT,
+                        "RecipientId" INTEGER NOT NULL,
+                        "Name" TEXT NOT NULL,
+                        "SerialNumber" TEXT NOT NULL,
+                        "RawText" TEXT NULL,
+                        "IssuedAt" TEXT NULL,
+                        "Note" TEXT NULL,
+                        "DeletedAt" TEXT NULL,
+                        "DeletedBy" TEXT NULL,
+                        CONSTRAINT "FK_Weapons_Recipients_RecipientId"
+                            FOREIGN KEY ("RecipientId") REFERENCES "Recipients" ("Id") ON DELETE CASCADE
+                    );
+                    """;
+                command.ExecuteNonQuery();
+
+                using var indexCommand = connection.CreateCommand();
+                indexCommand.CommandText =
+                    """CREATE INDEX "IX_Weapons_RecipientId" ON "Weapons" ("RecipientId");""";
+                indexCommand.ExecuteNonQuery();
+            }
+
+            if (!TableExists(connection, "Vehicles"))
+            {
+                using var command = connection.CreateCommand();
+                command.CommandText = """
+                    CREATE TABLE "Vehicles" (
+                        "Id" INTEGER NOT NULL CONSTRAINT "PK_Vehicles" PRIMARY KEY AUTOINCREMENT,
+                        "Model" TEXT NOT NULL,
+                        "PlateNumber" TEXT NOT NULL,
+                        "Note" TEXT NULL,
+                        "DeletedAt" TEXT NULL,
+                        "DeletedBy" TEXT NULL
+                    );
+                    """;
+                command.ExecuteNonQuery();
             }
         }
         finally

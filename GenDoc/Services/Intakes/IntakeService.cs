@@ -6,6 +6,16 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace GenDoc.Services.Intakes
 {
+    // Фіксовані назви папок усередині кожного набору — на них орієнтується і
+    // створення набору (IntakeService.CreateAsync), і розкладання людей за
+    // придатністю при імпорті (ImportService).
+    public static class IntakeFolderNames
+    {
+        public const string All = "Всі";
+        public const string Fit = "Придатні";
+        public const string LimitedFit = "Обмежено придатні";
+    }
+
     public class IntakeService : IIntakeService
     {
         private readonly IDbContextFactory<AppDbContext> _dbFactory;
@@ -102,25 +112,45 @@ namespace GenDoc.Services.Intakes
                 await db.SaveChangesAsync();
                 rootNode.Path = $"{baseNode.Path}{rootNode.Id}/";
 
-                var sort = 0;
-                foreach (var name in request.Subfolders)
+                // Фіксована структура: корінь набору → «Всі» → «Придатні», «Обмежено придатні».
+                var allNode = new OrgNode
                 {
-                    var sub = new OrgNode
-                    {
-                        Name = name,
-                        ParentId = rootNode.Id,
-                        Depth = rootNode.Depth + 1,
-                        SortOrder = sort++,
-                        IntakeId = intake.Id
-                    };
-                    db.OrgNodes.Add(sub);
-                    await db.SaveChangesAsync();
-                    sub.Path = $"{rootNode.Path}{sub.Id}/";
-                }
+                    Name = IntakeFolderNames.All,
+                    ParentId = rootNode.Id,
+                    Depth = rootNode.Depth + 1,
+                    SortOrder = 0,
+                    IntakeId = intake.Id
+                };
+                db.OrgNodes.Add(allNode);
+                await db.SaveChangesAsync();
+                allNode.Path = $"{rootNode.Path}{allNode.Id}/";
+
+                var fitNode = new OrgNode
+                {
+                    Name = IntakeFolderNames.Fit,
+                    ParentId = allNode.Id,
+                    Depth = allNode.Depth + 1,
+                    SortOrder = 0,
+                    IntakeId = intake.Id
+                };
+                db.OrgNodes.Add(fitNode);
+
+                var limitedFitNode = new OrgNode
+                {
+                    Name = IntakeFolderNames.LimitedFit,
+                    ParentId = allNode.Id,
+                    Depth = allNode.Depth + 1,
+                    SortOrder = 1,
+                    IntakeId = intake.Id
+                };
+                db.OrgNodes.Add(limitedFitNode);
+                await db.SaveChangesAsync();
+                fitNode.Path = $"{allNode.Path}{fitNode.Id}/";
+                limitedFitNode.Path = $"{allNode.Path}{limitedFitNode.Id}/";
 
                 intake.RootOrgNodeId = rootNode.Id;
                 _auditLogService.Log(db, "Створено набір", "Intake", intake.Id, null, intake.DisplayNumber,
-                    $"{request.Subfolders.Count + 1} папок, {request.DateStart:dd.MM.yyyy} — {request.DateEnd:dd.MM.yyyy}");
+                    $"3 папки (Всі, Придатні, Обмежено придатні), {request.DateStart:dd.MM.yyyy} — {request.DateEnd:dd.MM.yyyy}");
                 await db.SaveChangesAsync();
             }
 

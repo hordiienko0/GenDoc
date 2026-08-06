@@ -35,6 +35,12 @@ namespace GenDoc.Models.Enums
         RoomDisplay,
         ShortName,
         FitnessCategory,
+        WeaponName,
+        WeaponSerialNumber,
+        WeaponFull,
+        GradeRandom34,
+        GradeOverall34,
+        CourseOfficerSignature,
         Empty
     }
 
@@ -75,6 +81,12 @@ namespace GenDoc.Models.Enums
             [ExportFieldKey.RoomDisplay] = "Кімната",
             [ExportFieldKey.ShortName] = "ПІБ скорочено (ПРІЗВИЩЕ І.П.)",
             [ExportFieldKey.FitnessCategory] = "Категорія придатності",
+            [ExportFieldKey.WeaponName] = "Зброя: найменування",
+            [ExportFieldKey.WeaponSerialNumber] = "Зброя: серія та номер",
+            [ExportFieldKey.WeaponFull] = "Зброя: повний рядок",
+            [ExportFieldKey.GradeRandom34] = "Оцінка (3 або 4, стабільна)",
+            [ExportFieldKey.GradeOverall34] = "Загальна оцінка (середнє по рядку)",
+            [ExportFieldKey.CourseOfficerSignature] = "Підпис курсового офіцера",
             [ExportFieldKey.Empty] = "— не заповнювати —"
         };
     }

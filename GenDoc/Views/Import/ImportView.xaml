@@ -380,6 +380,8 @@
                 </Border>
 
                 <!-- Низ: кнопка імпорту -->
+                <CheckBox Content="Це постійний склад (без набору)" IsChecked="{Binding ImportAsPermanentStaff}"
+                          Margin="0,0,0,10"/>
                 <StackPanel Orientation="Horizontal">
                     <Button Content="{Binding ImportButtonText}" Command="{Binding RunImportCommand}" Padding="26,12"/>
                     <Border Background="{StaticResource RowAltBrush}" Padding="12,8" VerticalAlignment="Center" Margin="16,0,0,0"

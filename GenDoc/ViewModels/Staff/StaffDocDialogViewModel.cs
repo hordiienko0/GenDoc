@@ -52,10 +52,7 @@ namespace GenDoc.ViewModels.Staff
         public ObservableCollection<TemplateCheckOptionViewModel> Templates { get; } = new();
 
         [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(HasManualTags))]
         private ManualTagFormViewModel? manualTagForm;
-
-        public bool HasManualTags => ManualTagForm?.HasContent == true;
 
         [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(ConfirmCommand))]

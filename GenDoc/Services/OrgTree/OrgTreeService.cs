@@ -177,8 +177,19 @@ namespace GenDoc.Services.OrgTree
                 n.DeletedBy = user;
             }
 
+            // Якщо видалена папка — корінь набору (RootOrgNodeId), сам запис Intake
+            // теж іде в кошик разом з нею — інакше набір лишиться «висіти» без папки.
+            var intake = await db.Intakes.FirstOrDefaultAsync(i => i.RootOrgNodeId == node.Id);
+            if (intake is not null)
+            {
+                intake.DeletedAt = now;
+                intake.DeletedBy = user;
+            }
+
             _auditLogService.Log(db, "Видалено папку", "OrgNode", node.Id, node.Name,
-                details: subtree.Count > 1 ? $"разом із {subtree.Count - 1} вкладеними" : null);
+                details: intake is not null
+                    ? $"разом із набором «{intake.DisplayNumber}»" + (subtree.Count > 1 ? $" та {subtree.Count - 1} вкладеними" : "")
+                    : subtree.Count > 1 ? $"разом із {subtree.Count - 1} вкладеними" : null);
             await db.SaveChangesAsync();
         }
 

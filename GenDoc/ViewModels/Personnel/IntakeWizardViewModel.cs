@@ -6,24 +6,6 @@ using GenDoc.Services.Intakes;
 
 namespace GenDoc.ViewModels.Personnel
 {
-    public partial class SubfolderOptionViewModel : ObservableObject
-    {
-        public SubfolderOptionViewModel(string name, bool isChecked, IntakeWizardViewModel owner)
-        {
-            Name = name;
-            this.isChecked = isChecked;
-            Owner = owner;
-        }
-
-        public string Name { get; }
-        public IntakeWizardViewModel Owner { get; }
-
-        [ObservableProperty]
-        private bool isChecked;
-
-        partial void OnIsCheckedChanged(bool value) => Owner.RefreshSummary();
-    }
-
     public record BaseNodeOption(int Id, string DisplayName);
 
     public partial class IntakeWizardViewModel : DialogViewModelBase
@@ -38,7 +20,6 @@ namespace GenDoc.ViewModels.Personnel
         }
 
         public ObservableCollection<BaseNodeOption> BaseNodes { get; } = new();
-        public ObservableCollection<SubfolderOptionViewModel> Subfolders { get; } = new();
 
         [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(CreateCommand))]
@@ -56,8 +37,9 @@ namespace GenDoc.ViewModels.Personnel
         [NotifyCanExecuteChangedFor(nameof(CreateCommand))]
         private DateTime? dateEnd = DateTime.Today.AddMonths(1);
 
-        [ObservableProperty]
-        private string summaryText = string.Empty;
+        // Структура фіксована — «Всі» → «Придатні», «Обмежено придатні» — тому
+        // текст статичний, а не рахується з чекбоксів.
+        public string SummaryText => "Буде створено 3 папки: Всі → Придатні, Обмежено придатні";
 
         [ObservableProperty]
         private string? errorText;
@@ -74,11 +56,6 @@ namespace GenDoc.ViewModels.Personnel
             foreach (var node in Flatten(_tree.RootNodes).Where(n => n.IntakeId is null))
                 BaseNodes.Add(new BaseNodeOption(node.Id, $"{new string(' ', node.Depth * 3)}{node.Name}"));
             SelectedBaseNode = BaseNodes.FirstOrDefault();
-
-            Subfolders.Add(new SubfolderOptionViewModel("Основний склад курсу", true, this));
-            Subfolders.Add(new SubfolderOptionViewModel("Резерв", true, this));
-            Subfolders.Add(new SubfolderOptionViewModel("Відраховані", false, this));
-            RefreshSummary();
         }
 
         private static IEnumerable<OrgNodeViewModel> Flatten(IEnumerable<OrgNodeViewModel> nodes)
@@ -89,12 +66,6 @@ namespace GenDoc.ViewModels.Personnel
                 foreach (var child in Flatten(node.Children))
                     yield return child;
             }
-        }
-
-        public void RefreshSummary()
-        {
-            var count = 1 + Subfolders.Count(s => s.IsChecked);
-            SummaryText = $"Буде створено {count} папок";
         }
 
         private bool CanCreate =>
@@ -113,8 +84,7 @@ namespace GenDoc.ViewModels.Personnel
                     DisplayNumber,
                     SelectedBaseNode!.Id,
                     DateOnly.FromDateTime(DateStart!.Value),
-                    DateOnly.FromDateTime(DateEnd!.Value),
-                    Subfolders.Where(s => s.IsChecked).Select(s => s.Name).ToList()));
+                    DateOnly.FromDateTime(DateEnd!.Value)));
                 CloseDialog(true);
             }
             catch (Exception ex)

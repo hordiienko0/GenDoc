@@ -151,7 +151,7 @@ namespace GenDoc.Services.Completeness
         {
             using var db = _dbFactory.CreateDbContext();
             var recipient = await db.Recipients
-                .Include(r => r.Unit).Include(r => r.Room).Include(r => r.OrgNode)
+                .Include(r => r.Unit).Include(r => r.Room).Include(r => r.OrgNode).Include(r => r.Weapons)
                 .FirstOrDefaultAsync(r => r.Id == recipientId);
             var template = await db.Templates.FirstOrDefaultAsync(t => t.Id == templateId);
             if (recipient is null || template is null)

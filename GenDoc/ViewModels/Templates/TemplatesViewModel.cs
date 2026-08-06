@@ -33,7 +33,8 @@ public partial class TemplatesViewModel : ObservableObject
     {
         Templates = new ObservableCollection<ExportTemplateListItemViewModel>(
             _exportTemplateService.GetTemplateListItems()
-                .Select(t => new ExportTemplateListItemViewModel(t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.IsBuiltIn, t.UsesPlaceholders, t.TagCount)));
+                .Select(t => new ExportTemplateListItemViewModel(
+                    t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.IsBuiltIn, t.UsesPlaceholders, t.TagCount, t.RepeatSheetPerDate)));
     }
 
     private void RefreshDocxTemplates()
@@ -169,6 +170,7 @@ public partial class TemplatesViewModel : ObservableObject
         {
             var placeholderMappings = item.Mappings.Select(m => (m.Id, m.SourceType, m.SelectedFieldName)).ToList();
             _exportTemplateService.SavePlaceholderMappings(item.Id, placeholderMappings);
+            _exportTemplateService.SetRepeatSheetPerDate(item.Id, item.RepeatSheetPerDate);
         }
         else
         {

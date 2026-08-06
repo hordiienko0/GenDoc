@@ -90,6 +90,7 @@ namespace GenDoc.Services
                     List<ExportTemplateColumnMapping> mappings;
                     int templateRowIndex;
                     bool usesPlaceholders;
+                    bool repeatSheetPerDate;
 
                     using (var db = _dbFactory.CreateDbContext())
                     {
@@ -105,14 +106,20 @@ namespace GenDoc.Services
                         mappings = template.ColumnMappings.OrderBy(m => m.ColumnIndex).ToList();
                         templateRowIndex = template.TemplateRowIndex;
                         usesPlaceholders = template.UsesPlaceholders;
+                        repeatSheetPerDate = template.RepeatSheetPerDate;
                     }
 
                     OrganizationSettings? org;
+                    string? courseOfficerSignature;
                     using (var db = _dbFactory.CreateDbContext())
+                    {
                         org = db.OrganizationSettings.FirstOrDefault();
+                        courseOfficerSignature = BuildCourseOfficerSignature(db);
+                    }
 
                     var result = _xlsxGenerationService.Generate(
-                        content, templateRowIndex, usesPlaceholders, mappings, items, org, manualValues);
+                        content, templateRowIndex, usesPlaceholders, mappings, items, org, manualValues,
+                        repeatSheetPerDate, courseOfficerSignature);
 
                     if (!result.Success)
                         return new ExportResult(false, 0, null, result.ErrorMessage);
@@ -136,6 +143,22 @@ namespace GenDoc.Services
                     return new ExportResult(false, 0, null, ex.Message);
                 }
             });
+        }
+
+        // «Курсовий офіцер {підрозділ} {звання} {ПІБ-ініціали}» — з першого
+        // постійного складу (IntakeId == null) з прапорцем IsCourseOfficer.
+        private static string? BuildCourseOfficerSignature(AppDbContext db)
+        {
+            var courseOfficer = db.Recipients
+                .Include(r => r.Unit)
+                .Where(r => r.IntakeId == null && r.IsCourseOfficer)
+                .OrderBy(r => r.Id)
+                .FirstOrDefault();
+
+            return courseOfficer is null
+                ? null
+                : $"Курсовий офіцер {courseOfficer.Unit?.Name} {courseOfficer.Rank} " +
+                  NameFormatter.ShortName(courseOfficer.LastName, courseOfficer.FirstName, courseOfficer.MiddleName);
         }
 
         private static void WriteCellValue(IXLCell cell, object? value)

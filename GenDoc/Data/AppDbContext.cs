@@ -21,6 +21,8 @@ namespace GenDoc.Data
         public DbSet<OrgNode> OrgNodes => Set<OrgNode>();
         public DbSet<Intake> Intakes => Set<Intake>();
         public DbSet<Room> Rooms => Set<Room>();
+        public DbSet<Weapon> Weapons => Set<Weapon>();
+        public DbSet<Vehicle> Vehicles => Set<Vehicle>();
         public DbSet<Template> Templates => Set<Template>();
         public DbSet<TemplateFieldMapping> TemplateFieldMappings => Set<TemplateFieldMapping>();
         public DbSet<GeneratedDocument> GeneratedDocuments => Set<GeneratedDocument>();

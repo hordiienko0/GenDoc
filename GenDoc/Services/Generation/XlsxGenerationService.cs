@@ -11,6 +11,10 @@ namespace GenDoc.Services.Generation
     {
         private static readonly Regex PlaceholderRegex = new(@"\{\{[^{}]+\}\}", RegexOptions.Compiled);
 
+        // Зарезервовані теги для «аркуш на кожну дату періоду».
+        internal const string PeriodTag = "{{період}}";
+        internal const string DateSheetTag = "{{дата_аркуша}}";
+
         public XlsxGenerationResult Generate(
             byte[] templateContent,
             int templateRowIndex,
@@ -18,7 +22,9 @@ namespace GenDoc.Services.Generation
             List<ExportTemplateColumnMapping> mappings,
             IReadOnlyList<Recipient> roster,
             OrganizationSettings? org,
-            IDictionary<string, string> manualValues)
+            IDictionary<string, string> manualValues,
+            bool repeatSheetPerDate = false,
+            string? courseOfficerSignature = null)
         {
             try
             {
@@ -29,14 +35,78 @@ namespace GenDoc.Services.Generation
                 stream.Position = 0;
 
                 using var workbook = new XLWorkbook(stream);
-                var sheet = workbook.Worksheets.First();
-
                 var unfilledTags = new List<string>();
 
-                if (usesPlaceholders)
-                    FillByPlaceholders(sheet, mappings, templateRowIndex, roster, org, manualValues, unfilledTags);
+                if (!usesPlaceholders)
+                {
+                    // Стара header-driven поведінка — лише перший аркуш, як і раніше.
+                    FillByHeaderColumns(workbook.Worksheets.First(), mappings, roster);
+                }
+                else if (repeatSheetPerDate)
+                {
+                    if (!manualValues.TryGetValue(PeriodTag, out var periodRaw) || string.IsNullOrWhiteSpace(periodRaw))
+                    {
+                        return new XlsxGenerationResult(
+                            false, null,
+                            $"Не заповнено тег {PeriodTag} — потрібен для «аркуш на кожну дату періоду».",
+                            Array.Empty<string>());
+                    }
+
+                    List<DateOnly> dates;
+                    try
+                    {
+                        dates = ParsePeriodDates(periodRaw);
+                    }
+                    catch (FormatException ex)
+                    {
+                        return new XlsxGenerationResult(false, null, ex.Message, Array.Empty<string>());
+                    }
+
+                    var templateSheet = workbook.Worksheets.First();
+                    var templateSheetName = templateSheet.Name;
+                    var clonedNames = new List<(string Name, DateOnly Date)>();
+
+                    foreach (var date in dates)
+                    {
+                        var sheetName = date.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
+                        templateSheet.CopyTo(sheetName);
+                        clonedNames.Add((sheetName, date));
+                    }
+
+                    workbook.Worksheet(templateSheetName).Delete();
+
+                    foreach (var (sheetName, date) in clonedNames)
+                    {
+                        var perSheetValues = new Dictionary<string, string>(manualValues)
+                        {
+                            [DateSheetTag] = date.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture)
+                        };
+                        FillSheetByPlaceholders(
+                            workbook.Worksheet(sheetName), mappings, templateRowIndex, roster, org,
+                            courseOfficerSignature, perSheetValues, unfilledTags);
+                    }
+
+                    // Інші (довідкові) аркуші книги — заповнити один раз, без клонування.
+                    var clonedNameSet = new HashSet<string>(clonedNames.Select(c => c.Name));
+                    foreach (var sheet in workbook.Worksheets.Where(s => !clonedNameSet.Contains(s.Name)))
+                    {
+                        FillSheetByPlaceholders(
+                            sheet, mappings, templateRowIndex, roster, org,
+                            courseOfficerSignature, manualValues, unfilledTags);
+                    }
+                }
                 else
-                    FillByHeaderColumns(sheet, mappings, roster);
+                {
+                    // Кожен аркуш книги — аркуші без тегів у templateRowIndex просто
+                    // не отримають клонованих рядків (перевірка всередині), але й досі
+                    // отримають підстановку "зовнішніх" (org/manual) тегів, якщо є.
+                    foreach (var sheet in workbook.Worksheets)
+                    {
+                        FillSheetByPlaceholders(
+                            sheet, mappings, templateRowIndex, roster, org,
+                            courseOfficerSignature, manualValues, unfilledTags);
+                    }
+                }
 
                 using var output = new MemoryStream();
                 workbook.SaveAs(output);
@@ -47,6 +117,54 @@ namespace GenDoc.Services.Generation
             {
                 return new XlsxGenerationResult(false, null, ex.Message, Array.Empty<string>());
             }
+        }
+
+        // "03.08.2026-07.08.2026, 09.08.2026" → відсортований список унікальних дат.
+        // Діапазони через дефіс, перелік через кому; кожна дата — дд.мм.рррр.
+        internal static List<DateOnly> ParsePeriodDates(string raw)
+        {
+            var segments = raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (segments.Length == 0)
+            {
+                throw new FormatException(
+                    $"Тег {PeriodTag} порожній — вкажіть дати у форматі «дд.мм.рррр-дд.мм.рррр, дд.мм.рррр».");
+            }
+
+            var result = new HashSet<DateOnly>();
+
+            foreach (var segment in segments)
+            {
+                var dashIndex = segment.IndexOf('-');
+                if (dashIndex < 0)
+                {
+                    if (!DateOnly.TryParseExact(segment, "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var single))
+                    {
+                        throw new FormatException(
+                            $"Не розпізнано дату «{segment}» у тегу {PeriodTag} — очікується формат дд.мм.рррр.");
+                    }
+                    result.Add(single);
+                }
+                else
+                {
+                    var startText = segment[..dashIndex].Trim();
+                    var endText = segment[(dashIndex + 1)..].Trim();
+
+                    if (!DateOnly.TryParseExact(startText, "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var start) ||
+                        !DateOnly.TryParseExact(endText, "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var end))
+                    {
+                        throw new FormatException(
+                            $"Не розпізнано діапазон «{segment}» у тегу {PeriodTag} — очікується дд.мм.рррр-дд.мм.рррр.");
+                    }
+
+                    if (end < start)
+                        throw new FormatException($"У діапазоні «{segment}» кінцева дата раніша за початкову.");
+
+                    for (var d = start; d <= end; d = d.AddDays(1))
+                        result.Add(d);
+                }
+            }
+
+            return result.OrderBy(d => d).ToList();
         }
 
         // Стара header-driven поведінка — без жодних стильових властивостей, лише
@@ -60,7 +178,7 @@ namespace GenDoc.Services.Generation
                 foreach (var mapping in mappings)
                 {
                     var fieldKey = Enum.Parse<ExportFieldKey>(mapping.FieldKey);
-                    var value = ResolveFieldValue(fieldKey, item, rowNumber);
+                    var value = ResolveFieldValue(fieldKey, item, rowNumber, mapping.ColumnIndex);
 
                     var cell = sheet.Cell(row, mapping.ColumnIndex);
                     cell.SetValue(value);
@@ -81,12 +199,17 @@ namespace GenDoc.Services.Generation
             }
         }
 
-        private static void FillByPlaceholders(
+        // Один аркуш: якщо в templateRowIndex справді є хоч один з очікуваних тегів —
+        // клонує рядок по одному на людину (як і раніше). Якщо ні — це довідковий
+        // аркуш (напр. "Слухачі"): рядки не чіпаємо, лише підставляємо org/manual-теги
+        // будь-де на аркуші.
+        private static void FillSheetByPlaceholders(
             IXLWorksheet sheet,
             List<ExportTemplateColumnMapping> mappings,
             int templateRowIndex,
             IReadOnlyList<Recipient> items,
             OrganizationSettings? org,
+            string? courseOfficerSignature,
             IDictionary<string, string> manualValues,
             List<string> unfilledTags)
         {
@@ -95,45 +218,102 @@ namespace GenDoc.Services.Generation
 
             var t = templateRowIndex;
             var n = items.Count;
-            if (n == 0) return;
 
-            if (n > 1)
+            var hasRowTemplate = n > 0 && rowMappings.Any(m =>
+                sheet.Cell(t, m.ColumnIndex).GetString().Contains(m.PlaceholderTag, StringComparison.Ordinal));
+
+            var excludeFrom = t;
+            var excludeTo = t - 1; // порожній діапазон — за замовчуванням нічого не виключає
+
+            if (hasRowTemplate)
             {
-                InsertClonedRows(sheet, t, n - 1);
-            }
+                if (n > 1) InsertClonedRows(sheet, t, n - 1);
 
-            var mappingsByColumn = rowMappings.GroupBy(m => m.ColumnIndex).ToList();
+                var mappingsByColumn = rowMappings.GroupBy(m => m.ColumnIndex).ToList();
+                var gradeRandomColumns = rowMappings
+                    .Where(m => m.FieldKey == nameof(ExportFieldKey.GradeRandom34))
+                    .Select(m => m.ColumnIndex)
+                    .ToList();
 
-            for (var i = 0; i < n; i++)
-            {
-                var person = items[i];
-                var targetRow = t + i;
-                var rowNumber = i + 1;
-
-                foreach (var group in mappingsByColumn)
+                for (var i = 0; i < n; i++)
                 {
-                    var cell = sheet.Cell(targetRow, group.Key);
-                    var text = cell.GetString();
+                    var person = items[i];
+                    var targetRow = t + i;
+                    var rowNumber = i + 1;
 
-                    if (group.Count() == 1 && text.Trim() == group.First().PlaceholderTag)
+                    string ResolveOne(ExportTemplateColumnMapping mapping)
                     {
-                        var raw = ResolvePlaceholderValue(group.First(), person, org, manualValues, rowNumber, unfilledTags);
-                        AssignTypedOrString(cell, raw);
-                        continue;
+                        // Загальна оцінка — середнє по GradeRandom34-колонках ЦЬОГО рядка,
+                        // а не самостійне поле r-> ... — потребує сусідніх колонок мапінгу.
+                        if (mapping.SourceType == MappingSourceType.Recipient &&
+                            mapping.FieldKey == nameof(ExportFieldKey.GradeOverall34))
+                        {
+                            if (gradeRandomColumns.Count == 0)
+                            {
+                                unfilledTags.Add(mapping.PlaceholderTag);
+                                return string.Empty;
+                            }
+
+                            var avg = gradeRandomColumns.Average(col => ComputeGradeRandom34(person.Id, col));
+                            return Math.Round(avg, MidpointRounding.AwayFromZero)
+                                .ToString(CultureInfo.InvariantCulture);
+                        }
+
+                        if (mapping.FieldKey == nameof(ExportFieldKey.CourseOfficerSignature))
+                            return ResolveCourseOfficerSignature(courseOfficerSignature, mapping, unfilledTags);
+
+                        return ResolvePlaceholderValue(mapping, person, org, manualValues, rowNumber, unfilledTags);
                     }
 
-                    foreach (var mapping in group)
+                    foreach (var group in mappingsByColumn)
                     {
-                        var raw = ResolvePlaceholderValue(mapping, person, org, manualValues, rowNumber, unfilledTags);
-                        text = text.Replace(mapping.PlaceholderTag, raw);
-                    }
+                        var cell = sheet.Cell(targetRow, group.Key);
+                        var text = cell.GetString();
 
-                    cell.Value = text;
+                        if (group.Count() == 1 && text.Trim() == group.First().PlaceholderTag)
+                        {
+                            var raw = ResolveOne(group.First());
+                            AssignTypedOrString(cell, raw);
+                            continue;
+                        }
+
+                        foreach (var mapping in group)
+                        {
+                            var raw = ResolveOne(mapping);
+                            text = text.Replace(mapping.PlaceholderTag, raw);
+                        }
+
+                        cell.Value = text;
+                    }
                 }
+
+                excludeFrom = t;
+                excludeTo = t + n - 1;
             }
 
-            SubstituteOutsideTags(sheet, outsideMappings, org, manualValues, unfilledTags, t, t + n - 1);
+            SubstituteOutsideTags(sheet, outsideMappings, org, courseOfficerSignature, manualValues, unfilledTags, excludeFrom, excludeTo);
             CollectResidualUnfilledTags(sheet, unfilledTags);
+        }
+
+        // Стабільна "випадкова" оцінка 3 або 4: той самий (RecipientId, ColumnIndex)
+        // завжди дає те саме число — і між перегенераціями, і між колонками рядка
+        // відрізняється, бо колонка теж входить у seed.
+        private static int ComputeGradeRandom34(int recipientId, int columnIndex)
+        {
+            var seed = HashCode.Combine(recipientId, columnIndex);
+            return new Random(seed).Next(3, 5);
+        }
+
+        private static string ResolveCourseOfficerSignature(
+            string? courseOfficerSignature, ExportTemplateColumnMapping mapping, List<string> unfilledTags)
+        {
+            if (string.IsNullOrEmpty(courseOfficerSignature))
+            {
+                unfilledTags.Add(mapping.PlaceholderTag);
+                return string.Empty;
+            }
+
+            return courseOfficerSignature;
         }
 
         // Вставляє insertedCount порожніх рядків під шаблонним рядком і клонує туди
@@ -212,6 +392,7 @@ namespace GenDoc.Services.Generation
             IXLWorksheet sheet,
             List<ExportTemplateColumnMapping> outsideMappings,
             OrganizationSettings? org,
+            string? courseOfficerSignature,
             IDictionary<string, string> manualValues,
             List<string> unfilledTags,
             int excludeFromRow,
@@ -219,28 +400,40 @@ namespace GenDoc.Services.Generation
         {
             if (outsideMappings.Count == 0) return;
 
+            var usedRange = sheet.RangeUsed();
+            if (usedRange is null) return;
+
+            var cellsOutsideRowTemplate = usedRange.CellsUsed()
+                .Where(c => c.Address.RowNumber < excludeFromRow || c.Address.RowNumber > excludeToRow)
+                .ToList();
+
+            // Довідкові аркуші (напр. "Слухачі") не містять теги, мапнуті лише
+            // для іншого аркуша — рахуємо "незаповненим" тег лише тоді, коли він
+            // справді присутній хоч в одній клітинці ЦЬОГО аркуша.
+            var relevantMappings = outsideMappings
+                .Where(m => cellsOutsideRowTemplate.Any(c => c.GetString().Contains(m.PlaceholderTag, StringComparison.Ordinal)))
+                .ToList();
+
+            if (relevantMappings.Count == 0) return;
+
             var valueByTag = new Dictionary<string, string>();
-            foreach (var mapping in outsideMappings)
+            foreach (var mapping in relevantMappings)
             {
-                var value = mapping.SourceType switch
-                {
-                    MappingSourceType.Organization => GetOrganizationFieldValue(org, mapping.FieldKey),
-                    MappingSourceType.Manual => manualValues.TryGetValue(mapping.PlaceholderTag, out var manual) ? manual : string.Empty,
-                    _ => string.Empty
-                };
+                var value = mapping.FieldKey == nameof(ExportFieldKey.CourseOfficerSignature)
+                    ? courseOfficerSignature ?? string.Empty
+                    : mapping.SourceType switch
+                    {
+                        MappingSourceType.Organization => GetOrganizationFieldValue(org, mapping.FieldKey),
+                        MappingSourceType.Manual => manualValues.TryGetValue(mapping.PlaceholderTag, out var manual) ? manual : string.Empty,
+                        _ => string.Empty
+                    };
 
                 if (string.IsNullOrEmpty(value)) unfilledTags.Add(mapping.PlaceholderTag);
                 valueByTag[mapping.PlaceholderTag] = value;
             }
 
-            var usedRange = sheet.RangeUsed();
-            if (usedRange is null) return;
-
-            foreach (var cell in usedRange.CellsUsed())
+            foreach (var cell in cellsOutsideRowTemplate)
             {
-                var rowNum = cell.Address.RowNumber;
-                if (rowNum >= excludeFromRow && rowNum <= excludeToRow) continue;
-
                 var text = cell.GetString();
                 if (!text.Contains("{{")) continue;
 
@@ -275,7 +468,7 @@ namespace GenDoc.Services.Generation
         {
             var value = mapping.SourceType switch
             {
-                MappingSourceType.Recipient => ResolveRecipientPlaceholderField(mapping.FieldKey, recipient, rowNumber),
+                MappingSourceType.Recipient => ResolveRecipientPlaceholderField(mapping.FieldKey, recipient, rowNumber, mapping.ColumnIndex),
                 MappingSourceType.Organization => GetOrganizationFieldValue(org, mapping.FieldKey),
                 MappingSourceType.Manual => manualValues.TryGetValue(mapping.PlaceholderTag, out var manual) ? manual : string.Empty,
                 _ => string.Empty
@@ -285,13 +478,13 @@ namespace GenDoc.Services.Generation
             return value;
         }
 
-        private static string ResolveRecipientPlaceholderField(string? fieldKey, Recipient? r, int rowNumber)
+        private static string ResolveRecipientPlaceholderField(string? fieldKey, Recipient? r, int rowNumber, int columnIndex)
         {
             if (fieldKey == nameof(ExportFieldKey.RowNumber)) return rowNumber.ToString(CultureInfo.InvariantCulture);
             if (r is null || string.IsNullOrEmpty(fieldKey)) return string.Empty;
             if (!Enum.TryParse<ExportFieldKey>(fieldKey, out var key)) return string.Empty;
 
-            return ResolveFieldValue(key, r, rowNumber);
+            return ResolveFieldValue(key, r, rowNumber, columnIndex);
         }
 
         private static string GetOrganizationFieldValue(OrganizationSettings? org, string? fieldName)
@@ -311,7 +504,7 @@ namespace GenDoc.Services.Generation
             };
         }
 
-        private static string ResolveFieldValue(ExportFieldKey key, Recipient r, int rowNumber) => key switch
+        private static string ResolveFieldValue(ExportFieldKey key, Recipient r, int rowNumber, int columnIndex) => key switch
         {
             ExportFieldKey.RowNumber => rowNumber.ToString(CultureInfo.InvariantCulture),
             ExportFieldKey.Rank => r.Rank,
@@ -346,6 +539,15 @@ namespace GenDoc.Services.Generation
             ExportFieldKey.RoomDisplay => FormatRoom(r.Room),
             ExportFieldKey.ShortName => NameFormatter.ShortName(r.LastName, r.FirstName, r.MiddleName),
             ExportFieldKey.FitnessCategory => r.FitnessCategory ?? string.Empty,
+            ExportFieldKey.WeaponName => r.Weapons.OrderBy(w => w.Id).FirstOrDefault()?.Name ?? string.Empty,
+            ExportFieldKey.WeaponSerialNumber => r.Weapons.OrderBy(w => w.Id).FirstOrDefault()?.SerialNumber ?? string.Empty,
+            ExportFieldKey.WeaponFull => r.Weapons.OrderBy(w => w.Id).FirstOrDefault() is { } w
+                ? $"{w.Name} № {w.SerialNumber}".Trim()
+                : string.Empty,
+            ExportFieldKey.GradeRandom34 => ComputeGradeRandom34(r.Id, columnIndex).ToString(CultureInfo.InvariantCulture),
+            // GradeOverall34/CourseOfficerSignature обробляються окремо в
+            // FillSheetByPlaceholders — потребують сусідніх колонок рядка /
+            // даних поза поточним ростером відповідно.
             _ => string.Empty
         };
 

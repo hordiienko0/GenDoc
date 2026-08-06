@@ -73,10 +73,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     private int recipientCount;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(HasManualTags))]
     private ManualTagFormViewModel? manualTagForm;
-
-    public bool HasManualTags => ManualTagForm?.HasContent == true;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NotCreatingPackage))]

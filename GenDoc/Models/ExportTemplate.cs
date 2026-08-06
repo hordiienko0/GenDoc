@@ -16,6 +16,10 @@ namespace GenDoc.Models
         public int TemplateRowIndex { get; set; } = 2;
         public bool UsesPlaceholders { get; set; }
 
+        // Перший аркуш книги — еталон; клонується на кожну дату з ручного тега
+        // {{період}}, під назвою дд.ММ.рррр. Інші аркуші (довідкові) не чіпаються.
+        public bool RepeatSheetPerDate { get; set; }
+
         public DateTime? DeletedAt { get; set; }
         public string? DeletedBy { get; set; }
 

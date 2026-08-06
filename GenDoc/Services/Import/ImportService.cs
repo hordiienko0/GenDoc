@@ -107,7 +107,7 @@ public class ImportService : IImportService
         return previews;
     }
 
-    public ImportSummary Import(ImportParseResult parsed)
+    public ImportSummary Import(ImportParseResult parsed, bool importAsPermanentStaff = false)
     {
         var rows = ParseRows(parsed);
         using var db = _dbFactory.CreateDbContext();
@@ -120,6 +120,7 @@ public class ImportService : IImportService
         var unitCache = new Dictionary<string, Unit>(UkIgnoreCase);
         var orgNodeCache = new Dictionary<string, OrgNode>(UkIgnoreCase);
         var roomCache = new Dictionary<(string Building, string Number), Room>();
+        var intakeFolderCache = new Dictionary<int, Dictionary<string, int>>();
 
         var imported = 0;
         var skipped = 0;
@@ -127,7 +128,7 @@ public class ImportService : IImportService
 
         foreach (var row in rows)
         {
-            var intakeId = ResolveIntakeId(orgNodeIntakeMap, row.Fields.UnitName);
+            var intakeId = importAsPermanentStaff ? null : ResolveIntakeId(orgNodeIntakeMap, row.Fields.UnitName);
             var (status, _) = EvaluateRow(row.Fields, row.IncompleteFullName, row.CourseArrivalDateInvalid,
                 existingServiceNumbers, seenInFile, intakeId, existingNameKeys, seenNameKeysInFile);
             if (status is ImportRowStatus.Error or ImportRowStatus.Duplicate)
@@ -142,6 +143,22 @@ public class ImportService : IImportService
                 var orgNode = ResolveOrgNode(db, orgNodeCache, row.Fields.UnitName);
                 var room = ResolveRoom(db, roomCache, row.Fields.Building, row.Fields.RoomNumber);
 
+                // "Це постійний склад" — людина не належить жодному набору,
+                // навіть якщо підрозділ з файлу технічно прив'язаний до набору.
+                var resolvedIntakeId = importAsPermanentStaff ? null : orgNode?.IntakeId;
+                var fitnessCategory = ParseFitnessCategory(row.Fields.FitnessRaw);
+
+                // Якщо людина потрапляє в набір — розкласти її по «Придатні»/
+                // «Обмежено придатні»/«Всі» замість того вузла, куди її поставило
+                // саме лише зіставлення підрозділу. Старі набори без цих трьох
+                // папок — лишаємо як є, без падіння.
+                var resolvedOrgNodeId = orgNode?.Id;
+                if (resolvedIntakeId is int intakeIdForRouting)
+                {
+                    var folderId = ResolveIntakeFitnessFolderId(db, intakeFolderCache, intakeIdForRouting, fitnessCategory);
+                    if (folderId is int fid) resolvedOrgNodeId = fid;
+                }
+
                 var recipient = new Recipient
                 {
                     LastName = row.Fields.LastName,
@@ -152,9 +169,10 @@ public class ImportService : IImportService
                     ServiceNumber = row.Fields.ServiceNumber,
                     DateOfBirth = row.Fields.DateOfBirth,
                     UnitId = unit?.Id,
-                    OrgNodeId = orgNode?.Id,
-                    IntakeId = orgNode?.IntakeId,
+                    OrgNodeId = resolvedOrgNodeId,
+                    IntakeId = resolvedIntakeId,
                     RoomId = room?.Id,
+                    FitnessCategory = fitnessCategory,
 
                     Nationality = NullIfEmpty(row.Fields.Nationality),
                     Vos = NullIfEmpty(row.Fields.Vos),
@@ -180,6 +198,19 @@ public class ImportService : IImportService
 
                 db.Recipients.Add(recipient);
                 db.SaveChanges();
+
+                foreach (var (name, serialNumber, rawText) in ParseWeaponUnits(row.Fields.WeaponRaw))
+                {
+                    db.Weapons.Add(new Weapon
+                    {
+                        RecipientId = recipient.Id,
+                        Name = name,
+                        SerialNumber = serialNumber,
+                        RawText = rawText
+                    });
+                }
+                if (row.Fields.WeaponRaw.Trim().Length > 0) db.SaveChanges();
+
                 imported++;
             }
             catch
@@ -257,6 +288,11 @@ public class ImportService : IImportService
 
         if (normalized.Contains("посада")) return ImportTargetField.Position;
         if (normalized.Contains("автомобіль")) return ImportTargetField.Vehicle;
+
+        // "висновок" вище за "придатн" навмисно — інакше "Висновок ВЛК" міг би
+        // перехопитися тут, якщо колись міститиме слово "придатний" у заголовку.
+        if (normalized.Contains("зброї") || normalized.Contains("зброя")) return ImportTargetField.Weapon;
+        if (normalized.Contains("придатн")) return ImportTargetField.Fitness;
 
         if (normalized.Contains("підрозділ")) return ImportTargetField.Unit;
         if (normalized.Contains("особовий номер")) return ImportTargetField.ServiceNumber;
@@ -339,6 +375,8 @@ public class ImportService : IImportService
             fields.MedicalBoardConclusion = values.GetValueOrDefault(ImportTargetField.MedicalBoardConclusion) ?? string.Empty;
             fields.OriginUnit = values.GetValueOrDefault(ImportTargetField.OriginUnit) ?? string.Empty;
             fields.Vehicle = values.GetValueOrDefault(ImportTargetField.Vehicle) ?? string.Empty;
+            fields.WeaponRaw = values.GetValueOrDefault(ImportTargetField.Weapon) ?? string.Empty;
+            fields.FitnessRaw = values.GetValueOrDefault(ImportTargetField.Fitness);
 
             fields.DateOfBirthRaw = values.GetValueOrDefault(ImportTargetField.DateOfBirth);
             if (!string.IsNullOrWhiteSpace(fields.DateOfBirthRaw) &&
@@ -429,6 +467,92 @@ public class ImportService : IImportService
     {
         var trimmed = unitName.Trim();
         return trimmed.Length > 0 && orgNodeIntakeMap.TryGetValue(trimmed, out var intakeId) ? intakeId : null;
+    }
+
+    // Порядок перевірок навмисний: "обмежено придатний" містить "придатний",
+    // тому "обмежено" мусить перевірятись першим.
+    private static string? ParseFitnessCategory(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw)) return null;
+        var normalized = raw.Trim().ToLower(CultureInfo.GetCultureInfo("uk-UA"));
+
+        if (normalized.Contains("обмежено")) return "обмежено придатний";
+        if (normalized.Contains("неприда")) return "непридатний";
+        if (normalized.Contains("придатн")) return "придатний";
+        return null;
+    }
+
+    // «Придатні»/«Обмежено придатні»/«Всі» — фіксовані назви папок усередині
+    // набору (Intakes.IntakeFolderNames). Старі набори, створені до цієї
+    // структури, їх не мають — тоді повертає null, і виклик лишає людину
+    // там, куди її поставило зіставлення підрозділу.
+    private static int? ResolveIntakeFitnessFolderId(
+        AppDbContext db, Dictionary<int, Dictionary<string, int>> cache, int intakeId, string? fitnessCategory)
+    {
+        if (!cache.TryGetValue(intakeId, out var folders))
+        {
+            folders = db.OrgNodes
+                .Where(n => n.IntakeId == intakeId &&
+                    (n.Name == Intakes.IntakeFolderNames.Fit ||
+                     n.Name == Intakes.IntakeFolderNames.LimitedFit ||
+                     n.Name == Intakes.IntakeFolderNames.All))
+                .ToDictionary(n => n.Name, n => n.Id);
+            cache[intakeId] = folders;
+        }
+
+        var targetName = fitnessCategory switch
+        {
+            "придатний" => Intakes.IntakeFolderNames.Fit,
+            "обмежено придатний" => Intakes.IntakeFolderNames.LimitedFit,
+            _ => Intakes.IntakeFolderNames.All
+        };
+
+        return folders.TryGetValue(targetName, out var id) ? id : null;
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex WeaponPrefixRegex = new(
+        @"(?:^|(?<=\s))(АКМС|АКС|АКМ|АК|ПМ)",
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    // Розбиває сирий рядок «Найменування, серія та номер особистої зброї» на
+    // окремі одиниці за появою нового найменування (АК/АКС/АКМ/АКМС/ПМ...).
+    // Якщо рядок не починається з розпізнаваного найменування — розбір
+    // непевний, повертаємо один запис із усім рядком у Name, без втрат.
+    internal static List<(string Name, string SerialNumber, string RawText)> ParseWeaponUnits(string? raw)
+    {
+        var result = new List<(string Name, string SerialNumber, string RawText)>();
+        var trimmedRaw = raw?.Trim() ?? string.Empty;
+        if (trimmedRaw.Length == 0) return result;
+
+        var matches = WeaponPrefixRegex.Matches(trimmedRaw);
+        if (matches.Count == 0 || matches[0].Index != 0)
+        {
+            result.Add((trimmedRaw, string.Empty, trimmedRaw));
+            return result;
+        }
+
+        var starts = matches.Select(m => m.Index).ToList();
+        for (var i = 0; i < starts.Count; i++)
+        {
+            var start = starts[i];
+            var end = i + 1 < starts.Count ? starts[i + 1] : trimmedRaw.Length;
+            var segment = trimmedRaw[start..end].Trim();
+            if (segment.Length == 0) continue;
+
+            var markerIndex = segment.IndexOfAny(new[] { '№', '#' });
+            if (markerIndex >= 0)
+            {
+                var name = segment[..markerIndex].Trim();
+                var serial = segment[(markerIndex + 1)..].Trim();
+                result.Add((name, serial, segment));
+            }
+            else
+            {
+                result.Add((segment, string.Empty, segment));
+            }
+        }
+
+        return result.Count > 0 ? result : new List<(string, string, string)> { (trimmedRaw, string.Empty, trimmedRaw) };
     }
 
     private static string BuildFullNameDisplay(RowFields fields)
@@ -590,6 +714,8 @@ public class ImportService : IImportService
         public string MedicalBoardConclusion = string.Empty;
         public string OriginUnit = string.Empty;
         public string Vehicle = string.Empty;
+        public string WeaponRaw = string.Empty;
+        public string? FitnessRaw;
     }
 
     private record RowInfo(int RowNumber, RowFields Fields, bool IncompleteFullName, bool CourseArrivalDateInvalid);

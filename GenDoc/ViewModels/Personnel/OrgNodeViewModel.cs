@@ -78,7 +78,7 @@ namespace GenDoc.ViewModels.Personnel
         public bool CanAddChild => true;
         public bool CanRename => !IsIntakeRoot;
         public bool CanMove => !IsRoot && !IsIntakeRoot;
-        public bool CanDelete => !IsRoot && !IsIntakeRoot;
+        public bool CanDelete => !IsRoot;
 
         [ObservableProperty]
         private bool isSelected;

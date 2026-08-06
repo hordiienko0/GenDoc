@@ -326,6 +326,11 @@
                                                         </ItemsControl.ItemTemplate>
                                                     </ItemsControl>
 
+                                                    <CheckBox Content="Повторювати аркуш на кожну дату періоду"
+                                                              IsChecked="{Binding RepeatSheetPerDate, Mode=TwoWay}"
+                                                              Visibility="{Binding UsesPlaceholders, Converter={StaticResource BoolToVisibility}}"
+                                                              Margin="0,8,0,0"/>
+
                                                     <Button Content="Зберегти мапінг" HorizontalAlignment="Left" Margin="0,8,0,0"
                                                             Command="{Binding DataContext.SaveMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                             CommandParameter="{Binding}"/>

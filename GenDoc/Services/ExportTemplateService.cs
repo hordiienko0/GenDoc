@@ -134,7 +134,7 @@ namespace GenDoc.Services
                 .ToList();
         }
 
-        public List<(int Id, string Name, string OriginalFileName, DateTime UploadedAt, bool IsBuiltIn, bool UsesPlaceholders, int TagCount)> GetTemplateListItems()
+        public List<(int Id, string Name, string OriginalFileName, DateTime UploadedAt, bool IsBuiltIn, bool UsesPlaceholders, int TagCount, bool RepeatSheetPerDate)> GetTemplateListItems()
         {
             using var db = _dbFactory.CreateDbContext();
             return db.ExportTemplates
@@ -142,12 +142,22 @@ namespace GenDoc.Services
                 .ThenBy(t => t.Name)
                 .Select(t => new
                 {
-                    t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.IsBuiltIn, t.UsesPlaceholders,
+                    t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.IsBuiltIn, t.UsesPlaceholders, t.RepeatSheetPerDate,
                     TagCount = t.ColumnMappings.Count(m => m.PlaceholderTag != "")
                 })
                 .AsEnumerable()
-                .Select(t => (t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.IsBuiltIn, t.UsesPlaceholders, t.TagCount))
+                .Select(t => (t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.IsBuiltIn, t.UsesPlaceholders, t.TagCount, t.RepeatSheetPerDate))
                 .ToList();
+        }
+
+        public void SetRepeatSheetPerDate(int templateId, bool value)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var template = db.ExportTemplates.FirstOrDefault(t => t.Id == templateId);
+            if (template is null) return;
+
+            template.RepeatSheetPerDate = value;
+            db.SaveChanges();
         }
 
         public List<(int Id, int ColumnIndex, string HeaderText, string FieldKey, string PlaceholderTag, MappingSourceType SourceType)> GetMappings(int templateId)

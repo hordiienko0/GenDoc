@@ -23,6 +23,16 @@ namespace GenDoc.Models
         public int? RoomId { get; set; }
         public Room? Room { get; set; }
 
+        // Одна людина може мати кілька одиниць зброї (автомат + пістолет) —
+        // тому зв'язок один-до-багатьох, власник — Weapon.RecipientId.
+        public ICollection<Weapon> Weapons { get; set; } = new List<Weapon>();
+
+        // Окрема структурована модель авто (марка + номер) — на відміну від
+        // вільнотекстового поля Vehicle нижче (анкетні дані, лишене для сумісності).
+        // Поки не заповнюється імпортом і не використовується — консолідація потім.
+        public int? AssignedVehicleId { get; set; }
+        public Vehicle? AssignedVehicle { get; set; }
+
         public int? OrgNodeId { get; set; }
         public OrgNode? OrgNode { get; set; }
 

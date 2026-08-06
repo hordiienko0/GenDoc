@@ -265,12 +265,20 @@
                             </Border>
                         </StackPanel>
 
-                        <StackPanel Visibility="{Binding HasManualTags, Converter={StaticResource BoolToVisibility}}" Margin="0,0,0,20"
-                                    DataContext="{Binding ManualTagForm}">
+                        <StackPanel Margin="0,0,0,20">
+                            <StackPanel.Style>
+                                <Style TargetType="StackPanel">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ManualTagForm}" Value="{x:Null}">
+                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </StackPanel.Style>
                             <TextBlock Text="ЗНАЧЕННЯ ДЛЯ ЦІЄЇ ГЕНЕРАЦІЇ" Style="{StaticResource SectionTitleStyle}"/>
                             <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
                                     BorderThickness="1" CornerRadius="0" Padding="16">
-                                <StackPanel>
+                                <StackPanel DataContext="{Binding ManualTagForm}">
                                     <ItemsControl ItemsSource="{Binding Rows}">
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>

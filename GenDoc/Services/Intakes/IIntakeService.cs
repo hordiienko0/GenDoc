@@ -6,8 +6,7 @@ namespace GenDoc.Services.Intakes
         string DisplayNumber,
         int BaseNodeId,
         DateOnly DateStart,
-        DateOnly DateEnd,
-        IReadOnlyList<string> Subfolders);
+        DateOnly DateEnd);
 
     public interface IIntakeService
     {

@@ -6,5 +6,5 @@ public interface IImportService
 
     List<ImportRowPreview> Validate(ImportParseResult parsed);
 
-    ImportSummary Import(ImportParseResult parsed);
+    ImportSummary Import(ImportParseResult parsed, bool importAsPermanentStaff = false);
 }

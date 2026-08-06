@@ -350,7 +350,7 @@ namespace GenDoc.Services.Generation
         // звань і/або конкретними званнями — усе через AND.
         private static List<Recipient> LoadRosterRecipients(AppDbContext db, RosterSelection selection)
         {
-            IQueryable<Recipient> query = db.Recipients.Include(r => r.Unit).Include(r => r.Room).Include(r => r.OrgNode);
+            IQueryable<Recipient> query = db.Recipients.Include(r => r.Unit).Include(r => r.Room).Include(r => r.OrgNode).Include(r => r.Weapons);
 
             if (!selection.AllRecipients)
                 query = query.Where(r => selection.RecipientIds.Contains(r.Id));
@@ -502,6 +502,22 @@ namespace GenDoc.Services.Generation
 
         private sealed record XlsxPhaseResult(int Generated, int Skipped, int Errors, List<string> SummaryLines);
 
+        // «Курсовий офіцер {підрозділ} {звання} {ПІБ-ініціали}» — з першого
+        // постійного складу (IntakeId == null) з прапорцем IsCourseOfficer.
+        private static string? BuildCourseOfficerSignature(AppDbContext db)
+        {
+            var courseOfficer = db.Recipients
+                .Include(r => r.Unit)
+                .Where(r => r.IntakeId == null && r.IsCourseOfficer)
+                .OrderBy(r => r.Id)
+                .FirstOrDefault();
+
+            return courseOfficer is null
+                ? null
+                : $"Курсовий офіцер {courseOfficer.Unit?.Name} {courseOfficer.Rank} " +
+                  NameFormatter.ShortName(courseOfficer.LastName, courseOfficer.FirstName, courseOfficer.MiddleName);
+        }
+
         // Phase B — один документ на весь список людей (форма-відомість). Немає єдиного
         // Recipient, тому anti-дубль тримається на RosterHash складу, а не на парі (Recipient, Template).
         private XlsxPhaseResult RunXlsxPhase(
@@ -560,9 +576,12 @@ namespace GenDoc.Services.Generation
                         continue;
                     }
 
+                    var courseOfficerSignature = BuildCourseOfficerSignature(db);
+
                     var result = _xlsxGenerationService.Generate(
                         template.Content, template.TemplateRowIndex, template.UsesPlaceholders,
-                        mappings, roster, orgSettings, manualValues);
+                        mappings, roster, orgSettings, manualValues,
+                        template.RepeatSheetPerDate, courseOfficerSignature);
 
                     if (!result.Success)
                     {
@@ -814,6 +833,9 @@ namespace GenDoc.Services.Generation
             "OriginUnit" => r.OriginUnit ?? string.Empty,
             "Vehicle" => r.Vehicle ?? string.Empty,
             "IsCourseOfficer" => r.IsCourseOfficer ? "Так" : "Ні",
+            "WeaponName" => FirstWeapon(r)?.Name ?? string.Empty,
+            "WeaponSerialNumber" => FirstWeapon(r)?.SerialNumber ?? string.Empty,
+            "WeaponFull" => FirstWeapon(r) is { } w ? $"{w.Name} № {w.SerialNumber}".Trim() : string.Empty,
             "RoomDisplay" => FormatRoom(r.Room),
             "ShortName" => Services.NameFormatter.ShortName(r.LastName, r.FirstName, r.MiddleName),
             "FitnessCategory" => r.FitnessCategory ?? string.Empty,
@@ -828,6 +850,9 @@ namespace GenDoc.Services.Generation
             "SuchPronoun" => Services.UkrainianGrammar.SuchPronoun(Services.UkrainianGrammar.Detect(r)),
             _ => string.Empty
         };
+
+        // Перша одиниця зброї людини (за Id — порядок додавання), або null, якщо нема.
+        private static Weapon? FirstWeapon(Recipient r) => r.Weapons.OrderBy(w => w.Id).FirstOrDefault();
 
         private static string FormatFullNameAccusative(Recipient r)
         {

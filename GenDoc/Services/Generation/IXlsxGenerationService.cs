@@ -16,6 +16,8 @@ namespace GenDoc.Services.Generation
             List<ExportTemplateColumnMapping> mappings,
             IReadOnlyList<Recipient> roster,
             OrganizationSettings? org,
-            IDictionary<string, string> manualValues);
+            IDictionary<string, string> manualValues,
+            bool repeatSheetPerDate = false,
+            string? courseOfficerSignature = null);
     }
 }

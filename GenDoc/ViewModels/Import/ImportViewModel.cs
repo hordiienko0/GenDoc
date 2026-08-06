@@ -58,6 +58,9 @@ public partial class ImportViewModel : ObservableObject
     [ObservableProperty]
     private bool hasSkippedRows;
 
+    [ObservableProperty]
+    private bool importAsPermanentStaff;
+
     [RelayCommand]
     private void PickFile()
     {
@@ -80,7 +83,7 @@ public partial class ImportViewModel : ObservableObject
             MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (confirm != MessageBoxResult.Yes) return;
 
-        var summary = _importService.Import(_parsed);
+        var summary = _importService.Import(_parsed, ImportAsPermanentStaff);
 
         MessageBox.Show(
             $"Імпортовано {summary.Imported}, пропущено {summary.Skipped}, помилок {summary.Errors}",

@@ -348,8 +348,11 @@ namespace GenDoc.ViewModels.Personnel
                 return;
             }
 
+            var confirmText = node.IsIntakeRoot
+                ? $"Видалити папку «{node.Name}» разом із набором до кошика?"
+                : $"Видалити папку «{node.Name}» до кошика?";
             var confirm = MessageBox.Show(
-                $"Видалити папку «{node.Name}» до кошика?",
+                confirmText,
                 "Підтвердження видалення", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (confirm != MessageBoxResult.Yes) return;
 
