@@ -12,13 +12,15 @@ namespace GenDoc.ViewModels.Staff
     {
         private readonly IDocumentArchiveService _archiveService;
         private readonly int? _documentId;
+        private readonly bool _hasContent;
 
         public StaffDocResultRowViewModel(
-            IDocumentArchiveService archiveService, int? documentId, string fileName,
+            IDocumentArchiveService archiveService, int? documentId, bool hasContent, string fileName,
             string recipientName, string templateName, bool success, string? errorMessage)
         {
             _archiveService = archiveService;
             _documentId = documentId;
+            _hasContent = hasContent;
             FileName = fileName;
             RecipientName = recipientName;
             TemplateName = templateName;
@@ -32,7 +34,7 @@ namespace GenDoc.ViewModels.Staff
         public bool Success { get; }
         public string? ErrorMessage { get; }
 
-        public bool CanOpen => Success && _documentId is not null;
+        public bool CanOpen => Success && _documentId is not null && _hasContent;
 
         [RelayCommand(CanExecute = nameof(CanOpen))]
         private async Task OpenAsync() => await _archiveService.OpenAsync(_documentId!.Value);

@@ -38,7 +38,7 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
-            <Border Grid.Column="0" Padding="10,8" BorderBrush="{StaticResource AccentBrush}" BorderThickness="0,0,0,2">
+            <Border Grid.Column="0" Padding="10,8" BorderBrush="{StaticResource AccentBrush}">
                 <Border.Style>
                     <Style TargetType="Border">
                         <Setter Property="BorderThickness" Value="0"/>
@@ -49,10 +49,10 @@
                         </Style.Triggers>
                     </Style>
                 </Border.Style>
-                <TextBlock Text="1. Формування" HorizontalAlignment="Center" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextSecondaryBrush}">
+                <TextBlock Text="1. Формування" HorizontalAlignment="Center" FontSize="12" FontWeight="SemiBold">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding IsFormStep}" Value="True">
                                     <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
@@ -73,10 +73,10 @@
                         </Style.Triggers>
                     </Style>
                 </Border.Style>
-                <TextBlock Text="2. Документи" HorizontalAlignment="Center" FontSize="12" FontWeight="SemiBold"
-                           Foreground="{StaticResource TextSecondaryBrush}">
+                <TextBlock Text="2. Документи" HorizontalAlignment="Center" FontSize="12" FontWeight="SemiBold">
                     <TextBlock.Style>
                         <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
                             <Style.Triggers>
                                 <DataTrigger Binding="{Binding ShowResults}" Value="True">
                                     <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>

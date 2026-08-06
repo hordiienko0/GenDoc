@@ -9,7 +9,7 @@ public class StaffDocResultRowViewModelTests
     public void CanOpen_SuccessWithDocumentId_IsTrue()
     {
         var row = new StaffDocResultRowViewModel(
-            archiveService: null!, documentId: 5, fileName: "report.docx",
+            archiveService: null!, documentId: 5, hasContent: true, fileName: "report.docx",
             recipientName: "ТЕСТ Т.Т.", templateName: "Рапорт", success: true, errorMessage: null);
 
         Assert.True(row.CanOpen);
@@ -19,7 +19,7 @@ public class StaffDocResultRowViewModelTests
     public void CanOpen_Failure_IsFalse()
     {
         var row = new StaffDocResultRowViewModel(
-            archiveService: null!, documentId: null, fileName: string.Empty,
+            archiveService: null!, documentId: null, hasContent: false, fileName: string.Empty,
             recipientName: "ТЕСТ Т.Т.", templateName: "Рапорт", success: false, errorMessage: "Не вдалося згенерувати");
 
         Assert.False(row.CanOpen);
@@ -29,7 +29,17 @@ public class StaffDocResultRowViewModelTests
     public void CanOpen_SuccessWithoutDocumentId_IsFalse()
     {
         var row = new StaffDocResultRowViewModel(
-            archiveService: null!, documentId: null, fileName: string.Empty,
+            archiveService: null!, documentId: null, hasContent: false, fileName: string.Empty,
+            recipientName: "ТЕСТ Т.Т.", templateName: "Рапорт", success: true, errorMessage: null);
+
+        Assert.False(row.CanOpen);
+    }
+
+    [Fact]
+    public void CanOpen_SuccessWithDocumentIdButNoContent_IsFalse()
+    {
+        var row = new StaffDocResultRowViewModel(
+            archiveService: null!, documentId: 5, hasContent: false, fileName: "report.docx",
             recipientName: "ТЕСТ Т.Т.", templateName: "Рапорт", success: true, errorMessage: null);
 
         Assert.False(row.CanOpen);
@@ -39,7 +49,7 @@ public class StaffDocResultRowViewModelTests
     public void Constructor_ExposesAllSuppliedValues()
     {
         var row = new StaffDocResultRowViewModel(
-            archiveService: null!, documentId: 7, fileName: "trip.docx",
+            archiveService: null!, documentId: 7, hasContent: true, fileName: "trip.docx",
             recipientName: "ІВАНЕНКО І.І.", templateName: "Посвідчення", success: true, errorMessage: null);
 
         Assert.Equal("trip.docx", row.FileName);

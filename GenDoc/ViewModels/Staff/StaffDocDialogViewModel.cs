@@ -142,9 +142,12 @@ namespace GenDoc.ViewModels.Staff
             IsBusy = true;
             try
             {
+                ErrorText = null;
                 var templateIds = Templates.Where(t => t.IsChecked).Select(t => t.Id).ToList();
                 var manualValues = ManualTagForm?.GetValues() ?? new Dictionary<string, string>();
                 var recipientIds = _people.Select(p => p.Id).ToList();
+
+                var generationStartedAt = DateTime.Now;
 
                 if (Kind is null)
                 {
@@ -167,11 +170,12 @@ namespace GenDoc.ViewModels.Staff
                     {
                         var templateName = Templates.First(t => t.Id == templateId).Name;
                         var row = await _archiveService.GetCurrentRowAsync(person.Id, templateId);
+                        var succeeded = row is not null && row.CreatedAt >= generationStartedAt;
                         Results.Add(new StaffDocResultRowViewModel(
-                            _archiveService, row?.Id, row?.FileName ?? string.Empty,
+                            _archiveService, row?.Id, row?.HasContent ?? false, row?.FileName ?? string.Empty,
                             person.FullName, templateName,
-                            success: row is not null,
-                            errorMessage: row is null ? "Не вдалося згенерувати" : null));
+                            success: succeeded,
+                            errorMessage: succeeded ? null : "Не вдалося згенерувати"));
                     }
                 }
 
@@ -180,6 +184,10 @@ namespace GenDoc.ViewModels.Staff
                 ResultsSummaryText = $"Згенеровано: {okCount} · помилок: {errCount}";
 
                 ShowResults = true;
+            }
+            catch (Exception ex)
+            {
+                ErrorText = ex.Message;
             }
             finally
             {
