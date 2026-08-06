@@ -80,6 +80,7 @@ public partial class RecipientEditViewModel : ObservableObject
 
     [ObservableProperty] private string? roomBuilding;
     [ObservableProperty] private string? roomNumber;
+    [ObservableProperty] private bool isCourseOfficer;
 
     // Анкетні дані (прикомандировані) — Б.4
     [ObservableProperty] private string? nationality;
@@ -211,6 +212,7 @@ public partial class RecipientEditViewModel : ObservableObject
             MedicalBoardConclusion = model.MedicalBoardConclusion;
             OriginUnit = model.OriginUnit;
             Vehicle = model.Vehicle;
+            IsCourseOfficer = model.IsCourseOfficer;
 
             Gender = model.Gender;
             RankAccusative = model.RankAccusative;
@@ -254,6 +256,7 @@ public partial class RecipientEditViewModel : ObservableObject
             MedicalBoardConclusion = null;
             OriginUnit = null;
             Vehicle = null;
+            IsCourseOfficer = false;
 
             Gender = null;
             RankAccusative = null;
@@ -442,6 +445,7 @@ public partial class RecipientEditViewModel : ObservableObject
             MedicalBoardConclusion = MedicalBoardConclusion,
             OriginUnit = OriginUnit,
             Vehicle = Vehicle,
+            IsCourseOfficer = IsCourseOfficer,
 
             Gender = Gender,
             RankAccusative = RankAccusative,
