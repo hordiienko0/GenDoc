@@ -53,6 +53,10 @@ namespace GenDoc.Models
         public string? OriginUnit { get; set; }
         public string? Vehicle { get; set; }
 
+        // Постійний склад: курсовий офіцер (не звання/посада — окрема ознака,
+        // впливає на фільтр списку й доступна для мапінгу плейсхолдерів шаблонів).
+        public bool IsCourseOfficer { get; set; }
+
         // Стать — для узгодження форм (прибув/прибула, таким/такою) і відмінювання,
         // коли по батькові відсутнє або не дає однозначної відповіді.
         public Gender? Gender { get; set; }

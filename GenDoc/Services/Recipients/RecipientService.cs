@@ -160,6 +160,7 @@ namespace GenDoc.Services.Recipients
                 MedicalBoardConclusion = r.MedicalBoardConclusion,
                 OriginUnit = r.OriginUnit,
                 Vehicle = r.Vehicle,
+                IsCourseOfficer = r.IsCourseOfficer,
 
                 Gender = r.Gender,
                 RankAccusative = r.RankAccusative,
@@ -244,6 +245,7 @@ namespace GenDoc.Services.Recipients
             recipient.MedicalBoardConclusion = TrimOrNull(model.MedicalBoardConclusion);
             recipient.OriginUnit = TrimOrNull(model.OriginUnit);
             recipient.Vehicle = TrimOrNull(model.Vehicle);
+            recipient.IsCourseOfficer = model.IsCourseOfficer;
 
             recipient.Gender = model.Gender;
             recipient.RankAccusative = TrimOrNull(model.RankAccusative);

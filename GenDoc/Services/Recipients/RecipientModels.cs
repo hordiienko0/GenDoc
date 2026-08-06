@@ -51,6 +51,7 @@ namespace GenDoc.Services.Recipients
         public string? MedicalBoardConclusion { get; set; }
         public string? OriginUnit { get; set; }
         public string? Vehicle { get; set; }
+        public bool IsCourseOfficer { get; set; }
 
         // Уточнення відмінків
         public Gender? Gender { get; set; }
