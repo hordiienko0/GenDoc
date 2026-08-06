@@ -470,11 +470,15 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         }
     }
 
-    // Тег "дата" зарезервований під це поле — підставляється в кожен документ
+    // Тег "{{дата}}" зарезервований під це поле — підставляється в кожен документ
     // пакета незалежно від шаблону; якщо шаблон явно мапить {{дата}} вручну,
     // це поле є єдиним джерелом значення (перекриває будь-який попередній запис).
+    // Ключ має бути тим самим brace-wrapped рядком, що й PlaceholderTag усюди
+    // (TemplateService, GenerationService.BuildValues, DocumentGenerationService).
+    internal const string DocumentDateTag = "{{дата}}";
+
     internal static void ApplyDocumentDate(Dictionary<string, string> manualValues, DateTime? documentDate)
     {
-        manualValues["дата"] = (documentDate ?? DateTime.Today).ToString("dd.MM.yyyy");
+        manualValues[DocumentDateTag] = (documentDate ?? DateTime.Today).ToString("dd.MM.yyyy");
     }
 }

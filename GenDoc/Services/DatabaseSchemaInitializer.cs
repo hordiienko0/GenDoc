@@ -348,6 +348,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                     AppliedAt = DateTime.Now,
                     Description = "Шаблони: обраний формат дати для мапінгу дато-полів"
                 });
+                currentVersion = 16;
             }
         }
 

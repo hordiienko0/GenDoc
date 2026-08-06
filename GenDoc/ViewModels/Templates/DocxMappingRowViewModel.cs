@@ -40,6 +40,7 @@ public partial class DocxMappingRowViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsFieldEnabled))]
     [NotifyPropertyChangedFor(nameof(FieldOptions))]
+    [NotifyPropertyChangedFor(nameof(IsDateField))]
     private MappingSourceType sourceType;
 
     [ObservableProperty]
@@ -51,7 +52,8 @@ public partial class DocxMappingRowViewModel : ObservableObject
 
     public bool IsFieldEnabled => SourceType != MappingSourceType.Manual;
 
-    public bool IsDateField => SelectedFieldName is not null && DateFieldNames.Contains(SelectedFieldName);
+    public bool IsDateField => SourceType == MappingSourceType.Recipient
+        && SelectedFieldName is not null && DateFieldNames.Contains(SelectedFieldName);
 
     public IReadOnlyList<TemplateFieldOption> FieldOptions => SourceType switch
     {
@@ -63,5 +65,10 @@ public partial class DocxMappingRowViewModel : ObservableObject
     partial void OnSourceTypeChanged(MappingSourceType value)
     {
         if (value == MappingSourceType.Manual) SelectedFieldName = null;
+    }
+
+    partial void OnSelectedFieldNameChanged(string? value)
+    {
+        if (value is null || !DateFieldNames.Contains(value)) SelectedDateFormat = null;
     }
 }
