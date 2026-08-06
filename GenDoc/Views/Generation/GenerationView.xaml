@@ -257,6 +257,14 @@
                             </StackPanel>
                         </Border>
 
+                        <StackPanel Margin="0,0,0,20">
+                            <TextBlock Text="ДАТА ДОКУМЕНТА" Style="{StaticResource SectionTitleStyle}"/>
+                            <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                                    BorderThickness="1" CornerRadius="0" Padding="16">
+                                <DatePicker SelectedDate="{Binding DocumentDate}" HorizontalAlignment="Left" Width="160"/>
+                            </Border>
+                        </StackPanel>
+
                         <StackPanel Visibility="{Binding HasManualTags, Converter={StaticResource BoolToVisibility}}" Margin="0,0,0,20"
                                     DataContext="{Binding ManualTagForm}">
                             <TextBlock Text="ЗНАЧЕННЯ ДЛЯ ЦІЄЇ ГЕНЕРАЦІЇ" Style="{StaticResource SectionTitleStyle}"/>
