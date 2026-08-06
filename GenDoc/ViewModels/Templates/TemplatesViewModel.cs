@@ -87,7 +87,7 @@ public partial class TemplatesViewModel : ObservableObject
         if (!item.MappingsLoaded)
         {
             var mappings = _templateService.GetMappings(item.Id)
-                .Select(m => new DocxMappingRowViewModel(m.Id, m.PlaceholderTag, m.SourceType, m.FieldName));
+                .Select(m => new DocxMappingRowViewModel(m.Id, m.PlaceholderTag, m.SourceType, m.FieldName, m.DateFormat));
             item.Mappings = new ObservableCollection<DocxMappingRowViewModel>(mappings);
             item.MappingsLoaded = true;
         }
@@ -100,7 +100,7 @@ public partial class TemplatesViewModel : ObservableObject
     {
         if (item is null) return;
 
-        var mappings = item.Mappings.Select(m => (m.Id, m.SourceType, m.SelectedFieldName)).ToList();
+        var mappings = item.Mappings.Select(m => (m.Id, m.SourceType, m.SelectedFieldName, m.SelectedDateFormat)).ToList();
         _templateService.SaveMappings(item.Id, mappings);
 
         MessageBox.Show("Мапінг міток збережено.", "Готово", MessageBoxButton.OK, MessageBoxImage.Information);

@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using GenDoc.Models.Enums;
+using GenDoc.Services.Generation;
 using GenDoc.Services.Templates;
 
 namespace GenDoc.ViewModels.Templates;
@@ -15,17 +16,26 @@ public partial class DocxMappingRowViewModel : ObservableObject
         new(MappingSourceType.Manual, "Вручну при генерації")
     };
 
-    public DocxMappingRowViewModel(int id, string placeholderTag, MappingSourceType sourceType, string? fieldName)
+    // Поля-дати з TemplateFieldCatalog.RecipientFields — узгоджено з
+    // GenerationService.GetRecipientFieldValue, де саме ці три ключі дато-форматуються.
+    private static readonly HashSet<string> DateFieldNames = new(StringComparer.Ordinal)
+    {
+        "DateOfBirth", "CourseArrivalDate", "TravelCertificateDate"
+    };
+
+    public DocxMappingRowViewModel(int id, string placeholderTag, MappingSourceType sourceType, string? fieldName, string? dateFormat)
     {
         Id = id;
         PlaceholderTag = placeholderTag;
         this.sourceType = sourceType;
         selectedFieldName = fieldName;
+        selectedDateFormat = dateFormat;
     }
 
     public int Id { get; }
     public string PlaceholderTag { get; }
     public IReadOnlyList<MappingSourceOption> SourceOptions => SharedSourceOptions;
+    public IReadOnlyList<DateFormatOption> DateFormatOptions => DateFormatCatalog.Options;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsFieldEnabled))]
@@ -33,9 +43,15 @@ public partial class DocxMappingRowViewModel : ObservableObject
     private MappingSourceType sourceType;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsDateField))]
     private string? selectedFieldName;
 
+    [ObservableProperty]
+    private string? selectedDateFormat;
+
     public bool IsFieldEnabled => SourceType != MappingSourceType.Manual;
+
+    public bool IsDateField => SelectedFieldName is not null && DateFieldNames.Contains(SelectedFieldName);
 
     public IReadOnlyList<TemplateFieldOption> FieldOptions => SourceType switch
     {
