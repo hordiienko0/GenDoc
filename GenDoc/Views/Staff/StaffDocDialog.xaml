@@ -2,7 +2,7 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Style="{StaticResource {x:Type Window}}"
-        Title="{Binding HeaderText}" Width="480" MaxHeight="720" SizeToContent="Height"
+        Title="{Binding HeaderText}" Width="560" MaxHeight="760" SizeToContent="Height"
         Background="{StaticResource PanelBrush}"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
 
@@ -12,6 +12,7 @@
 
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -31,8 +32,64 @@
             </Grid>
         </Border>
 
-        <!-- Тіло -->
-        <StackPanel Grid.Row="1" Margin="22,16">
+        <!-- Індикатор кроків -->
+        <Grid Grid.Row="1" Background="{StaticResource BackgroundBrush}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Padding="10,8" BorderBrush="{StaticResource AccentBrush}" BorderThickness="0,0,0,2">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsFormStep}" Value="True">
+                                <Setter Property="BorderThickness" Value="0,0,0,2"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Text="1. Формування" HorizontalAlignment="Center" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextSecondaryBrush}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsFormStep}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Border>
+            <Border Grid.Column="1" Padding="10,8" BorderBrush="{StaticResource AccentBrush}">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ShowResults}" Value="True">
+                                <Setter Property="BorderThickness" Value="0,0,0,2"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Text="2. Документи" HorizontalAlignment="Center" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextSecondaryBrush}">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ShowResults}" Value="True">
+                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Border>
+        </Grid>
+
+        <!-- Крок 1: Формування -->
+        <StackPanel Grid.Row="2" Margin="22,16" Visibility="{Binding IsFormStep, Converter={StaticResource BoolToVisibility}}">
 
             <TextBlock Text="{Binding PeopleText}" FontSize="12.5" TextWrapping="Wrap"
                        Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,14"/>
@@ -66,12 +123,20 @@
                 </ScrollViewer>
             </Border>
 
-            <StackPanel Visibility="{Binding HasManualTags, Converter={StaticResource BoolToVisibility}}"
-                        DataContext="{Binding ManualTagForm}">
+            <StackPanel>
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ManualTagForm}" Value="{x:Null}">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
                 <TextBlock Text="Ручні поля обраних шаблонів" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
                 <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1" MaxHeight="220" Margin="0,0,0,14">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel Margin="8">
+                        <StackPanel Margin="8" DataContext="{Binding ManualTagForm}">
                             <ItemsControl ItemsSource="{Binding Rows}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
@@ -145,12 +210,73 @@
             </TextBlock>
         </StackPanel>
 
-        <!-- Футер -->
-        <Border Grid.Row="2" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,0,0" Padding="22,16">
+        <!-- Крок 2: Документи -->
+        <StackPanel Grid.Row="2" Margin="22,16" Visibility="{Binding ShowResults, Converter={StaticResource BoolToVisibility}}">
+            <Border Background="{StaticResource AccentSoftBrush}" Padding="10,8" Margin="0,0,0,12">
+                <TextBlock Text="{Binding ResultsSummaryText}" FontSize="12.5" FontWeight="SemiBold"/>
+            </Border>
+
+            <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1" MaxHeight="360">
+                <ScrollViewer VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding Results}" Margin="4">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="6,8" >
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="{Binding TemplateName}" FontSize="12.5" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding RecipientName}" FontSize="11.5"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        <TextBlock Text="{Binding ErrorMessage}" FontSize="11"
+                                                   Foreground="{StaticResource DangerBrush}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Success}" Value="True">
+                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="Відкрити" Style="{StaticResource GhostButtonStyle}"
+                                            Command="{Binding OpenCommand}" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="2" Content="Зберегти як…" Style="{StaticResource GhostButtonStyle}"
+                                            Command="{Binding SaveAsCommand}" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Border>
+        </StackPanel>
+
+        <!-- Футер: крок 1 -->
+        <Border Grid.Row="3" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,0,0" Padding="22,16"
+                Visibility="{Binding IsFormStep, Converter={StaticResource BoolToVisibility}}">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="Скасувати" Style="{StaticResource GhostButtonStyle}" Command="{Binding CancelCommand}" IsCancel="True"/>
                 <Button Content="Згенерувати" Command="{Binding ConfirmCommand}" IsDefault="True" Margin="10,0,0,0"/>
             </StackPanel>
+        </Border>
+
+        <!-- Футер: крок 2 -->
+        <Border Grid.Row="3" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,0,0" Padding="22,16"
+                Visibility="{Binding ShowResults, Converter={StaticResource BoolToVisibility}}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Content="← Ще один документ" Style="{StaticResource GhostButtonStyle}"
+                        Command="{Binding GenerateAnotherCommand}" HorizontalAlignment="Left"/>
+                <Button Grid.Column="1" Content="Готово" Command="{Binding FinishCommand}" IsDefault="True"/>
+            </Grid>
         </Border>
     </Grid>
 </Window>
