@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using GenDoc.Models.Enums;
 using GenDoc.Services.Documents;
 using GenDoc.Services.Generation;
+using GenDoc.Services.Staff;
 using GenDoc.ViewModels.Generation;
 using GenDoc.ViewModels.Personnel;
 
@@ -29,18 +30,20 @@ namespace GenDoc.ViewModels.Staff
         private readonly IGenerationService _generationService;
         private readonly IDocumentArchiveService _archiveService;
         private readonly IManualTagFormBuilder _manualTagFormBuilder;
+        private readonly IStaffService _staffService;
 
         public StaffDocDialogViewModel(
             IGenerationService generationService, IDocumentArchiveService archiveService,
-            IManualTagFormBuilder manualTagFormBuilder)
+            IManualTagFormBuilder manualTagFormBuilder, IStaffService staffService)
         {
             _generationService = generationService;
             _archiveService = archiveService;
             _manualTagFormBuilder = manualTagFormBuilder;
+            _staffService = staffService;
         }
 
         public StaffEventKind? Kind { get; private set; }
-        private IReadOnlyList<int> _recipientIds = Array.Empty<int>();
+        private IReadOnlyList<(int Id, string FullName)> _people = Array.Empty<(int, string)>();
 
         [ObservableProperty] private string headerText = string.Empty;
         [ObservableProperty] private string peopleText = string.Empty;
@@ -65,10 +68,21 @@ namespace GenDoc.ViewModels.Staff
         [ObservableProperty] private string? note;
         [ObservableProperty] private string? errorText;
 
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsFormStep))]
+        private bool showResults;
+
+        public bool IsFormStep => !ShowResults;
+
+        [ObservableProperty] private bool isBusy;
+        [ObservableProperty] private string resultsSummaryText = string.Empty;
+
+        public ObservableCollection<StaffDocResultRowViewModel> Results { get; } = new();
+
         public void Initialize(StaffEventKind? kind, IReadOnlyList<(int Id, string FullName)> people)
         {
             Kind = kind;
-            _recipientIds = people.Select(p => p.Id).ToList();
+            _people = people;
             ShowDateRange = kind is not null;
             HeaderText = kind switch
             {
@@ -99,6 +113,8 @@ namespace GenDoc.ViewModels.Staff
             Note = null;
             ErrorText = null;
             ManualTagForm = null;
+            ShowResults = false;
+            Results.Clear();
         }
 
         private async Task RefreshManualTagFormAsync()
@@ -121,7 +137,61 @@ namespace GenDoc.ViewModels.Staff
             && Templates.Any(t => t.IsChecked);
 
         [RelayCommand(CanExecute = nameof(CanConfirm))]
-        private void Confirm() => CloseDialog(true);
+        private async Task ConfirmAsync()
+        {
+            IsBusy = true;
+            try
+            {
+                var templateIds = Templates.Where(t => t.IsChecked).Select(t => t.Id).ToList();
+                var manualValues = ManualTagForm?.GetValues() ?? new Dictionary<string, string>();
+                var recipientIds = _people.Select(p => p.Id).ToList();
+
+                if (Kind is null)
+                {
+                    await _staffService.GenerateDocumentsAsync(recipientIds, templateIds, manualValues);
+                }
+                else
+                {
+                    await _staffService.IssueDocumentsAsync(
+                        Kind.Value, recipientIds, templateIds,
+                        DateOnly.FromDateTime(DateStart!.Value), DateOnly.FromDateTime(DateEnd!.Value),
+                        Note, manualValues);
+                }
+
+                await SaveManualValuesAsync();
+
+                Results.Clear();
+                foreach (var person in _people)
+                {
+                    foreach (var templateId in templateIds)
+                    {
+                        var templateName = Templates.First(t => t.Id == templateId).Name;
+                        var row = await _archiveService.GetCurrentRowAsync(person.Id, templateId);
+                        Results.Add(new StaffDocResultRowViewModel(
+                            _archiveService, row?.Id, row?.FileName ?? string.Empty,
+                            person.FullName, templateName,
+                            success: row is not null,
+                            errorMessage: row is null ? "Не вдалося згенерувати" : null));
+                    }
+                }
+
+                var okCount = Results.Count(r => r.Success);
+                var errCount = Results.Count - okCount;
+                ResultsSummaryText = $"Згенеровано: {okCount} · помилок: {errCount}";
+
+                ShowResults = true;
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        [RelayCommand]
+        private void GenerateAnother() => ShowResults = false;
+
+        [RelayCommand]
+        private void Finish() => CloseDialog(true);
 
         [RelayCommand]
         private void Cancel() => CloseDialog(false);
@@ -133,13 +203,5 @@ namespace GenDoc.ViewModels.Staff
             if (checkedTemplateIds.Count == 0) return;
             await _manualTagFormBuilder.SaveAsync($"tpl:{checkedTemplateIds[0]}", ManualTagForm);
         }
-
-        public (IReadOnlyList<int> RecipientIds, IReadOnlyList<int> TemplateIds, DateOnly DateStart, DateOnly DateEnd, string? Note, Dictionary<string, string> ManualValues) BuildRequest()
-            => (_recipientIds,
-                Templates.Where(t => t.IsChecked).Select(t => t.Id).ToList(),
-                DateOnly.FromDateTime(DateStart!.Value),
-                DateOnly.FromDateTime(DateEnd!.Value),
-                Note,
-                ManualTagForm?.GetValues() ?? new Dictionary<string, string>());
     }
 }
