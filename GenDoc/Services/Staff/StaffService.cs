@@ -59,7 +59,8 @@ namespace GenDoc.Services.Staff
             {
                 var state = stateByRecipient.TryGetValue(r.Id, out var kind) ? kind : (StaffEventKind?)null;
                 rows.Add(new StaffRowOverview(
-                    r.Id, r.FullName, r.Rank, r.Position, r.Unit?.Name, state, docCounts.GetValueOrDefault(r.Id)));
+                    r.Id, r.FullName, r.Rank, r.Position, r.Unit?.Name, state, docCounts.GetValueOrDefault(r.Id),
+                    r.IsCourseOfficer));
             }
             return rows;
         }

@@ -15,6 +15,7 @@ namespace GenDoc.ViewModels.Staff
             UnitName = overview.UnitName;
             CurrentState = overview.CurrentState;
             DocsCount = overview.DocsCount;
+            IsCourseOfficer = overview.IsCourseOfficer;
         }
 
         public int Id { get; }
@@ -24,6 +25,7 @@ namespace GenDoc.ViewModels.Staff
         public string? UnitName { get; }
         public StaffEventKind? CurrentState { get; }
         public int DocsCount { get; }
+        public bool IsCourseOfficer { get; }
 
         public string StateText => CurrentState switch
         {
