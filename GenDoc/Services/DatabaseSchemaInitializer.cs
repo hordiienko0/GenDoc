@@ -6,7 +6,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 15;
+    private const int CurrentSchemaVersion = 16;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -120,6 +120,11 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     private static readonly (string Name, string Type)[] AppSettingsColumnsV15 =
     {
         ("LastSignerByTemplateJson", "TEXT")
+    };
+
+    private static readonly (string Name, string Type)[] TemplateFieldMappingColumnsV16 =
+    {
+        ("DateFormat", "TEXT")
     };
 
     private readonly IDbContextFactory<AppDbContext> _dbFactory;
@@ -332,6 +337,18 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                     Description = "Рапорти на котлове: дата посвідчення, пам'ять підписанта"
                 });
             }
+
+            if (currentVersion < 16)
+            {
+                AddMissingColumns(db, "TemplateFieldMappings", TemplateFieldMappingColumnsV16);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 16,
+                    AppliedAt = DateTime.Now,
+                    Description = "Шаблони: обраний формат дати для мапінгу дато-полів"
+                });
+            }
         }
 
         // Ідемпотентно, як EnsureExportTemplateTables: таблиці, додані в модель після
@@ -370,6 +387,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         AddMissingColumns(db, "Recipients", RecipientColumnsV14);
         AddMissingColumns(db, "Recipients", RecipientColumnsV15);
         AddMissingColumns(db, "AppSettings", AppSettingsColumnsV15);
+        AddMissingColumns(db, "TemplateFieldMappings", TemplateFieldMappingColumnsV16);
 
         // Ідемпотентно (IF NOT EXISTS) — самовідновлюється незалежно від SchemaVersion,
         // так само як EnsureExportTemplateTables. Обгорнуто в try/catch: якщо в
