@@ -6,7 +6,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 19;
+    private const int CurrentSchemaVersion = 20;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -125,6 +125,25 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     private static readonly (string Name, string Type)[] RecipientColumnsV18 =
     {
         ("AssignedVehicleId", "INTEGER")
+    };
+
+    // Перелічені ВСІ колонки, не лише найновіші: таблиця могла з'явитись у проміжному
+    // білді в недоформованому вигляді, і тоді CREATE TABLE її вже не перестворить —
+    // вирівнюємо через ALTER. NOT NULL обов'язково з DEFAULT: SQLite інакше не дає
+    // ADD COLUMN до непорожньої таблиці.
+    private static readonly (string Name, string Type)[] WeaponColumnsV18 =
+    {
+        ("RecipientId", "INTEGER NOT NULL DEFAULT 0"),
+        ("Name", "TEXT NOT NULL DEFAULT ''"),
+        ("SerialNumber", "TEXT NOT NULL DEFAULT ''"),
+        ("RawText", "TEXT"), ("IssuedAt", "TEXT"), ("Note", "TEXT"),
+        ("DeletedAt", "TEXT"), ("DeletedBy", "TEXT")
+    };
+
+    private static readonly (string Name, string Type)[] VehicleColumnsV18 =
+    {
+        ("Model", "TEXT NOT NULL DEFAULT ''"), ("PlateNumber", "TEXT NOT NULL DEFAULT ''"),
+        ("Note", "TEXT"), ("DeletedAt", "TEXT"), ("DeletedBy", "TEXT")
     };
 
     private static readonly (string Name, string Type)[] ExportTemplateColumnsV19 =
@@ -405,6 +424,19 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                 });
                 currentVersion = 19;
             }
+
+            if (currentVersion < 20)
+            {
+                NormalizeTemplateNames(db);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 20,
+                    AppliedAt = DateTime.Now,
+                    Description = "Назви шаблонів без технічного префікса «Шаблон_» і підкреслень"
+                });
+                currentVersion = 20;
+            }
         }
 
         // Ідемпотентно, як EnsureExportTemplateTables: таблиці, додані в модель після
@@ -519,6 +551,22 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         {
             if (existingColumns.Contains(name)) continue;
             db.Database.ExecuteSqlRaw("ALTER TABLE " + tableName + " ADD COLUMN " + name + " " + type + ";");
+        }
+    }
+
+    // Перевантаження напряму на з'єднанні — парне до GetExistingColumns(DbConnection, ...),
+    // потрібне там, де AppDbContext ще нема (юніт-тести).
+    internal static void AddMissingColumns(
+        System.Data.Common.DbConnection connection, string tableName, (string Name, string Type)[] columns)
+    {
+        var existingColumns = GetExistingColumns(connection, tableName);
+
+        foreach (var (name, type) in columns)
+        {
+            if (existingColumns.Contains(name)) continue;
+            using var command = connection.CreateCommand();
+            command.CommandText = "ALTER TABLE " + tableName + " ADD COLUMN " + name + " " + type + ";";
+            command.ExecuteNonQuery();
         }
     }
 
@@ -1033,6 +1081,27 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         }
     }
 
+    // Разово: назви, що прийшли з імен файлів («Шаблон_Залік_Додаток_8»), стають
+    // людськими («Залік Додаток 8»). Саме разово, у гілці міграції, а не в
+    // ідемпотентному хвості — інакше застосунок щоразу перезатирав би назву,
+    // яку користувач свідомо перейменував назад.
+    private static void NormalizeTemplateNames(AppDbContext db)
+    {
+        foreach (var template in db.Templates.IgnoreQueryFilters().ToList())
+        {
+            var cleaned = TemplateNaming.Clean(template.Name);
+            if (cleaned != template.Name) template.Name = cleaned;
+        }
+
+        foreach (var exportTemplate in db.ExportTemplates.IgnoreQueryFilters().ToList())
+        {
+            var cleaned = TemplateNaming.Clean(exportTemplate.Name);
+            if (cleaned != exportTemplate.Name) exportTemplate.Name = cleaned;
+        }
+
+        db.SaveChanges();
+    }
+
     private static void EnsureWeaponVehicleTables(AppDbContext db)
     {
         var connection = db.Database.GetDbConnection();
@@ -1041,12 +1110,29 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 
         try
         {
-            if (!TableExists(connection, "Weapons"))
-            {
-                // Одна людина може мати кілька одиниць зброї (автомат + пістолет) —
-                // тому власник тут (RecipientId), а не навпаки.
-                using var command = connection.CreateCommand();
-                command.CommandText = """
+            EnsureWeaponVehicleTables(connection);
+        }
+        finally
+        {
+            if (wasClosed) connection.Close();
+        }
+    }
+
+    // Винесено окремо від AppDbContext-обгортки заради юніт-тесту на звичайному
+    // (незашифрованому) SQLite — так само як MigrateGeneratedGroupDocumentsForDocxSupport.
+    //
+    // CREATE TABLE спрацьовує лише коли таблиці нема, тому самого його НЕ досить:
+    // база, у якій Weapons створив проміжний білд без RawText, інакше лишалась би
+    // такою назавжди (EF потім падав на 'no such column: w.RawText'). Тому після
+    // створення завжди довирівнюємо колонки через ALTER.
+    internal static void EnsureWeaponVehicleTables(System.Data.Common.DbConnection connection)
+    {
+        if (!TableExists(connection, "Weapons"))
+        {
+            // Одна людина може мати кілька одиниць зброї (автомат + пістолет) —
+            // тому власник тут (RecipientId), а не навпаки.
+            using var command = connection.CreateCommand();
+            command.CommandText = """
                     CREATE TABLE "Weapons" (
                         "Id" INTEGER NOT NULL CONSTRAINT "PK_Weapons" PRIMARY KEY AUTOINCREMENT,
                         "RecipientId" INTEGER NOT NULL,
@@ -1061,18 +1147,18 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                             FOREIGN KEY ("RecipientId") REFERENCES "Recipients" ("Id") ON DELETE CASCADE
                     );
                     """;
-                command.ExecuteNonQuery();
+            command.ExecuteNonQuery();
 
-                using var indexCommand = connection.CreateCommand();
-                indexCommand.CommandText =
-                    """CREATE INDEX "IX_Weapons_RecipientId" ON "Weapons" ("RecipientId");""";
-                indexCommand.ExecuteNonQuery();
-            }
+            using var indexCommand = connection.CreateCommand();
+            indexCommand.CommandText =
+                """CREATE INDEX "IX_Weapons_RecipientId" ON "Weapons" ("RecipientId");""";
+            indexCommand.ExecuteNonQuery();
+        }
 
-            if (!TableExists(connection, "Vehicles"))
-            {
-                using var command = connection.CreateCommand();
-                command.CommandText = """
+        if (!TableExists(connection, "Vehicles"))
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = """
                     CREATE TABLE "Vehicles" (
                         "Id" INTEGER NOT NULL CONSTRAINT "PK_Vehicles" PRIMARY KEY AUTOINCREMENT,
                         "Model" TEXT NOT NULL,
@@ -1082,13 +1168,13 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                         "DeletedBy" TEXT NULL
                     );
                     """;
-                command.ExecuteNonQuery();
-            }
+            command.ExecuteNonQuery();
         }
-        finally
-        {
-            if (wasClosed) connection.Close();
-        }
+
+        // Головне у цьому методі — див. коментар вище: таблиця могла лишитись від
+        // проміжного білда без частини колонок.
+        AddMissingColumns(connection, "Weapons", WeaponColumnsV18);
+        AddMissingColumns(connection, "Vehicles", VehicleColumnsV18);
     }
 
     private static bool TableExists(System.Data.Common.DbConnection connection, string tableName)

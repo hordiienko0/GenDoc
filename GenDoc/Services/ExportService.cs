@@ -114,7 +114,7 @@ namespace GenDoc.Services
                     using (var db = _dbFactory.CreateDbContext())
                     {
                         org = db.OrganizationSettings.FirstOrDefault();
-                        courseOfficerSignature = BuildCourseOfficerSignature(db);
+                        courseOfficerSignature = CourseOfficerSignature.Build(db);
                     }
 
                     var result = _xlsxGenerationService.Generate(
@@ -143,22 +143,6 @@ namespace GenDoc.Services
                     return new ExportResult(false, 0, null, ex.Message);
                 }
             });
-        }
-
-        // «Курсовий офіцер {підрозділ} {звання} {ПІБ-ініціали}» — з першого
-        // постійного складу (IntakeId == null) з прапорцем IsCourseOfficer.
-        private static string? BuildCourseOfficerSignature(AppDbContext db)
-        {
-            var courseOfficer = db.Recipients
-                .Include(r => r.Unit)
-                .Where(r => r.IntakeId == null && r.IsCourseOfficer)
-                .OrderBy(r => r.Id)
-                .FirstOrDefault();
-
-            return courseOfficer is null
-                ? null
-                : $"Курсовий офіцер {courseOfficer.Unit?.Name} {courseOfficer.Rank} " +
-                  NameFormatter.ShortName(courseOfficer.LastName, courseOfficer.FirstName, courseOfficer.MiddleName);
         }
 
         private static void WriteCellValue(IXLCell cell, object? value)

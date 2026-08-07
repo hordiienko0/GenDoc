@@ -396,12 +396,14 @@ namespace GenDoc.Services.Generation
                 t => db.TemplateFieldMappings.Where(m => m.TemplateId == t.Id).ToList());
 
             // Anti-дубль: лише актуальні живі документи (видалені відсікає query filter).
-            var existingPairs = new HashSet<(int RecipientId, int TemplateId)>(
-                db.GeneratedDocuments
-                    .Where(g => g.IsCurrent)
-                    .Select(g => new { g.RecipientId, g.TemplateId })
-                    .AsEnumerable()
-                    .Select(g => (g.RecipientId, g.TemplateId)));
+            // Тримаємо саме ім'я файлу, а не просто факт наявності запису — пропустити
+            // можна тільки тоді, коли файл реально лежить у цільовій теці (див. ExistsInOutputFolder).
+            var existingFileNames = db.GeneratedDocuments
+                .Where(g => g.IsCurrent)
+                .Select(g => new { g.RecipientId, g.TemplateId, g.FileName })
+                .AsEnumerable()
+                .GroupBy(g => (g.RecipientId, g.TemplateId))
+                .ToDictionary(g => g.Key, g => g.First().FileName);
 
             var maxVersions = db.GeneratedDocuments.IgnoreQueryFilters()
                 .GroupBy(g => new { g.RecipientId, g.TemplateId })
@@ -429,7 +431,9 @@ namespace GenDoc.Services.Generation
                     n++;
                     progress.Report($"Генерація {n} з {total}…");
 
-                    if (!regenerateExisting && existingPairs.Contains((recipient.Id, template.Id)))
+                    if (!regenerateExisting
+                        && existingFileNames.TryGetValue((recipient.Id, template.Id), out var existingFileName)
+                        && ExistsInOutputFolder(outputFolder, existingFileName))
                     {
                         skipped++;
                         continue;
@@ -486,7 +490,7 @@ namespace GenDoc.Services.Generation
                         };
                         db.GeneratedDocuments.Add(doc);
 
-                        existingPairs.Add(pair);
+                        existingFileNames[pair] = fileName;
                         generated++;
                     }
                     catch (Exception ex)
@@ -501,22 +505,6 @@ namespace GenDoc.Services.Generation
         }
 
         private sealed record XlsxPhaseResult(int Generated, int Skipped, int Errors, List<string> SummaryLines);
-
-        // «Курсовий офіцер {підрозділ} {звання} {ПІБ-ініціали}» — з першого
-        // постійного складу (IntakeId == null) з прапорцем IsCourseOfficer.
-        private static string? BuildCourseOfficerSignature(AppDbContext db)
-        {
-            var courseOfficer = db.Recipients
-                .Include(r => r.Unit)
-                .Where(r => r.IntakeId == null && r.IsCourseOfficer)
-                .OrderBy(r => r.Id)
-                .FirstOrDefault();
-
-            return courseOfficer is null
-                ? null
-                : $"Курсовий офіцер {courseOfficer.Unit?.Name} {courseOfficer.Rank} " +
-                  NameFormatter.ShortName(courseOfficer.LastName, courseOfficer.FirstName, courseOfficer.MiddleName);
-        }
 
         // Phase B — один документ на весь список людей (форма-відомість). Немає єдиного
         // Recipient, тому anti-дубль тримається на RosterHash складу, а не на парі (Recipient, Template).
@@ -570,13 +558,14 @@ namespace GenDoc.Services.Generation
                     var current = db.GeneratedGroupDocuments
                         .FirstOrDefault(g => g.ExportTemplateId == template.Id && g.IntakeId == null && g.IsCurrent);
 
-                    if (!regenerateExisting && current is not null && current.RosterHash == rosterHash)
+                    if (!regenerateExisting && current is not null && current.RosterHash == rosterHash
+                        && ExistsInOutputFolder(outputFolder, current.FileName))
                     {
                         skipped++;
                         continue;
                     }
 
-                    var courseOfficerSignature = BuildCourseOfficerSignature(db);
+                    var courseOfficerSignature = Services.CourseOfficerSignature.Build(db);
 
                     var result = _xlsxGenerationService.Generate(
                         template.Content, template.TemplateRowIndex, template.UsesPlaceholders,
@@ -707,7 +696,8 @@ namespace GenDoc.Services.Generation
                     var current = db.GeneratedGroupDocuments
                         .FirstOrDefault(g => g.TemplateId == template.Id && g.IntakeId == null && g.IsCurrent);
 
-                    if (!regenerateExisting && current is not null && current.RosterHash == rosterHash)
+                    if (!regenerateExisting && current is not null && current.RosterHash == rosterHash
+                        && ExistsInOutputFolder(outputFolder, current.FileName))
                     {
                         skipped++;
                         continue;
@@ -895,34 +885,41 @@ namespace GenDoc.Services.Generation
             return string.IsNullOrWhiteSpace(room.Building) ? room.Number : $"{room.Building} {room.Number}";
         }
 
+        // Наявність запису в архіві БД сама по собі — НЕ привід пропустити генерацію:
+        // користувач міг обрати іншу теку, перенести або видалити файли. Якщо в
+        // цільовій теці файлу нема — документ треба сформувати знову, інакше запуск
+        // мовчки завершується з «усе пропущено» і порожньою текою.
+        internal static bool ExistsInOutputFolder(string outputFolder, string? fileName)
+            => !string.IsNullOrWhiteSpace(fileName)
+               && File.Exists(Path.Combine(outputFolder, fileName));
+
+        // Персональний документ: «ПРІЗВИЩЕ Ім'я Назва шаблону.docx». Без дати —
+        // документ прив'язаний до людини, а не до дня формування.
         private static string BuildFileName(Recipient recipient, string templateName, HashSet<string> usedFileNames)
         {
-            var baseName = $"{recipient.LastName}_{recipient.FirstName}_{templateName}";
-            foreach (var invalidChar in Path.GetInvalidFileNameChars())
-                baseName = baseName.Replace(invalidChar, '_');
-
-            var fileName = baseName + ".docx";
-            var suffix = 2;
-            while (!usedFileNames.Add(fileName))
-            {
-                fileName = $"{baseName}_{suffix}.docx";
-                suffix++;
-            }
-
-            return fileName;
+            var baseName = $"{recipient.LastName} {recipient.FirstName} {TemplateNaming.Clean(templateName)}";
+            return MakeUnique(baseName, usedFileNames, ".docx");
         }
 
+        // Групова відомість: «Залік Додаток 8 06.08.2026.xlsx» — назва шаблону без
+        // технічного префікса «Шаблон_» і дата крапками, без підкреслень.
         private static string BuildGroupFileName(string templateName, HashSet<string> usedFileNames, string extension = ".xlsx")
         {
-            var baseName = templateName;
+            var baseName = $"{TemplateNaming.Clean(templateName)} {TemplateNaming.FormatDate(DateTime.Now)}";
+            return MakeUnique(baseName, usedFileNames, extension);
+        }
+
+        private static string MakeUnique(string baseName, HashSet<string> usedFileNames, string extension)
+        {
             foreach (var invalidChar in Path.GetInvalidFileNameChars())
-                baseName = baseName.Replace(invalidChar, '_');
+                baseName = baseName.Replace(invalidChar, ' ');
+            baseName = string.Join(' ', baseName.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
             var fileName = baseName + extension;
             var suffix = 2;
             while (!usedFileNames.Add(fileName))
             {
-                fileName = $"{baseName}_{suffix}{extension}";
+                fileName = $"{baseName} ({suffix}){extension}";
                 suffix++;
             }
 

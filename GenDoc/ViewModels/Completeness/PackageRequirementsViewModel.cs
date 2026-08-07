@@ -10,6 +10,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.ViewModels.Completeness
 {
+    // Пункт випадайки «додати шаблон». Саме тип, а не (int Id, string Name):
+    // WPF не вміє DisplayMemberPath="Name" по ValueTuple — імена полів кортежу
+    // існують лише на етапі компіляції, у рантаймі це Item1/Item2, та й ті поля,
+    // а не властивості. Біндинг мовчки віддавав порожні рядки.
+    public record TemplateChoice(int Id, string Name);
+
     public partial class ExportTemplateLinkRowViewModel : ObservableObject
     {
         public ExportTemplateLinkRowViewModel(int? linkId, int exportTemplateId, string name, int sortOrder, FitnessFilter filter)
@@ -34,7 +40,11 @@ namespace GenDoc.ViewModels.Completeness
     {
         public RequirementTemplateRowViewModel(MatrixTemplateInfo info, bool hasDocuments)
         {
-            LinkId = info.LinkId;
+            // MatrixTemplateInfo.LinkId — не-nullable int, тож щойно доданий шаблон
+            // приходить із сентинелом 0 (див. AddTemplateAsync). Тут він мусить стати
+            // null, інакше збереження візьме гілку «оновити наявний зв'язок» і піде
+            // шукати зв'язок з Id = 0, якого не існує.
+            LinkId = info.LinkId == 0 ? null : info.LinkId;
             TemplateId = info.TemplateId;
             Name = info.Name;
             SortOrder = info.SortOrder;
@@ -75,16 +85,16 @@ namespace GenDoc.ViewModels.Completeness
 
         public string PackageName { get; private set; } = string.Empty;
         public ObservableCollection<RequirementTemplateRowViewModel> Rows { get; } = new();
-        public ObservableCollection<(int Id, string Name)> AvailableTemplates { get; } = new();
+        public ObservableCollection<TemplateChoice> AvailableTemplates { get; } = new();
 
         public ObservableCollection<ExportTemplateLinkRowViewModel> ExportRows { get; } = new();
-        public ObservableCollection<(int Id, string Name)> AvailableExportTemplates { get; } = new();
+        public ObservableCollection<TemplateChoice> AvailableExportTemplates { get; } = new();
 
         [ObservableProperty]
-        private (int Id, string Name)? selectedTemplateToAdd;
+        private TemplateChoice? selectedTemplateToAdd;
 
         [ObservableProperty]
-        private (int Id, string Name)? selectedExportTemplateToAdd;
+        private TemplateChoice? selectedExportTemplateToAdd;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasPreview))]
@@ -131,7 +141,7 @@ namespace GenDoc.ViewModels.Completeness
         {
             var available = await _completenessService.GetTemplatesNotInPackageAsync(_packageId);
             AvailableTemplates.Clear();
-            foreach (var t in available) AvailableTemplates.Add(t);
+            foreach (var t in available) AvailableTemplates.Add(new TemplateChoice(t.Id, t.Name));
             SelectedTemplateToAdd = AvailableTemplates.FirstOrDefault();
         }
 
@@ -139,7 +149,7 @@ namespace GenDoc.ViewModels.Completeness
         {
             var available = _generationService.GetExportTemplatesNotInPackage(_packageId);
             AvailableExportTemplates.Clear();
-            foreach (var t in available) AvailableExportTemplates.Add(t);
+            foreach (var t in available) AvailableExportTemplates.Add(new TemplateChoice(t.Id, t.Name));
             SelectedExportTemplateToAdd = AvailableExportTemplates.FirstOrDefault();
             return Task.CompletedTask;
         }

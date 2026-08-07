@@ -85,6 +85,90 @@ public class DatabaseSchemaInitializerTests
         Assert.Equal(1, count);
     }
 
+    // Реальний збій: у робочій базі таблиця Weapons з'явилась з проміжного білда без
+    // RawText. CREATE TABLE її вже не перестворює, тож EF валився на генерації з
+    // 'no such column: w.RawText'. Ensure* мусить дорощувати колонки, а не лише створювати.
+    [Fact]
+    public void EnsureWeaponVehicleTables_ExistingTableWithoutRawText_AddsMissingColumns()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = """
+                CREATE TABLE "Weapons" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_Weapons" PRIMARY KEY AUTOINCREMENT,
+                    "RecipientId" INTEGER NOT NULL,
+                    "Name" TEXT NOT NULL,
+                    "SerialNumber" TEXT NOT NULL
+                );
+                """;
+            cmd.ExecuteNonQuery();
+        }
+
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = """
+                INSERT INTO "Weapons" ("Id", "RecipientId", "Name", "SerialNumber")
+                VALUES (1, 5, 'АКС-74', '903530');
+                """;
+            cmd.ExecuteNonQuery();
+        }
+
+        DatabaseSchemaInitializer.EnsureWeaponVehicleTables((DbConnection)connection);
+
+        var columns = DatabaseSchemaInitializer.GetExistingColumns((DbConnection)connection, "Weapons");
+        Assert.Contains("RawText", columns);
+        Assert.Contains("IssuedAt", columns);
+        Assert.Contains("Note", columns);
+        Assert.Contains("DeletedAt", columns);
+        Assert.Contains("DeletedBy", columns);
+
+        // Наявні дані не втрачені, і запит із новою колонкою тепер виконується.
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = """SELECT "Name", "SerialNumber", "RawText" FROM "Weapons" WHERE "Id" = 1;""";
+            using var reader = cmd.ExecuteReader();
+            Assert.True(reader.Read());
+            Assert.Equal("АКС-74", reader.GetString(0));
+            Assert.Equal("903530", reader.GetString(1));
+            Assert.True(reader.IsDBNull(2));
+        }
+
+        // Вставка з RawText — те, що робить імпорт зброї.
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = """
+                INSERT INTO "Weapons" ("RecipientId", "Name", "SerialNumber", "RawText")
+                VALUES (5, 'ПМ', '1234', 'ПМ №1234');
+                """;
+            cmd.ExecuteNonQuery();
+        }
+    }
+
+    // Чиста база: таблиці створюються з нуля вже повними, повторний виклик — no-op.
+    [Fact]
+    public void EnsureWeaponVehicleTables_FreshDatabase_CreatesTablesAndIsIdempotent()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+
+        DatabaseSchemaInitializer.EnsureWeaponVehicleTables((DbConnection)connection);
+        DatabaseSchemaInitializer.EnsureWeaponVehicleTables((DbConnection)connection); // повторно
+
+        var weaponColumns = DatabaseSchemaInitializer.GetExistingColumns((DbConnection)connection, "Weapons");
+        Assert.Contains("RawText", weaponColumns);
+
+        var vehicleColumns = DatabaseSchemaInitializer.GetExistingColumns((DbConnection)connection, "Vehicles");
+        Assert.Contains("Model", vehicleColumns);
+        Assert.Contains("PlateNumber", vehicleColumns);
+
+        // Жодна колонка не продубльована повторним викликом.
+        Assert.Equal(weaponColumns.Count, DatabaseSchemaInitializer
+            .GetExistingColumns((DbConnection)connection, "Weapons").Count);
+    }
+
     private static void CreateOldSchema(SqliteConnection connection)
     {
         using (var pragma = connection.CreateCommand())

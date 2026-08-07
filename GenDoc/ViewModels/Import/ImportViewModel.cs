@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -85,9 +86,16 @@ public partial class ImportViewModel : ObservableObject
 
         var summary = _importService.Import(_parsed, ImportAsPermanentStaff);
 
-        MessageBox.Show(
-            $"Імпортовано {summary.Imported}, пропущено {summary.Skipped}, помилок {summary.Errors}",
-            "Імпорт завершено", MessageBoxButton.OK, MessageBoxImage.Information);
+        var message = $"Імпортовано {summary.Imported}, пропущено {summary.Skipped}, помилок {summary.Errors}";
+        if (summary.ErrorMessages.Count > 0)
+        {
+            message += "\n\nПричини:\n" + string.Join("\n", summary.ErrorMessages.Take(3));
+            if (summary.ErrorMessages.Count > 3)
+                message += $"\n…та ще {summary.ErrorMessages.Count - 3}";
+        }
+
+        MessageBox.Show(message, "Імпорт завершено", MessageBoxButton.OK,
+            summary.Errors > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
 
         Reset();
     }

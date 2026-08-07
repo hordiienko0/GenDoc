@@ -125,6 +125,7 @@ public class ImportService : IImportService
         var imported = 0;
         var skipped = 0;
         var errors = 0;
+        var errorMessages = new List<string>();
 
         foreach (var row in rows)
         {
@@ -196,26 +197,39 @@ public class ImportService : IImportService
                     Vehicle = NullIfEmpty(row.Fields.Vehicle)
                 };
 
-                db.Recipients.Add(recipient);
-                db.SaveChanges();
-
+                // Зброя — через навігаційну колекцію, до єдиного SaveChanges: рядок
+                // зберігається "все або нічого". Два окремі SaveChanges лишали людину
+                // в базі без її зброї, якщо друга вставка падала.
                 foreach (var (name, serialNumber, rawText) in ParseWeaponUnits(row.Fields.WeaponRaw))
                 {
-                    db.Weapons.Add(new Weapon
+                    recipient.Weapons.Add(new Weapon
                     {
-                        RecipientId = recipient.Id,
                         Name = name,
                         SerialNumber = serialNumber,
                         RawText = rawText
                     });
                 }
-                if (row.Fields.WeaponRaw.Trim().Length > 0) db.SaveChanges();
+
+                db.Recipients.Add(recipient);
+                db.SaveChanges();
 
                 imported++;
             }
-            catch
+            catch (Exception ex)
             {
+                // Невдалий SaveChanges лишає сутності в ChangeTracker у стані Added,
+                // і тоді КОЖЕН наступний SaveChanges падає на них знову — один битий
+                // рядок валив увесь подальший імпорт. Від'єднуємо незбережене.
+                // Кеші unitCache/orgNodeCache/roomCache від цього не страждають:
+                // Resolve* роблять SaveChanges одразу, тож їхні сутності вже Unchanged.
+                foreach (var entry in db.ChangeTracker.Entries()
+                             .Where(e => e.State != EntityState.Unchanged).ToList())
+                {
+                    entry.State = EntityState.Detached;
+                }
+
                 errors++;
+                errorMessages.Add($"Рядок {row.RowNumber}: {ex.GetBaseException().Message}");
             }
         }
 
@@ -226,7 +240,7 @@ public class ImportService : IImportService
             WeakReferenceMessenger.Default.Send(new CountsChangedMessage());
         }
 
-        return new ImportSummary(imported, skipped, errors);
+        return new ImportSummary(imported, skipped, errors) { ErrorMessages = errorMessages };
     }
 
     private static string? NullIfEmpty(string value) => string.IsNullOrWhiteSpace(value) ? null : value;

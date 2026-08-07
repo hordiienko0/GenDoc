@@ -61,7 +61,7 @@ namespace GenDoc.Services.Templates
 
             var template = new Template
             {
-                Name = Path.GetFileNameWithoutExtension(filePath),
+                Name = TemplateNaming.Clean(Path.GetFileNameWithoutExtension(filePath)),
                 OriginalFileName = Path.GetFileName(filePath),
                 Content = content,
                 UploadedAt = DateTime.Now,
