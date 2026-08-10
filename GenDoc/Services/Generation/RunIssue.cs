@@ -29,7 +29,22 @@ namespace GenDoc.Services.Generation
 
             try
             {
-                issues = JsonSerializer.Deserialize<List<RunIssue>>(raw, Options) ?? new List<RunIssue>();
+                var parsed = JsonSerializer.Deserialize<List<RunIssue>>(raw, Options) ?? new List<RunIssue>();
+
+                // Non-nullable параметри запису — це компіляторна, а не рантайм-гарантія:
+                // System.Text.Json її не перевіряє і спокійно підставить null там, де
+                // JSON-об'єкт не мав відповідного поля (наприклад, "[{}]"). Ця функція —
+                // єдине місце, чия робота полягає в тому, щоб пережити будь-який вміст
+                // колонки Summary (без CHECK-обмеження, редагована вручну), тож рядок
+                // з такою формою вважаємо невалідним JSON і віддаємо на легасі-парсер,
+                // а не падаємо з NullReferenceException у виклику.
+                if (parsed.Exists(i => i.Phase is null || i.Person is null || i.TemplateName is null || i.Message is null))
+                {
+                    issues = new List<RunIssue>();
+                    return false;
+                }
+
+                issues = parsed;
                 return true;
             }
             catch (JsonException)
