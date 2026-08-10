@@ -33,16 +33,27 @@ public class DocxRealTemplateTests : IDisposable
         if (doc.MainDocumentPart?.Document?.Body is { } body)
             parts.Add(string.Concat(body.Descendants<Text>().Select(t => t.Text)));
         foreach (var header in doc.MainDocumentPart!.HeaderParts)
-            parts.Add(string.Concat(header.Header.Descendants<Text>().Select(t => t.Text)));
+        {
+            if (header.Header is { } headerElement)
+                parts.Add(string.Concat(headerElement.Descendants<Text>().Select(t => t.Text)));
+        }
         foreach (var footer in doc.MainDocumentPart!.FooterParts)
-            parts.Add(string.Concat(footer.Footer.Descendants<Text>().Select(t => t.Text)));
+        {
+            if (footer.Footer is { } footerElement)
+                parts.Add(string.Concat(footerElement.Descendants<Text>().Select(t => t.Text)));
+        }
         return string.Join("\n", parts);
     }
 
     private static List<string> ParagraphTexts(string path)
     {
         using var doc = WordprocessingDocument.Open(path, false);
-        return doc.MainDocumentPart!.Document.Body!
+        // Тіло щойно відкритого/побудованого документа завжди є — це гарантія
+        // структури docx, а не гіпотетичний випадок; кидаємо явно замість "!",
+        // щоб компілятор бачив ненульовість без придушення попередження.
+        var body = doc.MainDocumentPart?.Document?.Body
+            ?? throw new InvalidOperationException($"У документі відсутнє тіло (Body): {path}");
+        return body
             .Descendants<Paragraph>()
             .Select(p => string.Concat(p.Descendants<Text>().Select(t => t.Text)).Trim())
             .ToList();
@@ -201,7 +212,9 @@ public class DocxRealTemplateTests : IDisposable
         using (var doc = WordprocessingDocument.Create(stream, DocumentFormat.OpenXml.WordprocessingDocumentType.Document))
         {
             doc.AddMainDocumentPart().Document = new Document(new Body());
-            var target = doc.MainDocumentPart!.Document.Body!;
+            // Тіло щойно створено рядком вище — гарантовано не null.
+            var target = doc.MainDocumentPart?.Document?.Body
+                ?? throw new InvalidOperationException("Не вдалося створити тіло синтетичного документа.");
 
             void P(string text) => target.AppendChild(new Paragraph(new Run(new Text(text))));
 

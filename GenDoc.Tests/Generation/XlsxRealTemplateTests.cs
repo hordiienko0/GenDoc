@@ -57,6 +57,13 @@ public class XlsxRealTemplateTests
             Assert.Contains(roster[i].LastName, sheet.Row(10 + i).CellsUsed().Select(c => c.GetString()).ToList()
                 .Aggregate(string.Empty, (a, b) => a + b));
 
+        // Заголовок (клітинка B4, злита в B4:I4) — рівно один раз. Це саме той
+        // клас бага, заради якого переписали FindTemplateRow: шапка вважалась
+        // рядком-шаблоном і клонувалась на кожного слухача.
+        var headerCount = cells.Count(t =>
+            t.Contains("складання заліку зі знань вимог безпеки", StringComparison.Ordinal));
+        Assert.Equal(1, headerCount);
+
         Assert.DoesNotContain(cells, t => t.Contains("{{", StringComparison.Ordinal));
     }
 
@@ -121,13 +128,19 @@ public class XlsxRealTemplateTests
         Assert.Equal(singleRow + (roster.Count - 1), manyRow);
     }
 
-    // Об'єднання нижче рядка-шаблону мають лишитись об'єднаннями після вставки рядків.
+    // У справжньому файлі (OOXML: <mergeCells count="5">) п'ять об'єднань:
+    // A1:I3, B4:I4, B5:I5, B6:I6 — усі НАД рядком-шаблоном (10) — і рівно одне
+    // під ним: B11:I11 (блок підписів). Ростер з 5 людей вставляє 4 рядки
+    // (5 − 1), тож B11:I11 має з'їхати рівно на B15:I15, а решта чотирьох —
+    // лишитись на місці (вони вище точки вставки, їх ніщо не зсуває).
     [Fact]
-    public void Zalik_MergedRangesBelowTemplateRow_SurviveRowInsertion()
+    public void Zalik_MergeBelowTemplateRow_ShiftsDownAndStaysMerged()
     {
         using var original = new XLWorkbook(new MemoryStream(TemplateFixtures.Bytes(TemplateFixtures.ZalikXlsx)));
-        var originalBelow = original.Worksheets.First().MergedRanges
-            .Count(m => m.RangeAddress.FirstAddress.RowNumber > 10);
+        var originalMerges = original.Worksheets.First().MergedRanges
+            .Select(m => m.RangeAddress.ToString() ?? string.Empty)
+            .ToList();
+        Assert.Equal(new[] { "A1:I3", "B4:I4", "B5:I5", "B6:I6", "B11:I11" }, originalMerges);
 
         using var produced = Generate(TemplateFixtures.ZalikXlsx, TemplateFixtures.Roster(5),
             new Dictionary<string, string>
@@ -139,10 +152,13 @@ public class XlsxRealTemplateTests
                 ["{{піб_начальника}}"] = "І. ПЕТРЕНКО"
             }, out _, courseOfficerSignature: "майор В. КОВАЛЕНКО");
 
-        var producedBelow = produced.Worksheets.First().MergedRanges
-            .Count(m => m.RangeAddress.FirstAddress.RowNumber > 10 + 5 - 1);
+        var producedMerges = produced.Worksheets.First().MergedRanges
+            .Select(m => m.RangeAddress.ToString() ?? string.Empty)
+            .ToList();
 
-        Assert.Equal(originalBelow, producedBelow);
+        // Об'єднання над рядком-шаблоном — без змін; те, що було під ним, з'їхало
+        // рівно на 4 рядки (кількість вставлених рядків) і лишилось об'єднаним.
+        Assert.Equal(new[] { "A1:I3", "B4:I4", "B5:I5", "B6:I6", "B15:I15" }, producedMerges);
     }
 
     // Оцінки мусять бути стабільні: два прогони дають ті самі числа, а загальна —
