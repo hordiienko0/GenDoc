@@ -142,7 +142,12 @@ public class GroupDocumentArchiveTests
         var rapportB = AddDocxTemplate(db, "Рапорт Б");
         var aV1 = AddGroupDocument(db, null, rapportA, version: 1, isCurrent: false);
         var aV2 = AddGroupDocument(db, null, rapportA, version: 2, isCurrent: true);
-        var bV1 = AddGroupDocument(db, null, rapportB, version: 1, isCurrent: true);
+        // bV1 навмисно має вищу версію (3), а не 1: інакше aV1 і bV1 дають нічию за
+        // Version, і OrderByDescending(Version).FirstOrDefault() без тайбрейка випадково
+        // повертає aV1 навіть у зіпсованому (кросс-шаблонному) наборі кандидатів — тест
+        // проходив би і на багу, і на фіксі. З version:3 зіпсований запит натомість
+        // детерміновано обирає bV1, aV1 лишається непідвищеним, і тест валиться до фіксу.
+        var bV1 = AddGroupDocument(db, null, rapportB, version: 3, isCurrent: true);
 
         await TestServices.Archive(db).DeleteGroupAsync(new[] { aV2 });
 
