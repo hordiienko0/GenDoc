@@ -192,4 +192,55 @@ public class RunPackageReportingTests : IDisposable
         Assert.Equal("Наказ про відрядження", errorItem.TemplateName);
         Assert.Equal("помилка: файл шаблону пошкоджено", errorItem.Status);
     }
+
+    // Знахідка фінального рев'ю (Finding 1): пропуск через порожній склад і
+    // незаповнені теги — не помилки, run.ErrorCount за них не росте, тож і
+    // рядок у переліку не має бути позначений як "помилка:". Разом з тим
+    // справжній збій (result.Success == false) лишається помилкою.
+    [Fact]
+    public async Task GetRunItemsAsync_RendersInformationalIssueWithoutErrorPrefix_ButKeepsRealFailureAsError()
+    {
+        using var db = new TestDb();
+        int runId;
+        using (var ctx = db.Factory.CreateDbContext())
+        {
+            ctx.Users.Add(new UserProfile { FullName = "Тест Тестович", PasswordHash = "x", CreatedAt = DateTime.Now });
+            var package = new GenerationPackage { Name = "Пакет" };
+            ctx.GenerationPackages.Add(package);
+            ctx.SaveChanges();
+
+            var summary = RunIssue.Serialize(new List<RunIssue>
+            {
+                new(RunIssue.PhaseXlsx, string.Empty, "Відомість-порожня",
+                    "пропущено — немає людей за фільтром придатності", IsError: false),
+                new(RunIssue.PhaseXlsx, string.Empty, "Відомість-зламана",
+                    "файл шаблону пошкоджено", IsError: true)
+            });
+
+            var run = new GenerationPackageRun
+            {
+                GenerationPackageId = package.Id,
+                RunAt = DateTime.Now,
+                RunByUserId = 1,
+                GeneratedCount = 0,
+                SkippedCount = 1,
+                ErrorCount = 1,
+                Summary = summary
+            };
+            ctx.GenerationPackageRuns.Add(run);
+            ctx.SaveChanges();
+            runId = run.Id;
+        }
+
+        var items = await TestServices.Archive(db).GetRunItemsAsync(runId);
+
+        var infoItem = Assert.Single(items.Where(i => i.TemplateName == "Відомість-порожня"));
+        Assert.False(infoItem.IsError);
+        Assert.Equal("пропущено — немає людей за фільтром придатності", infoItem.Status);
+        Assert.DoesNotContain("помилка", infoItem.Status, StringComparison.Ordinal);
+
+        var errorItem = Assert.Single(items.Where(i => i.TemplateName == "Відомість-зламана"));
+        Assert.True(errorItem.IsError);
+        Assert.Equal("помилка: файл шаблону пошкоджено", errorItem.Status);
+    }
 }

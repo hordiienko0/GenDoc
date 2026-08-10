@@ -235,4 +235,41 @@ public class GroupDocumentArchiveTests
         Assert.False(result.Success);
         Assert.Contains("не збережено в архіві", result.ErrorMessage);
     }
+
+    // Фінальне рев'ю, Finding 2: GetGroupVersionsAsync лишався єдиним місцем, яке
+    // порівнювало серію вручну (без g.IntakeId, і без переходу через SameGroupSeries,
+    // яким керуються DeleteGroupAsync/MakeGroupCurrentAsync/RestoreGroupAsync). Тест
+    // покриває обидва ґатунки групових документів і те, що чужий шаблон не потрапляє
+    // до переліку версій.
+    [Fact]
+    public async Task GetGroupVersionsAsync_Xlsx_ReturnsOwnVersionsNewestFirst_ExcludingOtherTemplate()
+    {
+        using var db = new TestDb();
+        SeedUser(db);
+        var zalik = AddExportTemplate(db, "Залік");
+        var dopusk = AddExportTemplate(db, "Допуск");
+        var zalikV1 = AddGroupDocument(db, zalik, null, version: 1, isCurrent: false);
+        var zalikV2 = AddGroupDocument(db, zalik, null, version: 2, isCurrent: true);
+        AddGroupDocument(db, dopusk, null, version: 1, isCurrent: true);
+
+        var versions = await TestServices.Archive(db).GetGroupVersionsAsync(zalik, null);
+
+        Assert.Equal(new[] { zalikV2, zalikV1 }, versions.Select(v => v.Id));
+    }
+
+    [Fact]
+    public async Task GetGroupVersionsAsync_Docx_ReturnsOwnVersionsNewestFirst_ExcludingOtherTemplate()
+    {
+        using var db = new TestDb();
+        SeedUser(db);
+        var rapportA = AddDocxTemplate(db, "Рапорт А");
+        var rapportB = AddDocxTemplate(db, "Рапорт Б");
+        var aV1 = AddGroupDocument(db, null, rapportA, version: 1, isCurrent: false);
+        var aV2 = AddGroupDocument(db, null, rapportA, version: 2, isCurrent: true);
+        AddGroupDocument(db, null, rapportB, version: 1, isCurrent: true);
+
+        var versions = await TestServices.Archive(db).GetGroupVersionsAsync(null, rapportA);
+
+        Assert.Equal(new[] { aV2, aV1 }, versions.Select(v => v.Id));
+    }
 }

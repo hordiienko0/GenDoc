@@ -547,7 +547,7 @@ namespace GenDoc.Services.Generation
                 {
                     skipped++;
                     issues.Add(new RunIssue(RunIssue.PhaseXlsx, string.Empty, template.Name,
-                        "пропущено — немає людей за фільтром придатності"));
+                        "пропущено — немає людей за фільтром придатності", IsError: false));
                     continue;
                 }
 
@@ -619,7 +619,7 @@ namespace GenDoc.Services.Generation
 
                     if (result.UnfilledTags.Count > 0)
                         issues.Add(new RunIssue(RunIssue.PhaseXlsx, string.Empty, template.Name,
-                            $"не заповнено теги — {string.Join(", ", result.UnfilledTags)}"));
+                            $"не заповнено теги — {string.Join(", ", result.UnfilledTags)}", IsError: false));
                 }
                 catch (Exception ex)
                 {
@@ -682,7 +682,7 @@ namespace GenDoc.Services.Generation
                 {
                     skipped++;
                     issues.Add(new RunIssue(RunIssue.PhaseDocxGroup, string.Empty, template.Name,
-                        "пропущено — немає людей за обраним складом"));
+                        "пропущено — немає людей за обраним складом", IsError: false));
                     continue;
                 }
 
@@ -756,7 +756,7 @@ namespace GenDoc.Services.Generation
 
                     if (result.UnfilledTags.Count > 0)
                         issues.Add(new RunIssue(RunIssue.PhaseDocxGroup, string.Empty, template.Name,
-                            $"не заповнено теги — {string.Join(", ", result.UnfilledTags)}"));
+                            $"не заповнено теги — {string.Join(", ", result.UnfilledTags)}", IsError: false));
                 }
                 catch (Exception ex)
                 {

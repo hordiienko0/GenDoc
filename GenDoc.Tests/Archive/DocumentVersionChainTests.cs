@@ -248,4 +248,20 @@ public class DocumentVersionChainTests
         Assert.False(result.Success);
         Assert.Contains("не збережено в архіві", result.ErrorMessage);
     }
+
+    // Фінальне рев'ю, Finding 6: рядок GeneratedDocument міг зникнути між тим, як
+    // список відкрили, і кліком по ньому (видалення в іншому сеансі). FirstAsync
+    // на батьківському рядку падав з "Sequence contains no elements" — той самий
+    // сирий текст, який ця гілка мала прибрати з користувацьких повідомлень.
+    [Fact]
+    public async Task OpenAsync_StaleDocumentId_ReturnsFailureInsteadOfThrowing()
+    {
+        using var db = new TestDb();
+
+        var result = await TestServices.Archive(db).OpenAsync(documentId: 999);
+
+        Assert.False(result.Success);
+        Assert.NotNull(result.ErrorMessage);
+        Assert.Contains("уже відсутній в архіві", result.ErrorMessage);
+    }
 }
