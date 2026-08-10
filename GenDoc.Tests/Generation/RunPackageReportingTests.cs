@@ -63,19 +63,56 @@ public class RunPackageReportingTests : IDisposable
         return package.Id;
     }
 
+    // Той самий пакет, але додатково зі зламаним ГРУПОВИМ DOCX-шаблоном
+    // (Template.Kind = Group). Навіщо: у пакеті з самою лише XLSX-відомістю
+    // фаза групового DOCX узагалі не запускається (нема жодного Template
+    // з Kind = Group), тож docxGroup.Generated/Skipped/Errors лишаються 0 —
+    // і "фікс", який підсумовує тільки docx + xlsx (забувши третю фазу),
+    // усе одно пройшов би тест. Зламаний груповий DOCX-шаблон гарантує
+    // docxGroup.Errors == 1, тож пропуск третьої фази стає видимим
+    // розбіжністю в ErrorCount.
+    private static int SeedPackageWithFailingXlsxAndGroupDocx(TestDb db)
+    {
+        var packageId = SeedPackageWithFailingXlsx(db);
+
+        using var ctx = db.Factory.CreateDbContext();
+
+        var brokenGroupDocx = new Template
+        {
+            Name = "Зламаний груповий рапорт",
+            OriginalFileName = "broken-group.docx",
+            Content = new byte[] { 0x00, 0x01, 0x02, 0x03 }, // не є zip/docx
+            Kind = TemplateKind.Group,
+            UploadedAt = DateTime.Now
+        };
+        ctx.Templates.Add(brokenGroupDocx);
+        ctx.SaveChanges();
+
+        var package = ctx.GenerationPackages.First(p => p.Id == packageId);
+        package.Templates.Add(new GenerationPackageTemplate { TemplateId = brokenGroupDocx.Id, SortOrder = 0 });
+        ctx.SaveChanges();
+
+        return packageId;
+    }
+
     // Дефект B1: run.ErrorCount пишеться лише з docx-фази, тож помилка
-    // XLSX-фази на екрані «Запуски» не видно взагалі.
-    [Fact(Skip = "Червоний до Task 14 — лічильники запуску враховують лише docx-фазу")]
+    // XLSX-фази і фази групового DOCX на екрані «Запуски» не видно взагалі.
+    [Fact]
     public void RunPackage_PersistsCountersSummedAcrossAllThreePhases()
     {
         using var db = new TestDb();
-        var packageId = SeedPackageWithFailingXlsx(db);
+        var packageId = SeedPackageWithFailingXlsxAndGroupDocx(db);
 
         var result = TestServices.Generation(db).RunPackage(
             packageId, _folder, new Dictionary<string, string>(),
             regenerateExisting: false, RosterSelection.Everyone, NoProgress);
 
+        // Три фази дають: docx — 0 (нема жодного PerRecipient-шаблону в пакеті),
+        // xlsx — 1 помилка (зламана відомість), груповий docx — 1 помилка
+        // (зламаний груповий шаблон). Це і є "внесок" кожної фази в підсумок.
+        Assert.Equal(0, result.Errors);
         Assert.Equal(1, result.GroupErrors);
+        Assert.Equal(1, result.DocxGroupErrors);
 
         using var ctx = db.Factory.CreateDbContext();
         var run = Assert.Single(ctx.GenerationPackageRuns.ToList());
@@ -93,7 +130,7 @@ public class RunPackageReportingTests : IDisposable
 
     // Дефект B2: рядок «ГРУПА: Назва: текст» розбирається як ПІБ = «ГРУПА»,
     // шаблон = «—», а текст обрізається на першій двокрапці.
-    [Fact(Skip = "Червоний до Task 14 — помилки запуску відновлюються розбором рядка")]
+    [Fact]
     public async Task GetRunItemsAsync_ReportsGroupPhaseErrorWithTemplateNameIntact()
     {
         using var db = new TestDb();
@@ -112,5 +149,47 @@ public class RunPackageReportingTests : IDisposable
         var errorItem = Assert.Single(items.Where(i => i.IsError));
         Assert.Equal("Зламана відомість", errorItem.TemplateName);
         Assert.DoesNotContain("ГРУПА", errorItem.Person, StringComparison.Ordinal);
+    }
+
+    // Зворотна сумісність: у робочих базах уже є запуски, чий Summary — звичайний
+    // текст у старому форматі (до переходу на JSON). RunIssue.TryDeserialize має
+    // відхилити такий рядок (він не починається з '['), а GetRunItemsAsync —
+    // впасти на запасний текстовий парсер, а не мовчки загубити історію помилок.
+    [Fact]
+    public async Task GetRunItemsAsync_FallsBackToLegacyTextFormat_ForRunsPredatingJsonSummary()
+    {
+        using var db = new TestDb();
+
+        using (var ctx = db.Factory.CreateDbContext())
+        {
+            ctx.Users.Add(new UserProfile { FullName = "Тест Тестович", PasswordHash = "x", CreatedAt = DateTime.Now });
+            var package = new GenerationPackage { Name = "Старий пакет" };
+            ctx.GenerationPackages.Add(package);
+            ctx.SaveChanges();
+
+            ctx.GenerationPackageRuns.Add(new GenerationPackageRun
+            {
+                GenerationPackageId = package.Id,
+                RunAt = DateTime.Now,
+                RunByUserId = 1,
+                GeneratedCount = 0,
+                SkippedCount = 0,
+                ErrorCount = 1,
+                // Старий текстовий формат: "ПІБ / Шаблон: помилка".
+                Summary = "ІВАНЕНКО Іван / Наказ про відрядження: файл шаблону пошкоджено"
+            });
+            ctx.SaveChanges();
+        }
+
+        int runId;
+        using (var ctx = db.Factory.CreateDbContext())
+            runId = ctx.GenerationPackageRuns.Select(r => r.Id).Single();
+
+        var items = await TestServices.Archive(db).GetRunItemsAsync(runId);
+
+        var errorItem = Assert.Single(items.Where(i => i.IsError));
+        Assert.Equal("ІВАНЕНКО Іван", errorItem.Person);
+        Assert.Equal("Наказ про відрядження", errorItem.TemplateName);
+        Assert.Equal("помилка: файл шаблону пошкоджено", errorItem.Status);
     }
 }

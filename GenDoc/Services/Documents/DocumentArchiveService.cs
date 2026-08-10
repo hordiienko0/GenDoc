@@ -604,10 +604,26 @@ namespace GenDoc.Services.Documents
                 .ToListAsync();
 
             // Помилки не персистяться порядково — відновлюємо з Summary запуску.
+            // Нові запуски пишуть туди JSON-масив RunIssue; запуски, зроблені до
+            // переходу на JSON, лишили в цій колонці звичайний текст — для них
+            // працює запасний парсер рядків «ПІБ / Шаблон: помилка».
             var summary = await db.GenerationPackageRuns
                 .Where(r => r.Id == runId).Select(r => r.Summary).FirstOrDefaultAsync();
-            if (!string.IsNullOrWhiteSpace(summary))
+
+            if (RunIssue.TryDeserialize(summary, out var issues))
             {
+                foreach (var issue in issues)
+                {
+                    items.Add(new RunItemDto(
+                        issue.Person.Length > 0 ? issue.Person : "—",
+                        issue.TemplateName,
+                        $"помилка: {issue.Message}",
+                        true, 0, null, false, string.Empty));
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(summary))
+            {
+                // Запуски, зроблені до переходу на JSON: старий текстовий формат.
                 foreach (var line in summary.Split('\n', StringSplitOptions.RemoveEmptyEntries))
                 {
                     var parts = line.Split(':', 2);

@@ -323,14 +323,16 @@ namespace GenDoc.Services.Generation
             var xlsx = RunXlsxPhase(db, exportLinks, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, regenerateExisting, progress);
             var docxGroup = RunDocxGroupPhase(db, groupDocxTemplates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, regenerateExisting, progress);
 
-            run.GeneratedCount = docx.Generated;
-            run.SkippedCount = docx.Skipped;
-            run.ErrorCount = docx.Errors;
+            // Раніше писали лише лічильники docx-фази — помилки XLSX і групового
+            // DOCX ставали невидимими на екрані «Запуски». Тепер підсумовуємо всі три.
+            run.GeneratedCount = docx.Generated + xlsx.Generated + docxGroup.Generated;
+            run.SkippedCount = docx.Skipped + xlsx.Skipped + docxGroup.Skipped;
+            run.ErrorCount = docx.Errors + xlsx.Errors + docxGroup.Errors;
 
-            var summaryLines = new List<string>(docx.ErrorMessages);
-            summaryLines.AddRange(xlsx.SummaryLines);
-            summaryLines.AddRange(docxGroup.SummaryLines);
-            run.Summary = summaryLines.Count == 0 ? null : string.Join("\n", summaryLines);
+            var issues = new List<RunIssue>(docx.Issues);
+            issues.AddRange(xlsx.Issues);
+            issues.AddRange(docxGroup.Issues);
+            run.Summary = RunIssue.Serialize(issues);
 
             _auditLogService.LogGenerate(db, "GenerationPackage", packageId,
                 $"{package.Name}: docx — згенеровано {docx.Generated}, пропущено {docx.Skipped}, помилок {docx.Errors}; " +
@@ -375,7 +377,7 @@ namespace GenDoc.Services.Generation
             return recipients;
         }
 
-        private sealed record DocxPhaseResult(int Generated, int Skipped, int Errors, List<string> ErrorMessages);
+        private sealed record DocxPhaseResult(int Generated, int Skipped, int Errors, List<RunIssue> Issues);
 
         // Phase A — по одному документу на людину. Чистий перенос попередньої логіки RunPackage,
         // без змін поведінки: anti-дубль за (RecipientId, TemplateId), версійність, SourceHash.
@@ -419,7 +421,7 @@ namespace GenDoc.Services.Generation
             var generated = 0;
             var skipped = 0;
             var errors = 0;
-            var errorMessages = new List<string>();
+            var issues = new List<RunIssue>();
 
             var total = recipients.Count * templates.Count;
             var n = 0;
@@ -449,7 +451,9 @@ namespace GenDoc.Services.Generation
                         if (!result.Success)
                         {
                             errors++;
-                            errorMessages.Add($"{recipient.FullName} / {template.Name}: {result.ErrorMessage}");
+                            issues.Add(new RunIssue(RunIssue.PhaseDocx,
+                                $"{recipient.LastName} {recipient.FirstName}", template.Name,
+                                result.ErrorMessage ?? "невідома помилка"));
                             continue;
                         }
 
@@ -496,15 +500,16 @@ namespace GenDoc.Services.Generation
                     catch (Exception ex)
                     {
                         errors++;
-                        errorMessages.Add($"{recipient.FullName} / {template.Name}: {ex.Message}");
+                        issues.Add(new RunIssue(RunIssue.PhaseDocx,
+                            $"{recipient.LastName} {recipient.FirstName}", template.Name, ex.Message));
                     }
                 }
             }
 
-            return new DocxPhaseResult(generated, skipped, errors, errorMessages);
+            return new DocxPhaseResult(generated, skipped, errors, issues);
         }
 
-        private sealed record XlsxPhaseResult(int Generated, int Skipped, int Errors, List<string> SummaryLines);
+        private sealed record XlsxPhaseResult(int Generated, int Skipped, int Errors, List<RunIssue> Issues);
 
         // Phase B — один документ на весь список людей (форма-відомість). Немає єдиного
         // Recipient, тому anti-дубль тримається на RosterHash складу, а не на парі (Recipient, Template).
@@ -523,7 +528,7 @@ namespace GenDoc.Services.Generation
             var generated = 0;
             var skipped = 0;
             var errors = 0;
-            var summaryLines = new List<string>();
+            var issues = new List<RunIssue>();
 
             foreach (var link in exportLinks)
             {
@@ -541,7 +546,8 @@ namespace GenDoc.Services.Generation
                 if (roster.Count == 0)
                 {
                     skipped++;
-                    summaryLines.Add($"ГРУПА: {template.Name}: пропущено — немає людей за фільтром придатності");
+                    issues.Add(new RunIssue(RunIssue.PhaseXlsx, string.Empty, template.Name,
+                        "пропущено — немає людей за фільтром придатності"));
                     continue;
                 }
 
@@ -575,7 +581,8 @@ namespace GenDoc.Services.Generation
                     if (!result.Success)
                     {
                         errors++;
-                        summaryLines.Add($"ГРУПА: {template.Name}: {result.ErrorMessage}");
+                        issues.Add(new RunIssue(RunIssue.PhaseXlsx, string.Empty, template.Name,
+                            result.ErrorMessage ?? "невідома помилка"));
                         continue;
                     }
 
@@ -611,16 +618,17 @@ namespace GenDoc.Services.Generation
                     generated++;
 
                     if (result.UnfilledTags.Count > 0)
-                        summaryLines.Add($"ГРУПА: {template.Name}: не заповнено теги — {string.Join(", ", result.UnfilledTags)}");
+                        issues.Add(new RunIssue(RunIssue.PhaseXlsx, string.Empty, template.Name,
+                            $"не заповнено теги — {string.Join(", ", result.UnfilledTags)}"));
                 }
                 catch (Exception ex)
                 {
                     errors++;
-                    summaryLines.Add($"ГРУПА: {template.Name}: {ex.Message}");
+                    issues.Add(new RunIssue(RunIssue.PhaseXlsx, string.Empty, template.Name, ex.Message));
                 }
             }
 
-            return new XlsxPhaseResult(generated, skipped, errors, summaryLines);
+            return new XlsxPhaseResult(generated, skipped, errors, issues);
 
             string ComputeRecipientSourceHash(List<ExportTemplateColumnMapping> mappings, Recipient r, OrganizationSettings? org)
             {
@@ -640,7 +648,7 @@ namespace GenDoc.Services.Generation
             _ => string.Empty
         };
 
-        private sealed record DocxGroupPhaseResult(int Generated, int Skipped, int Errors, List<string> SummaryLines);
+        private sealed record DocxGroupPhaseResult(int Generated, int Skipped, int Errors, List<RunIssue> Issues);
 
         // Phase C — груповий DOCX (Template.Kind == Group): один документ на весь
         // список, з повторюваним блоком. Анти-дубль так само на RosterHash, як і в
@@ -660,7 +668,7 @@ namespace GenDoc.Services.Generation
             var generated = 0;
             var skipped = 0;
             var errors = 0;
-            var summaryLines = new List<string>();
+            var issues = new List<RunIssue>();
 
             // Старшинство звання, потім прізвище/ім'я за українською абеткою —
             // так само, як у джерельному паперовому звіті.
@@ -673,7 +681,8 @@ namespace GenDoc.Services.Generation
                 if (roster.Count == 0)
                 {
                     skipped++;
-                    summaryLines.Add($"ГРУПА DOCX: {template.Name}: пропущено — немає людей за обраним складом");
+                    issues.Add(new RunIssue(RunIssue.PhaseDocxGroup, string.Empty, template.Name,
+                        "пропущено — немає людей за обраним складом"));
                     continue;
                 }
 
@@ -712,7 +721,8 @@ namespace GenDoc.Services.Generation
                     if (!result.Success)
                     {
                         errors++;
-                        summaryLines.Add($"ГРУПА DOCX: {template.Name}: {result.ErrorMessage}");
+                        issues.Add(new RunIssue(RunIssue.PhaseDocxGroup, string.Empty, template.Name,
+                            result.ErrorMessage ?? "невідома помилка"));
                         continue;
                     }
 
@@ -745,16 +755,17 @@ namespace GenDoc.Services.Generation
                     generated++;
 
                     if (result.UnfilledTags.Count > 0)
-                        summaryLines.Add($"ГРУПА DOCX: {template.Name}: не заповнено теги — {string.Join(", ", result.UnfilledTags)}");
+                        issues.Add(new RunIssue(RunIssue.PhaseDocxGroup, string.Empty, template.Name,
+                            $"не заповнено теги — {string.Join(", ", result.UnfilledTags)}"));
                 }
                 catch (Exception ex)
                 {
                     errors++;
-                    summaryLines.Add($"ГРУПА DOCX: {template.Name}: {ex.Message}");
+                    issues.Add(new RunIssue(RunIssue.PhaseDocxGroup, string.Empty, template.Name, ex.Message));
                 }
             }
 
-            return new DocxGroupPhaseResult(generated, skipped, errors, summaryLines);
+            return new DocxGroupPhaseResult(generated, skipped, errors, issues);
         }
 
         private static string? BuildOrgPathSnapshot(int? orgNodeId, Dictionary<int, (string Name, int? ParentId)> nodes)
