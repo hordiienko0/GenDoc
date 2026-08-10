@@ -47,14 +47,38 @@ namespace GenDoc.Services.Templates
             try
             {
                 content = File.ReadAllBytes(filePath);
+            }
+            catch (FileNotFoundException)
+            {
+                return new UploadResult(false, $"Файл не знайдено: {filePath}");
+            }
+            catch (DirectoryNotFoundException)
+            {
+                return new UploadResult(false, $"Теку не знайдено: {Path.GetDirectoryName(filePath)}");
+            }
+            catch (IOException ex)
+            {
+                // Найчастіше — файл відкритий у Word.
+                return new UploadResult(false, $"Не вдалося прочитати файл: {ex.Message}");
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return new UploadResult(false, "Немає прав на читання цього файлу.");
+            }
+
+            try
+            {
                 using var stream = new MemoryStream(content);
                 using var doc = WordprocessingDocument.Open(stream, false);
                 scan = ScanPlaceholders(doc);
             }
-            catch
+            catch (Exception ex)
             {
+                // Тільки тут «не документ Word» — це справді достовірний висновок:
+                // читання файлу вже пройшло успішно, отже проблема саме у форматі вмісту.
                 return new UploadResult(false,
-                    "Файл не є документом Word (.docx). Якщо це текстова чернетка — відкрийте її у Word і збережіть як .docx.");
+                    "Файл не є документом Word (.docx). Якщо це текстова чернетка — відкрийте її у Word "
+                    + $"і збережіть як .docx. Технічна причина: {ex.Message}");
             }
 
             using var db = _dbFactory.CreateDbContext();
