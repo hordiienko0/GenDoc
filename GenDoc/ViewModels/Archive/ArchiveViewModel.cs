@@ -366,7 +366,13 @@ namespace GenDoc.ViewModels.Archive
 
             try
             {
-                await _archiveService.OpenAsync(row.Id);
+                var result = await _archiveService.OpenAsync(row.Id);
+                if (!result.Success)
+                {
+                    MessageBox.Show(result.ErrorMessage, "Відкриття документа",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
                 if (!_openWarningShownThisSession)
                 {
                     _openWarningShownThisSession = true;
@@ -386,7 +392,13 @@ namespace GenDoc.ViewModels.Archive
             if (!row.HasContent) return;
             try
             {
-                await _archiveService.OpenAsync(row.Id);
+                var result = await _archiveService.OpenAsync(row.Id);
+                if (!result.Success)
+                {
+                    MessageBox.Show(result.ErrorMessage, "Відкриття документа",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
                 if (!_openWarningShownThisSession)
                 {
                     _openWarningShownThisSession = true;
@@ -416,7 +428,13 @@ namespace GenDoc.ViewModels.Archive
                 if (dialog.ShowDialog() != true) return;
 
                 IsBusy = true;
-                try { await _archiveService.SaveAsAsync(rows[0].Id, dialog.FileName); }
+                try
+                {
+                    var result = await _archiveService.SaveAsAsync(rows[0].Id, dialog.FileName);
+                    if (!result.Success)
+                        MessageBox.Show(result.ErrorMessage, "Зберегти як",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
                 finally { IsBusy = false; }
                 return;
             }
@@ -639,7 +657,10 @@ namespace GenDoc.ViewModels.Archive
             if (item?.Dto.DocumentId is not int docId || !item.CanOpen) return;
             try
             {
-                await _archiveService.OpenAsync(docId);
+                var result = await _archiveService.OpenAsync(docId);
+                if (!result.Success)
+                    MessageBox.Show(result.ErrorMessage, "Відкриття документа",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             catch (System.ComponentModel.Win32Exception)
             {
@@ -657,7 +678,10 @@ namespace GenDoc.ViewModels.Archive
             var dialog = new SaveFileDialog { FileName = item.Dto.FileName };
             if (dialog.ShowDialog() != true) return;
 
-            await _archiveService.SaveAsAsync(docId, dialog.FileName);
+            var result = await _archiveService.SaveAsAsync(docId, dialog.FileName);
+            if (!result.Success)
+                MessageBox.Show(result.ErrorMessage, "Зберегти як",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         // ── Таб «Групові» ────────────────────────────────────────────────
@@ -776,7 +800,10 @@ namespace GenDoc.ViewModels.Archive
 
             try
             {
-                await _archiveService.OpenGroupAsync(row.Id);
+                var result = await _archiveService.OpenGroupAsync(row.Id);
+                if (!result.Success)
+                    MessageBox.Show(result.ErrorMessage, "Відкриття документа",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             catch (System.ComponentModel.Win32Exception)
             {
@@ -798,7 +825,13 @@ namespace GenDoc.ViewModels.Archive
                 if (dialog.ShowDialog() != true) return;
 
                 IsBusy = true;
-                try { await _archiveService.SaveGroupAsAsync(rows[0].Id, dialog.FileName); }
+                try
+                {
+                    var result = await _archiveService.SaveGroupAsAsync(rows[0].Id, dialog.FileName);
+                    if (!result.Success)
+                        MessageBox.Show(result.ErrorMessage, "Зберегти як",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
                 finally { IsBusy = false; }
                 return;
             }

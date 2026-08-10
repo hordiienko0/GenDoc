@@ -6,7 +6,7 @@ namespace GenDoc.Services.Documents
         Task<ArchiveStats> GetStatsAsync(ArchiveFilter filter);
         Task<ArchiveFilterOptions> GetFilterOptionsAsync();
 
-        Task OpenAsync(int documentId);
+        Task<ArchiveOpResult> OpenAsync(int documentId);
         Task<ArchiveOpResult> SaveAsAsync(int documentId, string targetPath);
         Task<(int Saved, List<string> Errors)> SaveManyAsync(IReadOnlyList<int> documentIds, string targetFolder);
 
@@ -17,7 +17,7 @@ namespace GenDoc.Services.Documents
         Task<ArchiveOpResult> AttachAsync(int documentId, string filePath, string? note);
 
         Task<ArchiveRowDto?> GetCurrentRowAsync(int recipientId, int templateId);
-        Task OpenAttachmentAsync(int attachmentId);
+        Task<ArchiveOpResult> OpenAttachmentAsync(int attachmentId);
         Task<ArchiveOpResult> SaveAttachmentAsAsync(int attachmentId, string targetPath);
         Task<List<DocumentVersionDto>> GetVersionsAsync(int recipientId, int templateId);
         Task<List<AttachmentDto>> GetAttachmentsAsync(int documentId);
@@ -35,7 +35,7 @@ namespace GenDoc.Services.Documents
         // персональна модель, без RecipientId.
         Task<List<GroupDocumentRowDto>> QueryGroupAsync(GroupArchiveFilter filter);
         Task<List<GroupTemplateOption>> GetGroupTemplateOptionsAsync();
-        Task OpenGroupAsync(int groupDocumentId);
+        Task<ArchiveOpResult> OpenGroupAsync(int groupDocumentId);
         Task<ArchiveOpResult> SaveGroupAsAsync(int groupDocumentId, string targetPath);
         Task DeleteGroupAsync(IReadOnlyList<int> groupDocumentIds);
         Task<List<GroupVersionDto>> GetGroupVersionsAsync(int? exportTemplateId, int? docxTemplateId);

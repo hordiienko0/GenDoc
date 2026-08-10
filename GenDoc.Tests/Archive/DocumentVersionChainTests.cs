@@ -201,4 +201,51 @@ public class DocumentVersionChainTests
         Assert.Single(deleted);
         Assert.Equal(2, deleted[0].Version);
     }
+
+    // Легасі-запис без збереженого вмісту не має падати з внутрішнім
+    // «Sequence contains no elements» — користувач мусить побачити пояснення.
+    [Fact]
+    public async Task OpenAsync_DocumentWithoutStoredContent_ReturnsFailureInsteadOfThrowing()
+    {
+        using var db = new TestDb();
+        int docId;
+        using (var ctx = db.Factory.CreateDbContext())
+        {
+            var user = new UserProfile
+            {
+                FullName = "Тест Тестович", PasswordHash = "x", CreatedAt = DateTime.Now
+            };
+            var person = new Recipient
+            {
+                LastName = "БЕЗВМІСТУ", FirstName = "Іван",
+                Rank = "капітан", Position = "слухач", ServiceNumber = "7"
+            };
+            var template = new Template
+            {
+                Name = "Рапорт", OriginalFileName = "r.docx",
+                Content = Array.Empty<byte>(), UploadedAt = DateTime.Now
+            };
+            ctx.Users.Add(user);
+            ctx.Recipients.Add(person);
+            ctx.Templates.Add(template);
+            ctx.SaveChanges();
+
+            var doc = new GeneratedDocument
+            {
+                RecipientId = person.Id, TemplateId = template.Id,
+                GeneratedAt = DateTime.Now, GeneratedByUserId = 1,
+                FileName = "no-content.docx", SizeBytes = 0,
+                Version = 1, IsCurrent = true,
+                SourceType = DocumentSourceType.Generated, HasContent = false
+            };
+            ctx.GeneratedDocuments.Add(doc);
+            ctx.SaveChanges();
+            docId = doc.Id;
+        }
+
+        var result = await TestServices.Archive(db).OpenAsync(docId);
+
+        Assert.False(result.Success);
+        Assert.Contains("не збережено в архіві", result.ErrorMessage);
+    }
 }

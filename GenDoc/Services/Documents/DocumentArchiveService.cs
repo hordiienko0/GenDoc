@@ -12,6 +12,12 @@ namespace GenDoc.Services.Documents
     {
         private const int DefaultMaxDocumentSizeKb = 5120;
 
+        // Легасі-записи (HasContent = false) не мають збережених байтів файлу —
+        // лише метадані. Одне спільне повідомлення для всіх точок, де це виявляється.
+        private const string NoContentMessage =
+            "Файл цього документа не збережено в архіві — доступні лише його дані. " +
+            "Сформуйте документ наново або завантажте файл вручну.";
+
         private readonly IDbContextFactory<AppDbContext> _dbFactory;
         private readonly IAuditLogService _auditLogService;
         private readonly ICurrentUserContext _currentUserContext;
@@ -136,23 +142,28 @@ namespace GenDoc.Services.Documents
             _ => "запланований"
         };
 
-        public async Task OpenAsync(int documentId)
+        public async Task<ArchiveOpResult> OpenAsync(int documentId)
         {
             using var db = _dbFactory.CreateDbContext();
             var doc = await db.GeneratedDocuments.FirstAsync(g => g.Id == documentId);
-            var content = await db.GeneratedDocumentContents.FirstAsync(c => c.GeneratedDocumentId == documentId);
+            var content = await db.GeneratedDocumentContents
+                .FirstOrDefaultAsync(c => c.GeneratedDocumentId == documentId);
+            if (content is null) return new ArchiveOpResult(false, NoContentMessage);
 
             await _tempFileService.OpenAsync(doc.FileName, content.Content);
 
             _auditLogService.Log(db, "Відкрито документ", "GeneratedDocument", documentId, null, doc.FileName);
             await db.SaveChangesAsync();
+            return new ArchiveOpResult(true, null);
         }
 
         public async Task<ArchiveOpResult> SaveAsAsync(int documentId, string targetPath)
         {
             using var db = _dbFactory.CreateDbContext();
             var doc = await db.GeneratedDocuments.FirstAsync(g => g.Id == documentId);
-            var content = await db.GeneratedDocumentContents.FirstAsync(c => c.GeneratedDocumentId == documentId);
+            var content = await db.GeneratedDocumentContents
+                .FirstOrDefaultAsync(c => c.GeneratedDocumentId == documentId);
+            if (content is null) return new ArchiveOpResult(false, NoContentMessage);
 
             var bytes = _watermarkService.Apply(content.Content, doc.FileName);
             await File.WriteAllBytesAsync(targetPath, bytes);
@@ -396,7 +407,7 @@ namespace GenDoc.Services.Documents
                 .FirstOrDefaultAsync();
         }
 
-        public async Task OpenAttachmentAsync(int attachmentId)
+        public async Task<ArchiveOpResult> OpenAttachmentAsync(int attachmentId)
         {
             using var db = _dbFactory.CreateDbContext();
             var attachment = await db.DocumentAttachments.FirstAsync(a => a.Id == attachmentId);
@@ -405,6 +416,7 @@ namespace GenDoc.Services.Documents
             _auditLogService.Log(db, "Відкрито документ", "GeneratedDocument",
                 attachment.GeneratedDocumentId, null, attachment.FileName);
             await db.SaveChangesAsync();
+            return new ArchiveOpResult(true, null);
         }
 
         public async Task<ArchiveOpResult> SaveAttachmentAsAsync(int attachmentId, string targetPath)
@@ -688,23 +700,28 @@ namespace GenDoc.Services.Documents
             return options.OrderBy(o => o.Name, StringComparer.CurrentCulture).ToList();
         }
 
-        public async Task OpenGroupAsync(int groupDocumentId)
+        public async Task<ArchiveOpResult> OpenGroupAsync(int groupDocumentId)
         {
             using var db = _dbFactory.CreateDbContext();
             var doc = await db.GeneratedGroupDocuments.FirstAsync(g => g.Id == groupDocumentId);
-            var content = await db.GeneratedGroupDocumentContents.FirstAsync(c => c.GeneratedGroupDocumentId == groupDocumentId);
+            var content = await db.GeneratedGroupDocumentContents
+                .FirstOrDefaultAsync(c => c.GeneratedGroupDocumentId == groupDocumentId);
+            if (content is null) return new ArchiveOpResult(false, NoContentMessage);
 
             await _tempFileService.OpenAsync(doc.FileName, content.Content);
 
             _auditLogService.Log(db, "Відкрито документ", "GeneratedGroupDocument", groupDocumentId, null, doc.FileName);
             await db.SaveChangesAsync();
+            return new ArchiveOpResult(true, null);
         }
 
         public async Task<ArchiveOpResult> SaveGroupAsAsync(int groupDocumentId, string targetPath)
         {
             using var db = _dbFactory.CreateDbContext();
             var doc = await db.GeneratedGroupDocuments.FirstAsync(g => g.Id == groupDocumentId);
-            var content = await db.GeneratedGroupDocumentContents.FirstAsync(c => c.GeneratedGroupDocumentId == groupDocumentId);
+            var content = await db.GeneratedGroupDocumentContents
+                .FirstOrDefaultAsync(c => c.GeneratedGroupDocumentId == groupDocumentId);
+            if (content is null) return new ArchiveOpResult(false, NoContentMessage);
 
             var bytes = _watermarkService.Apply(content.Content, doc.FileName);
             await File.WriteAllBytesAsync(targetPath, bytes);

@@ -467,7 +467,13 @@ namespace GenDoc.ViewModels.Completeness
         public async Task OpenAsync(MatrixCellViewModel cell)
         {
             if (cell.DocumentId is not int docId) return;
-            try { await _archiveService.OpenAsync(docId); }
+            try
+            {
+                var result = await _archiveService.OpenAsync(docId);
+                if (!result.Success)
+                    MessageBox.Show(result.ErrorMessage, "Відкриття документа",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
             catch (System.ComponentModel.Win32Exception)
             {
                 MessageBox.Show(
@@ -539,7 +545,10 @@ namespace GenDoc.ViewModels.Completeness
             };
             if (dialog.ShowDialog() != true) return;
 
-            await _archiveService.SaveAsAsync(docId, dialog.FileName);
+            var result = await _archiveService.SaveAsAsync(docId, dialog.FileName);
+            if (!result.Success)
+                MessageBox.Show(result.ErrorMessage, "Зберегти як",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         private async Task RefreshCellAsync(MatrixCellViewModel cell)

@@ -65,7 +65,10 @@ namespace GenDoc.ViewModels.Archive
             if (row is null || !row.CanOpen) return;
             try
             {
-                await _archiveService.OpenGroupAsync(row.Dto.Id);
+                var result = await _archiveService.OpenGroupAsync(row.Dto.Id);
+                if (!result.Success)
+                    MessageBox.Show(result.ErrorMessage, "Відкриття документа",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             catch (System.ComponentModel.Win32Exception)
             {
@@ -83,7 +86,10 @@ namespace GenDoc.ViewModels.Archive
             var dialog = new SaveFileDialog { FileName = row.Dto.FileName };
             if (dialog.ShowDialog() != true) return;
 
-            await _archiveService.SaveGroupAsAsync(row.Dto.Id, dialog.FileName);
+            var result = await _archiveService.SaveGroupAsAsync(row.Dto.Id, dialog.FileName);
+            if (!result.Success)
+                MessageBox.Show(result.ErrorMessage, "Зберегти як",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         [RelayCommand]

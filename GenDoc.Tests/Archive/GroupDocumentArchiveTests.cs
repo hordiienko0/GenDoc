@@ -222,7 +222,7 @@ public class GroupDocumentArchiveTests
     }
 
     // Дефект A3: FirstAsync по таблиці вмісту кидає «Sequence contains no elements».
-    [Fact(Skip = "Червоний до Task 13 — запис без вмісту має давати ArchiveOpResult, а не виняток")]
+    [Fact]
     public async Task OpenGroupAsync_DocumentWithoutStoredContent_ReturnsFailureInsteadOfThrowing()
     {
         using var db = new TestDb();
@@ -231,12 +231,8 @@ public class GroupDocumentArchiveTests
         var docId = AddGroupDocument(db, templateId, null, version: 1, isCurrent: true, hasContent: false);
 
         var service = TestServices.Archive(db);
-        // Сигнатуру змінює Task 13; до того часу фіксуємо лише поточну поведінку-виняток.
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.OpenGroupAsync(docId));
-
-        // Після Task 13 (OpenGroupAsync повертає Task<ArchiveOpResult>) замінити тіло на:
-        // var result = await service.OpenGroupAsync(docId);
-        // Assert.False(result.Success);
-        // Assert.Contains("не збережено в архіві", result.ErrorMessage);
+        var result = await service.OpenGroupAsync(docId);
+        Assert.False(result.Success);
+        Assert.Contains("не збережено в архіві", result.ErrorMessage);
     }
 }
