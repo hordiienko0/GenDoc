@@ -6,14 +6,13 @@ using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Wordprocessing;
 using GenDoc.Models;
+using GenDoc.Services.Templates;
 
 namespace GenDoc.Services.Generation
 {
     public class DocumentGenerationService : IDocumentGenerationService
     {
         private static readonly Regex PlaceholderRegex = new(@"\{\{[^{}]+\}\}", RegexOptions.Compiled);
-        private static readonly Regex BlockOpenRegex = new(@"^\{\{#([^{}]+)\}\}$", RegexOptions.Compiled);
-        private static readonly Regex BlockCloseRegex = new(@"^\{\{/([^{}]+)\}\}$", RegexOptions.Compiled);
 
         private const string CountTag = "{{кількість_осіб}}";
         private const string IndexTag = "{{номер}}";
@@ -109,10 +108,9 @@ namespace GenDoc.Services.Generation
             }
         }
 
-        // Розгортає повторюваний блок {{#name}}…{{/name}} у контейнері (тіло/шапка/підвал)
-        // і замінює звичайні мітки поза блоком. Абзаци тіла блоку клонуються по одному
-        // на кожен елемент perRecipientValues, у тому ж порядку, і вставляються перед
-        // закриваючим маркером; обидва маркерні абзаци після цього видаляються цілком.
+        // Розгортає повторювані блоки {{#name}}…{{/name}} у контейнері
+        // (тіло/шапка/підвал) і замінює звичайні мітки поза блоками. Одиниця
+        // повторення — абзац на рівні документа або рядок усередині таблиці.
         private static List<string> ProcessContainer(
             OpenXmlCompositeElement container,
             IReadOnlyList<IDictionary<string, string>> perRecipientValues,
@@ -126,75 +124,98 @@ namespace GenDoc.Services.Generation
                 [CountTag] = perRecipientValues.Count.ToString(CultureInfo.InvariantCulture)
             };
 
-            var paragraphs = container.Descendants<Paragraph>().ToList();
-
-            string? openBlockName = null;
-            Paragraph? openParagraph = null;
-            var bodyParagraphs = new List<Paragraph>();
-
-            foreach (var paragraph in paragraphs)
-            {
-                var text = GetParagraphText(paragraph).Trim();
-                var openMatch = BlockOpenRegex.Match(text);
-                var closeMatch = BlockCloseRegex.Match(text);
-
-                if (openMatch.Success)
-                {
-                    if (openBlockName is not null)
-                        throw new InvalidOperationException(
-                            $"Шаблон «{templateName}»: вкладені блоки не підтримуються: «{{{{#{openMatch.Groups[1].Value}}}}}» усередині «{{{{#{openBlockName}}}}}».");
-
-                    openBlockName = openMatch.Groups[1].Value;
-                    openParagraph = paragraph;
-                    bodyParagraphs = new List<Paragraph>();
-                    continue;
-                }
-
-                if (closeMatch.Success)
-                {
-                    var closeName = closeMatch.Groups[1].Value;
-                    if (openBlockName is null)
-                        throw new InvalidOperationException($"Шаблон «{templateName}»: закриваючий тег «{{{{/{closeName}}}}}» без відповідного «{{{{#{closeName}}}}}».");
-
-                    if (closeName != openBlockName)
-                        throw new InvalidOperationException(
-                            $"Шаблон «{templateName}»: незбіжна назва блоку: очікували «{{{{/{openBlockName}}}}}», отримали «{{{{/{closeName}}}}}».");
-
-                    ExpandBlock(openParagraph!, bodyParagraphs, paragraph, perRecipientValues, sharedWithCount,
-                        unfilled, templateName, openBlockName);
-
-                    openBlockName = null;
-                    openParagraph = null;
-                    bodyParagraphs = new List<Paragraph>();
-                    continue;
-                }
-
-                if (openBlockName is not null)
-                    bodyParagraphs.Add(paragraph);
-                else
-                    ReplaceInParagraph(paragraph, sharedWithCount, unfilled);
-            }
-
-            if (openBlockName is not null)
-                throw new InvalidOperationException($"Шаблон «{templateName}»: блок «{{{{#{openBlockName}}}}}» не закрито тегом «{{{{/{openBlockName}}}}}».");
+            ProcessSiblings(
+                BlockStructure.BlockChildren(container).ToList(),
+                perRecipientValues, sharedWithCount, unfilled, templateName, insideTable: false);
 
             return unfilled;
         }
 
+        // Кінцевий автомат блоку над послідовністю сусідів одного батька.
+        // Викликається двічі: для блокових дітей контейнера і для рядків
+        // таблиці. Тіло блоку за побудовою складається з сусідів маркерів, тож
+        // окремої перевірки «однакового батька» більше не потрібно.
+        //
+        // Правило, що знімає двозначність: поки відкрито блок рівня документа,
+        // таблиця — це вміст блоку і клонується цілком; усередину таблиці по
+        // маркерні рядки заходимо лише тоді, коли блок не відкрито.
+        private static void ProcessSiblings(
+            List<OpenXmlElement> siblings,
+            IReadOnlyList<IDictionary<string, string>> perRecipientValues,
+            IDictionary<string, string> sharedWithCount,
+            List<string> unfilled,
+            string templateName,
+            bool insideTable)
+        {
+            string? openName = null;
+            OpenXmlElement? openElement = null;
+            var body = new List<OpenXmlElement>();
+
+            foreach (var element in siblings)
+            {
+                var text = BlockStructure.MarkerText(element);
+
+                if (BlockStructure.OpenName(text) is { } opened)
+                {
+                    if (openName is not null)
+                        throw new InvalidOperationException(
+                            $"Шаблон «{templateName}»: вкладені блоки не підтримуються: «{{{{#{opened}}}}}» усередині «{{{{#{openName}}}}}».");
+
+                    openName = opened;
+                    openElement = element;
+                    body = new List<OpenXmlElement>();
+                    continue;
+                }
+
+                if (BlockStructure.CloseName(text) is { } closed)
+                {
+                    if (openName is null)
+                        throw new InvalidOperationException(
+                            $"Шаблон «{templateName}»: закриваючий тег «{{{{/{closed}}}}}» без відповідного «{{{{#{closed}}}}}».");
+
+                    if (closed != openName)
+                        throw new InvalidOperationException(
+                            $"Шаблон «{templateName}»: незбіжна назва блоку: очікували «{{{{/{openName}}}}}», отримали «{{{{/{closed}}}}}».");
+
+                    ExpandBlock(openElement!, body, element, perRecipientValues, sharedWithCount,
+                        unfilled, templateName, openName);
+
+                    openName = null;
+                    openElement = null;
+                    body = new List<OpenXmlElement>();
+                    continue;
+                }
+
+                if (openName is not null)
+                {
+                    body.Add(element);
+                    continue;
+                }
+
+                if (!insideTable && element is Table table)
+                {
+                    ProcessSiblings(
+                        BlockStructure.Rows(table).Cast<OpenXmlElement>().ToList(),
+                        perRecipientValues, sharedWithCount, unfilled, templateName, insideTable: true);
+                    continue;
+                }
+
+                ReplaceInElement(element, sharedWithCount, unfilled);
+            }
+
+            if (openName is not null)
+                throw new InvalidOperationException(
+                    $"Шаблон «{templateName}»: блок «{{{{#{openName}}}}}» не закрито тегом «{{{{/{openName}}}}}».");
+        }
+
         private static void ExpandBlock(
-            Paragraph openParagraph, List<Paragraph> bodyParagraphs, Paragraph closeParagraph,
+            OpenXmlElement openElement, List<OpenXmlElement> body, OpenXmlElement closeElement,
             IReadOnlyList<IDictionary<string, string>> perRecipientValues,
             IDictionary<string, string> sharedWithCount,
             List<string> unfilled,
             string templateName,
             string blockName)
         {
-            if (bodyParagraphs.Any(p => !ReferenceEquals(p.Parent, openParagraph.Parent)))
-                throw new InvalidOperationException(
-                    $"Шаблон «{templateName}»: тіло блоку «{{{{#{blockName}}}}}» лежить усередині таблиці. "
-                    + "Повторювані блоки в таблицях поки не підтримуються — винесіть рядки блоку "
-                    + "з таблиці на рівень маркерів {{#…}}/{{/…}}.");
-
             var count = perRecipientValues.Count;
             for (var i = 0; i < count; i++)
             {
@@ -205,23 +226,35 @@ namespace GenDoc.Services.Generation
                 merged[IndexTag] = (i + 1).ToString(CultureInfo.InvariantCulture);
                 merged[SeparatorTag] = i == count - 1 ? "." : ";";
 
-                foreach (var original in bodyParagraphs)
+                foreach (var original in body)
                 {
-                    var clone = (Paragraph)original.CloneNode(true);
-                    closeParagraph.InsertBeforeSelf(clone);
-                    ReplaceInParagraph(clone, merged, unfilled);
+                    var clone = original.CloneNode(true);
+                    closeElement.InsertBeforeSelf(clone);
+                    ReplaceInElement(clone, merged, unfilled);
                 }
             }
 
-            foreach (var original in bodyParagraphs)
+            foreach (var original in body)
                 original.Remove();
 
-            openParagraph.Remove();
-            closeParagraph.Remove();
+            openElement.Remove();
+            closeElement.Remove();
         }
 
-        private static string GetParagraphText(Paragraph paragraph)
-            => string.Concat(paragraph.Descendants<Text>().Select(t => t.Text));
+        // Заміна в усіх абзацах елемента: для абзацу це він сам, для рядка чи
+        // таблиці — абзаци всіх його комірок.
+        private static void ReplaceInElement(
+            OpenXmlElement element, IDictionary<string, string> values, List<string> unfilled)
+        {
+            if (element is Paragraph paragraph)
+            {
+                ReplaceInParagraph(paragraph, values, unfilled);
+                return;
+            }
+
+            foreach (var inner in element.Descendants<Paragraph>())
+                ReplaceInParagraph(inner, values, unfilled);
+        }
 
         // Заміна зі збереженням позиції нетекстових вузлів (w:tab, w:br, w:drawing…):
         // рахуємо зміщення кожного текстового вузла в межах параграфа, знаходимо збіги

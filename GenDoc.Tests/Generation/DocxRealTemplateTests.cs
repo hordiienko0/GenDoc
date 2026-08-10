@@ -228,12 +228,12 @@ public class DocxRealTemplateTests : IDisposable
         return stream.ToArray();
     }
 
-    // Повторюваний блок усередині таблиці ще не підтримується. Важливо, щоб
-    // повідомлення називало шаблон і блок — інакше користувач бачить лише
-    // «Тіло повторюваного блоку має бути на одному рівні…» без жодної підказки,
-    // який саме файл винен.
+    // Побічний наслідок переходу на обхід блокових дітей: якщо в тілі блоку
+    // лежить ціла таблиця, вона клонується на кожну людину — окрема таблиця на
+    // особу. Раніше це була відмова (Task 17), бо обхід був плоским і абзаци
+    // комірок мали інший батько, ніж маркери.
     [Fact]
-    public void GroupBlockInsideTable_FailsWithMessageNamingTemplateAndBlock()
+    public void GroupBlockAroundTable_ClonesTheWholeTablePerPerson()
     {
         var bytes = BuildGroupDocxWithBlockInsideTable();
 
@@ -242,14 +242,20 @@ public class DocxRealTemplateTests : IDisposable
             TemplateStub("Відомість у таблиці"), bytes,
             new List<IDictionary<string, string>>
             {
-                new Dictionary<string, string> { ["{{піб}}"] = "ПЕРШИЙ" }
+                new Dictionary<string, string> { ["{{піб}}"] = "ПЕРШИЙ" },
+                new Dictionary<string, string> { ["{{піб}}"] = "ДРУГИЙ" }
             },
             new Dictionary<string, string>(), path);
 
-        Assert.False(result.Success);
-        Assert.Contains("Відомість у таблиці", result.ErrorMessage);
-        Assert.Contains("список", result.ErrorMessage);
-        Assert.Contains("таблиц", result.ErrorMessage);
+        Assert.True(result.Success, result.ErrorMessage);
+
+        using var produced = WordprocessingDocument.Open(path, false);
+        var tables = produced.MainDocumentPart!.Document!.Body!.Elements<Table>().ToList();
+
+        Assert.Equal(2, tables.Count);
+        Assert.Equal("ПЕРШИЙ", string.Concat(tables[0].Descendants<Text>().Select(t => t.Text)).Trim());
+        Assert.Equal("ДРУГИЙ", string.Concat(tables[1].Descendants<Text>().Select(t => t.Text)).Trim());
+        Assert.DoesNotContain("{{", ReadAllText(path));
     }
 
     private static byte[] BuildGroupDocxWithBlockInsideTable()
