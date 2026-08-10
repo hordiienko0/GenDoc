@@ -299,6 +299,57 @@ public class DocumentGenerationServiceTests
         Assert.False(result.Success);
     }
 
+    // Навмисна асиметрія (другий огляд перед злиттям гілки): GenerateOne не
+    // розуміє блоків і не має вартового (GuardResidualMarkers), і не мусить
+    // його отримати — це рушій без структурного обходу, для нього маркер
+    // просто ще один {{тег}}, якого нема в мапінгу. preserveMarkers у
+    // ReplaceInParagraph за замовчуванням false, і саме GenerateOne — той
+    // єдиний шлях, що ніколи не передає true, тож маркер, який опинився в
+    // звичайному тексті, стирається як незаповнений тег так само, як це
+    // було до всієї гілки з табличними блоками (master). Цей тест закріплює
+    // саме цю різницю з груповим шляхом: тут документ ГЕНЕРУЄТЬСЯ, а не
+    // відмовляє.
+    [Fact]
+    public void GenerateOne_DocumentWithMarker_SucceedsAndErasesMarker_MatchingMaster()
+    {
+        byte[] bytes;
+        using (var ms = new MemoryStream())
+        {
+            using (var wordDoc = WordprocessingDocument.Create(ms, WordprocessingDocumentType.Document, true))
+            {
+                var mainPart = wordDoc.AddMainDocumentPart();
+                mainPart.Document = new Document(new Body(
+                    new Paragraph(new Run(new Text("Список: {{#список}}"))),
+                    new Paragraph(new Run(new Text("{{піб}}"))),
+                    new Paragraph(new Run(new Text("кінець {{/список}}")))));
+                mainPart.Document.Save();
+            }
+            bytes = ms.ToArray();
+        }
+
+        var template = new Template { Name = "Т", Content = bytes };
+        var values = new Dictionary<string, string> { ["{{піб}}"] = "ОДИН" };
+        var outputPath = Path.Combine(Path.GetTempPath(), $"gendoc_test_{Guid.NewGuid():N}.docx");
+        try
+        {
+            var service = new DocumentGenerationService();
+            var result = service.GenerateOne(template, bytes, values, outputPath);
+
+            Assert.True(result.Success, result.ErrorMessage);
+            Assert.Contains("{{#список}}", result.UnfilledTags);
+            Assert.Contains("{{/список}}", result.UnfilledTags);
+
+            using var doc = WordprocessingDocument.Open(outputPath, false);
+            var text = ConcatText(doc.MainDocumentPart!.Document!.Body!);
+            Assert.DoesNotContain("{{", text);
+            Assert.Contains("ОДИН", text);
+        }
+        finally
+        {
+            if (File.Exists(outputPath)) File.Delete(outputPath);
+        }
+    }
+
     private static byte[] BuildDocxWithGroupBlock()
     {
         using var ms = new MemoryStream();

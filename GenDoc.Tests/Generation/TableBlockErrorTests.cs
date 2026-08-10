@@ -171,4 +171,29 @@ public class TableBlockErrorTests : IDisposable
         Assert.Contains("Проба", result.ErrorMessage);
         Assert.Contains("{{#список}}", result.ErrorMessage);
     }
+
+    // Другий огляд перед злиттям гілки: маркер, що ділить абзац з іншим
+    // текстом («Список: {{#список}}», «кінець {{/список}}»), — так само не
+    // «елемент-маркер», яким уміє оперувати ProcessSiblings (той бачить лише
+    // абзац, чий ЦІЛИЙ текст дорівнює маркеру). Перше виправлення робило
+    // preserveMarkers безумовним і GuardResidualMarkers — лише
+    // весь-абзац-разом, тож такий текст лишався буквально в тексті й
+    // друкувався в Success=True документі. GuardResidualMarkers тепер шукає
+    // маркер будь-де в тексті абзаца (BlockStructure.EmbeddedMarkerRegex).
+    [Fact]
+    public void MarkerSharingAParagraphWithOtherText_FailsWithMessageNamingTemplate()
+    {
+        var bytes = Build(body =>
+        {
+            body.AppendChild(new Paragraph(new Run(new Text("Список: {{#список}}"))));
+            body.AppendChild(new Paragraph(new Run(new Text("{{піб}}"))));
+            body.AppendChild(new Paragraph(new Run(new Text("кінець {{/список}}"))));
+        });
+
+        var result = Generate(bytes, "embedded-marker.docx");
+
+        Assert.False(result.Success);
+        Assert.Contains("Проба", result.ErrorMessage);
+        Assert.Contains("{{#список}}", result.ErrorMessage);
+    }
 }
