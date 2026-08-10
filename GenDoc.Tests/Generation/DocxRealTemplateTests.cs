@@ -227,4 +227,50 @@ public class DocxRealTemplateTests : IDisposable
         }
         return stream.ToArray();
     }
+
+    // Повторюваний блок усередині таблиці ще не підтримується. Важливо, щоб
+    // повідомлення називало шаблон і блок — інакше користувач бачить лише
+    // «Тіло повторюваного блоку має бути на одному рівні…» без жодної підказки,
+    // який саме файл винен.
+    [Fact]
+    public void GroupBlockInsideTable_FailsWithMessageNamingTemplateAndBlock()
+    {
+        var bytes = BuildGroupDocxWithBlockInsideTable();
+
+        var path = OutputPath("table-block.docx");
+        var result = new DocumentGenerationService().GenerateGroup(
+            TemplateStub("Відомість у таблиці"), bytes,
+            new List<IDictionary<string, string>>
+            {
+                new Dictionary<string, string> { ["{{піб}}"] = "ПЕРШИЙ" }
+            },
+            new Dictionary<string, string>(), path);
+
+        Assert.False(result.Success);
+        Assert.Contains("Відомість у таблиці", result.ErrorMessage);
+        Assert.Contains("список", result.ErrorMessage);
+        Assert.Contains("таблиц", result.ErrorMessage);
+    }
+
+    private static byte[] BuildGroupDocxWithBlockInsideTable()
+    {
+        using var stream = new MemoryStream();
+        using (var doc = WordprocessingDocument.Create(stream, DocumentFormat.OpenXml.WordprocessingDocumentType.Document))
+        {
+            doc.AddMainDocumentPart().Document = new Document(new Body());
+            var body = doc.MainDocumentPart!.Document!.Body!;
+
+            body.AppendChild(new Paragraph(new Run(new Text("{{#список}}"))));
+
+            // Тіло блоку — усередині комірки таблиці, тобто на іншому рівні,
+            // ніж маркери.
+            var cell = new TableCell(new Paragraph(new Run(new Text("{{піб}}"))));
+            body.AppendChild(new Table(new TableRow(cell)));
+
+            body.AppendChild(new Paragraph(new Run(new Text("{{/список}}"))));
+
+            doc.MainDocumentPart.Document.Save();
+        }
+        return stream.ToArray();
+    }
 }
