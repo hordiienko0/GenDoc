@@ -159,11 +159,13 @@ public class PeriodSheetsTests
         Assert.Contains(XlsxGenerationService.PeriodTag, result.ErrorMessage);
     }
 
-    // Дефект C1: CollectResidualUnfilledTags проходить аркуш ще раз і додає
-    // будь-який залишковий тег поверх уже порахованих — у зведенні з'являються
-    // теги, які насправді підставились.
-    [Fact(Skip = "Червоний до Task 15 — unfilledTags містить теги, які були заповнені")]
-    public void UnfilledTags_DoNotRepeatTagsThatWereActuallyFilled()
+    // Успішно підставлений тег ніколи не має потрапляти до списку "не заповнено".
+    // Це гарантовано тим, що підстановка перезаписує текст клітинки ДО того, як
+    // запускається залишковий прохід (CollectResidualUnfilledTags) — тому цей
+    // прохід бачить лише теги, для яких узагалі не було мапінгу, і саме такі
+    // репортить. Це навмисна поведінка, не дефект.
+    [Fact]
+    public void UnfilledTags_ExcludeTagsThatWereSubstituted()
     {
         var (row, mappings) = XlsxTemplateScan.ForGeneration(TemplateFixtures.RozdavalnaXlsx);
 
@@ -179,6 +181,7 @@ public class PeriodSheetsTests
             repeatSheetPerDate: false);
 
         Assert.True(result.Success, result.ErrorMessage);
+        Assert.Empty(result.UnfilledTags);
         Assert.DoesNotContain("{{калібр}}", result.UnfilledTags);
         Assert.DoesNotContain("{{дата_аркуша}}", result.UnfilledTags);
         Assert.DoesNotContain("{{номер_відомості}}", result.UnfilledTags);
