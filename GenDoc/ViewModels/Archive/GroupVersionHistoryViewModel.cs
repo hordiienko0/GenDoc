@@ -33,12 +33,17 @@ namespace GenDoc.ViewModels.Archive
     public partial class GroupVersionHistoryViewModel : DialogViewModelBase
     {
         private readonly IDocumentArchiveService _archiveService;
-        private readonly int _exportTemplateId;
+        private readonly int? _exportTemplateId;
+        private readonly int? _docxTemplateId;
 
-        public GroupVersionHistoryViewModel(IDocumentArchiveService archiveService, int exportTemplateId, string templateName)
+        // Групова серія ключується парою (ExportTemplateId, DocxTemplateId): XLSX-відомість
+        // задає лише перше, груповий DOCX — лише друге; другий — завжди null для XLSX.
+        public GroupVersionHistoryViewModel(
+            IDocumentArchiveService archiveService, int? exportTemplateId, int? docxTemplateId, string templateName)
         {
             _archiveService = archiveService;
             _exportTemplateId = exportTemplateId;
+            _docxTemplateId = docxTemplateId;
             HeaderText = templateName;
         }
 
@@ -50,7 +55,7 @@ namespace GenDoc.ViewModels.Archive
         public async Task InitializeAsync()
         {
             Versions.Clear();
-            foreach (var version in await _archiveService.GetGroupVersionsAsync(_exportTemplateId))
+            foreach (var version in await _archiveService.GetGroupVersionsAsync(_exportTemplateId, _docxTemplateId))
                 Versions.Add(new GroupVersionRowViewModel(version));
         }
 
@@ -60,7 +65,10 @@ namespace GenDoc.ViewModels.Archive
             if (row is null || !row.CanOpen) return;
             try
             {
-                await _archiveService.OpenGroupAsync(row.Dto.Id);
+                var result = await _archiveService.OpenGroupAsync(row.Dto.Id);
+                if (!result.Success)
+                    MessageBox.Show(result.ErrorMessage, "Відкриття документа",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             catch (System.ComponentModel.Win32Exception)
             {
@@ -78,7 +86,10 @@ namespace GenDoc.ViewModels.Archive
             var dialog = new SaveFileDialog { FileName = row.Dto.FileName };
             if (dialog.ShowDialog() != true) return;
 
-            await _archiveService.SaveGroupAsAsync(row.Dto.Id, dialog.FileName);
+            var result = await _archiveService.SaveGroupAsAsync(row.Dto.Id, dialog.FileName);
+            if (!result.Success)
+                MessageBox.Show(result.ErrorMessage, "Зберегти як",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         [RelayCommand]

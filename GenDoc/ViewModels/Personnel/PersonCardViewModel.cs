@@ -189,7 +189,10 @@ namespace GenDoc.ViewModels.Personnel
         private async Task OpenDocumentAsync(RecipientDocRowViewModel? row)
         {
             if (row?.DocumentId is not int documentId) return;
-            await _archiveService.OpenAsync(documentId);
+            var result = await _archiveService.OpenAsync(documentId);
+            if (!result.Success)
+                MessageBox.Show(result.ErrorMessage, "Відкриття документа",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         [RelayCommand]

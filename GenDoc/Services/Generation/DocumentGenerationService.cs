@@ -82,15 +82,15 @@ namespace GenDoc.Services.Generation
                     var mainPart = doc.MainDocumentPart;
 
                     if (mainPart?.Document?.Body is not null)
-                        unfilled.AddRange(ProcessContainer(mainPart.Document.Body, perRecipientValues, sharedValues));
+                        unfilled.AddRange(ProcessContainer(mainPart.Document.Body, perRecipientValues, sharedValues, template.Name));
 
                     if (mainPart is not null)
                     {
                         foreach (var header in mainPart.HeaderParts)
-                            unfilled.AddRange(ProcessContainer(header.Header!, perRecipientValues, sharedValues));
+                            unfilled.AddRange(ProcessContainer(header.Header!, perRecipientValues, sharedValues, template.Name));
 
                         foreach (var footer in mainPart.FooterParts)
-                            unfilled.AddRange(ProcessContainer(footer.Footer!, perRecipientValues, sharedValues));
+                            unfilled.AddRange(ProcessContainer(footer.Footer!, perRecipientValues, sharedValues, template.Name));
                     }
 
                     mainPart?.Document?.Save();
@@ -116,7 +116,8 @@ namespace GenDoc.Services.Generation
         private static List<string> ProcessContainer(
             OpenXmlCompositeElement container,
             IReadOnlyList<IDictionary<string, string>> perRecipientValues,
-            IDictionary<string, string> sharedValues)
+            IDictionary<string, string> sharedValues,
+            string templateName)
         {
             var unfilled = new List<string>();
 
@@ -141,7 +142,7 @@ namespace GenDoc.Services.Generation
                 {
                     if (openBlockName is not null)
                         throw new InvalidOperationException(
-                            $"Вкладені блоки не підтримуються: «{{{{#{openMatch.Groups[1].Value}}}}}» усередині «{{{{#{openBlockName}}}}}».");
+                            $"Шаблон «{templateName}»: вкладені блоки не підтримуються: «{{{{#{openMatch.Groups[1].Value}}}}}» усередині «{{{{#{openBlockName}}}}}».");
 
                     openBlockName = openMatch.Groups[1].Value;
                     openParagraph = paragraph;
@@ -153,13 +154,14 @@ namespace GenDoc.Services.Generation
                 {
                     var closeName = closeMatch.Groups[1].Value;
                     if (openBlockName is null)
-                        throw new InvalidOperationException($"Закриваючий тег «{{{{/{closeName}}}}}» без відповідного «{{{{#{closeName}}}}}».");
+                        throw new InvalidOperationException($"Шаблон «{templateName}»: закриваючий тег «{{{{/{closeName}}}}}» без відповідного «{{{{#{closeName}}}}}».");
 
                     if (closeName != openBlockName)
                         throw new InvalidOperationException(
-                            $"Незбіжна назва блоку: очікували «{{{{/{openBlockName}}}}}», отримали «{{{{/{closeName}}}}}».");
+                            $"Шаблон «{templateName}»: незбіжна назва блоку: очікували «{{{{/{openBlockName}}}}}», отримали «{{{{/{closeName}}}}}».");
 
-                    ExpandBlock(openParagraph!, bodyParagraphs, paragraph, perRecipientValues, sharedWithCount, unfilled);
+                    ExpandBlock(openParagraph!, bodyParagraphs, paragraph, perRecipientValues, sharedWithCount,
+                        unfilled, templateName, openBlockName);
 
                     openBlockName = null;
                     openParagraph = null;
@@ -174,7 +176,7 @@ namespace GenDoc.Services.Generation
             }
 
             if (openBlockName is not null)
-                throw new InvalidOperationException($"Блок «{{{{#{openBlockName}}}}}» не закрито тегом «{{{{/{openBlockName}}}}}».");
+                throw new InvalidOperationException($"Шаблон «{templateName}»: блок «{{{{#{openBlockName}}}}}» не закрито тегом «{{{{/{openBlockName}}}}}».");
 
             return unfilled;
         }
@@ -183,11 +185,15 @@ namespace GenDoc.Services.Generation
             Paragraph openParagraph, List<Paragraph> bodyParagraphs, Paragraph closeParagraph,
             IReadOnlyList<IDictionary<string, string>> perRecipientValues,
             IDictionary<string, string> sharedWithCount,
-            List<string> unfilled)
+            List<string> unfilled,
+            string templateName,
+            string blockName)
         {
             if (bodyParagraphs.Any(p => !ReferenceEquals(p.Parent, openParagraph.Parent)))
                 throw new InvalidOperationException(
-                    "Тіло повторюваного блоку має бути на одному рівні з маркерами {{#…}}/{{/…}} — підтримуються лише абзаци, не окремі комірки таблиці.");
+                    $"Шаблон «{templateName}»: тіло блоку «{{{{#{blockName}}}}}» лежить усередині таблиці. "
+                    + "Повторювані блоки в таблицях поки не підтримуються — винесіть рядки блоку "
+                    + "з таблиці на рівень маркерів {{#…}}/{{/…}}.");
 
             var count = perRecipientValues.Count;
             for (var i = 0; i < count; i++)

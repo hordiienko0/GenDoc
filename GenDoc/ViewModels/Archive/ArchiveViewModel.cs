@@ -366,7 +366,13 @@ namespace GenDoc.ViewModels.Archive
 
             try
             {
-                await _archiveService.OpenAsync(row.Id);
+                var result = await _archiveService.OpenAsync(row.Id);
+                if (!result.Success)
+                {
+                    MessageBox.Show(result.ErrorMessage, "Відкриття документа",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
                 if (!_openWarningShownThisSession)
                 {
                     _openWarningShownThisSession = true;
@@ -386,7 +392,13 @@ namespace GenDoc.ViewModels.Archive
             if (!row.HasContent) return;
             try
             {
-                await _archiveService.OpenAsync(row.Id);
+                var result = await _archiveService.OpenAsync(row.Id);
+                if (!result.Success)
+                {
+                    MessageBox.Show(result.ErrorMessage, "Відкриття документа",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
                 if (!_openWarningShownThisSession)
                 {
                     _openWarningShownThisSession = true;
@@ -416,7 +428,13 @@ namespace GenDoc.ViewModels.Archive
                 if (dialog.ShowDialog() != true) return;
 
                 IsBusy = true;
-                try { await _archiveService.SaveAsAsync(rows[0].Id, dialog.FileName); }
+                try
+                {
+                    var result = await _archiveService.SaveAsAsync(rows[0].Id, dialog.FileName);
+                    if (!result.Success)
+                        MessageBox.Show(result.ErrorMessage, "Зберегти як",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
                 finally { IsBusy = false; }
                 return;
             }
@@ -639,7 +657,10 @@ namespace GenDoc.ViewModels.Archive
             if (item?.Dto.DocumentId is not int docId || !item.CanOpen) return;
             try
             {
-                await _archiveService.OpenAsync(docId);
+                var result = await _archiveService.OpenAsync(docId);
+                if (!result.Success)
+                    MessageBox.Show(result.ErrorMessage, "Відкриття документа",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             catch (System.ComponentModel.Win32Exception)
             {
@@ -657,18 +678,25 @@ namespace GenDoc.ViewModels.Archive
             var dialog = new SaveFileDialog { FileName = item.Dto.FileName };
             if (dialog.ShowDialog() != true) return;
 
-            await _archiveService.SaveAsAsync(docId, dialog.FileName);
+            var result = await _archiveService.SaveAsAsync(docId, dialog.FileName);
+            if (!result.Success)
+                MessageBox.Show(result.ErrorMessage, "Зберегти як",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         // ── Таб «Групові» ────────────────────────────────────────────────
 
         public ObservableCollection<GroupDocumentRowViewModel> GroupRows { get; } = new();
-        public ObservableCollection<FilterOption> GroupTemplateOptions { get; } = new();
+
+        // FilterOption несе один Id — для групового фільтра цього не досить, бо
+        // XLSX- і DOCX-шаблони нумеруються незалежно й можуть збігтись числом.
+        // Тому тут тримаємо GroupTemplateOption напряму, а не підганяємо спільний FilterOption.
+        public ObservableCollection<GroupTemplateOption> GroupTemplateOptions { get; } = new();
 
         [ObservableProperty]
-        private FilterOption? selectedGroupTemplate;
+        private GroupTemplateOption? selectedGroupTemplate;
 
-        partial void OnSelectedGroupTemplateChanged(FilterOption? value) => _ = ReloadGroupAsync();
+        partial void OnSelectedGroupTemplateChanged(GroupTemplateOption? value) => _ = ReloadGroupAsync();
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(GroupIsEmpty))]
@@ -689,9 +717,9 @@ namespace GenDoc.ViewModels.Archive
                 _suppressGroupFilterReload = true;
                 var options = await _archiveService.GetGroupTemplateOptionsAsync();
                 GroupTemplateOptions.Clear();
-                GroupTemplateOptions.Add(new FilterOption(null, "Шаблон: усі"));
-                foreach (var (id, name) in options)
-                    GroupTemplateOptions.Add(new FilterOption(id, name));
+                GroupTemplateOptions.Add(new GroupTemplateOption(null, null, "Шаблон: усі"));
+                foreach (var option in options)
+                    GroupTemplateOptions.Add(option);
                 SelectedGroupTemplate = GroupTemplateOptions[0];
                 _suppressGroupFilterReload = false;
             }
@@ -700,7 +728,8 @@ namespace GenDoc.ViewModels.Archive
             try
             {
                 ClearGroupChecked();
-                var rows = await _archiveService.QueryGroupAsync(new GroupArchiveFilter(SelectedGroupTemplate?.Id, null, 0, PageSize));
+                var rows = await _archiveService.QueryGroupAsync(new GroupArchiveFilter(
+                    SelectedGroupTemplate?.ExportTemplateId, SelectedGroupTemplate?.DocxTemplateId, null, 0, PageSize));
                 GroupRows.Clear();
                 foreach (var dto in rows)
                 {
@@ -771,7 +800,10 @@ namespace GenDoc.ViewModels.Archive
 
             try
             {
-                await _archiveService.OpenGroupAsync(row.Id);
+                var result = await _archiveService.OpenGroupAsync(row.Id);
+                if (!result.Success)
+                    MessageBox.Show(result.ErrorMessage, "Відкриття документа",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             catch (System.ComponentModel.Win32Exception)
             {
@@ -793,7 +825,13 @@ namespace GenDoc.ViewModels.Archive
                 if (dialog.ShowDialog() != true) return;
 
                 IsBusy = true;
-                try { await _archiveService.SaveGroupAsAsync(rows[0].Id, dialog.FileName); }
+                try
+                {
+                    var result = await _archiveService.SaveGroupAsAsync(rows[0].Id, dialog.FileName);
+                    if (!result.Success)
+                        MessageBox.Show(result.ErrorMessage, "Зберегти як",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
                 finally { IsBusy = false; }
                 return;
             }
@@ -804,11 +842,24 @@ namespace GenDoc.ViewModels.Archive
             IsBusy = true;
             try
             {
+                // Дзеркалить SaveManyAsync (особисті документи, вище): рахуємо успіхи й
+                // помилки окремо, замість безумовного «Збережено N», яке для рядка без
+                // вмісту брехало б про успіх.
+                var saved = 0;
+                var errors = new List<string>();
                 foreach (var row in rows)
-                    await _archiveService.SaveGroupAsAsync(row.Id, System.IO.Path.Combine(folderDialog.FolderName, row.Dto.FileName));
+                {
+                    var result = await _archiveService.SaveGroupAsAsync(
+                        row.Id, System.IO.Path.Combine(folderDialog.FolderName, row.Dto.FileName));
+                    if (result.Success) saved++;
+                    else errors.Add($"{row.Dto.FileName}: {result.ErrorMessage}");
+                }
 
-                MessageBox.Show($"Збережено {rows.Count} відомостей у {folderDialog.FolderName}",
-                    "Експорт завершено", MessageBoxButton.OK, MessageBoxImage.Information);
+                var message = $"Збережено {saved} відомостей у {folderDialog.FolderName}";
+                if (errors.Count > 0)
+                    message += $"\nПомилок: {errors.Count}\n{string.Join("\n", errors.Take(5))}";
+                MessageBox.Show(message, "Експорт завершено", MessageBoxButton.OK,
+                    errors.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
             }
             finally
             {
@@ -822,7 +873,11 @@ namespace GenDoc.ViewModels.Archive
             var row = CheckedGroupRows.FirstOrDefault();
             if (row is null || !CanHistoryGroup) return;
 
-            var vm = new GroupVersionHistoryViewModel(_archiveService, row.ExportTemplateId, row.Dto.TemplateName);
+            var vm = new GroupVersionHistoryViewModel(
+                _archiveService,
+                row.ExportTemplateId == 0 ? null : row.ExportTemplateId,
+                row.Dto.DocxTemplateId,
+                row.Dto.TemplateName);
             await vm.InitializeAsync();
             _dialogService.ShowDialog(vm, Application.Current.MainWindow);
 

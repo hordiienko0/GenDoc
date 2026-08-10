@@ -323,14 +323,16 @@ namespace GenDoc.Services.Generation
             var xlsx = RunXlsxPhase(db, exportLinks, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, regenerateExisting, progress);
             var docxGroup = RunDocxGroupPhase(db, groupDocxTemplates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, regenerateExisting, progress);
 
-            run.GeneratedCount = docx.Generated;
-            run.SkippedCount = docx.Skipped;
-            run.ErrorCount = docx.Errors;
+            // Раніше писали лише лічильники docx-фази — помилки XLSX і групового
+            // DOCX ставали невидимими на екрані «Запуски». Тепер підсумовуємо всі три.
+            run.GeneratedCount = docx.Generated + xlsx.Generated + docxGroup.Generated;
+            run.SkippedCount = docx.Skipped + xlsx.Skipped + docxGroup.Skipped;
+            run.ErrorCount = docx.Errors + xlsx.Errors + docxGroup.Errors;
 
-            var summaryLines = new List<string>(docx.ErrorMessages);
-            summaryLines.AddRange(xlsx.SummaryLines);
-            summaryLines.AddRange(docxGroup.SummaryLines);
-            run.Summary = summaryLines.Count == 0 ? null : string.Join("\n", summaryLines);
+            var issues = new List<RunIssue>(docx.Issues);
+            issues.AddRange(xlsx.Issues);
+            issues.AddRange(docxGroup.Issues);
+            run.Summary = RunIssue.Serialize(issues);
 
             _auditLogService.LogGenerate(db, "GenerationPackage", packageId,
                 $"{package.Name}: docx — згенеровано {docx.Generated}, пропущено {docx.Skipped}, помилок {docx.Errors}; " +
@@ -375,7 +377,7 @@ namespace GenDoc.Services.Generation
             return recipients;
         }
 
-        private sealed record DocxPhaseResult(int Generated, int Skipped, int Errors, List<string> ErrorMessages);
+        private sealed record DocxPhaseResult(int Generated, int Skipped, int Errors, List<RunIssue> Issues);
 
         // Phase A — по одному документу на людину. Чистий перенос попередньої логіки RunPackage,
         // без змін поведінки: anti-дубль за (RecipientId, TemplateId), версійність, SourceHash.
@@ -396,12 +398,14 @@ namespace GenDoc.Services.Generation
                 t => db.TemplateFieldMappings.Where(m => m.TemplateId == t.Id).ToList());
 
             // Anti-дубль: лише актуальні живі документи (видалені відсікає query filter).
-            var existingPairs = new HashSet<(int RecipientId, int TemplateId)>(
-                db.GeneratedDocuments
-                    .Where(g => g.IsCurrent)
-                    .Select(g => new { g.RecipientId, g.TemplateId })
-                    .AsEnumerable()
-                    .Select(g => (g.RecipientId, g.TemplateId)));
+            // Тримаємо саме ім'я файлу, а не просто факт наявності запису — пропустити
+            // можна тільки тоді, коли файл реально лежить у цільовій теці (див. ExistsInOutputFolder).
+            var existingFileNames = db.GeneratedDocuments
+                .Where(g => g.IsCurrent)
+                .Select(g => new { g.RecipientId, g.TemplateId, g.FileName })
+                .AsEnumerable()
+                .GroupBy(g => (g.RecipientId, g.TemplateId))
+                .ToDictionary(g => g.Key, g => g.First().FileName);
 
             var maxVersions = db.GeneratedDocuments.IgnoreQueryFilters()
                 .GroupBy(g => new { g.RecipientId, g.TemplateId })
@@ -417,7 +421,7 @@ namespace GenDoc.Services.Generation
             var generated = 0;
             var skipped = 0;
             var errors = 0;
-            var errorMessages = new List<string>();
+            var issues = new List<RunIssue>();
 
             var total = recipients.Count * templates.Count;
             var n = 0;
@@ -429,7 +433,9 @@ namespace GenDoc.Services.Generation
                     n++;
                     progress.Report($"Генерація {n} з {total}…");
 
-                    if (!regenerateExisting && existingPairs.Contains((recipient.Id, template.Id)))
+                    if (!regenerateExisting
+                        && existingFileNames.TryGetValue((recipient.Id, template.Id), out var existingFileName)
+                        && ExistsInOutputFolder(outputFolder, existingFileName))
                     {
                         skipped++;
                         continue;
@@ -445,7 +451,9 @@ namespace GenDoc.Services.Generation
                         if (!result.Success)
                         {
                             errors++;
-                            errorMessages.Add($"{recipient.FullName} / {template.Name}: {result.ErrorMessage}");
+                            issues.Add(new RunIssue(RunIssue.PhaseDocx,
+                                $"{recipient.LastName} {recipient.FirstName}", template.Name,
+                                result.ErrorMessage ?? "невідома помилка"));
                             continue;
                         }
 
@@ -486,37 +494,22 @@ namespace GenDoc.Services.Generation
                         };
                         db.GeneratedDocuments.Add(doc);
 
-                        existingPairs.Add(pair);
+                        existingFileNames[pair] = fileName;
                         generated++;
                     }
                     catch (Exception ex)
                     {
                         errors++;
-                        errorMessages.Add($"{recipient.FullName} / {template.Name}: {ex.Message}");
+                        issues.Add(new RunIssue(RunIssue.PhaseDocx,
+                            $"{recipient.LastName} {recipient.FirstName}", template.Name, ex.Message));
                     }
                 }
             }
 
-            return new DocxPhaseResult(generated, skipped, errors, errorMessages);
+            return new DocxPhaseResult(generated, skipped, errors, issues);
         }
 
-        private sealed record XlsxPhaseResult(int Generated, int Skipped, int Errors, List<string> SummaryLines);
-
-        // «Курсовий офіцер {підрозділ} {звання} {ПІБ-ініціали}» — з першого
-        // постійного складу (IntakeId == null) з прапорцем IsCourseOfficer.
-        private static string? BuildCourseOfficerSignature(AppDbContext db)
-        {
-            var courseOfficer = db.Recipients
-                .Include(r => r.Unit)
-                .Where(r => r.IntakeId == null && r.IsCourseOfficer)
-                .OrderBy(r => r.Id)
-                .FirstOrDefault();
-
-            return courseOfficer is null
-                ? null
-                : $"Курсовий офіцер {courseOfficer.Unit?.Name} {courseOfficer.Rank} " +
-                  NameFormatter.ShortName(courseOfficer.LastName, courseOfficer.FirstName, courseOfficer.MiddleName);
-        }
+        private sealed record XlsxPhaseResult(int Generated, int Skipped, int Errors, List<RunIssue> Issues);
 
         // Phase B — один документ на весь список людей (форма-відомість). Немає єдиного
         // Recipient, тому anti-дубль тримається на RosterHash складу, а не на парі (Recipient, Template).
@@ -535,7 +528,7 @@ namespace GenDoc.Services.Generation
             var generated = 0;
             var skipped = 0;
             var errors = 0;
-            var summaryLines = new List<string>();
+            var issues = new List<RunIssue>();
 
             foreach (var link in exportLinks)
             {
@@ -553,7 +546,8 @@ namespace GenDoc.Services.Generation
                 if (roster.Count == 0)
                 {
                     skipped++;
-                    summaryLines.Add($"ГРУПА: {template.Name}: пропущено — немає людей за фільтром придатності");
+                    issues.Add(new RunIssue(RunIssue.PhaseXlsx, string.Empty, template.Name,
+                        "пропущено — немає людей за фільтром придатності", IsError: false));
                     continue;
                 }
 
@@ -570,13 +564,14 @@ namespace GenDoc.Services.Generation
                     var current = db.GeneratedGroupDocuments
                         .FirstOrDefault(g => g.ExportTemplateId == template.Id && g.IntakeId == null && g.IsCurrent);
 
-                    if (!regenerateExisting && current is not null && current.RosterHash == rosterHash)
+                    if (!regenerateExisting && current is not null && current.RosterHash == rosterHash
+                        && ExistsInOutputFolder(outputFolder, current.FileName))
                     {
                         skipped++;
                         continue;
                     }
 
-                    var courseOfficerSignature = BuildCourseOfficerSignature(db);
+                    var courseOfficerSignature = Services.CourseOfficerSignature.Build(db);
 
                     var result = _xlsxGenerationService.Generate(
                         template.Content, template.TemplateRowIndex, template.UsesPlaceholders,
@@ -586,7 +581,8 @@ namespace GenDoc.Services.Generation
                     if (!result.Success)
                     {
                         errors++;
-                        summaryLines.Add($"ГРУПА: {template.Name}: {result.ErrorMessage}");
+                        issues.Add(new RunIssue(RunIssue.PhaseXlsx, string.Empty, template.Name,
+                            result.ErrorMessage ?? "невідома помилка"));
                         continue;
                     }
 
@@ -622,16 +618,17 @@ namespace GenDoc.Services.Generation
                     generated++;
 
                     if (result.UnfilledTags.Count > 0)
-                        summaryLines.Add($"ГРУПА: {template.Name}: не заповнено теги — {string.Join(", ", result.UnfilledTags)}");
+                        issues.Add(new RunIssue(RunIssue.PhaseXlsx, string.Empty, template.Name,
+                            $"не заповнено теги — {string.Join(", ", result.UnfilledTags)}", IsError: false));
                 }
                 catch (Exception ex)
                 {
                     errors++;
-                    summaryLines.Add($"ГРУПА: {template.Name}: {ex.Message}");
+                    issues.Add(new RunIssue(RunIssue.PhaseXlsx, string.Empty, template.Name, ex.Message));
                 }
             }
 
-            return new XlsxPhaseResult(generated, skipped, errors, summaryLines);
+            return new XlsxPhaseResult(generated, skipped, errors, issues);
 
             string ComputeRecipientSourceHash(List<ExportTemplateColumnMapping> mappings, Recipient r, OrganizationSettings? org)
             {
@@ -651,7 +648,7 @@ namespace GenDoc.Services.Generation
             _ => string.Empty
         };
 
-        private sealed record DocxGroupPhaseResult(int Generated, int Skipped, int Errors, List<string> SummaryLines);
+        private sealed record DocxGroupPhaseResult(int Generated, int Skipped, int Errors, List<RunIssue> Issues);
 
         // Phase C — груповий DOCX (Template.Kind == Group): один документ на весь
         // список, з повторюваним блоком. Анти-дубль так само на RosterHash, як і в
@@ -671,7 +668,7 @@ namespace GenDoc.Services.Generation
             var generated = 0;
             var skipped = 0;
             var errors = 0;
-            var summaryLines = new List<string>();
+            var issues = new List<RunIssue>();
 
             // Старшинство звання, потім прізвище/ім'я за українською абеткою —
             // так само, як у джерельному паперовому звіті.
@@ -684,7 +681,8 @@ namespace GenDoc.Services.Generation
                 if (roster.Count == 0)
                 {
                     skipped++;
-                    summaryLines.Add($"ГРУПА DOCX: {template.Name}: пропущено — немає людей за обраним складом");
+                    issues.Add(new RunIssue(RunIssue.PhaseDocxGroup, string.Empty, template.Name,
+                        "пропущено — немає людей за обраним складом", IsError: false));
                     continue;
                 }
 
@@ -707,7 +705,8 @@ namespace GenDoc.Services.Generation
                     var current = db.GeneratedGroupDocuments
                         .FirstOrDefault(g => g.TemplateId == template.Id && g.IntakeId == null && g.IsCurrent);
 
-                    if (!regenerateExisting && current is not null && current.RosterHash == rosterHash)
+                    if (!regenerateExisting && current is not null && current.RosterHash == rosterHash
+                        && ExistsInOutputFolder(outputFolder, current.FileName))
                     {
                         skipped++;
                         continue;
@@ -722,7 +721,8 @@ namespace GenDoc.Services.Generation
                     if (!result.Success)
                     {
                         errors++;
-                        summaryLines.Add($"ГРУПА DOCX: {template.Name}: {result.ErrorMessage}");
+                        issues.Add(new RunIssue(RunIssue.PhaseDocxGroup, string.Empty, template.Name,
+                            result.ErrorMessage ?? "невідома помилка"));
                         continue;
                     }
 
@@ -755,16 +755,17 @@ namespace GenDoc.Services.Generation
                     generated++;
 
                     if (result.UnfilledTags.Count > 0)
-                        summaryLines.Add($"ГРУПА DOCX: {template.Name}: не заповнено теги — {string.Join(", ", result.UnfilledTags)}");
+                        issues.Add(new RunIssue(RunIssue.PhaseDocxGroup, string.Empty, template.Name,
+                            $"не заповнено теги — {string.Join(", ", result.UnfilledTags)}", IsError: false));
                 }
                 catch (Exception ex)
                 {
                     errors++;
-                    summaryLines.Add($"ГРУПА DOCX: {template.Name}: {ex.Message}");
+                    issues.Add(new RunIssue(RunIssue.PhaseDocxGroup, string.Empty, template.Name, ex.Message));
                 }
             }
 
-            return new DocxGroupPhaseResult(generated, skipped, errors, summaryLines);
+            return new DocxGroupPhaseResult(generated, skipped, errors, issues);
         }
 
         private static string? BuildOrgPathSnapshot(int? orgNodeId, Dictionary<int, (string Name, int? ParentId)> nodes)
@@ -895,34 +896,41 @@ namespace GenDoc.Services.Generation
             return string.IsNullOrWhiteSpace(room.Building) ? room.Number : $"{room.Building} {room.Number}";
         }
 
+        // Наявність запису в архіві БД сама по собі — НЕ привід пропустити генерацію:
+        // користувач міг обрати іншу теку, перенести або видалити файли. Якщо в
+        // цільовій теці файлу нема — документ треба сформувати знову, інакше запуск
+        // мовчки завершується з «усе пропущено» і порожньою текою.
+        internal static bool ExistsInOutputFolder(string outputFolder, string? fileName)
+            => !string.IsNullOrWhiteSpace(fileName)
+               && File.Exists(Path.Combine(outputFolder, fileName));
+
+        // Персональний документ: «ПРІЗВИЩЕ Ім'я Назва шаблону.docx». Без дати —
+        // документ прив'язаний до людини, а не до дня формування.
         private static string BuildFileName(Recipient recipient, string templateName, HashSet<string> usedFileNames)
         {
-            var baseName = $"{recipient.LastName}_{recipient.FirstName}_{templateName}";
-            foreach (var invalidChar in Path.GetInvalidFileNameChars())
-                baseName = baseName.Replace(invalidChar, '_');
-
-            var fileName = baseName + ".docx";
-            var suffix = 2;
-            while (!usedFileNames.Add(fileName))
-            {
-                fileName = $"{baseName}_{suffix}.docx";
-                suffix++;
-            }
-
-            return fileName;
+            var baseName = $"{recipient.LastName} {recipient.FirstName} {TemplateNaming.Clean(templateName)}";
+            return MakeUnique(baseName, usedFileNames, ".docx");
         }
 
+        // Групова відомість: «Залік Додаток 8 06.08.2026.xlsx» — назва шаблону без
+        // технічного префікса «Шаблон_» і дата крапками, без підкреслень.
         private static string BuildGroupFileName(string templateName, HashSet<string> usedFileNames, string extension = ".xlsx")
         {
-            var baseName = templateName;
+            var baseName = $"{TemplateNaming.Clean(templateName)} {TemplateNaming.FormatDate(DateTime.Now)}";
+            return MakeUnique(baseName, usedFileNames, extension);
+        }
+
+        private static string MakeUnique(string baseName, HashSet<string> usedFileNames, string extension)
+        {
             foreach (var invalidChar in Path.GetInvalidFileNameChars())
-                baseName = baseName.Replace(invalidChar, '_');
+                baseName = baseName.Replace(invalidChar, ' ');
+            baseName = string.Join(' ', baseName.Split(' ', StringSplitOptions.RemoveEmptyEntries));
 
             var fileName = baseName + extension;
             var suffix = 2;
             while (!usedFileNames.Add(fileName))
             {
-                fileName = $"{baseName}_{suffix}{extension}";
+                fileName = $"{baseName} ({suffix}){extension}";
                 suffix++;
             }
 

@@ -34,7 +34,31 @@ namespace GenDoc.Services.Templates
             ["звання_зв"] = "RankAccusative",
             ["піб_зв"] = "FullNameAccusative",
             ["прибув"] = "ArrivedVerb",
-            ["таким"] = "SuchPronoun"
+            ["таким"] = "SuchPronoun",
+
+            // Теги, що реально трапляються у відомостях вогневої підготовки
+            // (Роздавально-здавальна, Допуск Додаток 5, Залік Додаток 8). Без них
+            // тег падав у Manual — тобто колонка лишалась порожньою або її щоразу
+            // доводилось заповнювати руками.
+            ["№"] = "RowNumber",
+            ["піб_ініціали"] = "ShortName",
+            ["кімната"] = "RoomDisplay",
+            ["придатність"] = "FitnessCategory",
+
+            ["зброя"] = "WeaponFull",
+            ["зброя_назва"] = "WeaponName",
+            ["зброя_номер"] = "WeaponSerialNumber",
+
+            // XLSX-only: обидва обробляються окремо у XlsxGenerationService за
+            // назвою поля (загальна оцінка рахується по сусідніх колонках рядка,
+            // підпис курсового офіцера — дані поза поточним ростером).
+            ["курсовий_офіцер"] = "CourseOfficerSignature",
+            ["оцінка"] = "GradeRandom34",
+            ["оцінка_1"] = "GradeRandom34",
+            ["оцінка_2"] = "GradeRandom34",
+            ["оцінка_3"] = "GradeRandom34",
+            ["оцінка_4"] = "GradeRandom34",
+            ["оцінка_загальна"] = "GradeOverall34"
         };
 
         public static readonly IReadOnlyDictionary<string, string> OrganizationTagMap = new Dictionary<string, string>

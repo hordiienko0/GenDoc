@@ -123,4 +123,9 @@ public class ImportParseResult
     public int TotalRows { get; set; }
 }
 
-public record ImportSummary(int Imported, int Skipped, int Errors);
+public record ImportSummary(int Imported, int Skipped, int Errors)
+{
+    // Причини збоїв, а не лише їх кількість: анонімна "31 помилка" колись приховала
+    // цілком конкретне 'no such column: w.RawText'.
+    public List<string> ErrorMessages { get; init; } = new();
+}

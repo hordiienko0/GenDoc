@@ -70,11 +70,17 @@ namespace GenDoc.Services.Documents
 
     public record ArchiveOpResult(bool Success, string? ErrorMessage);
 
-    public record GroupArchiveFilter(int? ExportTemplateId, int? Year, int Skip, int Take);
+    public record GroupArchiveFilter(int? ExportTemplateId, int? DocxTemplateId, int? Year, int Skip, int Take);
+
+    // Ідентифікатори шаблонів XLSX і DOCX живуть у різних таблицях з незалежною
+    // нумерацією, тож саме число нічого не каже про вид документа — вид має
+    // їхати разом з ним, інакше фільтр знайде чужу відомість.
+    public record GroupTemplateOption(int? ExportTemplateId, int? DocxTemplateId, string Name);
 
     public record GroupDocumentRowDto(
         int Id,
         int ExportTemplateId,
+        int? DocxTemplateId,
         string TemplateName,
         bool TemplateAlive,
         int Version,

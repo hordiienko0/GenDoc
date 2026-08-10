@@ -450,9 +450,13 @@ namespace GenDoc.Services.Completeness
 
                 foreach (var row in rows)
                 {
-                    if (row.LinkId is int linkId)
+                    // FirstOrDefault, а не First: рядок може посилатись на зв'язок,
+                    // якого вже нема (видалили в паралельному сеансі) — тоді просто
+                    // створюємо його заново, а не валимо весь діалог винятком.
+                    var link = row.LinkId is int linkId ? existing.FirstOrDefault(l => l.Id == linkId) : null;
+
+                    if (link is not null)
                     {
-                        var link = existing.First(l => l.Id == linkId);
                         link.RequirementRegular = row.RequirementRegular;
                         link.RequirementLimited = row.RequirementLimited;
                         link.SortOrder = row.SortOrder;

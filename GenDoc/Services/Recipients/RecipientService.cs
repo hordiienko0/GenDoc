@@ -54,9 +54,15 @@ namespace GenDoc.Services.Recipients
         {
             using var db = _dbFactory.CreateDbContext();
 
+            // Weapons/OrgNode потрібні експорту за шаблоном (поля «Зброя: …»): lazy
+            // loading вимкнено, тож без Include колекція приходить порожньою і
+            // колонки зі зброєю мовчки лишаються пустими. Той самий набір Include,
+            // що й у GenerationService.LoadRosterRecipients.
             var entities = db.Recipients
                 .Include(r => r.Unit)
                 .Include(r => r.Room)
+                .Include(r => r.OrgNode)
+                .Include(r => r.Weapons)
                 .ToList();
 
             var words = (searchText ?? string.Empty).Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);

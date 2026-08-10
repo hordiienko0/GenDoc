@@ -12,6 +12,21 @@ namespace GenDoc.Services.Documents
     {
         private const int DefaultMaxDocumentSizeKb = 5120;
 
+        // Легасі-записи (HasContent = false) не мають збережених байтів файлу —
+        // лише метадані. Одне спільне повідомлення для всіх точок, де це виявляється.
+        private const string NoContentMessage =
+            "Файл цього документа не збережено в архіві — доступні лише його дані. " +
+            "Сформуйте документ наново або завантажте файл вручну.";
+
+        // Рядок-батько (GeneratedDocument / GeneratedGroupDocument) міг зникнути між
+        // тим, як список відкрили, і тим, як користувач клікнув по рядку (видалення
+        // в іншому сеансі). FirstAsync у цьому випадку падав з InvalidOperationException
+        // ("Sequence contains no elements"), і той текст ішов прямо в MessageBox —
+        // те саме "сире" повідомлення, яке цей набір фіксів мав прибрати.
+        private const string RecordGoneMessage =
+            "Цей документ уже відсутній в архіві — можливо, його видалили в іншому сеансі. " +
+            "Оновіть список і спробуйте ще раз.";
+
         private readonly IDbContextFactory<AppDbContext> _dbFactory;
         private readonly IAuditLogService _auditLogService;
         private readonly ICurrentUserContext _currentUserContext;
@@ -136,23 +151,30 @@ namespace GenDoc.Services.Documents
             _ => "запланований"
         };
 
-        public async Task OpenAsync(int documentId)
+        public async Task<ArchiveOpResult> OpenAsync(int documentId)
         {
             using var db = _dbFactory.CreateDbContext();
-            var doc = await db.GeneratedDocuments.FirstAsync(g => g.Id == documentId);
-            var content = await db.GeneratedDocumentContents.FirstAsync(c => c.GeneratedDocumentId == documentId);
+            var doc = await db.GeneratedDocuments.FirstOrDefaultAsync(g => g.Id == documentId);
+            if (doc is null) return new ArchiveOpResult(false, RecordGoneMessage);
+            var content = await db.GeneratedDocumentContents
+                .FirstOrDefaultAsync(c => c.GeneratedDocumentId == documentId);
+            if (content is null) return new ArchiveOpResult(false, NoContentMessage);
 
             await _tempFileService.OpenAsync(doc.FileName, content.Content);
 
             _auditLogService.Log(db, "Відкрито документ", "GeneratedDocument", documentId, null, doc.FileName);
             await db.SaveChangesAsync();
+            return new ArchiveOpResult(true, null);
         }
 
         public async Task<ArchiveOpResult> SaveAsAsync(int documentId, string targetPath)
         {
             using var db = _dbFactory.CreateDbContext();
-            var doc = await db.GeneratedDocuments.FirstAsync(g => g.Id == documentId);
-            var content = await db.GeneratedDocumentContents.FirstAsync(c => c.GeneratedDocumentId == documentId);
+            var doc = await db.GeneratedDocuments.FirstOrDefaultAsync(g => g.Id == documentId);
+            if (doc is null) return new ArchiveOpResult(false, RecordGoneMessage);
+            var content = await db.GeneratedDocumentContents
+                .FirstOrDefaultAsync(c => c.GeneratedDocumentId == documentId);
+            if (content is null) return new ArchiveOpResult(false, NoContentMessage);
 
             var bytes = _watermarkService.Apply(content.Content, doc.FileName);
             await File.WriteAllBytesAsync(targetPath, bytes);
@@ -180,7 +202,7 @@ namespace GenDoc.Services.Documents
                     .FirstOrDefaultAsync(c => c.GeneratedDocumentId == id);
                 if (content is null)
                 {
-                    errors.Add($"{doc.FileName}: файл не збережено в архіві");
+                    errors.Add($"{doc.FileName}: {NoContentMessage}");
                     continue;
                 }
 
@@ -396,7 +418,7 @@ namespace GenDoc.Services.Documents
                 .FirstOrDefaultAsync();
         }
 
-        public async Task OpenAttachmentAsync(int attachmentId)
+        public async Task<ArchiveOpResult> OpenAttachmentAsync(int attachmentId)
         {
             using var db = _dbFactory.CreateDbContext();
             var attachment = await db.DocumentAttachments.FirstAsync(a => a.Id == attachmentId);
@@ -405,6 +427,7 @@ namespace GenDoc.Services.Documents
             _auditLogService.Log(db, "Відкрито документ", "GeneratedDocument",
                 attachment.GeneratedDocumentId, null, attachment.FileName);
             await db.SaveChangesAsync();
+            return new ArchiveOpResult(true, null);
         }
 
         public async Task<ArchiveOpResult> SaveAttachmentAsAsync(int attachmentId, string targetPath)
@@ -592,10 +615,26 @@ namespace GenDoc.Services.Documents
                 .ToListAsync();
 
             // Помилки не персистяться порядково — відновлюємо з Summary запуску.
+            // Нові запуски пишуть туди JSON-масив RunIssue; запуски, зроблені до
+            // переходу на JSON, лишили в цій колонці звичайний текст — для них
+            // працює запасний парсер рядків «ПІБ / Шаблон: помилка».
             var summary = await db.GenerationPackageRuns
                 .Where(r => r.Id == runId).Select(r => r.Summary).FirstOrDefaultAsync();
-            if (!string.IsNullOrWhiteSpace(summary))
+
+            if (RunIssue.TryDeserialize(summary, out var issues))
             {
+                foreach (var issue in issues)
+                {
+                    items.Add(new RunItemDto(
+                        issue.Person.Length > 0 ? issue.Person : "—",
+                        issue.TemplateName,
+                        issue.IsError ? $"помилка: {issue.Message}" : issue.Message,
+                        issue.IsError, 0, null, false, string.Empty));
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(summary))
+            {
+                // Запуски, зроблені до переходу на JSON: старий текстовий формат.
                 foreach (var line in summary.Split('\n', StringSplitOptions.RemoveEmptyEntries))
                 {
                     var parts = line.Split(':', 2);
@@ -613,13 +652,30 @@ namespace GenDoc.Services.Documents
 
         // ── Групові документи ───────────────────────────────────────────
 
+        // Серія версій групового документа визначається ПАРОЮ ключів, бо один
+        // з них завжди null: XLSX-відомість тримається на ExportTemplateId,
+        // груповий DOCX — на TemplateId. Порівняння лише за ExportTemplateId
+        // означало `IS NULL` і зачіпало всі групові DOCX усіх шаблонів одразу.
+        private static IQueryable<GeneratedGroupDocument> SameGroupSeries(
+            IQueryable<GeneratedGroupDocument> source, int? exportTemplateId, int? templateId, int? intakeId)
+            => source.Where(g =>
+                g.ExportTemplateId == exportTemplateId
+                && g.TemplateId == templateId
+                && g.IntakeId == intakeId);
+
+        private static IQueryable<GeneratedGroupDocument> SameGroupSeries(
+            IQueryable<GeneratedGroupDocument> source, GeneratedGroupDocument doc)
+            => SameGroupSeries(source, doc.ExportTemplateId, doc.TemplateId, doc.IntakeId);
+
         public async Task<List<GroupDocumentRowDto>> QueryGroupAsync(GroupArchiveFilter filter)
         {
             using var db = _dbFactory.CreateDbContext();
             var query = db.GeneratedGroupDocuments.Where(g => g.IsCurrent);
 
-            if (filter.ExportTemplateId is int templateId)
-                query = query.Where(g => g.ExportTemplateId == templateId);
+            if (filter.ExportTemplateId is int exportTemplateId)
+                query = query.Where(g => g.ExportTemplateId == exportTemplateId);
+            if (filter.DocxTemplateId is int docxTemplateId)
+                query = query.Where(g => g.TemplateId == docxTemplateId);
             if (filter.Year is int year)
                 query = query.Where(g => g.GeneratedAt.Year == year);
 
@@ -629,11 +685,14 @@ namespace GenDoc.Services.Documents
                 .Take(filter.Take)
                 .Select(g => new GroupDocumentRowDto(
                     g.Id,
-                    // TODO: цей екран поки показує лише XLSX-групи; підтримку групового
-                    // DOCX (g.TemplateId) в архіві додамо разом з UI вибору складу.
                     g.ExportTemplateId ?? 0,
-                    g.ExportTemplate != null ? g.ExportTemplate.Name : "—",
-                    g.ExportTemplate != null && g.ExportTemplate.DeletedAt == null,
+                    g.TemplateId,
+                    g.ExportTemplate != null
+                        ? g.ExportTemplate.Name
+                        : g.Template != null ? g.Template.Name : "—",
+                    g.ExportTemplate != null
+                        ? g.ExportTemplate.DeletedAt == null
+                        : g.Template != null && g.Template.DeletedAt == null,
                     g.Version,
                     g.RecipientCount,
                     g.GeneratedAt,
@@ -644,36 +703,58 @@ namespace GenDoc.Services.Documents
                 .ToListAsync();
         }
 
-        public async Task<List<(int Id, string Name)>> GetGroupTemplateOptionsAsync()
+        public async Task<List<GroupTemplateOption>> GetGroupTemplateOptionsAsync()
         {
             using var db = _dbFactory.CreateDbContext();
-            var ids = await db.GeneratedGroupDocuments.Select(g => g.ExportTemplateId).Distinct().ToListAsync();
-            return (await db.ExportTemplates.IgnoreQueryFilters()
-                    .Where(t => ids.Contains(t.Id))
-                    .OrderBy(t => t.Name)
+
+            var exportIds = await db.GeneratedGroupDocuments
+                .Where(g => g.ExportTemplateId != null)
+                .Select(g => g.ExportTemplateId!.Value).Distinct().ToListAsync();
+
+            var options = (await db.ExportTemplates.IgnoreQueryFilters()
+                    .Where(t => exportIds.Contains(t.Id))
                     .Select(t => new { t.Id, t.Name })
                     .ToListAsync())
-                .Select(t => (t.Id, t.Name))
+                .Select(t => new GroupTemplateOption(t.Id, null, t.Name))
                 .ToList();
+
+            var docxIds = await db.GeneratedGroupDocuments
+                .Where(g => g.TemplateId != null)
+                .Select(g => g.TemplateId!.Value).Distinct().ToListAsync();
+
+            options.AddRange((await db.Templates.IgnoreQueryFilters()
+                    .Where(t => docxIds.Contains(t.Id))
+                    .Select(t => new { t.Id, t.Name })
+                    .ToListAsync())
+                .Select(t => new GroupTemplateOption(null, t.Id, t.Name)));
+
+            return options.OrderBy(o => o.Name, StringComparer.CurrentCulture).ToList();
         }
 
-        public async Task OpenGroupAsync(int groupDocumentId)
+        public async Task<ArchiveOpResult> OpenGroupAsync(int groupDocumentId)
         {
             using var db = _dbFactory.CreateDbContext();
-            var doc = await db.GeneratedGroupDocuments.FirstAsync(g => g.Id == groupDocumentId);
-            var content = await db.GeneratedGroupDocumentContents.FirstAsync(c => c.GeneratedGroupDocumentId == groupDocumentId);
+            var doc = await db.GeneratedGroupDocuments.FirstOrDefaultAsync(g => g.Id == groupDocumentId);
+            if (doc is null) return new ArchiveOpResult(false, RecordGoneMessage);
+            var content = await db.GeneratedGroupDocumentContents
+                .FirstOrDefaultAsync(c => c.GeneratedGroupDocumentId == groupDocumentId);
+            if (content is null) return new ArchiveOpResult(false, NoContentMessage);
 
             await _tempFileService.OpenAsync(doc.FileName, content.Content);
 
             _auditLogService.Log(db, "Відкрито документ", "GeneratedGroupDocument", groupDocumentId, null, doc.FileName);
             await db.SaveChangesAsync();
+            return new ArchiveOpResult(true, null);
         }
 
         public async Task<ArchiveOpResult> SaveGroupAsAsync(int groupDocumentId, string targetPath)
         {
             using var db = _dbFactory.CreateDbContext();
-            var doc = await db.GeneratedGroupDocuments.FirstAsync(g => g.Id == groupDocumentId);
-            var content = await db.GeneratedGroupDocumentContents.FirstAsync(c => c.GeneratedGroupDocumentId == groupDocumentId);
+            var doc = await db.GeneratedGroupDocuments.FirstOrDefaultAsync(g => g.Id == groupDocumentId);
+            if (doc is null) return new ArchiveOpResult(false, RecordGoneMessage);
+            var content = await db.GeneratedGroupDocumentContents
+                .FirstOrDefaultAsync(c => c.GeneratedGroupDocumentId == groupDocumentId);
+            if (content is null) return new ArchiveOpResult(false, NoContentMessage);
 
             var bytes = _watermarkService.Apply(content.Content, doc.FileName);
             await File.WriteAllBytesAsync(targetPath, bytes);
@@ -698,9 +779,8 @@ namespace GenDoc.Services.Documents
                 if (doc.IsCurrent)
                 {
                     doc.IsCurrent = false;
-                    var previous = await db.GeneratedGroupDocuments
-                        .Where(g => g.ExportTemplateId == doc.ExportTemplateId && g.IntakeId == doc.IntakeId
-                            && g.Id != doc.Id && g.DeletedAt == null)
+                    var previous = await SameGroupSeries(db.GeneratedGroupDocuments, doc)
+                        .Where(g => g.Id != doc.Id && g.DeletedAt == null)
                         .OrderByDescending(g => g.Version)
                         .FirstOrDefaultAsync();
                     if (previous is not null) previous.IsCurrent = true;
@@ -713,11 +793,14 @@ namespace GenDoc.Services.Documents
             await db.SaveChangesAsync();
         }
 
-        public async Task<List<GroupVersionDto>> GetGroupVersionsAsync(int exportTemplateId)
+        public async Task<List<GroupVersionDto>> GetGroupVersionsAsync(int? exportTemplateId, int? docxTemplateId)
         {
             using var db = _dbFactory.CreateDbContext();
-            return await db.GeneratedGroupDocuments
-                .Where(g => g.ExportTemplateId == exportTemplateId)
+            // Обидві групові фази зараз пишуть IntakeId = null, тож intakeId: null тут
+            // збігається з реальними даними — але важливо, що це той самий SameGroupSeries,
+            // яким керуються DeleteGroupAsync/MakeGroupCurrentAsync/RestoreGroupAsync,
+            // а не окреме, здатне розійтися визначення "та сама серія".
+            return await SameGroupSeries(db.GeneratedGroupDocuments, exportTemplateId, docxTemplateId, intakeId: null)
                 .OrderByDescending(g => g.Version)
                 .Select(g => new GroupVersionDto(
                     g.Id, g.Version, g.GeneratedAt,
@@ -731,9 +814,8 @@ namespace GenDoc.Services.Documents
             using var db = _dbFactory.CreateDbContext();
             var target = await db.GeneratedGroupDocuments.FirstAsync(g => g.Id == versionDocumentId);
 
-            foreach (var current in db.GeneratedGroupDocuments
-                .Where(g => g.ExportTemplateId == target.ExportTemplateId && g.IntakeId == target.IntakeId && g.IsCurrent)
-                .ToList())
+            foreach (var current in SameGroupSeries(db.GeneratedGroupDocuments, target)
+                .Where(g => g.IsCurrent).ToList())
             {
                 current.IsCurrent = false;
             }
@@ -753,7 +835,9 @@ namespace GenDoc.Services.Documents
                 .OrderByDescending(g => g.DeletedAt)
                 .Select(g => new DeletedGroupDocumentInfo(
                     g.Id,
-                    g.ExportTemplate != null ? g.ExportTemplate.Name : "—",
+                    g.ExportTemplate != null
+                        ? g.ExportTemplate.Name
+                        : g.Template != null ? g.Template.Name : "—",
                     g.Version,
                     g.RecipientCount,
                     g.DeletedAt!.Value,
@@ -768,15 +852,14 @@ namespace GenDoc.Services.Documents
             doc.DeletedAt = null;
             doc.DeletedBy = null;
 
-            var maxAliveVersion = await db.GeneratedGroupDocuments
-                .Where(g => g.ExportTemplateId == doc.ExportTemplateId && g.IntakeId == doc.IntakeId && g.Id != doc.Id)
+            var maxAliveVersion = await SameGroupSeries(db.GeneratedGroupDocuments, doc)
+                .Where(g => g.Id != doc.Id)
                 .MaxAsync(g => (int?)g.Version) ?? 0;
 
             if (doc.Version >= maxAliveVersion)
             {
-                foreach (var current in db.GeneratedGroupDocuments
-                    .Where(g => g.ExportTemplateId == doc.ExportTemplateId && g.IntakeId == doc.IntakeId && g.IsCurrent)
-                    .ToList())
+                foreach (var current in SameGroupSeries(db.GeneratedGroupDocuments, doc)
+                    .Where(g => g.IsCurrent).ToList())
                 {
                     current.IsCurrent = false;
                 }
