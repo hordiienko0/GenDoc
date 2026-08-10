@@ -629,8 +629,10 @@ namespace GenDoc.Services.Documents
             using var db = _dbFactory.CreateDbContext();
             var query = db.GeneratedGroupDocuments.Where(g => g.IsCurrent);
 
-            if (filter.ExportTemplateId is int templateId)
-                query = query.Where(g => g.ExportTemplateId == templateId);
+            if (filter.ExportTemplateId is int exportTemplateId)
+                query = query.Where(g => g.ExportTemplateId == exportTemplateId);
+            if (filter.DocxTemplateId is int docxTemplateId)
+                query = query.Where(g => g.TemplateId == docxTemplateId);
             if (filter.Year is int year)
                 query = query.Where(g => g.GeneratedAt.Year == year);
 
@@ -658,7 +660,7 @@ namespace GenDoc.Services.Documents
                 .ToListAsync();
         }
 
-        public async Task<List<(int Id, string Name)>> GetGroupTemplateOptionsAsync()
+        public async Task<List<GroupTemplateOption>> GetGroupTemplateOptionsAsync()
         {
             using var db = _dbFactory.CreateDbContext();
 
@@ -670,7 +672,7 @@ namespace GenDoc.Services.Documents
                     .Where(t => exportIds.Contains(t.Id))
                     .Select(t => new { t.Id, t.Name })
                     .ToListAsync())
-                .Select(t => (t.Id, t.Name))
+                .Select(t => new GroupTemplateOption(t.Id, null, t.Name))
                 .ToList();
 
             var docxIds = await db.GeneratedGroupDocuments
@@ -681,7 +683,7 @@ namespace GenDoc.Services.Documents
                     .Where(t => docxIds.Contains(t.Id))
                     .Select(t => new { t.Id, t.Name })
                     .ToListAsync())
-                .Select(t => (t.Id, t.Name)));
+                .Select(t => new GroupTemplateOption(null, t.Id, t.Name)));
 
             return options.OrderBy(o => o.Name, StringComparer.CurrentCulture).ToList();
         }

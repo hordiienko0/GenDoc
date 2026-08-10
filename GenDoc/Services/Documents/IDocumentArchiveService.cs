@@ -34,7 +34,7 @@ namespace GenDoc.Services.Documents
         // Групові документи (XLSX-відомості на весь список людей) — окрема
         // персональна модель, без RecipientId.
         Task<List<GroupDocumentRowDto>> QueryGroupAsync(GroupArchiveFilter filter);
-        Task<List<(int Id, string Name)>> GetGroupTemplateOptionsAsync();
+        Task<List<GroupTemplateOption>> GetGroupTemplateOptionsAsync();
         Task OpenGroupAsync(int groupDocumentId);
         Task<ArchiveOpResult> SaveGroupAsAsync(int groupDocumentId, string targetPath);
         Task DeleteGroupAsync(IReadOnlyList<int> groupDocumentIds);

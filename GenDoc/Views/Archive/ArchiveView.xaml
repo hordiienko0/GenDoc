@@ -449,7 +449,7 @@
                 <TextBlock Text="Групові документи охоплюють кількох людей в одному аркуші (відомості) — не плутати з персональними документами на вкладці «Документи»."
                            FontSize="11.5" TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
                 <ComboBox Style="{StaticResource ArchiveFilterComboStyle}" ItemsSource="{Binding GroupTemplateOptions}"
-                          SelectedItem="{Binding SelectedGroupTemplate}" DisplayMemberPath="Label" Margin="0,26,0,0"/>
+                          SelectedItem="{Binding SelectedGroupTemplate}" DisplayMemberPath="Name" Margin="0,26,0,0"/>
             </Grid>
 
             <Border Grid.Row="1" Background="{StaticResource PanelBrush}"

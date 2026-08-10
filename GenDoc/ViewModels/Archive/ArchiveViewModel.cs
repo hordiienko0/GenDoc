@@ -663,12 +663,16 @@ namespace GenDoc.ViewModels.Archive
         // ── Таб «Групові» ────────────────────────────────────────────────
 
         public ObservableCollection<GroupDocumentRowViewModel> GroupRows { get; } = new();
-        public ObservableCollection<FilterOption> GroupTemplateOptions { get; } = new();
+
+        // FilterOption несе один Id — для групового фільтра цього не досить, бо
+        // XLSX- і DOCX-шаблони нумеруються незалежно й можуть збігтись числом.
+        // Тому тут тримаємо GroupTemplateOption напряму, а не підганяємо спільний FilterOption.
+        public ObservableCollection<GroupTemplateOption> GroupTemplateOptions { get; } = new();
 
         [ObservableProperty]
-        private FilterOption? selectedGroupTemplate;
+        private GroupTemplateOption? selectedGroupTemplate;
 
-        partial void OnSelectedGroupTemplateChanged(FilterOption? value) => _ = ReloadGroupAsync();
+        partial void OnSelectedGroupTemplateChanged(GroupTemplateOption? value) => _ = ReloadGroupAsync();
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(GroupIsEmpty))]
@@ -689,9 +693,9 @@ namespace GenDoc.ViewModels.Archive
                 _suppressGroupFilterReload = true;
                 var options = await _archiveService.GetGroupTemplateOptionsAsync();
                 GroupTemplateOptions.Clear();
-                GroupTemplateOptions.Add(new FilterOption(null, "Шаблон: усі"));
-                foreach (var (id, name) in options)
-                    GroupTemplateOptions.Add(new FilterOption(id, name));
+                GroupTemplateOptions.Add(new GroupTemplateOption(null, null, "Шаблон: усі"));
+                foreach (var option in options)
+                    GroupTemplateOptions.Add(option);
                 SelectedGroupTemplate = GroupTemplateOptions[0];
                 _suppressGroupFilterReload = false;
             }
@@ -700,7 +704,8 @@ namespace GenDoc.ViewModels.Archive
             try
             {
                 ClearGroupChecked();
-                var rows = await _archiveService.QueryGroupAsync(new GroupArchiveFilter(SelectedGroupTemplate?.Id, null, 0, PageSize));
+                var rows = await _archiveService.QueryGroupAsync(new GroupArchiveFilter(
+                    SelectedGroupTemplate?.ExportTemplateId, SelectedGroupTemplate?.DocxTemplateId, null, 0, PageSize));
                 GroupRows.Clear();
                 foreach (var dto in rows)
                 {

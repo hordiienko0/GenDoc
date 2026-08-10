@@ -184,11 +184,41 @@ public class GroupDocumentArchiveTests
         var rapport = AddDocxTemplate(db, "Рапорт котлове");
         AddGroupDocument(db, null, rapport, version: 1, isCurrent: true);
 
-        var rows = await TestServices.Archive(db).QueryGroupAsync(new GroupArchiveFilter(null, null, 0, 50));
+        var rows = await TestServices.Archive(db).QueryGroupAsync(new GroupArchiveFilter(null, null, null, 0, 50));
 
         var row = Assert.Single(rows);
         Assert.Equal("Рапорт котлове", row.TemplateName);
         Assert.True(row.TemplateAlive);
+    }
+
+    // Знахідка рев'ю Task 12: id XLSX- і DOCX-шаблонів нумеруються в окремих
+    // таблицях з незалежною послідовністю, тож можуть числом випадково збігтися.
+    // У свіжій тестовій БД перший запис у кожній з таблиць отримує Id=1 — цього
+    // досить, щоб детерміновано відтворити колізію, не підганяючи id вручну.
+    // Якщо фільтр перевіряє лише ExportTemplateId (як було до фіксу), вибір
+    // DOCX-шаблону в списку поверне чужу XLSX-відомість з тим самим номером —
+    // рівно та вада, яку мав усунути цей таск.
+    [Fact]
+    public async Task QueryGroupAsync_FilterDistinguishesTemplateKindEvenWhenIdsCollide()
+    {
+        using var db = new TestDb();
+        SeedUser(db);
+        var xlsxTemplateId = AddExportTemplate(db, "Залік");
+        var docxTemplateId = AddDocxTemplate(db, "Рапорт");
+        Assert.Equal(xlsxTemplateId, docxTemplateId); // саме та колізія, яку тест перевіряє
+
+        var xlsxDocId = AddGroupDocument(db, xlsxTemplateId, null, version: 1, isCurrent: true);
+        var docxDocId = AddGroupDocument(db, null, docxTemplateId, version: 1, isCurrent: true);
+
+        var service = TestServices.Archive(db);
+
+        var docxRows = await service.QueryGroupAsync(new GroupArchiveFilter(null, docxTemplateId, null, 0, 50));
+        var docxRow = Assert.Single(docxRows);
+        Assert.Equal(docxDocId, docxRow.Id);
+
+        var xlsxRows = await service.QueryGroupAsync(new GroupArchiveFilter(xlsxTemplateId, null, null, 0, 50));
+        var xlsxRow = Assert.Single(xlsxRows);
+        Assert.Equal(xlsxDocId, xlsxRow.Id);
     }
 
     // Дефект A3: FirstAsync по таблиці вмісту кидає «Sequence contains no elements».
