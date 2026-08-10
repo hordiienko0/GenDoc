@@ -1,0 +1,128 @@
+using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Packaging;
+using DocumentFormat.OpenXml.Wordprocessing;
+using GenDoc.Models;
+using GenDoc.Services.Generation;
+
+namespace GenDoc.Tests.Generation;
+
+// Кожен випадок тут дав би зіпсований документ мовчки. Відмова з названим
+// шаблоном і блоком краща за файл, який виглядає готовим.
+public class TableBlockErrorTests : IDisposable
+{
+    private readonly string _folder = Path.Combine(Path.GetTempPath(), $"gendoc-tblockerr-{Guid.NewGuid():N}");
+
+    public TableBlockErrorTests() => Directory.CreateDirectory(_folder);
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_folder)) Directory.Delete(_folder, recursive: true);
+    }
+
+    private static Template TemplateStub(string name) => new()
+    {
+        Id = 1, Name = name, OriginalFileName = $"{name}.docx",
+        Content = Array.Empty<byte>(), UploadedAt = DateTime.Now
+    };
+
+    private static TableRow Row(params string[] cells)
+        => new(cells.Select(c => new TableCell(new Paragraph(new Run(new Text(c))))));
+
+    private static byte[] Build(Action<Body> fill)
+    {
+        using var stream = new MemoryStream();
+        using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+        {
+            doc.AddMainDocumentPart().Document = new Document(new Body());
+            fill(doc.MainDocumentPart!.Document!.Body!);
+            doc.MainDocumentPart.Document.Save();
+        }
+        return stream.ToArray();
+    }
+
+    private GenerationItemResult Generate(byte[] template, string fileName)
+        => new DocumentGenerationService().GenerateGroup(
+            TemplateStub("Проба"), template,
+            new List<IDictionary<string, string>>
+            {
+                new Dictionary<string, string> { ["{{піб}}"] = "ПЕРШИЙ" },
+                new Dictionary<string, string> { ["{{піб}}"] = "ДРУГИЙ" }
+            },
+            new Dictionary<string, string>(),
+            Path.Combine(_folder, fileName));
+
+    [Fact]
+    public void VerticalMergeInRepeatedRow_FailsWithReadableMessage()
+    {
+        var merged = new TableCell(
+            new TableCellProperties(new VerticalMerge { Val = MergedCellValues.Restart }),
+            new Paragraph(new Run(new Text("{{піб}}"))));
+
+        var bytes = Build(body => body.AppendChild(new Table(
+            Row("{{#список}}"),
+            new TableRow(merged),
+            Row("{{/список}}"))));
+
+        var result = Generate(bytes, "vmerge.docx");
+
+        Assert.False(result.Success);
+        Assert.Contains("Проба", result.ErrorMessage);
+        Assert.Contains("список", result.ErrorMessage);
+        Assert.Contains("вертикально", result.ErrorMessage);
+    }
+
+    [Fact]
+    public void RowMarkerInsideParagraphBlock_FailsAsNestedBlock()
+    {
+        var bytes = Build(body =>
+        {
+            body.AppendChild(new Paragraph(new Run(new Text("{{#зовнішній}}"))));
+            body.AppendChild(new Table(
+                Row("{{#внутрішній}}"),
+                Row("{{піб}}"),
+                Row("{{/внутрішній}}")));
+            body.AppendChild(new Paragraph(new Run(new Text("{{/зовнішній}}"))));
+        });
+
+        var result = Generate(bytes, "nested.docx");
+
+        Assert.False(result.Success);
+        Assert.Contains("Проба", result.ErrorMessage);
+        Assert.Contains("внутрішній", result.ErrorMessage);
+        Assert.Contains("вкладені", result.ErrorMessage);
+    }
+
+    [Fact]
+    public void BlockOpenedByParagraphAndClosedByRow_FailsWithCrossingMessage()
+    {
+        var bytes = Build(body =>
+        {
+            body.AppendChild(new Paragraph(new Run(new Text("{{#список}}"))));
+            body.AppendChild(new Table(
+                Row("{{піб}}"),
+                Row("{{/список}}")));
+        });
+
+        var result = Generate(bytes, "crossing.docx");
+
+        Assert.False(result.Success);
+        Assert.Contains("Проба", result.ErrorMessage);
+        Assert.Contains("список", result.ErrorMessage);
+        Assert.Contains("на одному рівні", result.ErrorMessage);
+    }
+
+    [Fact]
+    public void BlockOpenedInTableAndNotClosedThere_FailsNamingTheTable()
+    {
+        var bytes = Build(body => body.AppendChild(new Table(
+            Row("{{#список}}"),
+            Row("{{піб}}"))));
+
+        var result = Generate(bytes, "unclosed-row.docx");
+
+        Assert.False(result.Success);
+        Assert.Contains("Проба", result.ErrorMessage);
+        Assert.Contains("список", result.ErrorMessage);
+        Assert.Contains("таблиц", result.ErrorMessage);
+    }
+}

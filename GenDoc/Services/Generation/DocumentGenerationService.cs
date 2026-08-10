@@ -212,8 +212,59 @@ namespace GenDoc.Services.Generation
             }
 
             if (openName is not null)
+            {
+                var closedInsideTable = body.OfType<Table>()
+                    .SelectMany(BlockStructure.Rows)
+                    .Any(row => BlockStructure.CloseName(BlockStructure.MarkerText(row)) == openName);
+
+                if (closedInsideTable)
+                    throw new InvalidOperationException(
+                        $"Шаблон «{templateName}»: блок «{{{{#{openName}}}}}» відкрито абзацом, "
+                        + "а закрито рядком таблиці. Маркери мають бути на одному рівні — "
+                        + "або обидва абзацами, або обидва рядками однієї таблиці.");
+
+                if (insideTable)
+                    throw new InvalidOperationException(
+                        $"Шаблон «{templateName}»: блок «{{{{#{openName}}}}}» відкрито рядком таблиці "
+                        + $"й не закрито в ній же — додайте рядок «{{{{/{openName}}}}}» у ту саму таблицю.");
+
                 throw new InvalidOperationException(
                     $"Шаблон «{templateName}»: блок «{{{{#{openName}}}}}» не закрито тегом «{{{{/{openName}}}}}».");
+            }
+        }
+
+        // Обхід не заходить у таблицю, поки відкрито блок рівня документа, тож
+        // маркерний рядок усередині такого блоку інакше лишився б літеральним
+        // текстом у кожній копії.
+        private static void GuardNestedRowBlocks(
+            List<OpenXmlElement> body, string templateName, string blockName)
+        {
+            var nested = body.OfType<Table>()
+                .SelectMany(BlockStructure.Rows)
+                .Select(row => BlockStructure.OpenName(BlockStructure.MarkerText(row)))
+                .FirstOrDefault(name => name is not null);
+
+            if (nested is not null)
+                throw new InvalidOperationException(
+                    $"Шаблон «{templateName}»: вкладені блоки не підтримуються — «{{{{#{nested}}}}}» "
+                    + $"у рядку таблиці всередині блоку «{{{{#{blockName}}}}}».");
+        }
+
+        // Клонування рядка з вертикальним об'єднанням дало б N продовжень merge
+        // і зіпсовану таблицю. Відмовляємо, а не знімаємо об'єднання тихо:
+        // документ, який виглядає готовим, гірший за явну відмову.
+        private static void GuardVerticalMerge(
+            List<OpenXmlElement> body, string templateName, string blockName)
+        {
+            var hasVerticalMerge = body
+                .SelectMany(element => element.Descendants<TableCellProperties>())
+                .Any(properties => properties.VerticalMerge is not null);
+
+            if (hasVerticalMerge)
+                throw new InvalidOperationException(
+                    $"Шаблон «{templateName}»: у тілі блоку «{{{{#{blockName}}}}}» є вертикально "
+                    + "об'єднані комірки. Повторення такого рядка зіпсує таблицю — приберіть "
+                    + "об'єднання по вертикалі в рядках, що повторюються.");
         }
 
         private static void ExpandBlock(
@@ -224,6 +275,9 @@ namespace GenDoc.Services.Generation
             string templateName,
             string blockName)
         {
+            GuardNestedRowBlocks(body, templateName, blockName);
+            GuardVerticalMerge(body, templateName, blockName);
+
             var count = perRecipientValues.Count;
             for (var i = 0; i < count; i++)
             {
