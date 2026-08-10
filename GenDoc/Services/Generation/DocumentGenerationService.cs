@@ -128,13 +128,23 @@ namespace GenDoc.Services.Generation
                 BlockStructure.BlockChildren(container).ToList(),
                 perRecipientValues, sharedWithCount, unfilled, templateName, insideTable: false);
 
-            // Елементи, що не є ні абзацом, ні таблицею (елементи керування
-            // вмістом Word, розриви секцій), у блоках участі не беруть — але їхні
-            // абзаци мусять діставати підстановку спільних тегів так само, як до
-            // переходу на обхід блокових дітей. Інакше груповий режим мовчки
-            // лишав би там сирі {{теги}}, тоді як GenerateOne їх заповнює.
-            foreach (var other in container.ChildElements.Where(e => e is not Paragraph && e is not Table))
-                ReplaceInElement(other, sharedWithCount, unfilled);
+            // Маркер, який структурний обхід вище не розгорнув, лишається в
+            // тексті буквально — ReplaceInParagraph його не чіпає (дивись
+            // IsMarkerTag нижче). Перевірка йде саме тут: усі маркери, які
+            // рушій УМІВ розгорнути, вже прибрані разом з абзацом/рядком; усе,
+            // що лишилось — маркер там, куди обхід не сягає. Обов'язково до
+            // підмітання нижче: воно й само не стирає маркери, але порядок
+            // тримаємо явним, щоб це не залежало від деталі реалізації заміни.
+            GuardResidualMarkers(container, templateName);
+
+            // Повне підмітання: дістає теги на будь-якій глибині, куди
+            // структурний обхід (блокові діти контейнера, рядки однієї
+            // таблиці) не заходить — усередині елемента керування вмістом
+            // Word, у таблиці, вкладеній в комірку. ReplaceInParagraph рано
+            // виходить, якщо в тексті нема "{{", тож уже підставлені абзаци
+            // він не чіпає; unfilled.Distinct() у GenerateGroup прибирає
+            // можливе подвійне повідомлення.
+            unfilled.AddRange(ReplaceInContainer(container, sharedWithCount));
 
             return unfilled;
         }
@@ -253,18 +263,55 @@ namespace GenDoc.Services.Generation
         // Клонування рядка з вертикальним об'єднанням дало б N продовжень merge
         // і зіпсовану таблицю. Відмовляємо, а не знімаємо об'єднання тихо:
         // документ, який виглядає готовим, гірший за явну відмову.
+        //
+        // Область перевірки — лише комірки рядків, що САМІ є тілом блоку (body
+        // складається з TableRow, коли блок відкрито рядком). Якщо тілом блоку
+        // є ціла таблиця (блок рівня документа навколо таблиці) або рядок
+        // містить вкладену таблицю зі своїм merge, це об'єднання не зазнає
+        // жодного псування від клонування — таблиця чи вкладена таблиця
+        // копіюється цілком і лишається самодостатньою в кожній копії.
+        // Ширша перевірка (по всіх Descendants) відмовляла і в цих випадках
+        // теж — а обʼєднана шапка таблиці майже завжди є в списках особового
+        // складу, тож це виявилось наддумкою.
         private static void GuardVerticalMerge(
             List<OpenXmlElement> body, string templateName, string blockName)
         {
-            var hasVerticalMerge = body
-                .SelectMany(element => element.Descendants<TableCellProperties>())
-                .Any(properties => properties.VerticalMerge is not null);
+            var hasVerticalMerge = body.OfType<TableRow>()
+                .SelectMany(row => row.Elements<TableCell>())
+                .Any(cell => cell.TableCellProperties?.VerticalMerge is not null);
 
             if (hasVerticalMerge)
                 throw new InvalidOperationException(
                     $"Шаблон «{templateName}»: у тілі блоку «{{{{#{blockName}}}}}» є вертикально "
                     + "об'єднані комірки. Повторення такого рядка зіпсує таблицю — приберіть "
                     + "об'єднання по вертикалі в рядках, що повторюються.");
+        }
+
+        // Маркер, який структурний обхід не бачить: усередині елемента
+        // керування вмістом Word (w:sdt), або в таблиці, вкладеній у комірку
+        // іншої таблиці. ReplaceInParagraph такий текст навмисно не чіпає
+        // (IsMarkerTag), тож якщо він досі в документі після ProcessSiblings —
+        // це не поле, яке лишилось незаповненим, а блок, який рушій не зумів
+        // розгорнути. Мовчки прибрати його підміткою — гірше за відмову:
+        // користувач отримає документ, що виглядає готовим, без таблиці чи
+        // рядків, які мали з'явитись.
+        private static void GuardResidualMarkers(OpenXmlCompositeElement container, string templateName)
+        {
+            foreach (var paragraph in container.Descendants<Paragraph>())
+            {
+                var text = BlockStructure.MarkerText(paragraph);
+                var marker = BlockStructure.OpenName(text) is { } open ? $"{{{{#{open}}}}}"
+                    : BlockStructure.CloseName(text) is { } close ? $"{{{{/{close}}}}}"
+                    : null;
+
+                if (marker is null) continue;
+
+                throw new InvalidOperationException(
+                    $"Шаблон «{templateName}»: маркер «{marker}» лежить там, де рушій не може його "
+                    + "розгорнути — усередині елемента керування вмістом Word або в таблиці, "
+                    + "вкладеній у комірку. Маркери мають стояти безпосередньо серед абзаців "
+                    + "контейнера або безпосередньо серед рядків однієї таблиці.");
+            }
         }
 
         private static void ExpandBlock(
@@ -318,10 +365,6 @@ namespace GenDoc.Services.Generation
                 ReplaceInParagraph(inner, values, unfilled);
         }
 
-        // Заміна зі збереженням позиції нетекстових вузлів (w:tab, w:br, w:drawing…):
-        // рахуємо зміщення кожного текстового вузла в межах параграфа, знаходимо збіги
-        // у зчепленому тексті, і пишемо результат назад лише у ті самі текстові вузли,
-        // а не в один "плаский" рядок першого рану.
         private static List<string> ReplaceInContainer(OpenXmlCompositeElement? container, IDictionary<string, string> values)
         {
             var unfilled = new List<string>();
@@ -333,6 +376,10 @@ namespace GenDoc.Services.Generation
             return unfilled;
         }
 
+        // Заміна зі збереженням позиції нетекстових вузлів (w:tab, w:br, w:drawing…):
+        // рахуємо зміщення кожного текстового вузла в межах параграфа, знаходимо збіги
+        // у зчепленому тексті, і пишемо результат назад лише у ті самі текстові вузли,
+        // а не в один "плаский" рядок першого рану.
         internal static void ReplaceInParagraph(Paragraph paragraph, IDictionary<string, string> values, List<string> unfilled)
         {
             var textNodes = paragraph.Descendants<Text>().ToList();
@@ -380,8 +427,18 @@ namespace GenDoc.Services.Generation
 
                     if (match.Index >= start)
                     {
+                        if (BlockStructure.IsMarkerTag(match.Value))
+                        {
+                            // Маркер блоку ({{#…}}/{{/…}}), що дійшов сюди буквально —
+                            // структурний обхід його не розпізнав і не прибрав. Це не
+                            // поле: не вгадуємо значення і не стираємо як незаповнений
+                            // тег, а лишаємо текст як є. GuardResidualMarkers у
+                            // ProcessContainer саме такий залишок і шукає — стерши його
+                            // тут, ми б зробили цю перевірку сліпою.
+                            sb.Append(match.Value);
+                        }
                         // Цей вузол — вузол, де збіг починається: сюди йде все значення заміни.
-                        if (values.TryGetValue(match.Value, out var value) && !string.IsNullOrEmpty(value))
+                        else if (values.TryGetValue(match.Value, out var value) && !string.IsNullOrEmpty(value))
                             sb.Append(value);
                         else
                             unfilled.Add(match.Value);

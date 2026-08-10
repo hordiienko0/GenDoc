@@ -211,4 +211,46 @@ public class TableBlockTests : IDisposable
         Assert.Contains("Підписав КОМАНДИР", text);
         Assert.DoesNotContain("{{", text);
     }
+
+    // Рядок, загорнутий у елемент керування вмістом на рівні рядка (w:sdtRow),
+    // так само не бере участі в блоках і невидимий для структурного обходу
+    // (BlockStructure.Rows дивиться лише прямих дітей-TableRow). Огляд перед
+    // злиттям гілки: підмітання мусить діставати такий рядок так само, як
+    // діставало обгортку абзаца, і не лишати спантеличеного запису в
+    // UnfilledTags, коли значення насправді підставилось.
+    [Fact]
+    public void TableBlock_FillsTagInsideSdtWrappedRow_AndReportsNothingSpurious()
+    {
+        using var stream = new MemoryStream();
+        using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+        {
+            doc.AddMainDocumentPart().Document = new Document(new Body());
+            var body = doc.MainDocumentPart!.Document!.Body!;
+
+            var table = new Table(
+                Row("{{#список}}"),
+                Row("{{піб}}"),
+                Row("{{/список}}"));
+            table.AppendChild(new SdtRow(new SdtContentRow(Row("Підписав {{піб_командира}}"))));
+            body.AppendChild(table);
+
+            doc.MainDocumentPart.Document.Save();
+        }
+
+        var path = Path.Combine(_folder, "sdtrow.docx");
+        var shared = new Dictionary<string, string> { ["{{піб_командира}}"] = "КОМАНДИР" };
+        var result = new DocumentGenerationService().GenerateGroup(
+            TemplateStub("Список"), stream.ToArray(),
+            People(("ПЕРШИЙ", "солдат"), ("ДРУГИЙ", "солдат")),
+            shared, path);
+
+        Assert.True(result.Success, result.ErrorMessage);
+        Assert.DoesNotContain("{{піб_командира}}", result.UnfilledTags);
+
+        using var produced = WordprocessingDocument.Open(path, false);
+        var text = string.Concat(produced.MainDocumentPart!.Document!.Body!.Descendants<Text>().Select(t => t.Text));
+
+        Assert.Contains("Підписав КОМАНДИР", text);
+        Assert.DoesNotContain("{{", text);
+    }
 }

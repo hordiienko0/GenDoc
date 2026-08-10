@@ -128,4 +128,47 @@ public class TableBlockErrorTests : IDisposable
         // "не закрито в ній же" є лише в повідомленні цієї, in-table гілки.
         Assert.Contains("не закрито в ній же", result.ErrorMessage);
     }
+
+    // Огляд перед злиттям гілки: маркерна таблиця (відкриваючий/тіло/
+    // закриваючий рядки), уся загорнута в елемент керування вмістом Word,
+    // невидима для структурного обходу (BlockChildren бере лише Paragraph і
+    // Table серед прямих дітей контейнера). До GuardResidualMarkers це
+    // мовчки тихо стиралось підміткою — Success=True, порожня таблиця.
+    [Fact]
+    public void MarkerTableInsideSdtBlock_FailsWithMessageNamingTemplate()
+    {
+        var bytes = Build(body =>
+        {
+            var table = new Table(Row("{{#список}}"), Row("{{піб}}"), Row("{{/список}}"));
+            body.AppendChild(new SdtBlock(new SdtContentBlock(table)));
+        });
+
+        var result = Generate(bytes, "sdt-marker.docx");
+
+        Assert.False(result.Success);
+        Assert.Contains("Проба", result.ErrorMessage);
+        Assert.Contains("{{#список}}", result.ErrorMessage);
+    }
+
+    // Огляд перед злиттям гілки: маркерні рядки таблиці, вкладеної в комірку
+    // іншої (звичайної) таблиці. Зовнішній рядок — не маркер (його текст —
+    // зчеплення текстів усіх вкладених маркерів), тож структурний обхід
+    // трактує його як звичайний вміст і раніше стирав маркери всередині як
+    // незаповнені теги — так само тихо, як і у випадку з w:sdt.
+    [Fact]
+    public void MarkerRowsInTableNestedInsideACell_FailWithMessageNamingTemplate()
+    {
+        var bytes = Build(body =>
+        {
+            var inner = new Table(Row("{{#список}}"), Row("{{піб}}"), Row("{{/список}}"));
+            var cell = new TableCell(inner, new Paragraph());
+            body.AppendChild(new Table(new TableRow(cell)));
+        });
+
+        var result = Generate(bytes, "nested-cell-marker.docx");
+
+        Assert.False(result.Success);
+        Assert.Contains("Проба", result.ErrorMessage);
+        Assert.Contains("{{#список}}", result.ErrorMessage);
+    }
 }

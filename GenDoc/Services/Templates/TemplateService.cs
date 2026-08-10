@@ -211,7 +211,7 @@ namespace GenDoc.Services.Templates
 
                 foreach (var inner in paragraphs)
                 {
-                    var text = string.Concat(inner.Descendants<Text>().Select(t => t.Text)).Trim();
+                    var text = BlockStructure.MarkerText(inner);
 
                     foreach (Match match in PlaceholderRegex.Matches(text))
                     {
@@ -272,6 +272,20 @@ namespace GenDoc.Services.Templates
             {
                 if (container is null) return;
                 ScanSiblings(BlockStructure.BlockChildren(container).ToList(), insideTable: false);
+
+                // Дзеркало підмітання рушія (ProcessContainer): дістає теги на
+                // будь-якій глибині, куди структурний обхід вище не заходить —
+                // елемент керування вмістом Word, таблиця, вкладена в комірку.
+                // Безпечно за побудовою: CollectTags лише "підвищує" тег до
+                // insideBlock=true й ніколи не знижує, тож уже зібрані теги
+                // зберігають прапорець, а теги з обгорток (де блоку бути не
+                // може) додаються як insideBlock=false. IsMarkerTag усередині
+                // CollectTags так само захищає від потрапляння маркера в мапінг.
+                // Перевірки на "маркер, що недосяжний" тут немає навмисно:
+                // сканер працює при завантаженні й не має блокувати його —
+                // відмова за таким шаблоном лишається задачею генерації.
+                foreach (var paragraph in container.Descendants<Paragraph>())
+                    CollectTags(paragraph, insideBlock: false);
             }
 
             var mainPart = doc.MainDocumentPart;

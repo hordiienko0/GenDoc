@@ -161,4 +161,23 @@ public class TableBlockScanTests
         Assert.False(scan.HasBlock);
         Assert.All(scan.Tags, t => Assert.False(t.IsInsideBlock));
     }
+
+    // ── Огляд перед злиттям гілки: сканер отримав ту саму латку, що й рушій
+    // (ProcessContainer) — підмітання по всіх абзацах контейнера після
+    // структурного обходу. Без неї тег усередині елемента керування вмістом
+    // Word (w:sdt) сканер не бачив: не потрапляв у мапінг, і генерація його
+    // стирала б як незаповнений (значення нізвідки взяти).
+    [Fact]
+    public void TagInsideSdtWrapper_IsCollectedByScanner()
+    {
+        var scan = Scan(body =>
+        {
+            body.AppendChild(new Paragraph(new Run(new Text("Наказ"))));
+            body.AppendChild(new SdtBlock(new SdtContentBlock(
+                new Paragraph(new Run(new Text("Підписав {{піб_командира}}"))))));
+        });
+
+        var tag = Assert.Single(scan.Tags, t => t.Tag == "{{піб_командира}}");
+        Assert.False(tag.IsInsideBlock);
+    }
 }
