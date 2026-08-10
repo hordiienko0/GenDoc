@@ -228,12 +228,12 @@ public class DocxRealTemplateTests : IDisposable
         return stream.ToArray();
     }
 
-    // Повторюваний блок усередині таблиці ще не підтримується. Важливо, щоб
-    // повідомлення називало шаблон і блок — інакше користувач бачить лише
-    // «Тіло повторюваного блоку має бути на одному рівні…» без жодної підказки,
-    // який саме файл винен.
+    // Побічний наслідок переходу на обхід блокових дітей: якщо в тілі блоку
+    // лежить ціла таблиця, вона клонується на кожну людину — окрема таблиця на
+    // особу. Раніше це була відмова (Task 17), бо обхід був плоским і абзаци
+    // комірок мали інший батько, ніж маркери.
     [Fact]
-    public void GroupBlockInsideTable_FailsWithMessageNamingTemplateAndBlock()
+    public void GroupBlockAroundTable_ClonesTheWholeTablePerPerson()
     {
         var bytes = BuildGroupDocxWithBlockInsideTable();
 
@@ -242,14 +242,72 @@ public class DocxRealTemplateTests : IDisposable
             TemplateStub("Відомість у таблиці"), bytes,
             new List<IDictionary<string, string>>
             {
-                new Dictionary<string, string> { ["{{піб}}"] = "ПЕРШИЙ" }
+                new Dictionary<string, string> { ["{{піб}}"] = "ПЕРШИЙ" },
+                new Dictionary<string, string> { ["{{піб}}"] = "ДРУГИЙ" }
             },
             new Dictionary<string, string>(), path);
 
-        Assert.False(result.Success);
-        Assert.Contains("Відомість у таблиці", result.ErrorMessage);
-        Assert.Contains("список", result.ErrorMessage);
-        Assert.Contains("таблиц", result.ErrorMessage);
+        Assert.True(result.Success, result.ErrorMessage);
+
+        using var produced = WordprocessingDocument.Open(path, false);
+        var tables = produced.MainDocumentPart!.Document!.Body!.Elements<Table>().ToList();
+
+        Assert.Equal(2, tables.Count);
+        Assert.Equal("ПЕРШИЙ", string.Concat(tables[0].Descendants<Text>().Select(t => t.Text)).Trim());
+        Assert.Equal("ДРУГИЙ", string.Concat(tables[1].Descendants<Text>().Select(t => t.Text)).Trim());
+        Assert.DoesNotContain("{{", ReadAllText(path));
+    }
+
+    // Огляд перед злиттям гілки: об'єднана по вертикалі шапка — майже
+    // стандарт для списків особового складу — не бере участі в клонуванні
+    // (клонується вся таблиця цілком, а не її шапка), тож не повинна більше
+    // валити генерацію. Стара перевірка дивилась на будь-яке merge в тілі
+    // блоку, звужена — лише на комірки рядків, що самі клонуються.
+    [Fact]
+    public void GroupBlockAroundTable_WithMergedHeaderCell_GeneratesSuccessfully()
+    {
+        var bytes = BuildGroupDocxWithMergedHeaderTable();
+
+        var path = OutputPath("table-block-merged-header.docx");
+        var result = new DocumentGenerationService().GenerateGroup(
+            TemplateStub("Відомість з шапкою"), bytes,
+            new List<IDictionary<string, string>>
+            {
+                new Dictionary<string, string> { ["{{піб}}"] = "ПЕРШИЙ" },
+                new Dictionary<string, string> { ["{{піб}}"] = "ДРУГИЙ" }
+            },
+            new Dictionary<string, string>(), path);
+
+        Assert.True(result.Success, result.ErrorMessage);
+
+        using var produced = WordprocessingDocument.Open(path, false);
+        var tables = produced.MainDocumentPart!.Document!.Body!.Elements<Table>().ToList();
+
+        Assert.Equal(2, tables.Count);
+        Assert.DoesNotContain("{{", ReadAllText(path));
+    }
+
+    private static byte[] BuildGroupDocxWithMergedHeaderTable()
+    {
+        using var stream = new MemoryStream();
+        using (var doc = WordprocessingDocument.Create(stream, DocumentFormat.OpenXml.WordprocessingDocumentType.Document))
+        {
+            doc.AddMainDocumentPart().Document = new Document(new Body());
+            var body = doc.MainDocumentPart!.Document!.Body!;
+
+            body.AppendChild(new Paragraph(new Run(new Text("{{#список}}"))));
+
+            var headerCell = new TableCell(
+                new TableCellProperties(new VerticalMerge { Val = MergedCellValues.Restart }),
+                new Paragraph(new Run(new Text("Шапка"))));
+            var bodyCell = new TableCell(new Paragraph(new Run(new Text("{{піб}}"))));
+            body.AppendChild(new Table(new TableRow(headerCell), new TableRow(bodyCell)));
+
+            body.AppendChild(new Paragraph(new Run(new Text("{{/список}}"))));
+
+            doc.MainDocumentPart.Document.Save();
+        }
+        return stream.ToArray();
     }
 
     private static byte[] BuildGroupDocxWithBlockInsideTable()

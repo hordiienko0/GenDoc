@@ -14,11 +14,6 @@ namespace GenDoc.Services.Templates
     {
         private static readonly Regex PlaceholderRegex = new(@"\{\{[^{}]+\}\}", RegexOptions.Compiled);
 
-        // Ті самі маркери повторюваного блоку, що й у DocumentGenerationService —
-        // тримати регекси в синхроні, якщо синтаксис блоку колись зміниться.
-        private static readonly Regex BlockOpenRegex = new(@"^\{\{#([^{}]+)\}\}$", RegexOptions.Compiled);
-        private static readonly Regex BlockCloseRegex = new(@"^\{\{/([^{}]+)\}\}$", RegexOptions.Compiled);
-
         // Обчислювані тегі рушія блоків — не поля, тому в мапінг не потрапляють.
         private static readonly HashSet<string> ReservedBlockTags = new(StringComparer.Ordinal)
         {
@@ -199,40 +194,34 @@ namespace GenDoc.Services.Templates
 
         internal sealed record ScanResult(List<(string Tag, bool IsInsideBlock)> Tags, bool HasBlock);
 
-        // Абзац-за-абзацом (а не InnerText усього контейнера) — інакше не видно меж
-        // повторюваного блоку {{#…}}/{{/…}}, які завжди займають цілий абзац.
+        // Обхід повторює той самий порядок, що й рушій (BlockStructure): блокові
+        // діти контейнера, а всередину таблиці по маркерні рядки — лише поки не
+        // відкрито блок рівня документа.
         internal static ScanResult ScanPlaceholders(WordprocessingDocument doc)
         {
             var seen = new Dictionary<string, int>(StringComparer.Ordinal); // тег → індекс у tags
             var tags = new List<(string Tag, bool IsInsideBlock)>();
             var hasBlock = false;
 
-            void ScanContainer(OpenXmlCompositeElement? container)
+            void CollectTags(OpenXmlElement element, bool insideBlock)
             {
-                if (container is null) return;
+                var paragraphs = element is Paragraph paragraph
+                    ? new[] { paragraph }.AsEnumerable()
+                    : element.Descendants<Paragraph>();
 
-                string? openBlockName = null;
-                foreach (var paragraph in container.Descendants<Paragraph>())
+                foreach (var inner in paragraphs)
                 {
-                    var text = string.Concat(paragraph.Descendants<Text>().Select(t => t.Text)).Trim();
+                    var text = BlockStructure.MarkerText(inner);
 
-                    if (BlockOpenRegex.IsMatch(text))
-                    {
-                        openBlockName = BlockOpenRegex.Match(text).Groups[1].Value;
-                        hasBlock = true;
-                        continue;
-                    }
-
-                    if (BlockCloseRegex.IsMatch(text))
-                    {
-                        openBlockName = null;
-                        continue;
-                    }
-
-                    var insideBlock = openBlockName is not null;
                     foreach (Match match in PlaceholderRegex.Matches(text))
                     {
                         if (ReservedBlockTags.Contains(match.Value)) continue;
+
+                        // Маркер збігається зі звичайним регексом плейсхолдера.
+                        // Сюди він доходить лише з елемента всередині вже
+                        // відкритого блоку — генерація такий шаблон відхилить,
+                        // але в мапінг «{{#…}}» потрапляти не має.
+                        if (BlockStructure.IsMarkerTag(match.Value)) continue;
 
                         if (seen.TryGetValue(match.Value, out var index))
                         {
@@ -246,6 +235,57 @@ namespace GenDoc.Services.Templates
                         }
                     }
                 }
+            }
+
+            void ScanSiblings(List<OpenXmlElement> siblings, bool insideTable)
+            {
+                string? openName = null;
+
+                foreach (var element in siblings)
+                {
+                    var markerText = BlockStructure.MarkerText(element);
+
+                    if (BlockStructure.OpenName(markerText) is { } opened)
+                    {
+                        openName = opened;
+                        hasBlock = true;
+                        continue;
+                    }
+
+                    if (BlockStructure.CloseName(markerText) is not null)
+                    {
+                        openName = null;
+                        continue;
+                    }
+
+                    if (openName is null && !insideTable && element is Table table)
+                    {
+                        ScanSiblings(BlockStructure.Rows(table).Cast<OpenXmlElement>().ToList(), insideTable: true);
+                        continue;
+                    }
+
+                    CollectTags(element, insideBlock: openName is not null);
+                }
+            }
+
+            void ScanContainer(OpenXmlCompositeElement? container)
+            {
+                if (container is null) return;
+                ScanSiblings(BlockStructure.BlockChildren(container).ToList(), insideTable: false);
+
+                // Дзеркало підмітання рушія (ProcessContainer): дістає теги на
+                // будь-якій глибині, куди структурний обхід вище не заходить —
+                // елемент керування вмістом Word, таблиця, вкладена в комірку.
+                // Безпечно за побудовою: CollectTags лише "підвищує" тег до
+                // insideBlock=true й ніколи не знижує, тож уже зібрані теги
+                // зберігають прапорець, а теги з обгорток (де блоку бути не
+                // може) додаються як insideBlock=false. IsMarkerTag усередині
+                // CollectTags так само захищає від потрапляння маркера в мапінг.
+                // Перевірки на "маркер, що недосяжний" тут немає навмисно:
+                // сканер працює при завантаженні й не має блокувати його —
+                // відмова за таким шаблоном лишається задачею генерації.
+                foreach (var paragraph in container.Descendants<Paragraph>())
+                    CollectTags(paragraph, insideBlock: false);
             }
 
             var mainPart = doc.MainDocumentPart;
