@@ -112,7 +112,7 @@ public class TableBlockErrorTests : IDisposable
     }
 
     [Fact]
-    public void BlockOpenedInTableAndNotClosedThere_FailsNamingTheTable()
+    public void BlockOpenedInTableAndNotClosedThere_TellsUserToCloseItInTheSameTable()
     {
         var bytes = Build(body => body.AppendChild(new Table(
             Row("{{#список}}"),
@@ -123,6 +123,9 @@ public class TableBlockErrorTests : IDisposable
         Assert.False(result.Success);
         Assert.Contains("Проба", result.ErrorMessage);
         Assert.Contains("список", result.ErrorMessage);
-        Assert.Contains("таблиц", result.ErrorMessage);
+        // Не просто "таблиц" — це стрічка спільна з повідомленням про
+        // "перетин рівнів" (crossing branch), і збіг з нею тест не помітив би.
+        // "не закрито в ній же" є лише в повідомленні цієї, in-table гілки.
+        Assert.Contains("не закрито в ній же", result.ErrorMessage);
     }
 }
