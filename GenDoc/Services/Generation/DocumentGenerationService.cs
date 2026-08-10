@@ -128,6 +128,14 @@ namespace GenDoc.Services.Generation
                 BlockStructure.BlockChildren(container).ToList(),
                 perRecipientValues, sharedWithCount, unfilled, templateName, insideTable: false);
 
+            // Елементи, що не є ні абзацом, ні таблицею (елементи керування
+            // вмістом Word, розриви секцій), у блоках участі не беруть — але їхні
+            // абзаци мусять діставати підстановку спільних тегів так само, як до
+            // переходу на обхід блокових дітей. Інакше груповий режим мовчки
+            // лишав би там сирі {{теги}}, тоді як GenerateOne їх заповнює.
+            foreach (var other in container.ChildElements.Where(e => e is not Paragraph && e is not Table))
+                ReplaceInElement(other, sharedWithCount, unfilled);
+
             return unfilled;
         }
 

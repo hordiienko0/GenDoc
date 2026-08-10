@@ -171,4 +171,44 @@ public class TableBlockTests : IDisposable
 
         Assert.Equal(new int?[] { 2, 2 }, spans);
     }
+
+    // Абзац, загорнутий у елемент керування вмістом (w:sdt), участі в блоках
+    // не бере — він не маркер і не тіло. Але груповий режим не має через це
+    // мовчки лишати там сирий {{тег}}: одиночний режим (GenerateOne) його б
+    // заповнив, і груповий мусить поводитись так само.
+    [Fact]
+    public void TableBlock_FillsTagInsideContentControlWrapper()
+    {
+        using var stream = new MemoryStream();
+        using (var doc = WordprocessingDocument.Create(stream, WordprocessingDocumentType.Document))
+        {
+            doc.AddMainDocumentPart().Document = new Document(new Body());
+            var body = doc.MainDocumentPart!.Document!.Body!;
+
+            body.AppendChild(new Table(
+                Row("{{#список}}"),
+                Row("{{піб}}"),
+                Row("{{/список}}")));
+
+            body.AppendChild(new SdtBlock(
+                new SdtContentBlock(new Paragraph(new Run(new Text("Підписав {{піб_командира}}"))))));
+
+            doc.MainDocumentPart.Document.Save();
+        }
+
+        var path = Path.Combine(_folder, "sdt.docx");
+        var shared = new Dictionary<string, string> { ["{{піб_командира}}"] = "КОМАНДИР" };
+        var result = new DocumentGenerationService().GenerateGroup(
+            TemplateStub("Список"), stream.ToArray(),
+            People(("ПЕРШИЙ", "солдат"), ("ДРУГИЙ", "солдат")),
+            shared, path);
+
+        Assert.True(result.Success, result.ErrorMessage);
+
+        using var produced = WordprocessingDocument.Open(path, false);
+        var text = string.Concat(produced.MainDocumentPart!.Document!.Body!.Descendants<Text>().Select(t => t.Text));
+
+        Assert.Contains("Підписав КОМАНДИР", text);
+        Assert.DoesNotContain("{{", text);
+    }
 }
