@@ -822,7 +822,11 @@ namespace GenDoc.ViewModels.Archive
             var row = CheckedGroupRows.FirstOrDefault();
             if (row is null || !CanHistoryGroup) return;
 
-            var vm = new GroupVersionHistoryViewModel(_archiveService, row.ExportTemplateId, row.Dto.TemplateName);
+            var vm = new GroupVersionHistoryViewModel(
+                _archiveService,
+                row.ExportTemplateId == 0 ? null : row.ExportTemplateId,
+                row.Dto.DocxTemplateId,
+                row.Dto.TemplateName);
             await vm.InitializeAsync();
             _dialogService.ShowDialog(vm, Application.Current.MainWindow);
 

@@ -133,7 +133,7 @@ public class GroupDocumentArchiveTests
     // ExportTemplateId у групового DOCX — NULL, і умова `g.ExportTemplateId ==
     // doc.ExportTemplateId` перекладається в `IS NULL`, тобто зачіпає всі
     // групові DOCX усіх шаблонів одразу.
-    [Fact(Skip = "Червоний до Task 12 — ланцюг версій групового DOCX ключується на NULL")]
+    [Fact]
     public async Task DeleteGroupAsync_Docx_DoesNotTouchOtherDocxTemplate()
     {
         using var db = new TestDb();
@@ -156,7 +156,7 @@ public class GroupDocumentArchiveTests
         Assert.True(ctx.GeneratedGroupDocuments.First(g => g.Id == bV1).IsCurrent);
     }
 
-    [Fact(Skip = "Червоний до Task 12 — RestoreGroupAsync ключується на NULL ExportTemplateId")]
+    [Fact]
     public async Task RestoreGroupAsync_Docx_DoesNotStealCurrentFlagFromOtherTemplate()
     {
         using var db = new TestDb();
@@ -176,7 +176,7 @@ public class GroupDocumentArchiveTests
     }
 
     // Дефект A2: DOCX-групи віддаються з ExportTemplateId ?? 0 і назвою «—».
-    [Fact(Skip = "Червоний до Task 12 — QueryGroupAsync не показує групові DOCX")]
+    [Fact]
     public async Task QueryGroupAsync_ReturnsDocxGroupsWithTheirTemplateName()
     {
         using var db = new TestDb();

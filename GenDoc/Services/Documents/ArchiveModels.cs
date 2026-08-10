@@ -75,6 +75,7 @@ namespace GenDoc.Services.Documents
     public record GroupDocumentRowDto(
         int Id,
         int ExportTemplateId,
+        int? DocxTemplateId,
         string TemplateName,
         bool TemplateAlive,
         int Version,

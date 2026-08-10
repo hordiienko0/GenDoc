@@ -613,6 +613,17 @@ namespace GenDoc.Services.Documents
 
         // ── Групові документи ───────────────────────────────────────────
 
+        // Серія версій групового документа визначається ПАРОЮ ключів, бо один
+        // з них завжди null: XLSX-відомість тримається на ExportTemplateId,
+        // груповий DOCX — на TemplateId. Порівняння лише за ExportTemplateId
+        // означало `IS NULL` і зачіпало всі групові DOCX усіх шаблонів одразу.
+        private static IQueryable<GeneratedGroupDocument> SameGroupSeries(
+            IQueryable<GeneratedGroupDocument> source, GeneratedGroupDocument doc)
+            => source.Where(g =>
+                g.ExportTemplateId == doc.ExportTemplateId
+                && g.TemplateId == doc.TemplateId
+                && g.IntakeId == doc.IntakeId);
+
         public async Task<List<GroupDocumentRowDto>> QueryGroupAsync(GroupArchiveFilter filter)
         {
             using var db = _dbFactory.CreateDbContext();
@@ -629,11 +640,14 @@ namespace GenDoc.Services.Documents
                 .Take(filter.Take)
                 .Select(g => new GroupDocumentRowDto(
                     g.Id,
-                    // TODO: цей екран поки показує лише XLSX-групи; підтримку групового
-                    // DOCX (g.TemplateId) в архіві додамо разом з UI вибору складу.
                     g.ExportTemplateId ?? 0,
-                    g.ExportTemplate != null ? g.ExportTemplate.Name : "—",
-                    g.ExportTemplate != null && g.ExportTemplate.DeletedAt == null,
+                    g.TemplateId,
+                    g.ExportTemplate != null
+                        ? g.ExportTemplate.Name
+                        : g.Template != null ? g.Template.Name : "—",
+                    g.ExportTemplate != null
+                        ? g.ExportTemplate.DeletedAt == null
+                        : g.Template != null && g.Template.DeletedAt == null,
                     g.Version,
                     g.RecipientCount,
                     g.GeneratedAt,
@@ -647,14 +661,29 @@ namespace GenDoc.Services.Documents
         public async Task<List<(int Id, string Name)>> GetGroupTemplateOptionsAsync()
         {
             using var db = _dbFactory.CreateDbContext();
-            var ids = await db.GeneratedGroupDocuments.Select(g => g.ExportTemplateId).Distinct().ToListAsync();
-            return (await db.ExportTemplates.IgnoreQueryFilters()
-                    .Where(t => ids.Contains(t.Id))
-                    .OrderBy(t => t.Name)
+
+            var exportIds = await db.GeneratedGroupDocuments
+                .Where(g => g.ExportTemplateId != null)
+                .Select(g => g.ExportTemplateId!.Value).Distinct().ToListAsync();
+
+            var options = (await db.ExportTemplates.IgnoreQueryFilters()
+                    .Where(t => exportIds.Contains(t.Id))
                     .Select(t => new { t.Id, t.Name })
                     .ToListAsync())
                 .Select(t => (t.Id, t.Name))
                 .ToList();
+
+            var docxIds = await db.GeneratedGroupDocuments
+                .Where(g => g.TemplateId != null)
+                .Select(g => g.TemplateId!.Value).Distinct().ToListAsync();
+
+            options.AddRange((await db.Templates.IgnoreQueryFilters()
+                    .Where(t => docxIds.Contains(t.Id))
+                    .Select(t => new { t.Id, t.Name })
+                    .ToListAsync())
+                .Select(t => (t.Id, t.Name)));
+
+            return options.OrderBy(o => o.Name, StringComparer.CurrentCulture).ToList();
         }
 
         public async Task OpenGroupAsync(int groupDocumentId)
@@ -698,9 +727,8 @@ namespace GenDoc.Services.Documents
                 if (doc.IsCurrent)
                 {
                     doc.IsCurrent = false;
-                    var previous = await db.GeneratedGroupDocuments
-                        .Where(g => g.ExportTemplateId == doc.ExportTemplateId && g.IntakeId == doc.IntakeId
-                            && g.Id != doc.Id && g.DeletedAt == null)
+                    var previous = await SameGroupSeries(db.GeneratedGroupDocuments, doc)
+                        .Where(g => g.Id != doc.Id && g.DeletedAt == null)
                         .OrderByDescending(g => g.Version)
                         .FirstOrDefaultAsync();
                     if (previous is not null) previous.IsCurrent = true;
@@ -713,11 +741,11 @@ namespace GenDoc.Services.Documents
             await db.SaveChangesAsync();
         }
 
-        public async Task<List<GroupVersionDto>> GetGroupVersionsAsync(int exportTemplateId)
+        public async Task<List<GroupVersionDto>> GetGroupVersionsAsync(int? exportTemplateId, int? docxTemplateId)
         {
             using var db = _dbFactory.CreateDbContext();
             return await db.GeneratedGroupDocuments
-                .Where(g => g.ExportTemplateId == exportTemplateId)
+                .Where(g => g.ExportTemplateId == exportTemplateId && g.TemplateId == docxTemplateId)
                 .OrderByDescending(g => g.Version)
                 .Select(g => new GroupVersionDto(
                     g.Id, g.Version, g.GeneratedAt,
@@ -731,9 +759,8 @@ namespace GenDoc.Services.Documents
             using var db = _dbFactory.CreateDbContext();
             var target = await db.GeneratedGroupDocuments.FirstAsync(g => g.Id == versionDocumentId);
 
-            foreach (var current in db.GeneratedGroupDocuments
-                .Where(g => g.ExportTemplateId == target.ExportTemplateId && g.IntakeId == target.IntakeId && g.IsCurrent)
-                .ToList())
+            foreach (var current in SameGroupSeries(db.GeneratedGroupDocuments, target)
+                .Where(g => g.IsCurrent).ToList())
             {
                 current.IsCurrent = false;
             }
@@ -753,7 +780,9 @@ namespace GenDoc.Services.Documents
                 .OrderByDescending(g => g.DeletedAt)
                 .Select(g => new DeletedGroupDocumentInfo(
                     g.Id,
-                    g.ExportTemplate != null ? g.ExportTemplate.Name : "—",
+                    g.ExportTemplate != null
+                        ? g.ExportTemplate.Name
+                        : g.Template != null ? g.Template.Name : "—",
                     g.Version,
                     g.RecipientCount,
                     g.DeletedAt!.Value,
@@ -768,15 +797,14 @@ namespace GenDoc.Services.Documents
             doc.DeletedAt = null;
             doc.DeletedBy = null;
 
-            var maxAliveVersion = await db.GeneratedGroupDocuments
-                .Where(g => g.ExportTemplateId == doc.ExportTemplateId && g.IntakeId == doc.IntakeId && g.Id != doc.Id)
+            var maxAliveVersion = await SameGroupSeries(db.GeneratedGroupDocuments, doc)
+                .Where(g => g.Id != doc.Id)
                 .MaxAsync(g => (int?)g.Version) ?? 0;
 
             if (doc.Version >= maxAliveVersion)
             {
-                foreach (var current in db.GeneratedGroupDocuments
-                    .Where(g => g.ExportTemplateId == doc.ExportTemplateId && g.IntakeId == doc.IntakeId && g.IsCurrent)
-                    .ToList())
+                foreach (var current in SameGroupSeries(db.GeneratedGroupDocuments, doc)
+                    .Where(g => g.IsCurrent).ToList())
                 {
                     current.IsCurrent = false;
                 }
