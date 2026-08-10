@@ -1,3 +1,4 @@
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GenDoc.Services.Documents;
@@ -37,7 +38,13 @@ namespace GenDoc.ViewModels.Staff
         public bool CanOpen => Success && _documentId is not null && _hasContent;
 
         [RelayCommand(CanExecute = nameof(CanOpen))]
-        private async Task OpenAsync() => await _archiveService.OpenAsync(_documentId!.Value);
+        private async Task OpenAsync()
+        {
+            var result = await _archiveService.OpenAsync(_documentId!.Value);
+            if (!result.Success)
+                MessageBox.Show(result.ErrorMessage, "Відкриття документа",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
 
         [RelayCommand(CanExecute = nameof(CanOpen))]
         private async Task SaveAsAsync()
@@ -45,7 +52,10 @@ namespace GenDoc.ViewModels.Staff
             var dialog = new SaveFileDialog { FileName = FileName };
             if (dialog.ShowDialog() != true) return;
 
-            await _archiveService.SaveAsAsync(_documentId!.Value, dialog.FileName);
+            var result = await _archiveService.SaveAsAsync(_documentId!.Value, dialog.FileName);
+            if (!result.Success)
+                MessageBox.Show(result.ErrorMessage, "Зберегти як",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 }

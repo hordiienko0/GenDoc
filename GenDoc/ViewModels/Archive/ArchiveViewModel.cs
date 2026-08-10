@@ -842,11 +842,24 @@ namespace GenDoc.ViewModels.Archive
             IsBusy = true;
             try
             {
+                // Дзеркалить SaveManyAsync (особисті документи, вище): рахуємо успіхи й
+                // помилки окремо, замість безумовного «Збережено N», яке для рядка без
+                // вмісту брехало б про успіх.
+                var saved = 0;
+                var errors = new List<string>();
                 foreach (var row in rows)
-                    await _archiveService.SaveGroupAsAsync(row.Id, System.IO.Path.Combine(folderDialog.FolderName, row.Dto.FileName));
+                {
+                    var result = await _archiveService.SaveGroupAsAsync(
+                        row.Id, System.IO.Path.Combine(folderDialog.FolderName, row.Dto.FileName));
+                    if (result.Success) saved++;
+                    else errors.Add($"{row.Dto.FileName}: {result.ErrorMessage}");
+                }
 
-                MessageBox.Show($"Збережено {rows.Count} відомостей у {folderDialog.FolderName}",
-                    "Експорт завершено", MessageBoxButton.OK, MessageBoxImage.Information);
+                var message = $"Збережено {saved} відомостей у {folderDialog.FolderName}";
+                if (errors.Count > 0)
+                    message += $"\nПомилок: {errors.Count}\n{string.Join("\n", errors.Take(5))}";
+                MessageBox.Show(message, "Експорт завершено", MessageBoxButton.OK,
+                    errors.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
             }
             finally
             {
