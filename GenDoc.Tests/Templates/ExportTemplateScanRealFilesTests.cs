@@ -36,12 +36,20 @@ public class ExportTemplateScanRealFilesTests
     public void Dopusk_TemplateRowIsTheDataRow_NotTheHeader()
         => Assert.Equal(7, FindRow(TemplateFixtures.DopuskXlsx));
 
+    // Пін: у справжньому файлі рядком-шаблоном визначається рядок 10 (дані), а не
+    // рядок 5/6 з номером в/ч чи описом підрозділу. Це не розрізняє «найбільше
+    // тегів людини» від «найбільше тегів загалом» — на цьому файлі обидва правила
+    // дають ту саму відповідь; за розрізнення цих двох правил відповідає синтетичний
+    // тест FindTemplateRow_RowWithMoreManualTags_LosesToRowWithRecipientTags.
     [Fact]
     public void Zalik_TemplateRowIsTheDataRow_NotTheUnitNumberRow()
         => Assert.Equal(10, FindRow(TemplateFixtures.ZalikXlsx));
 
-    // У Роздавальній лише ОДИН тег людини ({{піб_ініціали}}) — правило «найбільше
-    // тегів людини» мусить упоратись і з таким випадком.
+    // Пін: у справжньому файлі рядком-шаблоном визначається рядок 9 (дані), хоча в
+    // ньому лише ОДИН тег людини ({{піб_ініціали}}). Це не розрізняє «найбільше
+    // тегів людини» від «найбільше тегів загалом» — на цьому файлі обидва правила
+    // дають ту саму відповідь; за розрізнення цих двох правил відповідає синтетичний
+    // тест FindTemplateRow_RowWithMoreManualTags_LosesToRowWithRecipientTags.
     [Fact]
     public void Rozdavalna_TemplateRowIsTheDataRow_DespiteSingleRecipientTag()
         => Assert.Equal(9, FindRow(TemplateFixtures.RozdavalnaXlsx));

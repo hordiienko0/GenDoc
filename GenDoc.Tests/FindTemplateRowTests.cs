@@ -104,4 +104,24 @@ public class FindTemplateRowTests
 
         Assert.Null(ExportTemplateService.FindTemplateRow(sheet.RangeUsed()!));
     }
+
+    // Правило рахує теги ЛЮДИНИ, а не всі теги поспіль: рядок 4 має більше тегів
+    // загалом, але всі вони ручні, а рядок 6 має менше — зате це дані людини.
+    // Саме рядок 6 клонується на кожного зі списку.
+    [Fact]
+    public void FindTemplateRow_RowWithMoreManualTags_LosesToRowWithRecipientTags()
+    {
+        using var workbook = new XLWorkbook();
+        var sheet = workbook.AddWorksheet("Аркуш1");
+
+        sheet.Cell("A4").Value = "{{калібр}}";
+        sheet.Cell("B4").Value = "{{кількість_патронів}}";
+        sheet.Cell("C4").Value = "{{номер_відомості}}";
+        sheet.Cell("D4").Value = "{{опис_підрозділу}}";
+
+        sheet.Cell("A6").Value = "{{звання}}";
+        sheet.Cell("B6").Value = "{{піб}}";
+
+        Assert.Equal(6, ExportTemplateService.FindTemplateRow(sheet.RangeUsed()!));
+    }
 }
