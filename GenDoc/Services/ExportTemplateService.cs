@@ -466,6 +466,14 @@ namespace GenDoc.Services
             return ExportFieldKey.Empty;
         }
 
+        // Тонка обгортка для тестів: перевіряє розпізнавання ОДНОГО заголовка
+        // без стану про вже видану «Примітку».
+        internal static ExportFieldKey AutoMapHeaderForTests(string header)
+        {
+            var noteAssigned = false;
+            return AutoMapExportHeader(header, ref noteAssigned);
+        }
+
         private static byte[] BuildBuiltInWorkbookBytes()
         {
             using var workbook = new XLWorkbook();
