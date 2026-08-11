@@ -34,6 +34,19 @@ namespace GenDoc.Services.Generation
                 {
                     var mainPart = doc.MainDocumentPart;
 
+                    // Перевірка йде ДО будь-якої підстановки: GenerateOne не вміє
+                    // розгортати повторювані блоки, тож {{#…}}/{{/…}} тут — ознака,
+                    // що шаблон насправді груповий (одна довжина списку — один
+                    // документ), а не персональний. Раніше ReplaceInParagraph мовчки
+                    // стирав такий маркер як звичайний незаповнений тег, і людина
+                    // отримувала документ без списку і без жодного попередження.
+                    // Той самий детектор (BlockStructure.EmbeddedMarkerRegex), яким
+                    // на груповому шляху користується GuardResidualMarkers.
+                    var residualMarker = FindResidualMarkerInDocument(mainPart);
+                    if (residualMarker is not null)
+                        return new GenerationItemResult(
+                            false, BuildStrayBlockMarkerMessage(template.Name, residualMarker), new List<string>());
+
                     if (mainPart?.Document?.Body is not null)
                         unfilled.AddRange(ReplaceInContainer(mainPart.Document.Body, values));
 
@@ -306,20 +319,71 @@ namespace GenDoc.Services.Generation
         // стер би раніше, ніж ця перевірка його побачить.
         private static void GuardResidualMarkers(OpenXmlCompositeElement container, string templateName)
         {
+            var marker = FindEmbeddedMarker(container);
+            if (marker is null) return;
+
+            throw new InvalidOperationException(
+                $"Шаблон «{templateName}»: маркер «{marker}» не стоїть там, де рушій може "
+                + "його розгорнути. Маркер має бути окремим абзацом серед абзаців контейнера "
+                + "або окремим рядком серед рядків однієї таблиці — не частиною абзацу з іншим "
+                + "текстом і не вкладеним глибше.");
+        }
+
+        // Спільний детектор для GuardResidualMarkers (груповий шлях) і перевірки
+        // в GenerateOne: перший {{#…}}/{{/…}}, знайдений будь-де в тексті абзаців
+        // контейнера, неприв'язаним BlockStructure.EmbeddedMarkerRegex (див.
+        // коментар при його оголошенні — на відміну від анкорованих
+        // OpenRegex/CloseRegex, він ловить і маркер, що ділить абзац з іншим
+        // текстом).
+        private static string? FindEmbeddedMarker(OpenXmlCompositeElement? container)
+        {
+            if (container is null) return null;
+
             foreach (var paragraph in container.Descendants<Paragraph>())
             {
                 var text = BlockStructure.MarkerText(paragraph);
                 var match = BlockStructure.EmbeddedMarkerRegex.Match(text);
-
-                if (!match.Success) continue;
-
-                throw new InvalidOperationException(
-                    $"Шаблон «{templateName}»: маркер «{match.Value}» не стоїть там, де рушій може "
-                    + "його розгорнути. Маркер має бути окремим абзацом серед абзаців контейнера "
-                    + "або окремим рядком серед рядків однієї таблиці — не частиною абзацу з іншим "
-                    + "текстом і не вкладеним глибше.");
+                if (match.Success) return match.Value;
             }
+
+            return null;
         }
+
+        // Той самий детектор, застосований до всього документа GenerateOne
+        // (тіло + всі колонтитули) — стільки ж контейнерів, скільки нижче
+        // проходить заміна, щоб перевірка не пропустила маркер там, куди
+        // підстановка таки дійде.
+        private static string? FindResidualMarkerInDocument(MainDocumentPart? mainPart)
+        {
+            if (mainPart is null) return null;
+
+            var bodyMarker = FindEmbeddedMarker(mainPart.Document?.Body);
+            if (bodyMarker is not null) return bodyMarker;
+
+            foreach (var header in mainPart.HeaderParts)
+            {
+                var marker = FindEmbeddedMarker(header.Header);
+                if (marker is not null) return marker;
+            }
+
+            foreach (var footer in mainPart.FooterParts)
+            {
+                var marker = FindEmbeddedMarker(footer.Footer);
+                if (marker is not null) return marker;
+            }
+
+            return null;
+        }
+
+        // Повідомлення для GenerateOne — на відміну від GuardResidualMarkers (де
+        // йдеться про технічне розташування маркера в групового рушія), тут
+        // причина інша й простіша для користувача: цей шаблон узагалі не для
+        // одноосібної генерації.
+        private static string BuildStrayBlockMarkerMessage(string templateName, string marker)
+            => $"Шаблон «{templateName}» містить маркер повторюваного блоку «{marker}». "
+               + "Такий шаблон формує один документ на весь список людей, а не окремий "
+               + "документ для кожної людини — сформувати з нього персональний документ "
+               + "не можна. Перевірте налаштування цього шаблону: він має генеруватися як груповий.";
 
         private static void ExpandBlock(
             OpenXmlElement openElement, List<OpenXmlElement> body, OpenXmlElement closeElement,
