@@ -299,18 +299,17 @@ public class DocumentGenerationServiceTests
         Assert.False(result.Success);
     }
 
-    // Навмисна асиметрія (другий огляд перед злиттям гілки): GenerateOne не
-    // розуміє блоків і не має вартового (GuardResidualMarkers), і не мусить
-    // його отримати — це рушій без структурного обходу, для нього маркер
-    // просто ще один {{тег}}, якого нема в мапінгу. preserveMarkers у
-    // ReplaceInParagraph за замовчуванням false, і саме GenerateOne — той
-    // єдиний шлях, що ніколи не передає true, тож маркер, який опинився в
-    // звичайному тексті, стирається як незаповнений тег так само, як це
-    // було до всієї гілки з табличними блоками (master). Цей тест закріплює
-    // саме цю різницю з груповим шляхом: тут документ ГЕНЕРУЄТЬСЯ, а не
-    // відмовляє.
+    // ПЕРЕГЛЯНУТО для гілки generate-one-marker-guard: раніше цей тест закріплював,
+    // що GenerateOne МОВЧКИ стирає маркер блоку («Список: {{#список}}», «кінець
+    // {{/список}}») як звичайний незаповнений тег — саме та поведінка, яку ця
+    // гілка прибирає. Тепер GenerateOne натомість відмовляє: документ, у якому є
+    // маркер блоку, не мусить генеруватись без списку і без попередження. Маркер
+    // тут — усередині тексту абзацу, тож його ловить саме неприв'язаний
+    // BlockStructure.EmbeddedMarkerRegex (той самий детектор, що й на груповому
+    // шляху в GuardResidualMarkers), а не анкоровані OpenRegex/CloseRegex — вони
+    // вимагають, щоб маркер займав абзац цілком, і тут би нічого не знайшли.
     [Fact]
-    public void GenerateOne_DocumentWithMarker_SucceedsAndErasesMarker_MatchingMaster()
+    public void GenerateOne_MarkerEmbeddedInParagraphText_RefusesGeneration()
     {
         byte[] bytes;
         using (var ms = new MemoryStream())
@@ -327,7 +326,7 @@ public class DocumentGenerationServiceTests
             bytes = ms.ToArray();
         }
 
-        var template = new Template { Name = "Т", Content = bytes };
+        var template = new Template { Name = "Рапорт про список", Content = bytes };
         var values = new Dictionary<string, string> { ["{{піб}}"] = "ОДИН" };
         var outputPath = Path.Combine(Path.GetTempPath(), $"gendoc_test_{Guid.NewGuid():N}.docx");
         try
@@ -335,14 +334,92 @@ public class DocumentGenerationServiceTests
             var service = new DocumentGenerationService();
             var result = service.GenerateOne(template, bytes, values, outputPath);
 
+            Assert.False(result.Success);
+            Assert.NotNull(result.ErrorMessage);
+            Assert.Contains("Рапорт про список", result.ErrorMessage);
+            Assert.Contains("{{#список}}", result.ErrorMessage);
+            Assert.False(File.Exists(outputPath));
+        }
+        finally
+        {
+            if (File.Exists(outputPath)) File.Delete(outputPath);
+        }
+    }
+
+    // Маркер, що займає цілий абзац сам по собі (типовий вигляд шаблону,
+    // насправді призначеного для GenerateGroup, який помилково потрапив у
+    // GenerateOne — саме той сценарій, від якого захищають перевірки Kind у
+    // DocumentArchiveService.RegenerateAsync і CompletenessService.GenerateForPairAsync;
+    // цей тест — резервний вартовий самого рушія на випадок, якщо перевірка Kind
+    // не спрацювала).
+    [Fact]
+    public void GenerateOne_StandaloneBlockMarker_RefusesGeneration()
+    {
+        byte[] bytes;
+        using (var ms = new MemoryStream())
+        {
+            using (var wordDoc = WordprocessingDocument.Create(ms, WordprocessingDocumentType.Document, true))
+            {
+                var mainPart = wordDoc.AddMainDocumentPart();
+                mainPart.Document = new Document(new Body(
+                    new Paragraph(new Run(new Text("{{#список}}"))),
+                    new Paragraph(new Run(new Text("{{піб}}"))),
+                    new Paragraph(new Run(new Text("{{/список}}")))));
+                mainPart.Document.Save();
+            }
+            bytes = ms.ToArray();
+        }
+
+        var template = new Template { Name = "Груповий рапорт", Content = bytes };
+        var values = new Dictionary<string, string> { ["{{піб}}"] = "ОДИН" };
+        var outputPath = Path.Combine(Path.GetTempPath(), $"gendoc_test_{Guid.NewGuid():N}.docx");
+        try
+        {
+            var service = new DocumentGenerationService();
+            var result = service.GenerateOne(template, bytes, values, outputPath);
+
+            Assert.False(result.Success);
+            Assert.NotNull(result.ErrorMessage);
+            Assert.Contains("Груповий рапорт", result.ErrorMessage);
+            Assert.Contains("{{#список}}", result.ErrorMessage);
+            Assert.False(File.Exists(outputPath));
+        }
+        finally
+        {
+            if (File.Exists(outputPath)) File.Delete(outputPath);
+        }
+    }
+
+    // Вартовий не мусить спрацьовувати на звичайному шаблоні без блоків —
+    // інакше він зламав би основний, найчастіший шлях GenerateOne.
+    [Fact]
+    public void GenerateOne_TemplateWithoutMarkers_StillSucceeds()
+    {
+        byte[] bytes;
+        using (var ms = new MemoryStream())
+        {
+            using (var wordDoc = WordprocessingDocument.Create(ms, WordprocessingDocumentType.Document, true))
+            {
+                var mainPart = wordDoc.AddMainDocumentPart();
+                mainPart.Document = new Document(new Body(new Paragraph(new Run(new Text("Шановний {{піб}}")))));
+                mainPart.Document.Save();
+            }
+            bytes = ms.ToArray();
+        }
+
+        var template = new Template { Name = "Звичайний", Content = bytes };
+        var values = new Dictionary<string, string> { ["{{піб}}"] = "ІВАНЕНКО Іван" };
+        var outputPath = Path.Combine(Path.GetTempPath(), $"gendoc_test_{Guid.NewGuid():N}.docx");
+        try
+        {
+            var service = new DocumentGenerationService();
+            var result = service.GenerateOne(template, bytes, values, outputPath);
+
             Assert.True(result.Success, result.ErrorMessage);
-            Assert.Contains("{{#список}}", result.UnfilledTags);
-            Assert.Contains("{{/список}}", result.UnfilledTags);
+            Assert.Empty(result.UnfilledTags);
 
             using var doc = WordprocessingDocument.Open(outputPath, false);
-            var text = ConcatText(doc.MainDocumentPart!.Document!.Body!);
-            Assert.DoesNotContain("{{", text);
-            Assert.Contains("ОДИН", text);
+            Assert.Contains("ІВАНЕНКО Іван", ConcatText(doc.MainDocumentPart!.Document!.Body!));
         }
         finally
         {

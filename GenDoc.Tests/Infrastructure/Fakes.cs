@@ -69,3 +69,10 @@ public sealed class FakeTempFiles : ISecureTempFileService
 
     public Task CleanupAsync() => Task.CompletedTask;
 }
+
+// Заглушка активного заїзду для CompletenessService — тестам, що не перевіряють
+// саме прив'язку до заїзду, достатньо стабільного null.
+public sealed class FakeIntakeAccessor : GenDoc.Services.Completeness.IIntakeServiceAccessor
+{
+    public GenDoc.Models.Intake? ActiveIntake => null;
+}

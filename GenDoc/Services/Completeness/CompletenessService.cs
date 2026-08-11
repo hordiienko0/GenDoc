@@ -157,6 +157,17 @@ namespace GenDoc.Services.Completeness
             if (recipient is null || template is null)
                 return new ArchiveOpResult(false, "Людину або шаблон не знайдено");
 
+            // Груповий шаблон формує один документ для всього складу одразу — матриця
+            // комплектності показує клітинку "людина × шаблон", але для групового
+            // шаблону такої клітинки по суті нема, і добудувати з нього документ саме
+            // для цієї людини не можна. Перевірка тут ловить це раніше і чіткіше, ніж
+            // якби GenerateOne довелось відмовляти через маркер блоку в тексті.
+            if (template.Kind == TemplateKind.Group)
+                return new ArchiveOpResult(false,
+                    $"Шаблон «{template.Name}» — груповий: він формує один документ для всього складу, "
+                    + "а не для однієї людини. Сформувати з нього відсутній документ із матриці для "
+                    + "одного одержувача не можна.");
+
             var mappings = await db.TemplateFieldMappings.Where(m => m.TemplateId == templateId).ToListAsync();
             var orgSettings = await db.OrganizationSettings.FirstOrDefaultAsync();
             var values = GenerationService.BuildValues(mappings, recipient, orgSettings, manualValues);

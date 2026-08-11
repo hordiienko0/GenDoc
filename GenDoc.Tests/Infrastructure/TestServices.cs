@@ -1,3 +1,4 @@
+using GenDoc.Services.Completeness;
 using GenDoc.Services.Documents;
 using GenDoc.Services.Generation;
 
@@ -23,4 +24,13 @@ public static class TestServices
         new FakeAuditLog(),
         new FakeCurrentUser(),
         new DocumentHashService());
+
+    public static CompletenessService Completeness(TestDb db) => new(
+        db.Factory,
+        new FakeAuditLog(),
+        new FakeCurrentUser(),
+        new DocumentGenerationService(),
+        new DocumentHashService(),
+        new NoOpWatermarkService(),
+        new FakeIntakeAccessor());
 }

@@ -286,6 +286,17 @@ namespace GenDoc.Services.Documents
             if (template is null || doc.Recipient is null)
                 return new ArchiveOpResult(false, "Шаблон видалено — перегенерація неможлива");
 
+            // Груповий шаблон формує один документ для всього складу одразу — у нього
+            // нема поняття "документ цієї людини", тож перегенерація архівного запису
+            // для окремого одержувача для нього безглузда. Без цієї перевірки
+            // GenerateOne отримав би такий шаблон і, знайшовши в ньому маркер
+            // повторюваного блоку, відмовив би — але з повідомленням про маркер, а не
+            // про справжню причину (шаблон обрано не туди).
+            if (template.Kind == TemplateKind.Group)
+                return new ArchiveOpResult(false,
+                    $"Шаблон «{template.Name}» — груповий: він формує один документ для всього складу, "
+                    + "а не для однієї людини. Перегенерувати з нього документ для окремого одержувача не можна.");
+
             var mappings = await db.TemplateFieldMappings.Where(m => m.TemplateId == template.Id).ToListAsync();
             var orgSettings = await db.OrganizationSettings.FirstOrDefaultAsync();
             var values = GenerationService.BuildValues(mappings, doc.Recipient, orgSettings, manualValues);
