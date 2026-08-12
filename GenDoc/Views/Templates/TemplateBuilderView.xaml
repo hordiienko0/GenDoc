@@ -64,7 +64,13 @@
              Комірки бачать лише свій вміст, тож стиль дістається з DataContext'у
              ItemsControl'а — там лежить PreviewTableViewModel. -->
         <DataTemplate DataType="{x:Type builderVm:PreviewTableViewModel}">
-            <Border BorderBrush="#333333" BorderThickness="1,1,0,0" Margin="0,4,0,10">
+            <!-- Власна горизонтальна прокрутка: колонок може бути скільки завгодно,
+                 і таблиця мусить їхати вбік, а не стискати клітинки до нечитного.
+                 Саме тут, а не на всій сторінці — інакше абзаци перестали б
+                 переноситись. -->
+            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                          Margin="0,4,0,10">
+            <Border BorderBrush="#333333" BorderThickness="1,1,0,0" HorizontalAlignment="Left">
                 <StackPanel>
                     <ItemsControl ItemsSource="{Binding Headers}">
                         <ItemsControl.ItemsPanel>
@@ -74,7 +80,12 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border BorderBrush="#333333" BorderThickness="0,0,1,1" Padding="5,4">
+                                <!-- MinWidth: інакше UniformGrid ділить ширину панелі на
+                                     всі колонки, і з шостої клітинки стають нечитними.
+                                     Разом із горизонтальною прокруткою сторінки таблиця
+                                     тепер просто їде вбік. -->
+                                <Border BorderBrush="#333333" BorderThickness="0,0,1,1" Padding="5,4"
+                                        MinWidth="86" MaxWidth="220">
                                     <TextBlock Text="{Binding}" TextWrapping="Wrap"
                                                FontFamily="{Binding DataContext.HeaderStyle.Family, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                FontSize="{Binding DataContext.HeaderStyle.Size, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -94,7 +105,8 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border BorderBrush="#333333" BorderThickness="0,0,1,1" Padding="5,4">
+                                <Border BorderBrush="#333333" BorderThickness="0,0,1,1" Padding="5,4"
+                                        MinWidth="86" MaxWidth="220">
                                     <TextBlock local:PreviewInlines.Runs="{Binding}" TextWrapping="Wrap"
                                                FontFamily="{Binding DataContext.Style.Family, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                FontSize="{Binding DataContext.Style.Size, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -108,6 +120,7 @@
                     </ItemsControl>
                 </StackPanel>
             </Border>
+            </ScrollViewer>
         </DataTemplate>
 
         <!-- Перемикач у поповері оформлення: Ж, К і чотири вирівнювання -->
@@ -762,7 +775,10 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Word: сторінка документа -->
+                    <!-- Word: сторінка документа. Горизонтальної прокрутки тут навмисно
+                         НЕМАЄ: при нескінченній ширині TextWrapping не спрацьовує, і
+                         кожен абзац витягнувся б в один рядок. Убік їде тільки таблиця —
+                         у власному ScrollViewer'і всередині свого шаблону. -->
                     <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{StaticResource BackgroundBrush}"
                                   Visibility="{Binding IsWordMode, Converter={StaticResource BoolToVisibility}}">
                         <Border Background="White" Margin="14" Padding="24,26">
@@ -799,8 +815,10 @@
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
+                                                <!-- Ті самі Min/Max, що й у клітинок нижче — інакше літери
+                                                     колонок роз'їдуться з тим, що під ними. -->
                                                 <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,1,1"
-                                                        Padding="4,3">
+                                                        Padding="4,3" MinWidth="86" MaxWidth="130">
                                                     <TextBlock Text="{Binding}" TextAlignment="Center" FontSize="11"
                                                                FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}"/>
                                                 </Border>
@@ -832,11 +850,28 @@
                                                     </ItemsControl.ItemsPanel>
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
-                                                            <!-- MaxWidth: інакше довга назва колонки розтягує всю
-                                                                 сітку, і сусідні колонки зникають за краєм. -->
                                                             <Border BorderBrush="{StaticResource BorderLineBrush}"
-                                                                    BorderThickness="0,0,1,1" Padding="5,4" MinHeight="26"
-                                                                    MaxWidth="130">
+                                                                    BorderThickness="0,0,1,1" Padding="5,4" MinHeight="26">
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border">
+                                                                        <!-- MaxWidth: інакше довга назва колонки розтягує
+                                                                             всю сітку. MinWidth: інакше UniformGrid ділить
+                                                                             ширину панелі між усіма колонками, і з шостої
+                                                                             клітинки стають нечитними. -->
+                                                                        <Setter Property="MinWidth" Value="86"/>
+                                                                        <Setter Property="MaxWidth" Value="130"/>
+                                                                        <Style.Triggers>
+                                                                            <!-- Об'єднана смуга (заголовок, абзац, підпис)
+                                                                                 у книзі йде на всю ширину таблиці, тож
+                                                                                 обмежувати її шириною однієї колонки не можна. -->
+                                                                            <DataTrigger Binding="{Binding DataContext.IsMerged, RelativeSource={RelativeSource AncestorType=DockPanel}}"
+                                                                                         Value="True">
+                                                                                <Setter Property="MinWidth" Value="0"/>
+                                                                                <Setter Property="MaxWidth" Value="Infinity"/>
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
                                                                 <TextBlock local:PreviewInlines.Runs="{Binding}" TextWrapping="Wrap"
                                                                            FontFamily="{Binding DataContext.Style.Family, RelativeSource={RelativeSource AncestorType=DockPanel}}"
                                                                            FontSize="{Binding DataContext.Style.Size, RelativeSource={RelativeSource AncestorType=DockPanel}}"
