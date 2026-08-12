@@ -55,7 +55,16 @@ namespace GenDoc.Services.Documents
 
         private static IQueryable<GeneratedDocument> ApplyFilter(AppDbContext db, ArchiveFilter filter)
         {
-            var query = db.GeneratedDocuments.Where(g => g.IsCurrent);
+            // IgnoreQueryFilters — бо документ переживає людину: коли людину прибрали
+            // в кошик, глобальний фільтр м'якого видалення вимикав її рядок, а зв'язок
+            // GeneratedDocument→Recipient обов'язковий (RecipientId не nullable), тож EF
+            // будував INNER JOIN і документ зникав зі списку. Лічильник при цьому нічого
+            // не з'єднував і рахував його далі — звідси «351 документів» над порожньою
+            // таблицею. Власне м'яке видалення документа задаємо явно, щоб і список, і
+            // лічильник бачили однакову вибірку.
+            var query = db.GeneratedDocuments
+                .IgnoreQueryFilters()
+                .Where(g => g.DeletedAt == null && g.IsCurrent);
 
             if (filter.IntakeId is int intakeId)
                 query = query.Where(g => g.IntakeId == intakeId);
@@ -84,15 +93,20 @@ namespace GenDoc.Services.Documents
                     g.Id,
                     g.RecipientId,
                     g.TemplateId,
-                    // Через навігацію без перевірки на null EF будував INNER JOIN, тож
-                    // документи, чия людина зникла, випадали зі списку — але лишались
-                    // у лічильнику GetStatsAsync. Звідси «Нічого не знайдено» поруч із
-                    // «351 документів».
-                    g.Recipient != null ? g.Recipient.LastName : "—",
-                    g.Recipient != null ? g.Recipient.FirstName : null,
-                    g.Recipient != null ? g.Recipient.MiddleName : null,
-                    g.Template != null ? g.Template.Name : "—",
-                    g.Template != null && g.Template.DeletedAt == null,
+                    // Дані людини й шаблону — підзапитом за ключем, а не через навігацію:
+                    // обов'язкові зв'язки EF з'єднує через INNER JOIN, і рядок-сирота
+                    // (людина в кошику або взагалі відсутня) забирає документ зі списку.
+                    // Той самий прийом уже застосовано нижче для номера набору.
+                    db.Recipients.IgnoreQueryFilters()
+                        .Where(r => r.Id == g.RecipientId).Select(r => r.LastName).FirstOrDefault() ?? "—",
+                    db.Recipients.IgnoreQueryFilters()
+                        .Where(r => r.Id == g.RecipientId).Select(r => r.FirstName).FirstOrDefault(),
+                    db.Recipients.IgnoreQueryFilters()
+                        .Where(r => r.Id == g.RecipientId).Select(r => r.MiddleName).FirstOrDefault(),
+                    db.Templates.IgnoreQueryFilters()
+                        .Where(t => t.Id == g.TemplateId).Select(t => t.Name).FirstOrDefault() ?? "—",
+                    db.Templates.IgnoreQueryFilters()
+                        .Any(t => t.Id == g.TemplateId && t.DeletedAt == null),
                     g.Version,
                     g.IntakeId,
                     g.IntakeId != null
@@ -100,7 +114,8 @@ namespace GenDoc.Services.Documents
                         : null,
                     g.OrgPathSnapshot,
                     g.GeneratedAt,
-                    g.GeneratedByUser != null ? g.GeneratedByUser.FullName : "—",
+                    db.Users.IgnoreQueryFilters()
+                        .Where(u => u.Id == g.GeneratedByUserId).Select(u => u.FullName).FirstOrDefault() ?? "—",
                     g.Attachments.Count(a => a.DeletedAt == null),
                     g.HasContent,
                     g.SourceType,
