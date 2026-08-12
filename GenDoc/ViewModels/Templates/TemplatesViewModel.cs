@@ -92,20 +92,66 @@ public partial class TemplatesViewModel : ObservableObject
         }
     }
 
+    /// <summary>Обраний шаблон — його мапінг показує права панель. Типи різні
+    /// (Word / Excel), тому object: розкладку добирає типізований DataTemplate у XAML.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelectedTemplate))]
+    private object? selectedTemplate;
+
+    public bool HasSelectedTemplate => SelectedTemplate is not null;
+
+    [RelayCommand]
+    private void SelectTemplate(object? item)
+    {
+        switch (item)
+        {
+            case DocxTemplateListItemViewModel docx:
+                EnsureDocxMappingsLoaded(docx);
+                break;
+            case ExportTemplateListItemViewModel export:
+                EnsureExportMappingsLoaded(export);
+                break;
+            default:
+                return;
+        }
+
+        foreach (var t in DocxTemplates) t.IsSelected = ReferenceEquals(t, item);
+        foreach (var t in DocumentExcelTemplates) t.IsSelected = ReferenceEquals(t, item);
+        foreach (var t in ListExportTemplates) t.IsSelected = ReferenceEquals(t, item);
+
+        SelectedTemplate = item;
+    }
+
     [RelayCommand]
     private void ToggleDocxMapping(DocxTemplateListItemViewModel? item)
     {
         if (item is null) return;
 
-        if (!item.MappingsLoaded)
-        {
-            var mappings = _templateService.GetMappings(item.Id)
-                .Select(m => new DocxMappingRowViewModel(m.Id, m.PlaceholderTag, m.SourceType, m.FieldName, m.DateFormat));
-            item.Mappings = new ObservableCollection<DocxMappingRowViewModel>(mappings);
-            item.MappingsLoaded = true;
-        }
-
+        EnsureDocxMappingsLoaded(item);
         item.IsMappingExpanded = !item.IsMappingExpanded;
+    }
+
+    private void EnsureDocxMappingsLoaded(DocxTemplateListItemViewModel item)
+    {
+        if (item.MappingsLoaded) return;
+
+        var mappings = _templateService.GetMappings(item.Id)
+            .Select(m => new DocxMappingRowViewModel(m.Id, m.PlaceholderTag, m.SourceType, m.FieldName, m.DateFormat));
+        item.Mappings = new ObservableCollection<DocxMappingRowViewModel>(mappings);
+        item.MappingsLoaded = true;
+    }
+
+    private void EnsureExportMappingsLoaded(ExportTemplateListItemViewModel item)
+    {
+        if (item.MappingsLoaded) return;
+
+        var mappings = item.UsesPlaceholders
+            ? _exportTemplateService.GetMappings(item.Id)
+                .Select(m => new TemplateMappingRowViewModel(m.Id, m.PlaceholderTag, m.SourceType, m.FieldKey))
+            : _exportTemplateService.GetMappings(item.Id)
+                .Select(m => new TemplateMappingRowViewModel(m.ColumnIndex, m.HeaderText, Enum.Parse<ExportFieldKey>(m.FieldKey)));
+        item.Mappings = new ObservableCollection<TemplateMappingRowViewModel>(mappings);
+        item.MappingsLoaded = true;
     }
 
     [RelayCommand]
@@ -159,17 +205,7 @@ public partial class TemplatesViewModel : ObservableObject
     {
         if (item is null) return;
 
-        if (!item.MappingsLoaded)
-        {
-            var mappings = item.UsesPlaceholders
-                ? _exportTemplateService.GetMappings(item.Id)
-                    .Select(m => new TemplateMappingRowViewModel(m.Id, m.PlaceholderTag, m.SourceType, m.FieldKey))
-                : _exportTemplateService.GetMappings(item.Id)
-                    .Select(m => new TemplateMappingRowViewModel(m.ColumnIndex, m.HeaderText, Enum.Parse<ExportFieldKey>(m.FieldKey)));
-            item.Mappings = new ObservableCollection<TemplateMappingRowViewModel>(mappings);
-            item.MappingsLoaded = true;
-        }
-
+        EnsureExportMappingsLoaded(item);
         item.IsMappingExpanded = !item.IsMappingExpanded;
     }
 

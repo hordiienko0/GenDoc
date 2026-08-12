@@ -27,6 +27,10 @@ public partial class DocxTemplateListItemViewModel : ObservableObject
     [ObservableProperty]
     private bool isMappingExpanded;
 
+    /// <summary>Підсвітка рядка в списку ліворуч; мапінг показує права панель.</summary>
+    [ObservableProperty]
+    private bool isSelected;
+
     [ObservableProperty]
     private ObservableCollection<DocxMappingRowViewModel> mappings = new();
 

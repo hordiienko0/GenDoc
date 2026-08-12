@@ -37,6 +37,10 @@ public partial class ExportTemplateListItemViewModel : ObservableObject
     [ObservableProperty]
     private bool isMappingExpanded;
 
+    /// <summary>Підсвітка рядка в списку ліворуч; мапінг показує права панель.</summary>
+    [ObservableProperty]
+    private bool isSelected;
+
     [ObservableProperty]
     private ObservableCollection<TemplateMappingRowViewModel> mappings = new();
 
