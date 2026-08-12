@@ -23,18 +23,30 @@ public partial class TemplatesViewModel : ObservableObject
         RefreshDocxTemplates();
     }
 
+    /// <summary>Excel-шаблони з {{тегами}} — вони формують документ, тож показуються
+    /// разом із шаблонами Word, а не серед вивантажень списків.</summary>
     [ObservableProperty]
-    private ObservableCollection<ExportTemplateListItemViewModel> templates = new();
+    private ObservableCollection<ExportTemplateListItemViewModel> documentExcelTemplates = new();
+
+    /// <summary>Excel без тегів — заголовок у рядку 1, дані нижче: просте вивантаження списку.</summary>
+    [ObservableProperty]
+    private ObservableCollection<ExportTemplateListItemViewModel> listExportTemplates = new();
 
     [ObservableProperty]
     private ObservableCollection<DocxTemplateListItemViewModel> docxTemplates = new();
 
     private void Refresh()
     {
-        Templates = new ObservableCollection<ExportTemplateListItemViewModel>(
-            _exportTemplateService.GetTemplateListItems()
-                .Select(t => new ExportTemplateListItemViewModel(
-                    t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.IsBuiltIn, t.UsesPlaceholders, t.TagCount, t.RepeatSheetPerDate)));
+        var all = _exportTemplateService.GetTemplateListItems()
+            .Select(t => new ExportTemplateListItemViewModel(
+                t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.IsBuiltIn, t.UsesPlaceholders, t.TagCount, t.RepeatSheetPerDate))
+            .ToList();
+
+        // Групування за призначенням, а не за розширенням файлу.
+        DocumentExcelTemplates = new ObservableCollection<ExportTemplateListItemViewModel>(
+            all.Where(t => t.UsesPlaceholders));
+        ListExportTemplates = new ObservableCollection<ExportTemplateListItemViewModel>(
+            all.Where(t => !t.UsesPlaceholders));
     }
 
     private void RefreshDocxTemplates()

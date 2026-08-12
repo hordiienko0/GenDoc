@@ -1,6 +1,7 @@
-<UserControl x:Class="GenDoc.Views.Templates.TemplatesView"
+﻿<UserControl x:Class="GenDoc.Views.Templates.TemplatesView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:templatesVm="clr-namespace:GenDoc.ViewModels.Templates">
 
     <UserControl.Resources>
         <Style x:Key="TemplatesHeaderTextStyle" TargetType="TextBlock">
@@ -15,16 +16,169 @@
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
             <Setter Property="Margin" Value="0,0,0,10"/>
         </Style>
+        <!-- Рядок Excel-шаблону. Винесено в ресурси, бо той самий рядок тепер
+             малюють два списки: Excel із тегами йде до шаблонів документів,
+             Excel без тегів — до шаблонів експорту списків. -->
+                            <DataTemplate DataType="{x:Type templatesVm:ExportTemplateListItemViewModel}">
+                                <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderLineBrush}">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="1.8*"/>
+                                                <ColumnDefinition Width="1.4*"/>
+                                                <ColumnDefinition Width="1*"/>
+                                                <ColumnDefinition Width="0.8*"/>
+                                                <ColumnDefinition Width="0.8*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Grid, а не StackPanel: у горизонтальному StackPanel назва
+                                                 отримує всю потрібну їй ширину і виштовхує бейдж за межі
+                                                 колонки, тож обрізало саме бейдж. Тепер стискається назва. -->
+                                            <Grid Grid.Column="0" Margin="20,13" VerticalAlignment="Center">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                           Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center" ToolTip="{Binding Name}"/>
+                                                <Border Grid.Column="1" Background="{StaticResource AccentSoftBrush}" Padding="6,2"
+                                                        Margin="8,0,0,0" VerticalAlignment="Center"
+                                                        Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="Вбудований" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+                                                </Border>
+                                            </Grid>
+
+                                            <TextBlock Grid.Column="1" Text="{Binding OriginalFileName}" Margin="20,13" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding UploadedAtDisplay}" Margin="20,13" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            <TextBlock Grid.Column="3" Text="{Binding TagCount}" Margin="20,13" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+
+                                            <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,13">
+                                                <Button Content="&#xE70F;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Переглянути мапінг"
+                                                        Command="{Binding DataContext.ToggleMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                                <Button Content="&#xE74D;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Видалити" Margin="4,0,0,0"
+                                                        Visibility="{Binding CanDelete, Converter={StaticResource BoolToVisibility}}"
+                                                        Command="{Binding DataContext.DeleteTemplateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <StackPanel Margin="20,0,20,16" Visibility="{Binding IsMappingExpanded, Converter={StaticResource BoolToVisibility}}">
+                                            <Border Background="{StaticResource RowAltBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                                                    BorderThickness="1" CornerRadius="0" Padding="16">
+                                                <StackPanel>
+                                                    <Grid Margin="0,0,0,8">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="1*"/>
+                                                            <ColumnDefinition Width="1.1*"/>
+                                                            <ColumnDefinition Width="1.4*"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="Тег / колонка шаблону"
+                                                                   Style="{StaticResource TemplatesHeaderTextStyle}"/>
+                                                        <TextBlock Grid.Column="1" Text="Джерело"
+                                                                   Style="{StaticResource TemplatesHeaderTextStyle}"/>
+                                                        <TextBlock Grid.Column="2" Text="Поле"
+                                                                   Style="{StaticResource TemplatesHeaderTextStyle}"/>
+                                                    </Grid>
+
+                                                    <ItemsControl ItemsSource="{Binding Mappings}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Grid Margin="0,0,0,8">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="1*"/>
+                                                                        <ColumnDefinition Width="1.1*"/>
+                                                                        <ColumnDefinition Width="1.4*"/>
+                                                                    </Grid.ColumnDefinitions>
+
+                                                                    <TextBlock Grid.Column="0" Text="{Binding DisplayLabel}"
+                                                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding UsesPlaceholders}" Value="True">
+                                                                                        <Setter Property="FontFamily" Value="Consolas"/>
+                                                                                        <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
+
+                                                                    <ComboBox Grid.Column="1" ItemsSource="{Binding SourceOptions}"
+                                                                              SelectedValuePath="Value"
+                                                                              SelectedValue="{Binding SourceType, Mode=TwoWay}"
+                                                                              Visibility="{Binding UsesPlaceholders, Converter={StaticResource BoolToVisibility}}"
+                                                                              Width="180" HorizontalAlignment="Left" Margin="0,0,10,0">
+                                                                        <ComboBox.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <TextBlock Text="{Binding Display}"/>
+                                                                            </DataTemplate>
+                                                                        </ComboBox.ItemTemplate>
+                                                                    </ComboBox>
+
+                                                                    <ComboBox Grid.Column="2" ItemsSource="{Binding FieldOptions}"
+                                                                              SelectedValuePath="Field"
+                                                                              SelectedValue="{Binding SelectedField, Mode=TwoWay}"
+                                                                              Visibility="{Binding IsHeaderMode, Converter={StaticResource BoolToVisibility}}"
+                                                                              Width="260" HorizontalAlignment="Left">
+                                                                        <ComboBox.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <TextBlock Text="{Binding DisplayName}"/>
+                                                                            </DataTemplate>
+                                                                        </ComboBox.ItemTemplate>
+                                                                    </ComboBox>
+
+                                                                    <ComboBox Grid.Column="2" ItemsSource="{Binding RecipientOrOrgFieldOptions}"
+                                                                              SelectedValuePath="FieldName"
+                                                                              SelectedValue="{Binding SelectedFieldName, Mode=TwoWay}"
+                                                                              IsEnabled="{Binding IsFieldEnabled}"
+                                                                              Visibility="{Binding UsesPlaceholders, Converter={StaticResource BoolToVisibility}}"
+                                                                              Width="260" HorizontalAlignment="Left">
+                                                                        <ComboBox.ItemTemplate>
+                                                                            <DataTemplate>
+                                                                                <TextBlock Text="{Binding DisplayName}"/>
+                                                                            </DataTemplate>
+                                                                        </ComboBox.ItemTemplate>
+                                                                    </ComboBox>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+
+                                                    <CheckBox Content="Повторювати аркуш на кожну дату періоду"
+                                                              IsChecked="{Binding RepeatSheetPerDate, Mode=TwoWay}"
+                                                              Visibility="{Binding UsesPlaceholders, Converter={StaticResource BoolToVisibility}}"
+                                                              Margin="0,8,0,0"/>
+
+                                                    <Button Content="Зберегти мапінг" HorizontalAlignment="Left" Margin="0,8,0,0"
+                                                            Command="{Binding DataContext.SaveMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="0,0,0,24">
 
             <TextBlock Text="Шаблони" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-            <TextBlock Text="Шаблони документів Word і шаблони експорту Excel"
+            <TextBlock Text="Шаблони, з яких формуються документи, і шаблони вивантаження списків"
                        Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5" Margin="0,4,0,22"/>
 
-            <TextBlock Text="Шаблони документів (.docx)" Style="{StaticResource TemplatesSectionTitleStyle}"/>
+            <!-- Групування за призначенням, а не за розширенням: Excel-шаблони з
+                 {{тегами}} теж формують документи (відомості, додатки), тож їм місце
+                 тут, а не серед вивантажень списків. -->
+            <TextBlock Text="Шаблони документів" Style="{StaticResource TemplatesSectionTitleStyle}"/>
             <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
                     BorderThickness="1" CornerRadius="0" Margin="0,0,0,28">
                 <StackPanel>
@@ -176,21 +330,25 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
+                    <!-- Excel-шаблони з {{тегами}} — той самий розділ, той самий рядок,
+                         шаблон рядка береться з ресурсів за типом елемента. -->
+                    <ItemsControl ItemsSource="{Binding DocumentExcelTemplates}"/>
+
                     <Button Content="+ Завантажити шаблон" Style="{StaticResource SecondaryButtonStyle}"
                             Command="{Binding UploadDocxTemplateCommand}" HorizontalAlignment="Left" Margin="20,16"/>
                 </StackPanel>
             </Border>
 
-            <TextBlock Text="Шаблони експорту (.xlsx)" Style="{StaticResource TemplatesSectionTitleStyle}"/>
+            <TextBlock Text="Шаблони експорту списків" Style="{StaticResource TemplatesSectionTitleStyle}"/>
             <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
                     BorderThickness="1" CornerRadius="0">
                 <StackPanel>
                     <Grid Background="{StaticResource RowAltBrush}">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="2*"/>
-                            <ColumnDefinition Width="1.6*"/>
+                            <ColumnDefinition Width="1.8*"/>
+                            <ColumnDefinition Width="1.4*"/>
                             <ColumnDefinition Width="1*"/>
-                            <ColumnDefinition Width="0.7*"/>
+                            <ColumnDefinition Width="0.8*"/>
                             <ColumnDefinition Width="0.8*"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="НАЗВА" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
@@ -200,156 +358,7 @@
                         <TextBlock Grid.Column="4" Text="" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
                     </Grid>
 
-                    <ItemsControl ItemsSource="{Binding Templates}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderLineBrush}">
-                                    <StackPanel>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="2*"/>
-                                                <ColumnDefinition Width="1.6*"/>
-                                                <ColumnDefinition Width="1*"/>
-                                                <ColumnDefinition Width="0.7*"/>
-                                                <ColumnDefinition Width="0.8*"/>
-                                            </Grid.ColumnDefinitions>
-
-                                            <!-- Grid, а не StackPanel: у горизонтальному StackPanel назва
-                                                 отримує всю потрібну їй ширину і виштовхує бейдж за межі
-                                                 колонки, тож обрізало саме бейдж. Тепер стискається назва. -->
-                                            <Grid Grid.Column="0" Margin="20,13" VerticalAlignment="Center">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
-                                                           Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"
-                                                           VerticalAlignment="Center" ToolTip="{Binding Name}"/>
-                                                <Border Grid.Column="1" Background="{StaticResource AccentSoftBrush}" Padding="6,2"
-                                                        Margin="8,0,0,0" VerticalAlignment="Center"
-                                                        Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVisibility}}">
-                                                    <TextBlock Text="Вбудований" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
-                                                </Border>
-                                            </Grid>
-
-                                            <TextBlock Grid.Column="1" Text="{Binding OriginalFileName}" Margin="20,13" VerticalAlignment="Center"
-                                                       Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock Grid.Column="2" Text="{Binding UploadedAtDisplay}" Margin="20,13" VerticalAlignment="Center"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
-                                            <TextBlock Grid.Column="3" Text="{Binding TagCount}" Margin="20,13" VerticalAlignment="Center"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
-
-                                            <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,13">
-                                                <Button Content="&#xE70F;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Переглянути мапінг"
-                                                        Command="{Binding DataContext.ToggleMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}"/>
-                                                <Button Content="&#xE74D;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Видалити" Margin="4,0,0,0"
-                                                        Visibility="{Binding CanDelete, Converter={StaticResource BoolToVisibility}}"
-                                                        Command="{Binding DataContext.DeleteTemplateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}"/>
-                                            </StackPanel>
-                                        </Grid>
-
-                                        <StackPanel Margin="20,0,20,16" Visibility="{Binding IsMappingExpanded, Converter={StaticResource BoolToVisibility}}">
-                                            <Border Background="{StaticResource RowAltBrush}" BorderBrush="{StaticResource BorderLineBrush}"
-                                                    BorderThickness="1" CornerRadius="0" Padding="16">
-                                                <StackPanel>
-                                                    <Grid Margin="0,0,0,8">
-                                                        <Grid.ColumnDefinitions>
-                                                            <ColumnDefinition Width="1*"/>
-                                                            <ColumnDefinition Width="1.1*"/>
-                                                            <ColumnDefinition Width="1.4*"/>
-                                                        </Grid.ColumnDefinitions>
-                                                        <TextBlock Grid.Column="0" Text="Тег / колонка шаблону"
-                                                                   Style="{StaticResource TemplatesHeaderTextStyle}"/>
-                                                        <TextBlock Grid.Column="1" Text="Джерело"
-                                                                   Style="{StaticResource TemplatesHeaderTextStyle}"/>
-                                                        <TextBlock Grid.Column="2" Text="Поле"
-                                                                   Style="{StaticResource TemplatesHeaderTextStyle}"/>
-                                                    </Grid>
-
-                                                    <ItemsControl ItemsSource="{Binding Mappings}">
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate>
-                                                                <Grid Margin="0,0,0,8">
-                                                                    <Grid.ColumnDefinitions>
-                                                                        <ColumnDefinition Width="1*"/>
-                                                                        <ColumnDefinition Width="1.1*"/>
-                                                                        <ColumnDefinition Width="1.4*"/>
-                                                                    </Grid.ColumnDefinitions>
-
-                                                                    <TextBlock Grid.Column="0" Text="{Binding DisplayLabel}"
-                                                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
-                                                                        <TextBlock.Style>
-                                                                            <Style TargetType="TextBlock">
-                                                                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-                                                                                <Style.Triggers>
-                                                                                    <DataTrigger Binding="{Binding UsesPlaceholders}" Value="True">
-                                                                                        <Setter Property="FontFamily" Value="Consolas"/>
-                                                                                        <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
-                                                                                    </DataTrigger>
-                                                                                </Style.Triggers>
-                                                                            </Style>
-                                                                        </TextBlock.Style>
-                                                                    </TextBlock>
-
-                                                                    <ComboBox Grid.Column="1" ItemsSource="{Binding SourceOptions}"
-                                                                              SelectedValuePath="Value"
-                                                                              SelectedValue="{Binding SourceType, Mode=TwoWay}"
-                                                                              Visibility="{Binding UsesPlaceholders, Converter={StaticResource BoolToVisibility}}"
-                                                                              Width="180" HorizontalAlignment="Left" Margin="0,0,10,0">
-                                                                        <ComboBox.ItemTemplate>
-                                                                            <DataTemplate>
-                                                                                <TextBlock Text="{Binding Display}"/>
-                                                                            </DataTemplate>
-                                                                        </ComboBox.ItemTemplate>
-                                                                    </ComboBox>
-
-                                                                    <ComboBox Grid.Column="2" ItemsSource="{Binding FieldOptions}"
-                                                                              SelectedValuePath="Field"
-                                                                              SelectedValue="{Binding SelectedField, Mode=TwoWay}"
-                                                                              Visibility="{Binding IsHeaderMode, Converter={StaticResource BoolToVisibility}}"
-                                                                              Width="260" HorizontalAlignment="Left">
-                                                                        <ComboBox.ItemTemplate>
-                                                                            <DataTemplate>
-                                                                                <TextBlock Text="{Binding DisplayName}"/>
-                                                                            </DataTemplate>
-                                                                        </ComboBox.ItemTemplate>
-                                                                    </ComboBox>
-
-                                                                    <ComboBox Grid.Column="2" ItemsSource="{Binding RecipientOrOrgFieldOptions}"
-                                                                              SelectedValuePath="FieldName"
-                                                                              SelectedValue="{Binding SelectedFieldName, Mode=TwoWay}"
-                                                                              IsEnabled="{Binding IsFieldEnabled}"
-                                                                              Visibility="{Binding UsesPlaceholders, Converter={StaticResource BoolToVisibility}}"
-                                                                              Width="260" HorizontalAlignment="Left">
-                                                                        <ComboBox.ItemTemplate>
-                                                                            <DataTemplate>
-                                                                                <TextBlock Text="{Binding DisplayName}"/>
-                                                                            </DataTemplate>
-                                                                        </ComboBox.ItemTemplate>
-                                                                    </ComboBox>
-                                                                </Grid>
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
-
-                                                    <CheckBox Content="Повторювати аркуш на кожну дату періоду"
-                                                              IsChecked="{Binding RepeatSheetPerDate, Mode=TwoWay}"
-                                                              Visibility="{Binding UsesPlaceholders, Converter={StaticResource BoolToVisibility}}"
-                                                              Margin="0,8,0,0"/>
-
-                                                    <Button Content="Зберегти мапінг" HorizontalAlignment="Left" Margin="0,8,0,0"
-                                                            Command="{Binding DataContext.SaveMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                            CommandParameter="{Binding}"/>
-                                                </StackPanel>
-                                            </Border>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <ItemsControl ItemsSource="{Binding ListExportTemplates}"/>
 
                     <Button Content="+ Завантажити шаблон" Style="{StaticResource SecondaryButtonStyle}"
                             Command="{Binding UploadTemplateCommand}" HorizontalAlignment="Left" Margin="20,16"/>
