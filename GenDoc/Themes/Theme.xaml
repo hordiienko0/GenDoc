@@ -79,12 +79,26 @@
         <Setter Property="FontSize" Value="12.5"/>
     </Style>
 
-    <!-- ScrollBar: 10px, без стрілок -->
+    <!-- ScrollBar: 10px, без стрілок. Стиль мусить розрізняти орієнтацію —
+         неявний стиль накриває і горизонтальні смуги теж. Width="10" на
+         горизонтальній перетворює її на скіпку 10 px, ще й посеред панелі
+         (явна Width перебиває Stretch), а Track без Orientation розкладається
+         вертикально й тому не рухається. -->
     <Style x:Key="SimpleScrollBarThumbStyle" TargetType="Thumb">
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Thumb">
                     <Border Background="{StaticResource ScrollThumbBrush}" Width="10"/>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="HorizontalScrollBarThumbStyle" TargetType="Thumb">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border Background="{StaticResource ScrollThumbBrush}" Height="10"/>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -112,6 +126,34 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+        <Style.Triggers>
+            <!-- Горизонтальна смуга: висота замість ширини, Width="Auto" (тобто
+                 NaN) повертає розтягування на всю ширину ScrollViewer'а, напрямок
+                 не реверсується, а гортання йде командами Left/Right. -->
+            <Trigger Property="Orientation" Value="Horizontal">
+                <Setter Property="Width" Value="Auto"/>
+                <Setter Property="Height" Value="10"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ScrollBar">
+                            <Grid Background="{StaticResource ScrollTrackBrush}">
+                                <Track x:Name="PART_Track" Orientation="Horizontal" IsDirectionReversed="False">
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Command="ScrollBar.PageLeftCommand" Opacity="0" Focusable="False"/>
+                                    </Track.DecreaseRepeatButton>
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Command="ScrollBar.PageRightCommand" Opacity="0" Focusable="False"/>
+                                    </Track.IncreaseRepeatButton>
+                                    <Track.Thumb>
+                                        <Thumb Style="{StaticResource HorizontalScrollBarThumbStyle}"/>
+                                    </Track.Thumb>
+                                </Track>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Trigger>
+        </Style.Triggers>
     </Style>
 
     <!-- Button: primary за замовчуванням (Accent фон, білий текст) -->
