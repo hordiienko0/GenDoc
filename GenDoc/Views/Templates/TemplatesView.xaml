@@ -214,15 +214,23 @@
                                                 <ColumnDefinition Width="0.8*"/>
                                             </Grid.ColumnDefinitions>
 
-                                            <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="20,13" VerticalAlignment="Center">
+                                            <!-- Grid, а не StackPanel: у горизонтальному StackPanel назва
+                                                 отримує всю потрібну їй ширину і виштовхує бейдж за межі
+                                                 колонки, тож обрізало саме бейдж. Тепер стискається назва. -->
+                                            <Grid Grid.Column="0" Margin="20,13" VerticalAlignment="Center">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
-                                                           Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
-                                                <Border Background="{StaticResource AccentSoftBrush}" CornerRadius="0" Padding="2,6"
+                                                           Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"
+                                                           VerticalAlignment="Center" ToolTip="{Binding Name}"/>
+                                                <Border Grid.Column="1" Background="{StaticResource AccentSoftBrush}" Padding="6,2"
                                                         Margin="8,0,0,0" VerticalAlignment="Center"
                                                         Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVisibility}}">
                                                     <TextBlock Text="Вбудований" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
                                                 </Border>
-                                            </StackPanel>
+                                            </Grid>
 
                                             <TextBlock Grid.Column="1" Text="{Binding OriginalFileName}" Margin="20,13" VerticalAlignment="Center"
                                                        Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
