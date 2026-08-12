@@ -58,7 +58,7 @@
 
                                             <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,13">
                                                 <Button Content="&#xE70F;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Переглянути мапінг"
-                                                        Command="{Binding DataContext.ToggleMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        Command="{Binding DataContext.SelectTemplateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                         CommandParameter="{Binding}"/>
                                                 <Button Content="&#xE74D;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Видалити" Margin="4,0,0,0"
                                                         Visibility="{Binding CanDelete, Converter={StaticResource BoolToVisibility}}"
@@ -67,7 +67,13 @@
                                             </StackPanel>
                                         </Grid>
 
-                                        <StackPanel Margin="20,0,20,16" Visibility="{Binding IsMappingExpanded, Converter={StaticResource BoolToVisibility}}">
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+
+
+        <DataTemplate x:Key="ExportMappingEditorTemplate">
+                                        <StackPanel Margin="20,0,20,16">
                                             <Border Background="{StaticResource RowAltBrush}" BorderBrush="{StaticResource BorderLineBrush}"
                                                     BorderThickness="1" CornerRadius="0" Padding="16">
                                                 <StackPanel>
@@ -157,81 +163,15 @@
                                                               Margin="0,8,0,0"/>
 
                                                     <Button Content="Зберегти мапінг" HorizontalAlignment="Left" Margin="0,8,0,0"
-                                                            Command="{Binding DataContext.SaveMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            Command="{Binding DataContext.SaveMappingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                             CommandParameter="{Binding}"/>
                                                 </StackPanel>
                                             </Border>
                                         </StackPanel>
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
+        </DataTemplate>
 
-    </UserControl.Resources>
-
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="0,0,0,24">
-
-            <TextBlock Text="Шаблони" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-            <TextBlock Text="Шаблони, з яких формуються документи, і шаблони вивантаження списків"
-                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5" Margin="0,4,0,22"/>
-
-            <!-- Групування за призначенням, а не за розширенням: Excel-шаблони з
-                 {{тегами}} теж формують документи (відомості, додатки), тож їм місце
-                 тут, а не серед вивантажень списків. -->
-            <TextBlock Text="Шаблони документів" Style="{StaticResource TemplatesSectionTitleStyle}"/>
-            <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
-                    BorderThickness="1" CornerRadius="0" Margin="0,0,0,28">
-                <StackPanel>
-                    <Grid Background="{StaticResource RowAltBrush}">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1.8*"/>
-                            <ColumnDefinition Width="1.4*"/>
-                            <ColumnDefinition Width="1*"/>
-                            <ColumnDefinition Width="0.8*"/>
-                            <ColumnDefinition Width="0.8*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="НАЗВА" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
-                        <TextBlock Grid.Column="1" Text="ФАЙЛ" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
-                        <TextBlock Grid.Column="2" Text="ЗАВАНТАЖЕНО" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
-                        <TextBlock Grid.Column="3" Text="МІТОК" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
-                        <TextBlock Grid.Column="4" Text="" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
-                    </Grid>
-
-                    <ItemsControl ItemsSource="{Binding DocxTemplates}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderLineBrush}">
-                                    <StackPanel>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="1.8*"/>
-                                                <ColumnDefinition Width="1.4*"/>
-                                                <ColumnDefinition Width="1*"/>
-                                                <ColumnDefinition Width="0.8*"/>
-                                                <ColumnDefinition Width="0.8*"/>
-                                            </Grid.ColumnDefinitions>
-
-                                            <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="SemiBold" Margin="20,13"
-                                                       VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"
-                                                       TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock Grid.Column="1" Text="{Binding OriginalFileName}" Margin="20,13" VerticalAlignment="Center"
-                                                       Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock Grid.Column="2" Text="{Binding UploadedAtDisplay}" Margin="20,13" VerticalAlignment="Center"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
-                                            <TextBlock Grid.Column="3" Text="{Binding TagCount}" Margin="20,13" VerticalAlignment="Center"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
-
-                                            <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,13">
-                                                <Button Content="&#xE70F;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Переглянути мапінг"
-                                                        Command="{Binding DataContext.ToggleDocxMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}"/>
-                                                <Button Content="&#xE74D;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Видалити" Margin="4,0,0,0"
-                                                        Command="{Binding DataContext.DeleteDocxTemplateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}"/>
-                                            </StackPanel>
-                                        </Grid>
-
-                                        <StackPanel Margin="20,0,20,16" Visibility="{Binding IsMappingExpanded, Converter={StaticResource BoolToVisibility}}">
+        <DataTemplate x:Key="DocxMappingEditorTemplate">
+                                        <StackPanel Margin="20,0,20,16">
                                             <Border Background="{StaticResource RowAltBrush}" BorderBrush="{StaticResource BorderLineBrush}"
                                                     BorderThickness="1" CornerRadius="0" Padding="16">
                                                 <StackPanel>
@@ -248,7 +188,7 @@
                                                                  Tag="напр. Рапорт"/>
                                                         <Button Grid.Column="2" Content="Зберегти" Style="{StaticResource SecondaryButtonStyle}"
                                                                 Margin="10,0,0,0"
-                                                                Command="{Binding DataContext.SaveShortNameCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                Command="{Binding DataContext.SaveShortNameCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                 CommandParameter="{Binding}"/>
                                                     </Grid>
                                                     <Grid Margin="0,0,0,8">
@@ -319,11 +259,88 @@
                                                     </ItemsControl>
 
                                                     <Button Content="Зберегти мапінг" HorizontalAlignment="Left" Margin="0,8,0,0"
-                                                            Command="{Binding DataContext.SaveDocxMappingCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            Command="{Binding DataContext.SaveDocxMappingCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                             CommandParameter="{Binding}"/>
                                                 </StackPanel>
                                             </Border>
                                         </StackPanel>
+        </DataTemplate>
+
+    </UserControl.Resources>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <!-- Майстер-деталь за макетом: перелік шаблонів ліворуч, мапінг обраного —
+             праворуч, замість розкривного блоку всередині рядка. -->
+        <Grid Margin="0,0,0,24">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <!-- Auto: поки панель мапінгу схована, колонка має нульову ширину
+                     і переліки займають усе місце. -->
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0" Margin="0,0,18,0">
+
+            <TextBlock Text="Шаблони" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock Text="Шаблони, з яких формуються документи, і шаблони вивантаження списків"
+                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5" Margin="0,4,0,22"/>
+
+            <!-- Групування за призначенням, а не за розширенням: Excel-шаблони з
+                 {{тегами}} теж формують документи (відомості, додатки), тож їм місце
+                 тут, а не серед вивантажень списків. -->
+            <TextBlock Text="Шаблони документів" Style="{StaticResource TemplatesSectionTitleStyle}"/>
+            <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                    BorderThickness="1" CornerRadius="0" Margin="0,0,0,28">
+                <StackPanel>
+                    <Grid Background="{StaticResource RowAltBrush}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="1.8*"/>
+                            <ColumnDefinition Width="1.4*"/>
+                            <ColumnDefinition Width="1*"/>
+                            <ColumnDefinition Width="0.8*"/>
+                            <ColumnDefinition Width="0.8*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="НАЗВА" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
+                        <TextBlock Grid.Column="1" Text="ФАЙЛ" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
+                        <TextBlock Grid.Column="2" Text="ЗАВАНТАЖЕНО" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
+                        <TextBlock Grid.Column="3" Text="МІТОК" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
+                        <TextBlock Grid.Column="4" Text="" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding DocxTemplates}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderLineBrush}">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="1.8*"/>
+                                                <ColumnDefinition Width="1.4*"/>
+                                                <ColumnDefinition Width="1*"/>
+                                                <ColumnDefinition Width="0.8*"/>
+                                                <ColumnDefinition Width="0.8*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="SemiBold" Margin="20,13"
+                                                       VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Grid.Column="1" Text="{Binding OriginalFileName}" Margin="20,13" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding UploadedAtDisplay}" Margin="20,13" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            <TextBlock Grid.Column="3" Text="{Binding TagCount}" Margin="20,13" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+
+                                            <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,13">
+                                                <Button Content="&#xE70F;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Переглянути мапінг"
+                                                        Command="{Binding DataContext.SelectTemplateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                                <Button Content="&#xE74D;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Видалити" Margin="4,0,0,0"
+                                                        Command="{Binding DataContext.DeleteDocxTemplateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                            </StackPanel>
+                                        </Grid>
+
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
@@ -366,5 +383,49 @@
             </Border>
 
         </StackPanel>
+
+            <!-- З'являється лише після кліку на олівець у рядку; поки шаблон не обрано,
+                 панелі немає взагалі, щоб порожня картка не займала місце. -->
+            <Border Grid.Column="1" Width="{Binding MappingPanelWidth}" Margin="18,0,0,0"
+                    Background="{StaticResource PanelBrush}"
+                    BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1"
+                    VerticalAlignment="Top"
+                    Visibility="{Binding HasSelectedTemplate, Converter={StaticResource BoolToVisibility}}">
+                <DockPanel>
+
+                    <!-- Роздільник: тягнеться вліво, розширюючи панель за рахунок переліків -->
+                    <Thumb DockPanel.Dock="Left" Width="6" Cursor="SizeWE"
+                           DragDelta="MappingResizeThumb_DragDelta">
+                        <Thumb.Template>
+                            <ControlTemplate TargetType="Thumb">
+                                <Border Background="{StaticResource BackgroundBrush}"
+                                        BorderBrush="{StaticResource BorderLineBrush}"
+                                        BorderThickness="0,0,1,0"/>
+                            </ControlTemplate>
+                        </Thumb.Template>
+                    </Thumb>
+
+                    <StackPanel>
+                    <Border Background="{StaticResource RowAltBrush}" Padding="20,13">
+                        <Grid>
+                            <TextBlock Text="МАПІНГ ОБРАНОГО ШАБЛОНА" VerticalAlignment="Center"
+                                       Style="{StaticResource TemplatesHeaderTextStyle}"/>
+                            <Button Content="&#xE711;" Style="{StaticResource RowIconButtonStyle}"
+                                    ToolTip="Закрити" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                    Command="{Binding ClearTemplateSelectionCommand}"/>
+                        </Grid>
+                    </Border>
+
+                    <!-- Порожній Content нічого не малює, тож окремої видимості слотам не треба -->
+                    <ContentControl Content="{Binding SelectedDocxTemplate}"
+                                    ContentTemplate="{StaticResource DocxMappingEditorTemplate}"
+                                    Margin="0,12,0,0"/>
+                    <ContentControl Content="{Binding SelectedExportTemplate}"
+                                    ContentTemplate="{StaticResource ExportMappingEditorTemplate}"
+                                    Margin="0,12,0,0"/>
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </Grid>
     </ScrollViewer>
 </UserControl>

@@ -24,8 +24,6 @@ public partial class DocxTemplateListItemViewModel : ObservableObject
     [ObservableProperty]
     private string shortNameEdit;
 
-    [ObservableProperty]
-    private bool isMappingExpanded;
 
     /// <summary>Підсвітка рядка в списку ліворуч; мапінг показує права панель.</summary>
     [ObservableProperty]

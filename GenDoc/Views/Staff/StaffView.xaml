@@ -173,9 +173,12 @@
                 </Grid>
             </Border>
 
-            <!-- Швидке оформлення -->
+            <!-- Швидке оформлення. Вилазить лише коли когось обрано: усі дії всередині
+                 однаково вимагають вибору (CanExecute = HasSelection), тож порожня
+                 плашка просто з'їдала ширину списку. Колонка Auto — згортається в нуль. -->
             <Border Grid.Column="1" Width="296" Background="{StaticResource PanelBrush}"
-                    BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,1,1" Margin="-1,0,0,0">
+                    BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,1,1" Margin="-1,0,0,0"
+                    Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="ШВИДКЕ ОФОРМЛЕННЯ" FontSize="11" FontWeight="Bold"
                                Foreground="{StaticResource TextSecondaryBrush}" Padding="13,9"

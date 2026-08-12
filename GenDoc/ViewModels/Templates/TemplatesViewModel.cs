@@ -98,7 +98,24 @@ public partial class TemplatesViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HasSelectedTemplate))]
     private object? selectedTemplate;
 
+    /// <summary>Word і Excel описані різними в'ю-моделями з різними редакторами
+    /// мапінгу, тож права панель тримає два окремі слоти, а не один нетипізований:
+    /// два неявні DataTemplate на один тип XAML не дозволяє.</summary>
+    [ObservableProperty]
+    private DocxTemplateListItemViewModel? selectedDocxTemplate;
+
+    [ObservableProperty]
+    private ExportTemplateListItemViewModel? selectedExportTemplate;
+
     public bool HasSelectedTemplate => SelectedTemplate is not null;
+
+    /// <summary>Ширина панелі мапінгу. Її тягне вліво роздільник — довгі назви полів
+    /// і теги в мапінгу інакше не вміщаються.</summary>
+    [ObservableProperty]
+    private double mappingPanelWidth = 430;
+
+    public const double MappingPanelMinWidth = 320;
+    public const double MappingPanelMaxWidth = 900;
 
     [RelayCommand]
     private void SelectTemplate(object? item)
@@ -120,15 +137,22 @@ public partial class TemplatesViewModel : ObservableObject
         foreach (var t in ListExportTemplates) t.IsSelected = ReferenceEquals(t, item);
 
         SelectedTemplate = item;
+        SelectedDocxTemplate = item as DocxTemplateListItemViewModel;
+        SelectedExportTemplate = item as ExportTemplateListItemViewModel;
     }
 
+    /// <summary>Закриває праву панель: без цього вона лишалася б на екрані назавжди
+    /// після першого ж кліку на олівець.</summary>
     [RelayCommand]
-    private void ToggleDocxMapping(DocxTemplateListItemViewModel? item)
+    private void ClearTemplateSelection()
     {
-        if (item is null) return;
+        foreach (var t in DocxTemplates) t.IsSelected = false;
+        foreach (var t in DocumentExcelTemplates) t.IsSelected = false;
+        foreach (var t in ListExportTemplates) t.IsSelected = false;
 
-        EnsureDocxMappingsLoaded(item);
-        item.IsMappingExpanded = !item.IsMappingExpanded;
+        SelectedTemplate = null;
+        SelectedDocxTemplate = null;
+        SelectedExportTemplate = null;
     }
 
     private void EnsureDocxMappingsLoaded(DocxTemplateListItemViewModel item)
@@ -198,15 +222,6 @@ public partial class TemplatesViewModel : ObservableObject
     private void UploadTemplate()
     {
         UploadAnyTemplate();
-    }
-
-    [RelayCommand]
-    private void ToggleMapping(ExportTemplateListItemViewModel? item)
-    {
-        if (item is null) return;
-
-        EnsureExportMappingsLoaded(item);
-        item.IsMappingExpanded = !item.IsMappingExpanded;
     }
 
     [RelayCommand]

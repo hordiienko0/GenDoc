@@ -34,8 +34,6 @@ public partial class ExportTemplateListItemViewModel : ObservableObject
     [ObservableProperty]
     private bool repeatSheetPerDate;
 
-    [ObservableProperty]
-    private bool isMappingExpanded;
 
     /// <summary>Підсвітка рядка в списку ліворуч; мапінг показує права панель.</summary>
     [ObservableProperty]
