@@ -495,7 +495,9 @@
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Padding" Value="7,4"/>
+        <!-- Праве поле ширше за решту: стрілка розкриття лежить поверх вмісту,
+             і без цього запасу довгий підпис заповзає під неї. -->
+        <Setter Property="Padding" Value="7,4,22,4"/>
         <Setter Property="FontSize" Value="11.5"/>
         <Setter Property="Template">
             <Setter.Value>

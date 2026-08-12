@@ -105,6 +105,10 @@ namespace GenDoc.ViewModels.Archive
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(IsListEmpty))]
         [NotifyPropertyChangedFor(nameof(HasRows))]
+        // IsArchiveEmpty/IsFilteredEmpty теж читають RowCount, тож без цих двох
+        // сповіщень напис «Нічого не знайдено» лишався поверх уже завантажених рядків.
+        [NotifyPropertyChangedFor(nameof(IsArchiveEmpty))]
+        [NotifyPropertyChangedFor(nameof(IsFilteredEmpty))]
         private int rowCount;
 
         public bool HasRows => RowCount > 0;

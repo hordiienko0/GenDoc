@@ -84,9 +84,13 @@ namespace GenDoc.Services.Documents
                     g.Id,
                     g.RecipientId,
                     g.TemplateId,
-                    g.Recipient!.LastName,
-                    g.Recipient.FirstName,
-                    g.Recipient.MiddleName,
+                    // Через навігацію без перевірки на null EF будував INNER JOIN, тож
+                    // документи, чия людина зникла, випадали зі списку — але лишались
+                    // у лічильнику GetStatsAsync. Звідси «Нічого не знайдено» поруч із
+                    // «351 документів».
+                    g.Recipient != null ? g.Recipient.LastName : "—",
+                    g.Recipient != null ? g.Recipient.FirstName : null,
+                    g.Recipient != null ? g.Recipient.MiddleName : null,
                     g.Template != null ? g.Template.Name : "—",
                     g.Template != null && g.Template.DeletedAt == null,
                     g.Version,
@@ -122,7 +126,7 @@ namespace GenDoc.Services.Documents
                     .OrderByDescending(i => i.Number)
                     .Select(i => new { i.Id, i.Number, i.Status })
                     .ToListAsync())
-                .Select(i => (i.Id, $"№{i.Number} · {StatusLabel(i.Status)}"))
+                .Select(i => (i.Id, $"Набір №{i.Number} · {StatusLabel(i.Status)}"))
                 .ToList();
 
             var templates = (await db.Templates
