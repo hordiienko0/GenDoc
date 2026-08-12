@@ -19,6 +19,12 @@ namespace GenDoc.Models
         // автоматично при завантаженні, користувач може перевизначити вручну.
         public TemplateKind Kind { get; set; } = TemplateKind.PerRecipient;
 
+        // Джерело шаблону, зібраного конструктором: JSON блоків (TemplateBuilderDocument).
+        // Заповнене — шаблон відкривається в конструкторі; NULL — шаблон завантажений
+        // файлом, конструктор його не чіпає (розібрати довільний .docx назад у блоки
+        // надійно неможливо, тому джерело зберігаємо поруч із байтами Content).
+        public string? BuilderJson { get; set; }
+
         public DateTime? DeletedAt { get; set; }
         public string? DeletedBy { get; set; }
 

@@ -109,14 +109,19 @@ namespace GenDoc.Services.Templates
             return new UploadResult(true, null);
         }
 
-        public List<(int Id, string Name, string? ShortName, string OriginalFileName, DateTime UploadedAt, int TagCount)> GetTemplateListItems()
+        public List<(int Id, string Name, string? ShortName, string OriginalFileName, DateTime UploadedAt, int TagCount, bool IsFromBuilder)> GetTemplateListItems()
         {
             using var db = _dbFactory.CreateDbContext();
             return db.Templates
                 .OrderBy(t => t.Name)
-                .Select(t => new { t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, TagCount = t.FieldMappings.Count })
+                .Select(t => new
+                {
+                    t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt,
+                    TagCount = t.FieldMappings.Count,
+                    IsFromBuilder = t.BuilderJson != null
+                })
                 .AsEnumerable()
-                .Select(t => (t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, t.TagCount))
+                .Select(t => (t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, t.TagCount, t.IsFromBuilder))
                 .ToList();
         }
 

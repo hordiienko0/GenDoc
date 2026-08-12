@@ -1,7 +1,8 @@
 ﻿<UserControl x:Class="GenDoc.Views.Templates.TemplatesView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:templatesVm="clr-namespace:GenDoc.ViewModels.Templates">
+             xmlns:templatesVm="clr-namespace:GenDoc.ViewModels.Templates"
+             xmlns:local="clr-namespace:GenDoc.Views.Templates">
 
     <UserControl.Resources>
         <Style x:Key="TemplatesHeaderTextStyle" TargetType="TextBlock">
@@ -47,6 +48,11 @@
                                                         Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVisibility}}">
                                                     <TextBlock Text="Вбудований" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
                                                 </Border>
+                                                <Border Grid.Column="1" Background="{StaticResource AccentSoftBrush}" Padding="6,2"
+                                                        Margin="8,0,0,0" VerticalAlignment="Center"
+                                                        Visibility="{Binding IsFromBuilder, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="Конструктор" FontSize="10.5" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"/>
+                                                </Border>
                                             </Grid>
 
                                             <TextBlock Grid.Column="1" Text="{Binding OriginalFileName}" Margin="20,13" VerticalAlignment="Center"
@@ -57,7 +63,12 @@
                                                        Foreground="{StaticResource TextSecondaryBrush}"/>
 
                                             <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,13">
-                                                <Button Content="&#xE70F;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Переглянути мапінг"
+                                                <Button Content="&#xE8A5;" Style="{StaticResource RowIconButtonStyle}"
+                                                        ToolTip="Відкрити в конструкторі"
+                                                        Visibility="{Binding IsFromBuilder, Converter={StaticResource BoolToVisibility}}"
+                                                        Command="{Binding DataContext.EditExportWithBuilderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                                <Button Content="&#xE70F;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Переглянути мапінг" Margin="4,0,0,0"
                                                         Command="{Binding DataContext.SelectTemplateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                         CommandParameter="{Binding}"/>
                                                 <Button Content="&#xE74D;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Видалити" Margin="4,0,0,0"
@@ -120,7 +131,7 @@
                                                                               SelectedValuePath="Value"
                                                                               SelectedValue="{Binding SourceType, Mode=TwoWay}"
                                                                               Visibility="{Binding UsesPlaceholders, Converter={StaticResource BoolToVisibility}}"
-                                                                              Width="180" HorizontalAlignment="Left" Margin="0,0,10,0">
+                                                                              MaxWidth="180" HorizontalAlignment="Stretch" Margin="0,0,10,0">
                                                                         <ComboBox.ItemTemplate>
                                                                             <DataTemplate>
                                                                                 <TextBlock Text="{Binding Display}"/>
@@ -132,7 +143,7 @@
                                                                               SelectedValuePath="Field"
                                                                               SelectedValue="{Binding SelectedField, Mode=TwoWay}"
                                                                               Visibility="{Binding IsHeaderMode, Converter={StaticResource BoolToVisibility}}"
-                                                                              Width="260" HorizontalAlignment="Left">
+                                                                              MaxWidth="260" HorizontalAlignment="Stretch">
                                                                         <ComboBox.ItemTemplate>
                                                                             <DataTemplate>
                                                                                 <TextBlock Text="{Binding DisplayName}"/>
@@ -145,7 +156,7 @@
                                                                               SelectedValue="{Binding SelectedFieldName, Mode=TwoWay}"
                                                                               IsEnabled="{Binding IsFieldEnabled}"
                                                                               Visibility="{Binding UsesPlaceholders, Converter={StaticResource BoolToVisibility}}"
-                                                                              Width="260" HorizontalAlignment="Left">
+                                                                              MaxWidth="260" HorizontalAlignment="Stretch">
                                                                         <ComboBox.ItemTemplate>
                                                                             <DataTemplate>
                                                                                 <TextBlock Text="{Binding DisplayName}"/>
@@ -222,7 +233,7 @@
                                                                     <ComboBox Grid.Column="1" ItemsSource="{Binding SourceOptions}"
                                                                               SelectedValuePath="Value"
                                                                               SelectedValue="{Binding SourceType, Mode=TwoWay}"
-                                                                              Width="180" HorizontalAlignment="Left" Margin="0,0,10,0">
+                                                                              MaxWidth="180" HorizontalAlignment="Stretch" Margin="0,0,10,0">
                                                                         <ComboBox.ItemTemplate>
                                                                             <DataTemplate>
                                                                                 <TextBlock Text="{Binding Display}"/>
@@ -234,7 +245,7 @@
                                                                               SelectedValuePath="FieldName"
                                                                               SelectedValue="{Binding SelectedFieldName, Mode=TwoWay}"
                                                                               IsEnabled="{Binding IsFieldEnabled}"
-                                                                              Width="260" HorizontalAlignment="Left">
+                                                                              MaxWidth="260" HorizontalAlignment="Stretch">
                                                                         <ComboBox.ItemTemplate>
                                                                             <DataTemplate>
                                                                                 <TextBlock Text="{Binding DisplayName}"/>
@@ -246,7 +257,7 @@
                                                                               SelectedValuePath="Key"
                                                                               SelectedValue="{Binding SelectedDateFormat, Mode=TwoWay}"
                                                                               Visibility="{Binding IsDateField, Converter={StaticResource BoolToVisibility}}"
-                                                                              Width="140" HorizontalAlignment="Left">
+                                                                              MaxWidth="140" HorizontalAlignment="Stretch">
                                                                         <ComboBox.ItemTemplate>
                                                                             <DataTemplate>
                                                                                 <TextBlock Text="{Binding Display}"/>
@@ -268,15 +279,24 @@
 
     </UserControl.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
+  <Grid>
+    <!-- Конструктор — повноекранний режим цього ж розділу, не окремий пункт меню. -->
+    <local:TemplateBuilderView DataContext="{Binding Builder}"
+                               Visibility="{Binding DataContext.IsBuilderOpen, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}"/>
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                  Visibility="{Binding IsListVisible, Converter={StaticResource BoolToVisibility}}">
         <!-- Майстер-деталь за макетом: перелік шаблонів ліворуч, мапінг обраного —
              праворуч, замість розкривного блоку всередині рядка. -->
         <Grid Margin="0,0,0,24">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
+                <!-- MinWidth: панель мапінгу росте під вміст, але перелік шаблонів
+                     не має права звузитись до трьох літер у колонці «Назва». -->
+                <ColumnDefinition Width="*" MinWidth="380"/>
                 <!-- Auto: поки панель мапінгу схована, колонка має нульову ширину
-                     і переліки займають усе місце. -->
-                <ColumnDefinition Width="Auto"/>
+                     і переліки займають усе місце; коли показана — росте під вміст
+                     у межах MinWidth/MaxWidth самої панелі. -->
+                <ColumnDefinition Width="{Binding MappingPanelColumnWidth}"/>
             </Grid.ColumnDefinitions>
 
         <StackPanel Grid.Column="0" Margin="0,0,18,0">
@@ -321,9 +341,23 @@
                                                 <ColumnDefinition Width="0.8*"/>
                                             </Grid.ColumnDefinitions>
 
-                                            <TextBlock Grid.Column="0" Text="{Binding Name}" FontWeight="SemiBold" Margin="20,13"
-                                                       VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"
-                                                       TextTrimming="CharacterEllipsis"/>
+                                            <!-- Grid, а не StackPanel: інакше довга назва виштовхує плашку
+                                                 за межі колонки (та сама причина, що в рядку Excel-шаблону). -->
+                                            <Grid Grid.Column="0" Margin="20,13" VerticalAlignment="Center">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                           VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"
+                                                           TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}"/>
+                                                <Border Grid.Column="1" Background="{StaticResource AccentSoftBrush}" Padding="6,2"
+                                                        Margin="8,0,0,0" VerticalAlignment="Center"
+                                                        Visibility="{Binding IsFromBuilder, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="Конструктор" FontSize="10.5" FontWeight="Bold"
+                                                               Foreground="{StaticResource AccentBrush}"/>
+                                                </Border>
+                                            </Grid>
                                             <TextBlock Grid.Column="1" Text="{Binding OriginalFileName}" Margin="20,13" VerticalAlignment="Center"
                                                        Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
                                             <TextBlock Grid.Column="2" Text="{Binding UploadedAtDisplay}" Margin="20,13" VerticalAlignment="Center"
@@ -332,7 +366,14 @@
                                                        Foreground="{StaticResource TextSecondaryBrush}"/>
 
                                             <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,13">
-                                                <Button Content="&#xE70F;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Переглянути мапінг"
+                                                <!-- Лише для зібраних конструктором: розібрати завантажений
+                                                     .docx назад у блоки неможливо. -->
+                                                <Button Content="&#xE8A5;" Style="{StaticResource RowIconButtonStyle}"
+                                                        ToolTip="Відкрити в конструкторі"
+                                                        Visibility="{Binding IsFromBuilder, Converter={StaticResource BoolToVisibility}}"
+                                                        Command="{Binding DataContext.EditWithBuilderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                                <Button Content="&#xE70F;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Переглянути мапінг" Margin="4,0,0,0"
                                                         Command="{Binding DataContext.SelectTemplateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                         CommandParameter="{Binding}"/>
                                                 <Button Content="&#xE74D;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Видалити" Margin="4,0,0,0"
@@ -351,8 +392,18 @@
                          шаблон рядка береться з ресурсів за типом елемента. -->
                     <ItemsControl ItemsSource="{Binding DocumentExcelTemplates}"/>
 
-                    <Button Content="+ Завантажити шаблон" Style="{StaticResource SecondaryButtonStyle}"
-                            Command="{Binding UploadDocxTemplateCommand}" HorizontalAlignment="Left" Margin="20,16"/>
+                    <StackPanel Orientation="Horizontal" Margin="20,16">
+                        <Button Content="+ Завантажити шаблон" Style="{StaticResource SecondaryButtonStyle}"
+                                Command="{Binding UploadDocxTemplateCommand}"/>
+                        <!-- Другий спосіб отримати шаблон: скласти з блоків, не редагуючи .docx руками. -->
+                        <Button Content="+ Зібрати шаблон" Margin="8,0,0,0"
+                                ToolTip="Документ Word з блоків"
+                                Command="{Binding CreateWithBuilderCommand}"/>
+                        <Button Content="+ Зібрати відомість" Margin="8,0,0,0"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                ToolTip="Відомість Excel: заголовок, колонки, підписи"
+                                Command="{Binding CreateVidomistWithBuilderCommand}"/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
@@ -385,8 +436,14 @@
         </StackPanel>
 
             <!-- З'являється лише після кліку на олівець у рядку; поки шаблон не обрано,
-                 панелі немає взагалі, щоб порожня картка не займала місце. -->
-            <Border Grid.Column="1" Width="{Binding MappingPanelWidth}" Margin="18,0,0,0"
+                 панелі немає взагалі, щоб порожня картка не займала місце.
+                 Ширина — Auto (по вмісту) з межами, доки не потягнули роздільник. -->
+            <!-- MaxWidth 560, а не «скільки хоче вміст»: Grid віддає Auto-колонці
+                 бажану ширину навіть коли її нема куди подіти, і панель просто
+                 вилазила за край екрана (колонка «Поле» обрізалась). 560 + мінімум
+                 переліку вміщається навіть у вузьке вікно; ширше — роздільником. -->
+            <Border Grid.Column="1" Margin="18,0,0,0"
+                    MinWidth="320" MaxWidth="460"
                     Background="{StaticResource PanelBrush}"
                     BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1"
                     VerticalAlignment="Top"
@@ -416,16 +473,21 @@
                         </Grid>
                     </Border>
 
-                    <!-- Порожній Content нічого не малює, тож окремої видимості слотам не треба -->
+                    <!-- Видимість задана явно: ContentControl із ContentTemplate малює
+                         шаблон і при Content = null, тож для Excel-шаблона поверх
+                         справжнього мапінгу з'являвся порожній Word-редактор. -->
                     <ContentControl Content="{Binding SelectedDocxTemplate}"
                                     ContentTemplate="{StaticResource DocxMappingEditorTemplate}"
+                                    Visibility="{Binding HasSelectedDocxTemplate, Converter={StaticResource BoolToVisibility}}"
                                     Margin="0,12,0,0"/>
                     <ContentControl Content="{Binding SelectedExportTemplate}"
                                     ContentTemplate="{StaticResource ExportMappingEditorTemplate}"
+                                    Visibility="{Binding HasSelectedExportTemplate, Converter={StaticResource BoolToVisibility}}"
                                     Margin="0,12,0,0"/>
                     </StackPanel>
                 </DockPanel>
             </Border>
         </Grid>
     </ScrollViewer>
+  </Grid>
 </UserControl>

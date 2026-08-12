@@ -116,16 +116,88 @@ public class TemplateBlockDocxWriterTests
             ParagraphsOf(TemplateBlockDocxWriter.Write(doc, signatories)));
     }
 
-    [Fact]
-    public void Table_block_is_skipped_until_it_is_implemented()
+    private static List<List<string>> TableRowsOf(byte[] docx)
     {
-        var doc = new TemplateBuilderDocument(new[]
-        {
-            new TemplateBlock(TemplateBlockKind.Title, "Заголовок"),
-            new TemplateBlock(TemplateBlockKind.Table, Table: new TableSpec(
-                new[] { new TableColumn("№", "1") }, RepeatPerPerson: true))
-        });
+        using var stream = new MemoryStream(docx);
+        using var word = WordprocessingDocument.Open(stream, isEditable: false);
 
-        Assert.Equal(new[] { "Заголовок" }, ParagraphsOf(TemplateBlockDocxWriter.Write(doc)));
+        return word.MainDocumentPart!.Document!.Body!
+            .Elements<DocumentFormat.OpenXml.Wordprocessing.Table>()
+            .Single()
+            .Elements<TableRow>()
+            .Select(r => r.Elements<TableCell>().Select(c => c.InnerText).ToList())
+            .ToList();
+    }
+
+    private static TemplateBuilderDocument WithTable(bool repeatPerPerson) => new(new[]
+    {
+        new TemplateBlock(TemplateBlockKind.Table, Table: new TableSpec(new[]
+        {
+            new TableColumn("№ з/п", "{{номер}}"),
+            new TableColumn("ПІБ", "{{піб}}")
+        }, repeatPerPerson))
+    });
+
+    // Повторюваний рядок — це маркерні рядки {{#особи}}/{{/особи}} навколо рядка
+    // з тегами. Саме такий синтаксис розгортає наявний рушій, тож конструктор
+    // не заводить власного способу повторення.
+    [Fact]
+    public void Repeating_table_wraps_the_data_row_in_block_markers()
+    {
+        var rows = TableRowsOf(TemplateBlockDocxWriter.Write(WithTable(repeatPerPerson: true)));
+
+        Assert.Equal(4, rows.Count);
+        Assert.Equal(new[] { "№ з/п", "ПІБ" }, rows[0]);
+        Assert.Equal("{{#особи}}", rows[1][0]);
+        Assert.Equal(new[] { "{{номер}}", "{{піб}}" }, rows[2]);
+        Assert.Equal("{{/особи}}", rows[3][0]);
+
+        // Маркер має займати ВЕСЬ рядок (BlockStructure зчіплює текст усіх комірок),
+        // тому решта комірок маркерного рядка — порожні.
+        Assert.Equal(2, rows[1].Count);
+        Assert.Equal(string.Empty, rows[1][1]);
+    }
+
+    [Fact]
+    public void Static_table_has_no_markers()
+    {
+        var rows = TableRowsOf(TemplateBlockDocxWriter.Write(WithTable(repeatPerPerson: false)));
+
+        Assert.Equal(2, rows.Count);
+        Assert.DoesNotContain(rows.SelectMany(r => r), cell => cell.Contains("{{#") || cell.Contains("{{/"));
+    }
+
+    // Найважливіше про таблицю: зібраний .docx має читатись наявним сканером так
+    // само, як завантажений файлом — інакше шаблон мовчки лишиться PerRecipient
+    // і на генерації дасть документ на одну людину замість списку.
+    [Fact]
+    public void Scanner_sees_a_repeating_block_and_marks_tags_inside_it()
+    {
+        using var stream = new MemoryStream(TemplateBlockDocxWriter.Write(WithTable(repeatPerPerson: true)));
+        using var word = WordprocessingDocument.Open(stream, isEditable: false);
+
+        var scan = TemplateService.ScanPlaceholders(word);
+
+        Assert.True(scan.HasBlock);
+        Assert.All(scan.Tags, t => Assert.True(t.IsInsideBlock));
+
+        // {{номер}} у мапінг не потрапляє навмисно: усередині повторюваного блоку
+        // це обчислюваний тег рушія (номер копії), а не поле з бази.
+        Assert.Equal(new[] { "{{піб}}" }, scan.Tags.Select(t => t.Tag));
+
+        // Самі маркери — не поля, у мапінг вони потрапляти не мають.
+        Assert.DoesNotContain(scan.Tags, t => t.Tag.Contains('#') || t.Tag.Contains('/'));
+    }
+
+    [Fact]
+    public void Static_table_gives_no_block_to_the_scanner()
+    {
+        using var stream = new MemoryStream(TemplateBlockDocxWriter.Write(WithTable(repeatPerPerson: false)));
+        using var word = WordprocessingDocument.Open(stream, isEditable: false);
+
+        var scan = TemplateService.ScanPlaceholders(word);
+
+        Assert.False(scan.HasBlock);
+        Assert.All(scan.Tags, t => Assert.False(t.IsInsideBlock));
     }
 }

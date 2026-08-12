@@ -20,6 +20,11 @@ namespace GenDoc.Models
         // {{період}}, під назвою дд.ММ.рррр. Інші аркуші (довідкові) не чіпаються.
         public bool RepeatSheetPerDate { get; set; }
 
+        // Парне до Template.BuilderJson: джерело блоків відомості, зібраної
+        // конструктором. NULL — книга завантажена файлом, розібрати її назад
+        // у блоки неможливо.
+        public string? BuilderJson { get; set; }
+
         public DateTime? DeletedAt { get; set; }
         public string? DeletedBy { get; set; }
 

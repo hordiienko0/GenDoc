@@ -1,0 +1,904 @@
+<UserControl x:Class="GenDoc.Views.Templates.TemplateBuilderView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:GenDoc.Views.Templates"
+             xmlns:builderVm="clr-namespace:GenDoc.ViewModels.Templates.Builder">
+
+    <UserControl.Resources>
+        <Style x:Key="PanelCaptionStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+
+        <!-- Чіп поля палітри: клік вставляє мітку в позицію курсора -->
+        <Style x:Key="PaletteFieldStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Padding" Value="8,5"/>
+            <Setter Property="Margin" Value="0,0,0,3"/>
+            <Setter Property="ToolTip" Value="Вставити в позицію курсора"/>
+        </Style>
+
+        <!-- Вкладка режиму. Активність приходить у Tag (IsWordMode/IsExcelMode).
+             Саме DataTrigger, а не Trigger: Tag оголошений як object, тож звичайний
+             Trigger порівнював би bool із рядком "True" і не спрацьовував ніколи —
+             DataTrigger приводить значення до типу того, що прийшло з прив'язки. -->
+        <Style x:Key="ModeTabStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
+            <Setter Property="Padding" Value="20,7"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Tag, RelativeSource={RelativeSource Self}}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="FontWeight" Value="Bold"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="BlockActionStyle" TargetType="Button" BasedOn="{StaticResource RowIconButtonStyle}">
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+        </Style>
+
+        <!-- Рядок сторінки в попередньому перегляді. Гарнітура, кегль, колір,
+             жирність і вирівнювання приходять із розв'язаного стилю блока —
+             того самого, що покладе writer. -->
+        <DataTemplate DataType="{x:Type builderVm:PreviewLineViewModel}">
+            <TextBlock local:PreviewInlines.Runs="{Binding Runs}"
+                       TextAlignment="{Binding Style.Alignment}"
+                       FontWeight="{Binding Style.Weight}"
+                       FontStyle="{Binding Style.Slant}"
+                       FontFamily="{Binding Style.Family}"
+                       FontSize="{Binding Style.Size}"
+                       Foreground="{Binding Style.Foreground}"
+                       TextWrapping="Wrap" Margin="0,0,0,4"/>
+        </DataTemplate>
+
+        <!-- Сітка відомості: шапка + один рядок даних (він і клонується на кожного).
+             Комірки бачать лише свій вміст, тож стиль дістається з DataContext'у
+             ItemsControl'а — там лежить PreviewTableViewModel. -->
+        <DataTemplate DataType="{x:Type builderVm:PreviewTableViewModel}">
+            <Border BorderBrush="#333333" BorderThickness="1,1,0,0" Margin="0,4,0,10">
+                <StackPanel>
+                    <ItemsControl ItemsSource="{Binding Headers}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="1"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="#333333" BorderThickness="0,0,1,1" Padding="5,4">
+                                    <TextBlock Text="{Binding}" TextWrapping="Wrap"
+                                               FontFamily="{Binding DataContext.HeaderStyle.Family, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                               FontSize="{Binding DataContext.HeaderStyle.Size, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                               FontWeight="{Binding DataContext.HeaderStyle.Weight, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                               FontStyle="{Binding DataContext.HeaderStyle.Slant, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                               Foreground="{Binding DataContext.HeaderStyle.Foreground, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <ItemsControl ItemsSource="{Binding Cells}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="1"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderBrush="#333333" BorderThickness="0,0,1,1" Padding="5,4">
+                                    <TextBlock local:PreviewInlines.Runs="{Binding}" TextWrapping="Wrap"
+                                               FontFamily="{Binding DataContext.Style.Family, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                               FontSize="{Binding DataContext.Style.Size, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                               FontWeight="{Binding DataContext.Style.Weight, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                               FontStyle="{Binding DataContext.Style.Slant, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                               Foreground="{Binding DataContext.Style.Foreground, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                               TextAlignment="{Binding DataContext.Style.Alignment, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- Перемикач у поповері оформлення: Ж, К і чотири вирівнювання -->
+        <Style x:Key="StyleToggleStyle" TargetType="ToggleButton">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Margin" Value="0,0,3,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="border" Background="{StaticResource PanelBrush}"
+                                BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              TextBlock.Foreground="{TemplateBinding Foreground}"
+                                              TextBlock.FontSize="{TemplateBinding FontSize}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Вирівнювання — RadioButton'и: зняти вирівнювання не можна, можна лише
+             обрати інше. Без GroupName вони групуються своїм контейнером, тож
+             поповери різних блоків не заважають один одному. -->
+        <Style x:Key="StyleRadioStyle" TargetType="RadioButton" BasedOn="{StaticResource {x:Type RadioButton}}">
+            <Setter Property="Width" Value="28"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Margin" Value="0,0,3,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="border" Background="{StaticResource PanelBrush}"
+                                BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              TextBlock.Foreground="{TemplateBinding Foreground}"
+                                              TextBlock.FontSize="{TemplateBinding FontSize}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- ШАПКА -->
+        <Grid Grid.Row="0" Margin="0,0,0,12">
+            <StackPanel>
+                <TextBlock Text="Конструктор шаблонів" FontSize="19" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                <TextBlock Text="{Binding SubtitleText}"
+                           Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,3,0,10"/>
+
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Документ Word" Style="{StaticResource ModeTabStyle}"
+                            Command="{Binding SwitchModeCommand}" CommandParameter="Word"
+                            IsEnabled="{Binding CanSwitchMode}"
+                            Tag="{Binding IsWordMode}"/>
+                    <Button Content="Відомість Excel" Style="{StaticResource ModeTabStyle}" Margin="1,0,0,0"
+                            Command="{Binding SwitchModeCommand}" CommandParameter="Excel"
+                            IsEnabled="{Binding CanSwitchMode}"
+                            Tag="{Binding IsExcelMode}"/>
+                </StackPanel>
+            </StackPanel>
+
+            <Button Content="← До переліку шаблонів" Style="{StaticResource TextLinkButtonStyle}"
+                    Foreground="{StaticResource AccentBrush}" FontSize="12"
+                    HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Command="{Binding CloseCommand}"/>
+        </Grid>
+
+        <!-- ТРИ КОЛОНКИ -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="260"/>
+                <!-- MinWidth: перегляд береться по вмісту, але перелік блоків не
+                     має права стиснутись до нечитабельних полів. -->
+                <ColumnDefinition Width="*" MinWidth="360"/>
+                <ColumnDefinition Width="{Binding PreviewPanelWidth}"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- ЛІВА: ПАЛІТРА -->
+            <Border Grid.Column="0" Background="{StaticResource PanelBrush}"
+                    BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1">
+                <DockPanel>
+                    <Border DockPanel.Dock="Top" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1"
+                            Padding="13,10">
+                        <TextBlock Text="ДОДАТИ БЛОК" Style="{StaticResource PanelCaptionStyle}"/>
+                    </Border>
+
+                    <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding BlockPalette}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Style="{StaticResource GhostButtonStyle}" HorizontalContentAlignment="Left"
+                                        BorderThickness="0,0,0,1" BorderBrush="{StaticResource BorderLineBrush}"
+                                        Padding="13,9" FontSize="12.5"
+                                        Foreground="{StaticResource TextPrimaryBrush}"
+                                        Command="{Binding DataContext.AddBlockCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                        CommandParameter="{Binding}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Icon}" Width="20" TextAlignment="Center"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        <TextBlock Text="{Binding Label}" Margin="10,0,0,0"/>
+                                    </StackPanel>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Border DockPanel.Dock="Top" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1"
+                            Padding="13,10">
+                        <TextBlock Text="ПОЛЯ" Style="{StaticResource PanelCaptionStyle}"/>
+                    </Border>
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding FieldGroups}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,0,6">
+                                        <TextBlock Text="{Binding Title}" FontSize="11" FontWeight="Bold"
+                                                   Margin="13,9,13,5">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                                    <Style.Triggers>
+                                                        <!-- Група ручного вводу позначена застережливим кольором,
+                                                             як у макеті: ці поля доведеться заповнювати на генерації. -->
+                                                        <DataTrigger Binding="{Binding SourceType}" Value="Manual">
+                                                            <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+
+                                        <ItemsControl ItemsSource="{Binding Fields}" Margin="10,0,10,0">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Button Content="{Binding Tag}" Tag="{Binding Tag}"
+                                                            Style="{StaticResource PaletteFieldStyle}"
+                                                            Click="PaletteField_Click"/>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+            <!-- ЦЕНТР: ДОКУМЕНТ -->
+            <Border Grid.Column="1" Margin="12,0,12,0" Background="{StaticResource PanelBrush}"
+                    BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1">
+                <DockPanel>
+                    <Border DockPanel.Dock="Top" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1"
+                            Padding="13,10">
+                        <TextBlock Text="ДОКУМЕНТ" Style="{StaticResource PanelCaptionStyle}"/>
+                    </Border>
+
+                    <!-- Вкладки аркушів книги — лише для відомості -->
+                    <Border DockPanel.Dock="Top" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1"
+                            Padding="10,7" Background="{StaticResource RowAltBrush}"
+                            Visibility="{Binding IsExcelMode, Converter={StaticResource BoolToVisibility}}">
+                        <DockPanel>
+                            <Button DockPanel.Dock="Right" Content="✕ аркуш" Style="{StaticResource TextLinkButtonStyle}"
+                                    Foreground="{StaticResource TextSecondaryBrush}" Margin="8,0,0,0"
+                                    ToolTip="Видалити останній аркуш"
+                                    Command="{Binding RemoveLastSheetCommand}"/>
+                            <Button DockPanel.Dock="Right" Content="+ аркуш" Style="{StaticResource TextLinkButtonStyle}"
+                                    Foreground="{StaticResource AccentBrush}"
+                                    Command="{Binding AddSheetCommand}"/>
+
+                            <!-- Аркушів може бути більше, ніж уміщає панель, тож вкладки
+                                 їдуть у власній горизонтальній прокрутці з повзунком. -->
+                            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                                <ItemsControl ItemsSource="{Binding Sheets}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Style="{StaticResource ModeTabStyle}" Padding="12,4" FontSize="12"
+                                                    Margin="0,0,1,0" Content="{Binding Name}" Tag="{Binding IsCurrent}"
+                                                    Command="{Binding DataContext.SelectSheetCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}"/>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- Назва поточного аркуша: перейменування без окремого діалогу -->
+                    <Border DockPanel.Dock="Top" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1"
+                            Padding="10,7"
+                            Visibility="{Binding IsExcelMode, Converter={StaticResource BoolToVisibility}}">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Left" Text="Назва аркуша:" VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,0,8,0"/>
+                            <TextBox Text="{Binding CurrentSheetName, UpdateSourceTrigger=PropertyChanged}"
+                                     Tag="напр. Відомість"/>
+                        </DockPanel>
+                    </Border>
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{StaticResource BackgroundBrush}">
+                        <StackPanel Margin="12">
+                            <ItemsControl ItemsSource="{Binding VisibleBlocks}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,0,10" Background="{StaticResource PanelBrush}">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
+                                                    <Setter Property="BorderThickness" Value="1"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                                            <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                                                            <Setter Property="BorderThickness" Value="2"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+
+                                            <StackPanel>
+                                                <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1"
+                                                        Padding="10,4">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Background" Value="{StaticResource RowAltBrush}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                                                    <Setter Property="Background" Value="{StaticResource AccentSoftBrush}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+
+                                                    <!-- Три колонки, а не накладання: підпис розкладки може бути
+                                                         довгим і інакше налазить на назву блока. -->
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" Text="{Binding HeaderTitle}" VerticalAlignment="Center"
+                                                                   FontSize="11" FontWeight="Bold">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                                                                            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                        </TextBlock>
+
+                                                        <!-- Які клітинки аркуша займе блок (лише у відомості) -->
+                                                        <TextBlock Grid.Column="1" Text="{Binding LayoutCaption}" VerticalAlignment="Center"
+                                                                   HorizontalAlignment="Right" Margin="10,0,10,0" FontSize="11"
+                                                                   TextTrimming="CharacterEllipsis"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+
+                                                        <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                                                            <!-- Оформлення блока. ToggleButton, а не Button: поповер
+                                                                 закривається кліком повз нього (StaysOpen=False), і
+                                                                 прив'язка IsChecked ↔ IsStyleOpen лишає кнопку в тому
+                                                                 самому стані, що й сам поповер. -->
+                                                            <ToggleButton x:Name="StyleToggle" Width="26" Height="22" Cursor="Hand"
+                                                                          ToolTip="Шрифт, розмір, колір, вирівнювання"
+                                                                          IsChecked="{Binding IsStyleOpen, Mode=TwoWay}">
+                                                                <ToggleButton.Template>
+                                                                    <ControlTemplate TargetType="ToggleButton">
+                                                                        <Border x:Name="chip" Background="Transparent" BorderThickness="1"
+                                                                                BorderBrush="Transparent">
+                                                                            <TextBlock Text="Aa" FontSize="11.5" FontWeight="Bold"
+                                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                                                       x:Name="glyph"/>
+                                                                        </Border>
+                                                                        <ControlTemplate.Triggers>
+                                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                                <Setter TargetName="chip" Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
+                                                                            </Trigger>
+                                                                            <Trigger Property="IsChecked" Value="True">
+                                                                                <Setter TargetName="chip" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                                                                <Setter TargetName="glyph" Property="Foreground" Value="White"/>
+                                                                            </Trigger>
+                                                                        </ControlTemplate.Triggers>
+                                                                    </ControlTemplate>
+                                                                </ToggleButton.Template>
+                                                            </ToggleButton>
+
+                                                            <Popup IsOpen="{Binding IsStyleOpen, Mode=TwoWay}" StaysOpen="False"
+                                                                   PlacementTarget="{Binding ElementName=StyleToggle}"
+                                                                   Placement="Bottom" HorizontalOffset="-210" AllowsTransparency="True">
+                                                                <Border Background="{StaticResource PanelBrush}" Padding="12"
+                                                                        BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1"
+                                                                        Width="264">
+                                                                    <Border.Effect>
+                                                                        <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.22" Color="#000000"/>
+                                                                    </Border.Effect>
+
+                                                                    <StackPanel>
+                                                                        <TextBlock Text="ОФОРМЛЕННЯ" Style="{StaticResource PanelCaptionStyle}"
+                                                                                   Margin="0,0,0,9"/>
+
+                                                                        <TextBlock Text="Шрифт" FontSize="11" Margin="0,0,0,3"
+                                                                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                                        <ComboBox ItemsSource="{Binding FontOptions}" DisplayMemberPath="Label"
+                                                                                  SelectedItem="{Binding SelectedFont, Mode=TwoWay}"
+                                                                                  Margin="0,0,0,9"/>
+
+                                                                        <Grid Margin="0,0,0,9">
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="*"/>
+                                                                                <ColumnDefinition Width="Auto"/>
+                                                                            </Grid.ColumnDefinitions>
+
+                                                                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                                                                <TextBlock Text="Розмір" FontSize="11" Margin="0,0,0,3"
+                                                                                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                                                <ComboBox ItemsSource="{Binding FontSizeOptions}" DisplayMemberPath="Label"
+                                                                                          SelectedItem="{Binding SelectedFontSize, Mode=TwoWay}"/>
+                                                                            </StackPanel>
+
+                                                                            <StackPanel Grid.Column="1" VerticalAlignment="Bottom">
+                                                                                <TextBlock Text="Накреслення" FontSize="11" Margin="0,0,0,3"
+                                                                                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                                                <StackPanel Orientation="Horizontal">
+                                                                                    <ToggleButton Content="Ж" FontWeight="Bold" ToolTip="Жирний"
+                                                                                                  Style="{StaticResource StyleToggleStyle}"
+                                                                                                  IsChecked="{Binding IsBold, Mode=TwoWay}"/>
+                                                                                    <ToggleButton Content="К" FontStyle="Italic" ToolTip="Курсив"
+                                                                                                  Style="{StaticResource StyleToggleStyle}"
+                                                                                                  IsChecked="{Binding IsItalic, Mode=TwoWay}"/>
+                                                                                </StackPanel>
+                                                                            </StackPanel>
+                                                                        </Grid>
+
+                                                                        <TextBlock Text="Вирівнювання" FontSize="11" Margin="0,0,0,3"
+                                                                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,9">
+                                                                            <RadioButton Content="◧" ToolTip="Ліворуч"
+                                                                                         Style="{StaticResource StyleRadioStyle}"
+                                                                                         IsChecked="{Binding IsAlignLeft, Mode=TwoWay}"/>
+                                                                            <RadioButton Content="◫" ToolTip="По центру"
+                                                                                         Style="{StaticResource StyleRadioStyle}"
+                                                                                         IsChecked="{Binding IsAlignCenter, Mode=TwoWay}"/>
+                                                                            <RadioButton Content="◨" ToolTip="Праворуч"
+                                                                                         Style="{StaticResource StyleRadioStyle}"
+                                                                                         IsChecked="{Binding IsAlignRight, Mode=TwoWay}"/>
+                                                                            <RadioButton Content="▤" ToolTip="По ширині"
+                                                                                         Style="{StaticResource StyleRadioStyle}"
+                                                                                         IsChecked="{Binding IsAlignJustify, Mode=TwoWay}"/>
+                                                                        </StackPanel>
+
+                                                                        <TextBlock Text="Колір" FontSize="11" Margin="0,0,0,3"
+                                                                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                                        <ComboBox ItemsSource="{Binding ColorOptions}"
+                                                                                  SelectedItem="{Binding SelectedColor, Mode=TwoWay}">
+                                                                            <ComboBox.ItemTemplate>
+                                                                                <DataTemplate>
+                                                                                    <StackPanel Orientation="Horizontal">
+                                                                                        <Border Width="13" Height="13" Background="{Binding Swatch}"
+                                                                                                BorderBrush="{StaticResource BorderLineBrush}"
+                                                                                                BorderThickness="1" VerticalAlignment="Center"/>
+                                                                                        <TextBlock Text="{Binding Label}" Margin="7,0,0,0"
+                                                                                                   VerticalAlignment="Center"/>
+                                                                                    </StackPanel>
+                                                                                </DataTemplate>
+                                                                            </ComboBox.ItemTemplate>
+                                                                        </ComboBox>
+
+                                                                        <TextBlock Text="{Binding StyleScopeHint}" FontSize="10.5" TextWrapping="Wrap"
+                                                                                   Margin="0,9,0,0" Foreground="{StaticResource TextSecondaryBrush}"
+                                                                                   Visibility="{Binding IsStyleScopeHintVisible, Converter={StaticResource BoolToVisibility}}"/>
+
+                                                                        <Button Content="Скинути до типового" Margin="0,10,0,0"
+                                                                                Style="{StaticResource TextLinkButtonStyle}"
+                                                                                HorizontalAlignment="Left"
+                                                                                Foreground="{StaticResource AccentBrush}"
+                                                                                Command="{Binding ResetStyleCommand}"/>
+                                                                    </StackPanel>
+                                                                </Border>
+                                                            </Popup>
+
+                                                            <Button Content="↑" Style="{StaticResource BlockActionStyle}" ToolTip="Вище"
+                                                                    Command="{Binding DataContext.MoveBlockUpCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                    CommandParameter="{Binding}"/>
+                                                            <Button Content="↓" Style="{StaticResource BlockActionStyle}" ToolTip="Нижче"
+                                                                    Command="{Binding DataContext.MoveBlockDownCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                    CommandParameter="{Binding}"/>
+                                                            <Button Content="✕" Style="{StaticResource BlockActionStyle}" ToolTip="Видалити блок"
+                                                                    Command="{Binding DataContext.RemoveBlockCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                    CommandParameter="{Binding}"/>
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+
+                                                <!-- Текстові блоки: гриф, заголовок, дата і місто, абзац.
+                                                     Оформлення приходить зі стилю блока (раніше було зашите
+                                                     тригерами по Kind — тепер ті самі значення дає
+                                                     BlockStyleDefaults, і оператор може їх перебити).
+                                                     Тригери по Kind лишилися тільки на висоту: це розкладка
+                                                     картки, а не оформлення документа. -->
+                                                <TextBox Margin="13,11" Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
+                                                         Tag="{Binding Watermark}"
+                                                         AcceptsReturn="{Binding IsMultiline}"
+                                                         TextWrapping="Wrap" GotFocus="BlockText_GotFocus"
+                                                         FontFamily="{Binding DisplayStyle.Family}"
+                                                         FontSize="{Binding DisplayStyle.Size}"
+                                                         FontWeight="{Binding DisplayStyle.Weight}"
+                                                         FontStyle="{Binding DisplayStyle.Slant}"
+                                                         Foreground="{Binding DisplayStyle.Foreground}"
+                                                         TextAlignment="{Binding DisplayStyle.Alignment}"
+                                                         Visibility="{Binding IsTextBlock, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBox.Style>
+                                                        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Kind}" Value="Header">
+                                                                    <Setter Property="MinHeight" Value="70"/>
+                                                                </DataTrigger>
+                                                                <DataTrigger Binding="{Binding Kind}" Value="Paragraph">
+                                                                    <Setter Property="MinHeight" Value="76"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBox.Style>
+                                                </TextBox>
+
+                                                <!-- Підписи: посадова особа обирається з постійного складу -->
+                                                <StackPanel Margin="13,11"
+                                                            Visibility="{Binding IsSignatures, Converter={StaticResource BoolToVisibility}}">
+                                                    <ItemsControl ItemsSource="{Binding Signatures}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Grid Margin="0,0,0,7">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="130"/>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                    </Grid.ColumnDefinitions>
+
+                                                                    <TextBox Grid.Column="0" Tag="напр. Здав"
+                                                                             Text="{Binding Caption, UpdateSourceTrigger=PropertyChanged}"
+                                                                             GotFocus="BlockText_GotFocus" Margin="0,0,8,0"/>
+
+                                                                    <ComboBox Grid.Column="1" ItemsSource="{Binding Options}"
+                                                                              DisplayMemberPath="Display"
+                                                                              SelectedItem="{Binding Signatory, Mode=TwoWay}"/>
+
+                                                                    <Button Grid.Column="2" Content="✕" ToolTip="Прибрати рядок"
+                                                                            Style="{StaticResource BlockActionStyle}" Margin="6,0,0,0"
+                                                                            Command="{Binding DataContext.RemoveSignatureLineCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                            CommandParameter="{Binding}"/>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+
+                                                    <Button Content="+ Рядок підпису" Style="{StaticResource TextLinkButtonStyle}"
+                                                            Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Left"
+                                                            Command="{Binding DataContext.AddSignatureLineCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}"/>
+                                                </StackPanel>
+
+                                                <!-- Таблиця відомості: заголовок колонки — у шапку,
+                                                     клітинка — у рядок-шаблон, що клонується на кожну людину -->
+                                                <StackPanel Margin="13,11"
+                                                            Visibility="{Binding IsTable, Converter={StaticResource BoolToVisibility}}">
+                                                    <Grid Margin="0,0,0,6">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="26"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="1" Text="ЗАГОЛОВОК"
+                                                                   Style="{StaticResource PanelCaptionStyle}"/>
+                                                        <TextBlock Grid.Column="2" Text="КЛІТИНКА" Margin="8,0,0,0"
+                                                                   Style="{StaticResource PanelCaptionStyle}"/>
+                                                        <TextBlock Grid.Column="3" Text="" Width="28"/>
+                                                    </Grid>
+
+                                                    <ItemsControl ItemsSource="{Binding Columns}">
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate>
+                                                                <Grid Margin="0,0,0,6">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="26"/>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="*"/>
+                                                                        <ColumnDefinition Width="Auto"/>
+                                                                    </Grid.ColumnDefinitions>
+
+                                                                    <!-- Літера колонки в Excel: щоб було видно, куди саме ляже -->
+                                                                    <TextBlock Grid.Column="0" Text="{Binding Letter}"
+                                                                               VerticalAlignment="Center" FontWeight="Bold" FontSize="11.5"
+                                                                               Foreground="{StaticResource TextSecondaryBrush}"/>
+
+                                                                    <TextBox Grid.Column="1" Tag="напр. ПІБ"
+                                                                             Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}"
+                                                                             GotFocus="BlockText_GotFocus"/>
+
+                                                                    <TextBox Grid.Column="2" Margin="8,0,0,0" Tag="напр. {{піб}}"
+                                                                             FontFamily="Consolas"
+                                                                             Text="{Binding Cell, UpdateSourceTrigger=PropertyChanged}"
+                                                                             GotFocus="BlockText_GotFocus"/>
+
+                                                                    <Button Grid.Column="3" Content="✕" ToolTip="Прибрати колонку"
+                                                                            Style="{StaticResource BlockActionStyle}" Margin="6,0,0,0"
+                                                                            Command="{Binding DataContext.RemoveColumnCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                                            CommandParameter="{Binding}"/>
+                                                                </Grid>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+
+                                                    <Button Content="+ Колонка" Style="{StaticResource TextLinkButtonStyle}"
+                                                            Foreground="{StaticResource AccentBrush}" HorizontalAlignment="Left"
+                                                            Margin="0,2,0,0"
+                                                            Command="{Binding DataContext.AddColumnCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                            CommandParameter="{Binding}"/>
+
+                                                    <!-- У Word повторення — вибір: з ним документ стає груповим
+                                                         (маркери {{#особи}}), без нього таблиця лишається статичною. -->
+                                                    <CheckBox Content="Повторювати рядок для кожної особи" Margin="0,8,0,0"
+                                                              IsChecked="{Binding RepeatPerPerson, Mode=TwoWay}"
+                                                              Visibility="{Binding IsRepeatToggleVisible, Converter={StaticResource BoolToVisibility}}"/>
+
+                                                    <TextBlock Text="Рядок повторюється для кожної особи списку"
+                                                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"
+                                                               Margin="0,8,0,0"
+                                                               Visibility="{Binding IsRepeatHintVisible, Converter={StaticResource BoolToVisibility}}"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- Пунктирна картка з макета. Додає абзац — найчастіший
+                                 блок; решта типів лишається в палітрі ліворуч. -->
+                            <Button Style="{StaticResource GhostButtonStyle}" Padding="16" Margin="0,0,0,10"
+                                    BorderThickness="1" BorderBrush="{StaticResource BorderLineBrush}"
+                                    Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5"
+                                    ToolTip="Додати абзац; інші типи блоків — у палітрі ліворуч"
+                                    Command="{Binding AddBlockCommand}"
+                                    CommandParameter="{Binding ParagraphPaletteItem}">
+                                <TextBlock Text="+ Додати блок"/>
+                            </Button>
+
+                            <TextBlock Text="Клік по полю в лівій панелі вставить мітку в позицію курсора"
+                                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"
+                                       Margin="2,0,0,8"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+
+            <!-- ПРАВА: ПОПЕРЕДНІЙ ПЕРЕГЛЯД. Ширина по вмісту в межах Min/Max,
+                 доки не потягнули роздільник. -->
+            <Border Grid.Column="2" Background="{StaticResource PanelBrush}"
+                    MinWidth="260" MaxWidth="900"
+                    BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1">
+                <DockPanel>
+
+                    <!-- Роздільник: тягнеться вліво, розширюючи перегляд за рахунок
+                         переліку блоків — той самий прийом, що в панелі мапінгу. -->
+                    <Thumb DockPanel.Dock="Left" Width="6" Cursor="SizeWE"
+                           DragDelta="PreviewResizeThumb_DragDelta">
+                        <Thumb.Template>
+                            <ControlTemplate TargetType="Thumb">
+                                <Border Background="{StaticResource BackgroundBrush}"
+                                        BorderBrush="{StaticResource BorderLineBrush}"
+                                        BorderThickness="0,0,1,0"/>
+                            </ControlTemplate>
+                        </Thumb.Template>
+                    </Thumb>
+
+                    <Border DockPanel.Dock="Top" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1"
+                            Padding="13,10">
+                        <TextBlock Text="ПОПЕРЕДНІЙ ПЕРЕГЛЯД" Style="{StaticResource PanelCaptionStyle}"/>
+                    </Border>
+
+                    <Border DockPanel.Dock="Top" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1"
+                            Padding="13,10">
+                        <DockPanel>
+                            <TextBlock Text="Тестова особа:" DockPanel.Dock="Left" VerticalAlignment="Center"
+                                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,0,9,0"/>
+                            <ComboBox ItemsSource="{Binding TestPeople}" DisplayMemberPath="Display"
+                                      SelectedItem="{Binding SelectedTestPerson, Mode=TwoWay}"/>
+                        </DockPanel>
+                    </Border>
+
+                    <!-- Де саме на аркуші опиниться зібране: діапазон і рядок-шаблон -->
+                    <Border DockPanel.Dock="Top" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1"
+                            Padding="13,8"
+                            Visibility="{Binding IsExcelMode, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="{Binding SheetRangeCaption}" FontSize="11.5" FontFamily="Consolas"
+                                   Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap"/>
+                    </Border>
+
+                    <!-- Легенда заливок — та сама, що в макеті -->
+                    <Border DockPanel.Dock="Bottom" Background="{StaticResource RowAltBrush}"
+                            BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,0,0" Padding="13,9">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="14" Height="11" Background="{StaticResource AccentSoftBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="з бази" Margin="5,0,14,0" FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                            <Border Width="14" Height="11" Background="{StaticResource WarningSoftBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="вручну при генерації" Margin="5,0,0,0" FontSize="11"
+                                       Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Word: сторінка документа -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Background="{StaticResource BackgroundBrush}"
+                                  Visibility="{Binding IsWordMode, Converter={StaticResource BoolToVisibility}}">
+                        <Border Background="White" Margin="14" Padding="24,26">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.18" Color="#2A3B5C"/>
+                            </Border.Effect>
+                            <!-- Рядки й таблиця впереміш: шаблон добирається за типом
+                                 елемента (неявні DataTemplate у ресурсах в'юхи). -->
+                            <ItemsControl ItemsSource="{Binding PreviewItems}"/>
+                        </Border>
+                    </ScrollViewer>
+
+                    <!-- Excel: сітка аркуша з літерами колонок і номерами рядків —
+                         щоб клітинку на екрані можна було звірити з відкритою книгою. -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                  Background="{StaticResource BackgroundBrush}"
+                                  Visibility="{Binding IsExcelMode, Converter={StaticResource BoolToVisibility}}">
+                        <!-- Ширину задає сам вміст (клітинки обмежені MaxWidth), а колонка
+                             панелі — Auto. Прив'язувати MinWidth до ViewportWidth не можна:
+                             ширина панелі теж рахується з вмісту, і виходив зворотний
+                             зв'язок, який роздував панель на весь екран. -->
+                        <Border Background="White" Margin="10" BorderBrush="{StaticResource BorderLineBrush}"
+                                BorderThickness="1">
+                            <StackPanel>
+                                <!-- Шапка з літерами колонок -->
+                                <DockPanel Background="{StaticResource RowAltBrush}">
+                                    <Border DockPanel.Dock="Left" Width="32" BorderBrush="{StaticResource BorderLineBrush}"
+                                            BorderThickness="0,0,1,1"/>
+                                    <ItemsControl ItemsSource="{Binding SheetColumnLetters}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <UniformGrid Rows="1"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,1,1"
+                                                        Padding="4,3">
+                                                    <TextBlock Text="{Binding}" TextAlignment="Center" FontSize="11"
+                                                               FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </DockPanel>
+
+                                <ItemsControl ItemsSource="{Binding SheetRows}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <DockPanel>
+                                                <!-- Номер рядка — той самий, що буде в Excel -->
+                                                <Border DockPanel.Dock="Left" Width="32" Padding="4,3"
+                                                        Background="{StaticResource RowAltBrush}"
+                                                        BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,1,1">
+                                                    <TextBlock Text="{Binding Number}" TextAlignment="Center" FontSize="11"
+                                                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                </Border>
+
+                                                <!-- Об'єднана смуга на всю ширину або клітинки таблиці:
+                                                     UniformGrid з одним елементом дає той самий вигляд, що
+                                                     й merge у книзі, тож окремого шаблону не треба. -->
+                                                <ItemsControl ItemsSource="{Binding Cells}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <UniformGrid Rows="1"/>
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <!-- MaxWidth: інакше довга назва колонки розтягує всю
+                                                                 сітку, і сусідні колонки зникають за краєм. -->
+                                                            <Border BorderBrush="{StaticResource BorderLineBrush}"
+                                                                    BorderThickness="0,0,1,1" Padding="5,4" MinHeight="26"
+                                                                    MaxWidth="130">
+                                                                <TextBlock local:PreviewInlines.Runs="{Binding}" TextWrapping="Wrap"
+                                                                           FontFamily="{Binding DataContext.Style.Family, RelativeSource={RelativeSource AncestorType=DockPanel}}"
+                                                                           FontSize="{Binding DataContext.Style.Size, RelativeSource={RelativeSource AncestorType=DockPanel}}"
+                                                                           Foreground="{Binding DataContext.Style.Foreground, RelativeSource={RelativeSource AncestorType=DockPanel}}"
+                                                                           TextAlignment="{Binding DataContext.Style.Alignment, RelativeSource={RelativeSource AncestorType=DockPanel}}"
+                                                                           FontWeight="{Binding DataContext.Style.Weight, RelativeSource={RelativeSource AncestorType=DockPanel}}"
+                                                                           FontStyle="{Binding DataContext.Style.Slant, RelativeSource={RelativeSource AncestorType=DockPanel}}"/>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </DockPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                    </ScrollViewer>
+                </DockPanel>
+            </Border>
+        </Grid>
+
+        <!-- НИЖНЯ СМУГА -->
+        <Border Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                BorderThickness="0,1,0,0" Padding="0,11,0,0" Margin="0,12,0,0">
+            <Grid>
+                <!-- Поле назви тягнеться (*), а прапорець і повідомлення про
+                     збереження стоять у власних Auto-колонках: у попередній
+                     розкладці фіксована назва з'їдала ширину, і повідомлення
+                     обрізалось до однієї літери. -->
+                <!-- Прапорець, повідомлення й кнопки — однією групою праворуч, а поле
+                     назви тягнеться на решту. Коли статус жив у власній колонці,
+                     сусіди з'їдали її ширину, і від «Шаблон збережено» лишалась
+                     одна літера. -->
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <TextBlock Grid.Column="0" Text="НАЗВА ШАБЛОНУ" Style="{StaticResource PanelCaptionStyle}"
+                           VerticalAlignment="Center" Margin="0,0,12,0"/>
+                <TextBox Grid.Column="1" MaxWidth="420" HorizontalAlignment="Left" MinWidth="180"
+                         Text="{Binding TemplateName, UpdateSourceTrigger=PropertyChanged}"
+                         Tag="напр. Акт на зберігання зброї"/>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <!-- Лише для відомості: аркуш на кожну дату з ручного тега {{період}} -->
+                    <CheckBox Content="Аркуш на кожну дату періоду" VerticalAlignment="Center"
+                              Margin="14,0,0,0"
+                              IsChecked="{Binding RepeatSheetPerDate, Mode=TwoWay}"
+                              Visibility="{Binding IsExcelMode, Converter={StaticResource BoolToVisibility}}"/>
+
+                    <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center"
+                               Margin="14,0" FontSize="12" Foreground="{StaticResource SuccessBrush}"/>
+                    <Button Content="{Binding ExportButtonText}" Style="{StaticResource SecondaryButtonStyle}"
+                            Padding="16,8" FontSize="12.5" FontWeight="SemiBold"
+                            Command="{Binding ExportCommand}"/>
+                    <Button Content="Зберегти шаблон" Margin="8,0,0,0" Padding="20,8" FontSize="12.5"
+                            Command="{Binding SaveCommand}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
