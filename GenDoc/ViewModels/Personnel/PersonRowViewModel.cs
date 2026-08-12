@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using GenDoc.Services;
 using GenDoc.Services.Personnel;
 
 namespace GenDoc.ViewModels.Personnel
@@ -19,6 +20,18 @@ namespace GenDoc.ViewModels.Personnel
         public string Rank => Item.Rank;
         public string Position => Item.Position;
         public string FitnessDisplay => string.IsNullOrWhiteSpace(Item.FitnessCategory) ? "—" : Item.FitnessCategory;
+
+        /// <summary>Чи показувати бейдж придатності — для порожньої категорії лишається прочерк.</summary>
+        public bool HasFitness => !string.IsNullOrWhiteSpace(Item.FitnessCategory);
+
+        /// <summary>Обмежено придатний / непридатний — бейдж стає застережливим.</summary>
+        public bool IsLimitedFitness => !FitnessCategoryHelper.IsRegular(Item.FitnessCategory);
+
+        /// <summary>Підпис бейджа. Макет показує «обмежено» — повна категорія лишається у підказці.</summary>
+        public string FitnessBadgeText =>
+            string.Equals(Item.FitnessCategory, "обмежено придатний", StringComparison.OrdinalIgnoreCase)
+                ? "обмежено"
+                : FitnessDisplay;
         public string RoomDisplay => Item.RoomDisplay;
         public int OrgNodeId => Item.OrgNodeId;
         public int? IntakeId => Item.IntakeId;

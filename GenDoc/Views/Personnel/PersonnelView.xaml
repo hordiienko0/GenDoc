@@ -289,23 +289,13 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <Grid Grid.Row="0" Margin="0,0,0,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Text="Особовий склад" FontSize="19" FontWeight="SemiBold"
-                               Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal">
-                        <TextBox Width="280" Tag="Пошук за ПІБ або посадою…"
-                                 Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
-                        <Button Content="+ Додати запис" Command="{Binding AddCommand}" Margin="10,0,0,0"/>
-                    </StackPanel>
-                </Grid>
+                <TextBlock Grid.Row="0" Text="Особовий склад" FontSize="19" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,0,2"/>
 
                 <ItemsControl Grid.Row="1" ItemsSource="{Binding Breadcrumb}"
                               ToolTip="{Binding FullPathToolTip}" Margin="0,0,0,10">
@@ -328,7 +318,17 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <Border Grid.Row="2" Background="{StaticResource AccentSoftBrush}"
+                <Grid Grid.Row="2" Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox Tag="Пошук за ПІБ або посадою…"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Button Grid.Column="1" Content="+ Додати запис" Command="{Binding AddCommand}" Margin="10,0,0,0"/>
+                </Grid>
+
+                <Border Grid.Row="3" Background="{StaticResource AccentSoftBrush}"
                         BorderBrush="{StaticResource SkyBrush}" BorderThickness="3,0,0,0"
                         Padding="12,7" Margin="0,0,0,8"
                         Visibility="{Binding HasChecked, Converter={StaticResource BoolToVisibility}}">
@@ -345,7 +345,7 @@
                     </StackPanel>
                 </Border>
 
-                <Border Grid.Row="3" Background="{StaticResource PanelBrush}"
+                <Border Grid.Row="4" Background="{StaticResource PanelBrush}"
                         BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1">
                     <Grid>
                         <DataGrid x:Name="PeopleGrid" ItemsSource="{Binding Rows}"
@@ -398,9 +398,45 @@
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
-                                <DataGridTextColumn Header="ПРИДАТНІСТЬ" Binding="{Binding FitnessDisplay}" Width="1.1*"/>
+                                <DataGridTemplateColumn Header="ПРИДАТНІСТЬ" Width="Auto">
+                                    <DataGridTemplateColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <Grid>
+                                                <!-- Категорія відсутня — лишається прочерк без бейджа -->
+                                                <TextBlock Text="{Binding FitnessDisplay}" VerticalAlignment="Center"
+                                                           Visibility="{Binding HasFitness, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}"/>
+                                                <Border Padding="7,2" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                        Visibility="{Binding HasFitness, Converter={StaticResource BoolToVisibility}}">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding IsLimitedFitness}" Value="True">
+                                                                    <Setter Property="Background" Value="{StaticResource WarningSoftBrush}"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <TextBlock Text="{Binding FitnessBadgeText}" FontSize="11" FontWeight="SemiBold"
+                                                               ToolTip="{Binding FitnessDisplay}">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsLimitedFitness}" Value="True">
+                                                                        <Setter Property="Foreground" Value="{StaticResource WarnTextBrush}"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </Border>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </DataGridTemplateColumn.CellTemplate>
+                                </DataGridTemplateColumn>
 
-                                <DataGridTextColumn Header="КІМНАТА" Binding="{Binding RoomDisplay}" Width="0.8*">
+                                <DataGridTextColumn Header="КІМНАТА" Binding="{Binding RoomDisplay}" Width="Auto">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock">
                                             <Setter Property="HorizontalAlignment" Value="Right"/>
@@ -416,7 +452,7 @@
                     </Grid>
                 </Border>
 
-                <TextBlock Grid.Row="4" Text="{Binding FooterText}" FontSize="11.5"
+                <TextBlock Grid.Row="5" Text="{Binding FooterText}" FontSize="11.5"
                            Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,0"/>
             </Grid>
         </Grid>

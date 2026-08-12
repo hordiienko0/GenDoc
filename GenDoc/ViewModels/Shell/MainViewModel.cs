@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using GenDoc.Data;
+using GenDoc.Models;
 using GenDoc.Services;
 using GenDoc.Services.Intakes;
 using GenDoc.Services.Navigation;
@@ -64,7 +65,16 @@ public partial class MainViewModel : ObservableObject
             static (recipient, message) => _ = recipient.NavigateAsync(message));
         _ = InitializeIntakeStateAsync();
         CurrentUserFullName = currentUserContext.CurrentUserFullName ?? string.Empty;
-        OrganizationDisplayName = ReadOrganizationDisplayName(dbFactory);
+        var organization = ReadOrganizationSettings(dbFactory);
+        OrganizationDisplayName = FormatOrganizationDisplayName(organization);
+        SidebarUnitShortName = organization?.UnitNumber ?? string.Empty;
+        SidebarUnitFullName = organization?.UnitFullName ?? string.Empty;
+
+        var unitCaption = string.Join(" ", new[] { SidebarUnitShortName, SidebarUnitFullName }
+            .Where(part => !string.IsNullOrWhiteSpace(part)));
+        WindowTitleText = string.IsNullOrWhiteSpace(unitCaption)
+            ? AppTitle
+            : $"{AppTitle} · {unitCaption}";
 
         StatusBarUserText = $"Користувач: {CurrentUserFullName}";
         StatusBarConnectionText = string.IsNullOrWhiteSpace(OrganizationDisplayName)
@@ -82,18 +92,19 @@ public partial class MainViewModel : ObservableObject
                 new NavigationItem("Імпорт з Excel", () => _serviceProvider.GetRequiredService<ImportViewModel>()),
                 new NavigationItem("Шаблони", () => _serviceProvider.GetRequiredService<TemplatesViewModel>()),
                 new NavigationItem(GenerationSectionTitle, () => _serviceProvider.GetRequiredService<GenerationViewModel>()),
-                new NavigationItem("Архів документів", () => _serviceProvider.GetRequiredService<ArchiveViewModel>()),
                 (_completenessNavItem = new NavigationItem(CompletenessSectionTitle,
-                    () => _serviceProvider.GetRequiredService<GenDoc.ViewModels.Completeness.CompletenessViewModel>())),
+                    () => _serviceProvider.GetRequiredService<GenDoc.ViewModels.Completeness.CompletenessViewModel>(),
+                    NavigationBadgeKind.Attention)),
+                new NavigationItem("Архів документів", () => _serviceProvider.GetRequiredService<ArchiveViewModel>()),
+            }, showDividerAfter: true),
+            new(new[]
+            {
                 new NavigationItem("Кімнати", () => _serviceProvider.GetRequiredService<RoomsViewModel>()),
-            }, showDividerAfter: true),
-            new(new[]
-            {
                 new NavigationItem("Журнал дій", () => _serviceProvider.GetRequiredService<AuditLogViewModel>()),
-                new NavigationItem("Кошик", () => _serviceProvider.GetRequiredService<TrashViewModel>()),
             }, showDividerAfter: true),
             new(new[]
             {
+                new NavigationItem("Кошик", () => _serviceProvider.GetRequiredService<TrashViewModel>()),
                 new NavigationItem("Налаштування", () => _serviceProvider.GetRequiredService<SettingsViewModel>()),
             }, showDividerAfter: false),
         };
@@ -116,6 +127,23 @@ public partial class MainViewModel : ObservableObject
 
     [ObservableProperty]
     private string organizationDisplayName = string.Empty;
+
+    /// <summary>Скорочена назва частини — перший рядок шапки бічної панелі.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSidebarUnitFullName))]
+    private string sidebarUnitShortName = string.Empty;
+
+    /// <summary>Повна назва частини — другий рядок шапки бічної панелі.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSidebarUnitFullName))]
+    private string sidebarUnitFullName = string.Empty;
+
+    public bool HasSidebarUnitFullName => !string.IsNullOrWhiteSpace(SidebarUnitFullName);
+
+    private const string AppTitle = "GenDoc — Облік особового складу";
+
+    /// <summary>Текст титульного рядка — з назвою частини, як у макеті.</summary>
+    public string WindowTitleText { get; private set; } = AppTitle;
 
     public string StatusBarUserText { get; private set; } = string.Empty;
     public string StatusBarConnectionText { get; private set; } = string.Empty;
@@ -177,10 +205,14 @@ public partial class MainViewModel : ObservableObject
             await target.ApplyNavigationPayloadAsync(m.Payload);
     }
 
-    private static string ReadOrganizationDisplayName(IDbContextFactory<AppDbContext> dbFactory)
+    private static OrganizationSettings? ReadOrganizationSettings(IDbContextFactory<AppDbContext> dbFactory)
     {
         using var db = dbFactory.CreateDbContext();
-        var settings = db.OrganizationSettings.AsNoTracking().FirstOrDefault();
+        return db.OrganizationSettings.AsNoTracking().FirstOrDefault();
+    }
+
+    private static string FormatOrganizationDisplayName(OrganizationSettings? settings)
+    {
         if (settings is null) return string.Empty;
 
         return string.IsNullOrWhiteSpace(settings.UnitNumber)

@@ -9,6 +9,13 @@ namespace GenDoc.Converters
         public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             var boolValue = value is bool b && b;
+
+            // ConverterParameter="Invert" — щоб не заводити дзеркальні властивості у в'ю-моделях
+            if (parameter is string s && string.Equals(s, "Invert", StringComparison.OrdinalIgnoreCase))
+            {
+                boolValue = !boolValue;
+            }
+
             return boolValue ? Visibility.Visible : Visibility.Collapsed;
         }
 
