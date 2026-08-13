@@ -1,4 +1,4 @@
-using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using GenDoc.Data;
@@ -19,6 +19,7 @@ using GenDoc.ViewModels.Trash;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System.Collections.ObjectModel;
+using System.Windows;
 
 namespace GenDoc.ViewModels.Shell;
 
@@ -83,29 +84,31 @@ public partial class MainViewModel : ObservableObject
 
         Groups = new ObservableCollection<NavigationGroup>
         {
+            // Іконки — гліфи Segoe MDL2 Assets, тим самим шрифтом, що й кнопки
+            // рядків таблиць. У згорнутій панелі меню від пункту лишається саме вона.
             new(new[]
             {
-                new NavigationItem(PersonnelSectionTitle, () => _serviceProvider.GetRequiredService<PersonnelViewModel>()),
-                new NavigationItem("Постійний склад", () => _serviceProvider.GetRequiredService<GenDoc.ViewModels.Staff.StaffViewModel>()),
-                (_intakesNavItem = new NavigationItem(IntakesSectionTitle,
+                new NavigationItem(PersonnelSectionTitle, "\uE716", () => _serviceProvider.GetRequiredService<PersonnelViewModel>()),
+                new NavigationItem("Постійний склад", "\uE77B", () => _serviceProvider.GetRequiredService<GenDoc.ViewModels.Staff.StaffViewModel>()),
+                (_intakesNavItem = new NavigationItem(IntakesSectionTitle, "\uE787",
                     () => _serviceProvider.GetRequiredService<IntakesViewModel>())),
-                new NavigationItem("Імпорт з Excel", () => _serviceProvider.GetRequiredService<ImportViewModel>()),
-                new NavigationItem("Шаблони", () => _serviceProvider.GetRequiredService<TemplatesViewModel>()),
-                new NavigationItem(GenerationSectionTitle, () => _serviceProvider.GetRequiredService<GenerationViewModel>()),
-                (_completenessNavItem = new NavigationItem(CompletenessSectionTitle,
+                new NavigationItem("Імпорт з Excel", "\uE896", () => _serviceProvider.GetRequiredService<ImportViewModel>()),
+                new NavigationItem("Шаблони", "\uE8A5", () => _serviceProvider.GetRequiredService<TemplatesViewModel>()),
+                new NavigationItem(GenerationSectionTitle, "\uE8C8", () => _serviceProvider.GetRequiredService<GenerationViewModel>()),
+                (_completenessNavItem = new NavigationItem(CompletenessSectionTitle, "\uE73E",
                     () => _serviceProvider.GetRequiredService<GenDoc.ViewModels.Completeness.CompletenessViewModel>(),
                     NavigationBadgeKind.Attention)),
-                new NavigationItem("Архів документів", () => _serviceProvider.GetRequiredService<ArchiveViewModel>()),
+                new NavigationItem("Архів документів", "\uE8B7", () => _serviceProvider.GetRequiredService<ArchiveViewModel>()),
             }, showDividerAfter: true),
             new(new[]
             {
-                new NavigationItem("Кімнати", () => _serviceProvider.GetRequiredService<RoomsViewModel>()),
-                new NavigationItem("Журнал дій", () => _serviceProvider.GetRequiredService<AuditLogViewModel>()),
+                new NavigationItem("Кімнати", "\uE80F", () => _serviceProvider.GetRequiredService<RoomsViewModel>()),
+                new NavigationItem("Журнал дій", "\uE81C", () => _serviceProvider.GetRequiredService<AuditLogViewModel>()),
             }, showDividerAfter: true),
             new(new[]
             {
-                new NavigationItem("Кошик", () => _serviceProvider.GetRequiredService<TrashViewModel>()),
-                new NavigationItem("Налаштування", () => _serviceProvider.GetRequiredService<SettingsViewModel>()),
+                new NavigationItem("Кошик", "\uE74D", () => _serviceProvider.GetRequiredService<TrashViewModel>()),
+                new NavigationItem("Налаштування", "\uE713", () => _serviceProvider.GetRequiredService<SettingsViewModel>()),
             }, showDividerAfter: false),
         };
 
@@ -139,6 +142,45 @@ public partial class MainViewModel : ObservableObject
     private string sidebarUnitFullName = string.Empty;
 
     public bool HasSidebarUnitFullName => !string.IsNullOrWhiteSpace(SidebarUnitFullName);
+
+    /// <summary>Панель закріплена — займає місце й показує підписи. Знята з
+    /// закріплення, вона згортається в смужку з іконок і розкривається поверх
+    /// вмісту, коли на неї навести. Так на вузьких екранах розділу лишається
+    /// вся ширина, а меню нікуди не зникає.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSidebarExpanded))]
+    [NotifyPropertyChangedFor(nameof(SidebarColumnWidth))]
+    [NotifyPropertyChangedFor(nameof(SidebarWidth))]
+    [NotifyPropertyChangedFor(nameof(SidebarToggleIcon))]
+    [NotifyPropertyChangedFor(nameof(SidebarToggleTooltip))]
+    private bool isSidebarPinned = true;
+
+    /// <summary>Курсор над панеллю — тимчасове розкриття незакріпленої панелі.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsSidebarExpanded))]
+    [NotifyPropertyChangedFor(nameof(SidebarWidth))]
+    private bool isSidebarHovered;
+
+    public bool IsSidebarExpanded => IsSidebarPinned || IsSidebarHovered;
+
+    public const double SidebarExpandedWidth = 212;
+    public const double SidebarRailWidth = 52;
+
+    /// <summary>Ширина самої панелі: розкрита — повна, згорнута — смужка іконок.</summary>
+    public double SidebarWidth => IsSidebarExpanded ? SidebarExpandedWidth : SidebarRailWidth;
+
+    /// <summary>Скільки місця панель ЗАБИРАЄ в розділу. Незакріплена не забирає
+    /// нічого понад смужку — вона спливає поверх, не зсуваючи вміст.</summary>
+    public GridLength SidebarColumnWidth => new(IsSidebarPinned ? SidebarExpandedWidth : SidebarRailWidth);
+
+    public string SidebarToggleIcon => IsSidebarPinned ? "\uE76B" : "\uE76C";
+
+    public string SidebarToggleTooltip => IsSidebarPinned
+        ? "Згорнути меню в смужку іконок"
+        : "Закріпити меню розгорнутим";
+
+    [RelayCommand]
+    private void ToggleSidebar() => IsSidebarPinned = !IsSidebarPinned;
 
     private const string AppTitle = "GenDoc — Облік особового складу";
 

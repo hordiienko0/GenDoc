@@ -7,8 +7,9 @@ public partial class ExportTemplateListItemViewModel : ObservableObject
 {
     public ExportTemplateListItemViewModel(
         int id, string name, string originalFileName, DateTime uploadedAt, bool isBuiltIn, bool usesPlaceholders,
-        int tagCount, bool repeatSheetPerDate)
+        int tagCount, bool repeatSheetPerDate, bool isFromBuilder = false)
     {
+        IsFromBuilder = isFromBuilder;
         Id = id;
         Name = name;
         OriginalFileName = originalFileName;
@@ -27,6 +28,10 @@ public partial class ExportTemplateListItemViewModel : ObservableObject
     public bool UsesPlaceholders { get; }
     public int TagCount { get; }
     public bool CanDelete => !IsBuiltIn;
+
+    /// <summary>Відомість зібрана конструктором — її можна відкрити на редагування
+    /// блоками. Завантажена книга назад у блоки не розбирається.</summary>
+    public bool IsFromBuilder { get; }
 
     // Лише для книг-за-тегами: перший аркуш клонується по одному на кожну
     // дату з ручного тега {{період}}. Зберігається разом з мапінгом (кнопка

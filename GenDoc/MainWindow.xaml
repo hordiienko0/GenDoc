@@ -110,6 +110,36 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <!-- Кнопка закріплення/згортання меню — на темному тлі панелі -->
+        <Style x:Key="SidebarToggleButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource MenuTextBrush}"/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Width" Value="26"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              TextBlock.Foreground="{TemplateBinding Foreground}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource NavyMidBrush}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="WindowCloseButtonStyle" TargetType="Button" BasedOn="{StaticResource WindowButtonStyle}">
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
@@ -170,27 +200,49 @@
 
         <Grid Background="{StaticResource BackgroundBrush}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="212"/>
+                <!-- Скільки місця меню ЗАБИРАЄ: закріплене — повну ширину,
+                     згорнуте — лише смужку іконок. -->
+                <ColumnDefinition Width="{Binding SidebarColumnWidth}"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Background="{StaticResource NavyBrush}">
+            <ContentControl Grid.Column="1" Content="{Binding CurrentContent}" Margin="24"/>
+
+            <!-- Панель лежить ПОВЕРХ обох колонок і вирівняна вліво: коли вона
+                 незакріплена, розкриття наїжджає на вміст, а не розсуває його
+                 (інакше весь розділ перебудовувався б від наведення миші). -->
+            <Border Grid.Column="0" Grid.ColumnSpan="2" Panel.ZIndex="10"
+                    HorizontalAlignment="Left" Width="{Binding SidebarWidth}"
+                    Background="{StaticResource NavyBrush}"
+                    MouseEnter="Sidebar_MouseEnter" MouseLeave="Sidebar_MouseLeave">
                 <DockPanel>
 
-                    <!-- Шапка: емблема + назва частини -->
-                    <Border DockPanel.Dock="Top" Padding="14,12"
+                    <!-- Шапка: емблема + назва частини + закріплення панелі -->
+                    <Border DockPanel.Dock="Top" Padding="10,12"
                             BorderBrush="{StaticResource SidebarDividerBrush}" BorderThickness="0,0,0,1">
-                        <StackPanel Orientation="Horizontal">
-                            <Image Source="{StaticResource UnitEmblemImage}" Width="34" Height="34"
-                                   VerticalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality"/>
-                            <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                        <DockPanel>
+                            <!-- Кнопка закріплення видима лише в розкритому стані:
+                                 у смужці для неї немає місця, а розкрити її можна
+                                 наведенням. -->
+                            <Button DockPanel.Dock="Right" Style="{StaticResource SidebarToggleButtonStyle}"
+                                    Content="{Binding SidebarToggleIcon}"
+                                    ToolTip="{Binding SidebarToggleTooltip}"
+                                    Command="{Binding ToggleSidebarCommand}"
+                                    Visibility="{Binding IsSidebarExpanded, Converter={StaticResource BoolToVisibility}}"/>
+
+                            <Image Source="{StaticResource UnitEmblemImage}" Width="32" Height="32"
+                                   DockPanel.Dock="Left" VerticalAlignment="Center"
+                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+
+                            <StackPanel Margin="10,0,0,0" VerticalAlignment="Center"
+                                        Visibility="{Binding IsSidebarExpanded, Converter={StaticResource BoolToVisibility}}">
                                 <TextBlock Text="{Binding SidebarUnitShortName}" FontSize="12.5"
                                            FontWeight="Bold" Foreground="White" TextTrimming="CharacterEllipsis"/>
                                 <TextBlock Text="{Binding SidebarUnitFullName}" FontSize="10.5"
                                            Foreground="{StaticResource MenuTextBrush}" TextTrimming="CharacterEllipsis"
                                            Visibility="{Binding HasSidebarUnitFullName, Converter={StaticResource BoolToVisibility}}"/>
                             </StackPanel>
-                        </StackPanel>
+                        </DockPanel>
                     </Border>
 
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -203,15 +255,28 @@
                                             <DataTemplate DataType="{x:Type shell:NavigationItem}">
                                                 <Button Style="{StaticResource NavItemButtonStyle}"
                                                         HorizontalContentAlignment="Stretch"
+                                                        ToolTip="{Binding Title}"
                                                         Command="{Binding DataContext.SelectItemCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                                                         CommandParameter="{Binding}">
                                                     <Grid HorizontalAlignment="Stretch">
                                                         <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto"/>
                                                             <ColumnDefinition Width="*"/>
                                                             <ColumnDefinition Width="Auto"/>
                                                         </Grid.ColumnDefinitions>
-                                                        <TextBlock Grid.Column="0" Text="{Binding Title}"/>
-                                                        <Border Grid.Column="1" Padding="5,1"
+
+                                                        <!-- Іконка розділу: у згорнутій смужці від пункту
+                                                             лишається тільки вона, тому фіксованої ширини
+                                                             й по центру смужки. -->
+                                                        <TextBlock Grid.Column="0" Text="{Binding Icon}"
+                                                                   FontFamily="Segoe MDL2 Assets" FontSize="15"
+                                                                   Width="22" TextAlignment="Center"
+                                                                   VerticalAlignment="Center"/>
+
+                                                        <TextBlock Grid.Column="1" Text="{Binding Title}" Margin="10,0,0,0"
+                                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                                   Visibility="{Binding DataContext.IsSidebarExpanded, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}"/>
+                                                        <Border Grid.Column="2" Padding="5,1"
                                                                 HorizontalAlignment="Right" VerticalAlignment="Center"
                                                                 Visibility="{Binding HasBadge, Converter={StaticResource BoolToVisibility}}">
                                                             <Border.Style>
@@ -252,8 +317,6 @@
                     </ScrollViewer>
                 </DockPanel>
             </Border>
-
-            <ContentControl Grid.Column="1" Content="{Binding CurrentContent}" Margin="24"/>
         </Grid>
     </DockPanel>
 </Window>

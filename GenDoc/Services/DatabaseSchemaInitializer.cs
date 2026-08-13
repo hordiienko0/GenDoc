@@ -6,7 +6,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 20;
+    private const int CurrentSchemaVersion = 22;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -149,6 +149,19 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     private static readonly (string Name, string Type)[] ExportTemplateColumnsV19 =
     {
         ("RepeatSheetPerDate", "INTEGER NOT NULL DEFAULT 0")
+    };
+
+    // Конструктор шаблонів: джерело блоків поруч із готовими байтами .docx.
+    // NULL — шаблон завантажений файлом, конструктор його не відкриває.
+    internal static readonly (string Name, string Type)[] TemplateColumnsV21 =
+    {
+        ("BuilderJson", "TEXT")
+    };
+
+    // Той самий конструктор, але для відомостей: джерело блоків .xlsx-шаблона.
+    internal static readonly (string Name, string Type)[] ExportTemplateColumnsV22 =
+    {
+        ("BuilderJson", "TEXT")
     };
 
     private static readonly (string Name, string Type)[] AppSettingsColumnsV15 =
@@ -437,6 +450,32 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                 });
                 currentVersion = 20;
             }
+
+            if (currentVersion < 21)
+            {
+                AddMissingColumns(db, "Templates", TemplateColumnsV21);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 21,
+                    AppliedAt = DateTime.Now,
+                    Description = "Конструктор шаблонів: джерело блоків у Template.BuilderJson"
+                });
+                currentVersion = 21;
+            }
+
+            if (currentVersion < 22)
+            {
+                AddMissingColumns(db, "ExportTemplates", ExportTemplateColumnsV22);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 22,
+                    AppliedAt = DateTime.Now,
+                    Description = "Конструктор відомостей: джерело блоків у ExportTemplate.BuilderJson"
+                });
+                currentVersion = 22;
+            }
         }
 
         // Ідемпотентно, як EnsureExportTemplateTables: таблиці, додані в модель після
@@ -482,6 +521,9 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         AddMissingColumns(db, "Recipients", RecipientColumnsV18);
 
         AddMissingColumns(db, "ExportTemplates", ExportTemplateColumnsV19);
+
+        AddMissingColumns(db, "Templates", TemplateColumnsV21);
+        AddMissingColumns(db, "ExportTemplates", ExportTemplateColumnsV22);
 
         // Ідемпотентно (IF NOT EXISTS) — самовідновлюється незалежно від SchemaVersion,
         // так само як EnsureExportTemplateTables. Обгорнуто в try/catch: якщо в

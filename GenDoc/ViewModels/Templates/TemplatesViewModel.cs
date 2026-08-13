@@ -4,8 +4,11 @@ using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GenDoc.Models.Enums;
+using GenDoc.Models.TemplateBuilder;
 using GenDoc.Services;
 using GenDoc.Services.Templates;
+using GenDoc.ViewModels.Templates.Builder;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 
 namespace GenDoc.ViewModels.Templates;
@@ -14,11 +17,16 @@ public partial class TemplatesViewModel : ObservableObject
 {
     private readonly IExportTemplateService _exportTemplateService;
     private readonly ITemplateService _templateService;
+    private readonly IServiceProvider _serviceProvider;
 
-    public TemplatesViewModel(IExportTemplateService exportTemplateService, ITemplateService templateService)
+    public TemplatesViewModel(
+        IExportTemplateService exportTemplateService,
+        ITemplateService templateService,
+        IServiceProvider serviceProvider)
     {
         _exportTemplateService = exportTemplateService;
         _templateService = templateService;
+        _serviceProvider = serviceProvider;
         Refresh();
         RefreshDocxTemplates();
     }
@@ -39,7 +47,8 @@ public partial class TemplatesViewModel : ObservableObject
     {
         var all = _exportTemplateService.GetTemplateListItems()
             .Select(t => new ExportTemplateListItemViewModel(
-                t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.IsBuiltIn, t.UsesPlaceholders, t.TagCount, t.RepeatSheetPerDate))
+                t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.IsBuiltIn, t.UsesPlaceholders, t.TagCount,
+                t.RepeatSheetPerDate, t.IsFromBuilder))
             .ToList();
 
         // Групування за призначенням, а не за розширенням файлу.
@@ -53,7 +62,88 @@ public partial class TemplatesViewModel : ObservableObject
     {
         DocxTemplates = new ObservableCollection<DocxTemplateListItemViewModel>(
             _templateService.GetTemplateListItems()
-                .Select(t => new DocxTemplateListItemViewModel(t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, t.TagCount)));
+                .Select(t => new DocxTemplateListItemViewModel(
+                    t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, t.TagCount, t.IsFromBuilder)));
+    }
+
+    /// <summary>Конструктор живе всередині «Шаблонів»: не окремий пункт меню, а
+    /// повноекранний режим цього ж розділу. Не null — розділ показує конструктор.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsBuilderOpen))]
+    [NotifyPropertyChangedFor(nameof(IsListVisible))]
+    private TemplateBuilderViewModel? builder;
+
+    public bool IsBuilderOpen => Builder is not null;
+
+    public bool IsListVisible => Builder is null;
+
+    [RelayCommand]
+    private void CreateWithBuilder()
+    {
+        var builderViewModel = CreateBuilder();
+        builderViewModel.StartNew(TemplateBuilderMode.Word);
+        Builder = builderViewModel;
+    }
+
+    /// <summary>Той самий конструктор, але одразу у режимі відомості: зібраний
+    /// .xlsx лягає в ExportTemplate і потрапляє в той самий розділ «Шаблони
+    /// документів» (він за тегами, а отже формує документ).</summary>
+    [RelayCommand]
+    private void CreateVidomistWithBuilder()
+    {
+        var builderViewModel = CreateBuilder();
+        builderViewModel.StartNew(TemplateBuilderMode.Excel);
+        Builder = builderViewModel;
+    }
+
+    [RelayCommand]
+    private void EditExportWithBuilder(ExportTemplateListItemViewModel? item)
+    {
+        if (item is null) return;
+
+        var builderViewModel = CreateBuilder();
+        if (!builderViewModel.LoadTemplate(item.Id, TemplateBuilderMode.Excel))
+        {
+            MessageBox.Show(
+                "Ця книга завантажена файлом і не має джерела блоків, тож у конструкторі не відкривається.",
+                "Немає джерела блоків", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        Builder = builderViewModel;
+    }
+
+    [RelayCommand]
+    private void EditWithBuilder(DocxTemplateListItemViewModel? item)
+    {
+        if (item is null) return;
+
+        var builderViewModel = CreateBuilder();
+        if (!builderViewModel.LoadTemplate(item.Id, TemplateBuilderMode.Word))
+        {
+            // Практично недосяжно: кнопка є лише в рядків з BuilderJson. Лишається
+            // на випадок зіпсованого JSON — краще сказати, ніж відкрити порожній екран.
+            MessageBox.Show(
+                "Цей шаблон завантажений файлом і не має джерела блоків, тож у конструкторі не відкривається.",
+                "Немає джерела блоків", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        Builder = builderViewModel;
+    }
+
+    private TemplateBuilderViewModel CreateBuilder()
+    {
+        var builderViewModel = _serviceProvider.GetRequiredService<TemplateBuilderViewModel>();
+        builderViewModel.RequestClose += () => Builder = null;
+        builderViewModel.Saved += () =>
+        {
+            // Режим міг перемкнутись уже після відкриття, тож перечитуємо обидва
+            // переліки, а не той, з якого зайшли.
+            RefreshDocxTemplates();
+            Refresh();
+        };
+        return builderViewModel;
     }
 
     [RelayCommand]
@@ -102,17 +192,36 @@ public partial class TemplatesViewModel : ObservableObject
     /// мапінгу, тож права панель тримає два окремі слоти, а не один нетипізований:
     /// два неявні DataTemplate на один тип XAML не дозволяє.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelectedDocxTemplate))]
     private DocxTemplateListItemViewModel? selectedDocxTemplate;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasSelectedExportTemplate))]
     private ExportTemplateListItemViewModel? selectedExportTemplate;
 
     public bool HasSelectedTemplate => SelectedTemplate is not null;
 
-    /// <summary>Ширина панелі мапінгу. Її тягне вліво роздільник — довгі назви полів
-    /// і теги в мапінгу інакше не вміщаються.</summary>
+    // ContentControl із заданим ContentTemplate малює шаблон навіть при Content = null
+    // (порожні поля й друга кнопка «Зберегти мапінг» над справжньою) — тому слоти
+    // ховаємо явно, а не покладаємось на порожній Content.
+    public bool HasSelectedDocxTemplate => SelectedDocxTemplate is not null;
+
+    public bool HasSelectedExportTemplate => SelectedExportTemplate is not null;
+
+    /// <summary>Ширина панелі мапінгу. Поки оператор не чіпав роздільник, панель
+    /// розсувається сама під свій вміст (Auto) — довгі назви полів і теги інакше
+    /// не вміщаються у фіксовану ширину. Щойно її потягнули, ширина стає явною
+    /// й більше не стрибає під час перемикання шаблонів.</summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MappingPanelColumnWidth))]
     private double mappingPanelWidth = 430;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(MappingPanelColumnWidth))]
+    private bool isMappingPanelAutoSized = true;
+
+    public GridLength MappingPanelColumnWidth
+        => IsMappingPanelAutoSized ? GridLength.Auto : new GridLength(MappingPanelWidth);
 
     public const double MappingPanelMinWidth = 320;
     public const double MappingPanelMaxWidth = 900;

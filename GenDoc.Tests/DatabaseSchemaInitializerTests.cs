@@ -169,6 +169,119 @@ public class DatabaseSchemaInitializerTests
             .GetExistingColumns((DbConnection)connection, "Weapons").Count);
     }
 
+    // v21: конструктору потрібне джерело блоків поруч із байтами .docx. Колонка
+    // додається до наявної таблиці з даними, тож мусить бути nullable — інакше
+    // SQLite не дасть ADD COLUMN без DEFAULT.
+    [Fact]
+    public void TemplateColumnsV21_AddsBuilderJsonToExistingTemplates()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = """
+                CREATE TABLE "Templates" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_Templates" PRIMARY KEY AUTOINCREMENT,
+                    "Name" TEXT NOT NULL,
+                    "OriginalFileName" TEXT NOT NULL,
+                    "Content" BLOB NOT NULL,
+                    "UploadedAt" TEXT NOT NULL
+                );
+                """;
+            cmd.ExecuteNonQuery();
+        }
+
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = """
+                INSERT INTO "Templates" ("Id", "Name", "OriginalFileName", "Content", "UploadedAt")
+                VALUES (1, 'Залік Додаток 8', 'zalik.docx', x'0102', '2026-01-01');
+                """;
+            cmd.ExecuteNonQuery();
+        }
+
+        DatabaseSchemaInitializer.AddMissingColumns(
+            (DbConnection)connection, "Templates", DatabaseSchemaInitializer.TemplateColumnsV21);
+        DatabaseSchemaInitializer.AddMissingColumns(
+            (DbConnection)connection, "Templates", DatabaseSchemaInitializer.TemplateColumnsV21); // повторно
+
+        var columns = DatabaseSchemaInitializer.GetExistingColumns((DbConnection)connection, "Templates");
+        Assert.Contains("BuilderJson", columns);
+
+        // Шаблон, завантажений файлом, лишається з порожнім джерелом — саме за цим
+        // конструктор і відрізняє «своє» від чужого .docx.
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = """SELECT "Name", "BuilderJson" FROM "Templates" WHERE "Id" = 1;""";
+            using var reader = cmd.ExecuteReader();
+            Assert.True(reader.Read());
+            Assert.Equal("Залік Додаток 8", reader.GetString(0));
+            Assert.True(reader.IsDBNull(1));
+        }
+
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = """
+                INSERT INTO "Templates" ("Name", "OriginalFileName", "Content", "UploadedAt", "BuilderJson")
+                VALUES ('Зібраний', 'zibranyi.docx', x'0304', '2026-01-02', '{"Blocks":[],"Version":1}');
+                """;
+            cmd.ExecuteNonQuery();
+        }
+    }
+
+    // v22 — парна до v21, але для відомостей: ExportTemplates уже жила в базі до
+    // конструктора, тож колонка додається до наявної таблиці з даними.
+    [Fact]
+    public void ExportTemplateColumnsV22_AddsBuilderJsonToExistingExportTemplates()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = """
+                CREATE TABLE "ExportTemplates" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_ExportTemplates" PRIMARY KEY AUTOINCREMENT,
+                    "Name" TEXT NOT NULL,
+                    "OriginalFileName" TEXT NOT NULL,
+                    "Content" BLOB NOT NULL,
+                    "IsBuiltIn" INTEGER NOT NULL,
+                    "UploadedAt" TEXT NOT NULL,
+                    "TemplateRowIndex" INTEGER NOT NULL DEFAULT 2,
+                    "UsesPlaceholders" INTEGER NOT NULL DEFAULT 0
+                );
+                """;
+            cmd.ExecuteNonQuery();
+        }
+
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = """
+                INSERT INTO "ExportTemplates" ("Id", "Name", "OriginalFileName", "Content", "IsBuiltIn", "UploadedAt")
+                VALUES (1, 'Допуск Додаток 5', 'dopusk.xlsx', x'0102', 0, '2026-01-01');
+                """;
+            cmd.ExecuteNonQuery();
+        }
+
+        DatabaseSchemaInitializer.AddMissingColumns(
+            (DbConnection)connection, "ExportTemplates", DatabaseSchemaInitializer.ExportTemplateColumnsV22);
+        DatabaseSchemaInitializer.AddMissingColumns(
+            (DbConnection)connection, "ExportTemplates", DatabaseSchemaInitializer.ExportTemplateColumnsV22); // повторно
+
+        Assert.Contains("BuilderJson",
+            DatabaseSchemaInitializer.GetExistingColumns((DbConnection)connection, "ExportTemplates"));
+
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = """SELECT "Name", "BuilderJson" FROM "ExportTemplates" WHERE "Id" = 1;""";
+            using var reader = cmd.ExecuteReader();
+            Assert.True(reader.Read());
+            Assert.Equal("Допуск Додаток 5", reader.GetString(0));
+            Assert.True(reader.IsDBNull(1));
+        }
+    }
+
     private static void CreateOldSchema(SqliteConnection connection)
     {
         using (var pragma = connection.CreateCommand())

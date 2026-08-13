@@ -65,6 +65,7 @@ namespace GenDoc
             services.AddTransient<IExportTemplateService, ExportTemplateService>();
             services.AddTransient<IAuditLogQueryService, AuditLogQueryService>();
             services.AddTransient<ITemplateService, TemplateService>();
+            services.AddTransient<Services.Templates.ITemplateBuilderService, Services.Templates.TemplateBuilderService>();
             services.AddTransient<IDocumentGenerationService, DocumentGenerationService>();
             services.AddTransient<IGenerationService, GenerationService>();
             services.AddSingleton<IXlsxGenerationService, XlsxGenerationService>();
@@ -95,6 +96,7 @@ namespace GenDoc
             services.AddTransient<RecipientEditViewModel>();
             services.AddTransient<ImportViewModel>();
             services.AddTransient<TemplatesViewModel>();
+            services.AddTransient<ViewModels.Templates.Builder.TemplateBuilderViewModel>();
             services.AddTransient<AuditLogViewModel>();
             services.AddTransient<SettingsViewModel>();
             services.AddTransient<GenerationViewModel>();

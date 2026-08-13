@@ -134,7 +134,7 @@ namespace GenDoc.Services
                 .ToList();
         }
 
-        public List<(int Id, string Name, string OriginalFileName, DateTime UploadedAt, bool IsBuiltIn, bool UsesPlaceholders, int TagCount, bool RepeatSheetPerDate)> GetTemplateListItems()
+        public List<(int Id, string Name, string OriginalFileName, DateTime UploadedAt, bool IsBuiltIn, bool UsesPlaceholders, int TagCount, bool RepeatSheetPerDate, bool IsFromBuilder)> GetTemplateListItems()
         {
             using var db = _dbFactory.CreateDbContext();
             return db.ExportTemplates
@@ -143,10 +143,11 @@ namespace GenDoc.Services
                 .Select(t => new
                 {
                     t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.IsBuiltIn, t.UsesPlaceholders, t.RepeatSheetPerDate,
-                    TagCount = t.ColumnMappings.Count(m => m.PlaceholderTag != "")
+                    TagCount = t.ColumnMappings.Count(m => m.PlaceholderTag != ""),
+                    IsFromBuilder = t.BuilderJson != null
                 })
                 .AsEnumerable()
-                .Select(t => (t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.IsBuiltIn, t.UsesPlaceholders, t.TagCount, t.RepeatSheetPerDate))
+                .Select(t => (t.Id, t.Name, t.OriginalFileName, t.UploadedAt, t.IsBuiltIn, t.UsesPlaceholders, t.TagCount, t.RepeatSheetPerDate, t.IsFromBuilder))
                 .ToList();
         }
 
@@ -326,7 +327,10 @@ namespace GenDoc.Services
         private static bool IsRecipientTag(string tagWithBraces)
             => PlaceholderTagMaps.Classify(tagWithBraces).SourceType == MappingSourceType.Recipient;
 
-        private static void BuildPlaceholderMappings(ExportTemplate template, IXLRange usedRange, int templateRowIndex)
+        // internal: тим самим сканером конструктор описує книгу, яку щойно зібрав —
+        // так мапінг зібраної відомості за побудовою збігається з мапінгом такої ж
+        // відомості, завантаженої файлом.
+        internal static void BuildPlaceholderMappings(ExportTemplate template, IXLRange usedRange, int templateRowIndex)
         {
             var outsideTags = new HashSet<string>(StringComparer.Ordinal);
 

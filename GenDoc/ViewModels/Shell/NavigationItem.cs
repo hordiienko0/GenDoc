@@ -15,10 +15,15 @@ public partial class NavigationItem : ObservableObject
     public Func<object> ContentFactory { get; }
     public NavigationBadgeKind BadgeKind { get; }
 
-    public NavigationItem(string title, Func<object> contentFactory,
+    /// <summary>Гліф Segoe MDL2 Assets — у згорнутій панелі меню лишаються самі
+    /// іконки, тож кожен розділ мусить мати свою.</summary>
+    public string Icon { get; }
+
+    public NavigationItem(string title, string icon, Func<object> contentFactory,
         NavigationBadgeKind badgeKind = NavigationBadgeKind.Info)
     {
         Title = title;
+        Icon = icon;
         ContentFactory = contentFactory;
         BadgeKind = badgeKind;
     }
