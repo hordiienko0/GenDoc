@@ -4,6 +4,7 @@ using GenDoc.Data;
 using GenDoc.Models;
 using GenDoc.Models.Enums;
 using GenDoc.Services;
+using GenDoc.Services.Documents;
 using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.Services.Generation
@@ -418,6 +419,8 @@ namespace GenDoc.Services.Generation
                 .AsEnumerable()
                 .ToDictionary(o => o.Id, o => (o.Name, o.ParentId));
 
+            var intakeNames = LoadIntakeNames(db);
+
             var generated = 0;
             var skipped = 0;
             var errors = 0;
@@ -444,8 +447,13 @@ namespace GenDoc.Services.Generation
                     try
                     {
                         var values = BuildValues(mappingsByTemplate[template.Id], recipient, orgSettings, manualValues);
-                        var fileName = BuildFileName(recipient, template.Name, usedFileNames);
+                        var intakeName = recipient.IntakeId is int id && intakeNames.TryGetValue(id, out var display)
+                            ? display
+                            : null;
+
+                        var fileName = BuildFileName(recipient, template.Name, intakeName, usedFileNames);
                         var outputPath = Path.Combine(outputFolder, fileName);
+                        EnsureFolder(outputPath);
 
                         var result = _documentGenerationService.GenerateOne(template, template.Content, values, outputPath);
                         if (!result.Success)
@@ -530,6 +538,8 @@ namespace GenDoc.Services.Generation
             var errors = 0;
             var issues = new List<RunIssue>();
 
+            var intakeNames = LoadIntakeNames(db);
+
             foreach (var link in exportLinks)
             {
                 var template = link.ExportTemplate;
@@ -586,8 +596,10 @@ namespace GenDoc.Services.Generation
                         continue;
                     }
 
-                    var fileName = BuildGroupFileName(template.Name, usedFileNames);
+                    var fileName = BuildGroupFileName(
+                        template.Name, IntakeNamesOf(roster, intakeNames), usedFileNames);
                     var outputPath = Path.Combine(outputFolder, fileName);
+                    EnsureFolder(outputPath);
                     File.WriteAllBytes(outputPath, result.Content!);
 
                     var maxVersion = db.GeneratedGroupDocuments.IgnoreQueryFilters()
@@ -674,6 +686,8 @@ namespace GenDoc.Services.Generation
             // так само, як у джерельному паперовому звіті.
             var roster = RosterOrdering.Apply(allRecipients).ToList();
 
+            var intakeNames = LoadIntakeNames(db);
+
             foreach (var template in groupTemplates)
             {
                 progress.Report($"Груповий DOCX «{template.Name}»…");
@@ -712,8 +726,10 @@ namespace GenDoc.Services.Generation
                         continue;
                     }
 
-                    var fileName = BuildGroupFileName(template.Name, usedFileNames, ".docx");
+                    var fileName = BuildGroupFileName(
+                        template.Name, IntakeNamesOf(roster, intakeNames), usedFileNames, ".docx");
                     var outputPath = Path.Combine(outputFolder, fileName);
+                    EnsureFolder(outputPath);
 
                     var result = _documentGenerationService.GenerateGroup(
                         template, template.Content, perRecipientValues, sharedValues, outputPath);
@@ -904,37 +920,74 @@ namespace GenDoc.Services.Generation
             => !string.IsNullOrWhiteSpace(fileName)
                && File.Exists(Path.Combine(outputFolder, fileName));
 
-        // Персональний документ: «ПРІЗВИЩЕ Ім'я Назва шаблону.docx». Без дати —
-        // документ прив'язаний до людини, а не до дня формування.
-        private static string BuildFileName(Recipient recipient, string templateName, HashSet<string> usedFileNames)
+        /// <summary>Назви наборів для верхнього рівня папок. Одним запитом перед
+        /// циклом: у циклі є лише IntakeId, і запит на кожен документ був би
+        /// сотнями звернень до БД заради кількох різних рядків.</summary>
+        private static Dictionary<int, string> LoadIntakeNames(AppDbContext db)
+            => db.Intakes.IgnoreQueryFilters()
+                .Select(i => new { i.Id, i.DisplayNumber })
+                .AsEnumerable()
+                .ToDictionary(i => i.Id, i => i.DisplayNumber);
+
+        /// <summary>Набори людей у відомості — саме з них виводиться її папка.</summary>
+        private static IEnumerable<string?> IntakeNamesOf(
+            IEnumerable<Recipient> roster, Dictionary<int, string> intakeNames)
+            => roster.Select(r => r.IntakeId is int id && intakeNames.TryGetValue(id, out var name)
+                ? name
+                : null);
+
+        /// <summary>Тека призначення під відносний шлях. Раніше всі файли лягали
+        /// в одну обрану теку, і створювати нічого не було треба; з розкладкою по
+        /// папках перший же документ упав би на неіснуючій теці.</summary>
+        private static void EnsureFolder(string outputPath)
         {
-            var baseName = $"{recipient.LastName} {recipient.FirstName} {TemplateNaming.Clean(templateName)}";
-            return MakeUnique(baseName, usedFileNames, ".docx");
+            var folder = Path.GetDirectoryName(outputPath);
+            if (!string.IsNullOrEmpty(folder)) Directory.CreateDirectory(folder);
         }
 
-        // Групова відомість: «Залік Додаток 8 06.08.2026.xlsx» — назва шаблону без
-        // технічного префікса «Шаблон_» і дата крапками, без підкреслень.
-        private static string BuildGroupFileName(string templateName, HashSet<string> usedFileNames, string extension = ".xlsx")
+        // Персональний документ: «Набір №15\Акт приймання\ПРІЗВИЩЕ Ім'я.docx».
+        // Повертає ВІДНОСНИЙ ШЛЯХ, а не саме лише ім'я: розкладку по папках
+        // рахує DocumentFolderLayout — одне місце і для диска, і для дерева в
+        // архіві. Без дати — документ прив'язаний до людини, а не до дня.
+        private static string BuildFileName(
+            Recipient recipient, string templateName, string? intakeName, HashSet<string> usedFileNames)
         {
-            var baseName = $"{TemplateNaming.Clean(templateName)} {TemplateNaming.FormatDate(DateTime.Now)}";
-            return MakeUnique(baseName, usedFileNames, extension);
+            var placement = DocumentFolderLayout.ForPerson(
+                intakeName, TemplateNaming.Clean(templateName),
+                $"{recipient.LastName} {recipient.FirstName}", recipient.ServiceNumber);
+
+            return MakeUnique(placement, usedFileNames, ".docx");
         }
 
-        private static string MakeUnique(string baseName, HashSet<string> usedFileNames, string extension)
+        // Групова відомість: «Набір №15\Залік Додаток 8\2026-08-06.xlsx».
+        // Набір виводиться зі складу відомості — сам груповий документ наборові
+        // не належить (IntakeId == null у запитах нижче).
+        private static string BuildGroupFileName(
+            string templateName, IEnumerable<string?> memberIntakeNames,
+            HashSet<string> usedFileNames, string extension = ".xlsx")
         {
-            foreach (var invalidChar in Path.GetInvalidFileNameChars())
-                baseName = baseName.Replace(invalidChar, ' ');
-            baseName = string.Join(' ', baseName.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+            var placement = DocumentFolderLayout.ForGroup(
+                memberIntakeNames, TemplateNaming.Clean(templateName), DateTime.Now);
 
-            var fileName = baseName + extension;
+            return MakeUnique(placement, usedFileNames, extension);
+        }
+
+        // Унікальність тепер по ВІДНОСНОМУ ШЛЯХУ, а не по імені: два однойменні
+        // документи в різних папках більше не конфліктують, і суфікс (2) не
+        // з'являється там, де його не треба.
+        private static string MakeUnique(
+            DocumentPlacement placement, HashSet<string> usedFileNames, string extension)
+        {
+            var relative = placement.RelativePath(extension);
             var suffix = 2;
-            while (!usedFileNames.Add(fileName))
+
+            while (!usedFileNames.Add(relative))
             {
-                fileName = $"{baseName} ({suffix}){extension}";
+                relative = placement.RelativePath($" ({suffix}){extension}");
                 suffix++;
             }
 
-            return fileName;
+            return relative;
         }
     }
 }

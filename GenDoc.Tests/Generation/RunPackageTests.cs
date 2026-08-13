@@ -96,7 +96,7 @@ public class RunPackageTests : IDisposable
 
         Assert.Equal(3, result.Generated);
         Assert.Equal(0, result.Errors);
-        Assert.Equal(3, Directory.GetFiles(_folder, "*.docx").Length);
+        Assert.Equal(3, Directory.GetFiles(_folder, "*.docx", SearchOption.AllDirectories).Length);
     }
 
     // Ім'я файлу: «ПРІЗВИЩЕ Ім'я Назва шаблону.docx», без технічного префікса «Шаблон_».
@@ -111,8 +111,38 @@ public class RunPackageTests : IDisposable
 
         Run(db, packageId);
 
-        var fileName = Path.GetFileName(Directory.GetFiles(_folder, "*.docx").Single());
-        Assert.Equal("ШЕВЧЕНКО Тарас Рапорт котлове ІНДИВІДУАЛЬНИЙ.docx", fileName);
+        // Назва шаблону тепер у ПАПЦІ, а не в імені файлу — розкладка по папках
+        // (DocumentFolderLayout). Намір тесту той самий: технічний префікс
+        // «Шаблон_» і підкреслення до назви не доходять.
+        var file = Directory.GetFiles(_folder, "*.docx", SearchOption.AllDirectories).Single();
+        var templateFolder = Path.GetFileName(Path.GetDirectoryName(file));
+
+        Assert.Equal("Рапорт котлове ІНДИВІДУАЛЬНИЙ", templateFolder);
+        Assert.StartsWith("ШЕВЧЕНКО Тарас", Path.GetFileName(file));
+    }
+
+    // Наскрізна перевірка розкладки: до цієї зміни всі документи лягали в корінь
+    // обраної теки пласким списком.
+    [Fact]
+    public void RunPackage_PutsDocumentsIntoIntakeAndTemplateFolders()
+    {
+        using var db = new TestDb();
+        var (packageId, _) = SeedPackage(db, new List<Recipient>
+        {
+            TemplateFixtures.Person(1, "ШЕВЧЕНКО", "Тарас")
+        });
+
+        Run(db, packageId);
+
+        var file = Directory.GetFiles(_folder, "*.docx", SearchOption.AllDirectories).Single();
+        var relative = Path.GetRelativePath(_folder, file);
+        var parts = relative.Split(Path.DirectorySeparatorChar);
+
+        // Три рівні: набір (для людини поза набором — «Постійний склад»),
+        // тип документа, файл на особу.
+        Assert.Equal(3, parts.Length);
+        Assert.Equal("Рапорт котлове ІНДИВІДУАЛЬНИЙ", parts[1]);
+        Assert.EndsWith(".docx", parts[2]);
     }
 
     [Fact]
@@ -128,7 +158,7 @@ public class RunPackageTests : IDisposable
         var result = Run(db, packageId);
 
         Assert.Equal(2, result.Generated);
-        Assert.Equal(2, Directory.GetFiles(_folder, "*.docx").Length);
+        Assert.Equal(2, Directory.GetFiles(_folder, "*.docx", SearchOption.AllDirectories).Length);
     }
 
     // Другий прогін без regenerateExisting нічого не робить, бо файли на місці.
@@ -155,7 +185,7 @@ public class RunPackageTests : IDisposable
         var (packageId, _) = SeedPackage(db, TemplateFixtures.Roster(2));
 
         Run(db, packageId);
-        foreach (var file in Directory.GetFiles(_folder, "*.docx")) File.Delete(file);
+        foreach (var file in Directory.GetFiles(_folder, "*.docx", SearchOption.AllDirectories)) File.Delete(file);
 
         var second = Run(db, packageId);
 
