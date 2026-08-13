@@ -21,19 +21,8 @@ namespace GenDoc.Views.Templates
         {
             if (DataContext is not TemplateBuilderViewModel viewModel) return;
 
-            // Перше перетягування фіксує ту ширину, яку оператор бачить, і лише
-            // потім застосовує зсув — інакше панель стрибнула б на типове число.
-            if (viewModel.IsPreviewAutoSized)
-            {
-                if (sender is FrameworkElement thumb
-                    && System.Windows.Media.VisualTreeHelper.GetParent(thumb) is FrameworkElement panel)
-                {
-                    viewModel.PreviewWidth = panel.ActualWidth;
-                }
-
-                viewModel.IsPreviewAutoSized = false;
-            }
-
+            // Ширина панелі завжди явна (PreviewPanelWidth), тому підхоплювати
+            // «ту, що на екрані», більше не потрібно — просто зсув.
             viewModel.PreviewWidth = Math.Clamp(
                 viewModel.PreviewWidth - e.HorizontalChange,
                 TemplateBuilderViewModel.PreviewMinWidth,

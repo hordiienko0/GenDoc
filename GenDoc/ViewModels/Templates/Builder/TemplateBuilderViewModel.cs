@@ -247,20 +247,40 @@ public partial class TemplateBuilderViewModel : ObservableObject
 
     public bool IsExcelMode => Mode == TemplateBuilderMode.Excel;
 
-    /// <summary>Ширина панелі перегляду. Поки роздільник не чіпали, панель береться
-    /// по вмісту (Auto) в межах Min/Max: сітці відомості з багатьма колонками
-    /// потрібно більше, ніж сторінці документа. Після перетягування ширина стає
-    /// явною й фіксується.</summary>
+    /// <summary>Ширина панелі перегляду; змінюється роздільником.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PreviewPanelWidth))]
+    [NotifyPropertyChangedFor(nameof(PreviewPageWidth))]
+    [NotifyPropertyChangedFor(nameof(PreviewTextWidth))]
     private double previewWidth = 340;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(PreviewPanelWidth))]
-    private bool isPreviewAutoSized = true;
+    /// <summary>
+    /// Колонка перегляду ЗАВЖДИ явна, ніколи не Auto. Auto тут виявився не
+    /// зручністю, а джерелом цілого класу помилок: Grid міряє Auto-колонку
+    /// нескінченною шириною, а отже TextWrapping="Wrap" усередині не спрацьовує
+    /// взагалі — один довгий рядок без пробілів (чи таблиця на багато колонок)
+    /// роздував панель, доки вона не вилазила за край вікна. Ширина по вмісту не
+    /// варта того, щоб розкладка залежала від тексту, який вписав оператор.
+    /// </summary>
+    public GridLength PreviewPanelWidth => new(PreviewWidth);
 
-    public GridLength PreviewPanelWidth
-        => IsPreviewAutoSized ? GridLength.Auto : new GridLength(PreviewWidth);
+    // Хром між шириною панелі й шириною самої сторінки: рамка панелі, поля
+    // сторінки й вертикальний прокрутник.
+    private const double PreviewChrome = 40;
+
+    // Внутрішні поля сторінки (Padding="24,26").
+    private const double PreviewPagePadding = 48;
+
+    /// <summary>Ширина білого аркуша. Рахується тут, а не прив'язкою до
+    /// ViewportWidth: колонка тепер явна, тож це проста арифметика без зворотного
+    /// зв'язку в розкладці.</summary>
+    public double PreviewPageWidth => Math.Max(PreviewWidth - PreviewChrome, 160);
+
+    /// <summary>Ширина, на яку переносяться рядки тексту. Задається явно, бо
+    /// сторінка прокручується вбік заради широких таблиць, а при горизонтальній
+    /// прокрутці вміст міряється нескінченністю — без цієї стелі абзац витягнувся
+    /// б в один рядок замість переносу.</summary>
+    public double PreviewTextWidth => Math.Max(PreviewPageWidth - PreviewPagePadding, 120);
 
     public const double PreviewMinWidth = 260;
     public const double PreviewMaxWidth = 900;
@@ -367,7 +387,9 @@ public partial class TemplateBuilderViewModel : ObservableObject
         OnPropertyChanged(nameof(SubtitleText));
 
         // Відомості потрібно ширше — але лише поки оператор не пересунув роздільник.
-        if (IsPreviewAutoSized) PreviewWidth = value == TemplateBuilderMode.Excel ? 420 : 340;
+        // Відомості потрібно ширше, ніж сторінці документа. Перемикання режиму
+        // й так починає складання заново, тож ширину задаємо беззастережно.
+        PreviewWidth = value == TemplateBuilderMode.Excel ? 420 : 340;
     }
 
     partial void OnRepeatSheetPerDateChanged(bool value) => RefreshPreview();
