@@ -29,39 +29,23 @@
     <SolidColorBrush x:Key="ScrollThumbBrush" Color="#B0C0D1"/>
     <SolidColorBrush x:Key="ScrollTrackBrush" Color="#EAEFF5"/>
 
-    <!-- Емблема в шапці бічної панелі. Векторна копія shevron_khnups.svg з макета:
-         viewBox 0 0 200 200, тож геометрія збігається з оригіналом один-до-одного. -->
+    <!-- Знак застосунку: щит, золота смуга, силует птаха.
+         Це СПРОЩЕНИЙ варіант шеврона з макета «Логотип», і саме він тут доречний:
+         макет призначає повну деталізацію (стріли, пера, сірий контур) розмірам
+         від 64 px, а на 24/32 px — цей силует. У застосунку емблема стоїть на
+         18 px (титульний рядок) і 32 px (бічна панель), тобто обидва місця —
+         зона спрощеного знака. Повний шеврон піде на заставку входу.
+         Геометрія один-до-одного з макета, viewBox 0 0 300 300; фонову плашку
+         не переносимо — DrawingImage сам обрізається по межах малюнка. -->
     <DrawingImage x:Key="UnitEmblemImage">
         <DrawingImage.Drawing>
             <DrawingGroup>
-                <GeometryDrawing Brush="#F5CE2E">
-                    <GeometryDrawing.Geometry>
-                        <EllipseGeometry Center="100,100" RadiusX="99" RadiusY="99"/>
-                    </GeometryDrawing.Geometry>
-                </GeometryDrawing>
-                <GeometryDrawing Brush="#1478BE">
-                    <GeometryDrawing.Geometry>
-                        <EllipseGeometry Center="100,100" RadiusX="63" RadiusY="63"/>
-                    </GeometryDrawing.Geometry>
-                </GeometryDrawing>
-                <GeometryDrawing Brush="#FFFFFF"
-                                 Geometry="M22 50 L100 50 L100 146 L22 117 Z M178 50 L100 50 L100 146 L178 117 Z">
-                    <GeometryDrawing.Pen>
-                        <Pen Brush="#111111" Thickness="3.2" LineJoin="Round"/>
-                    </GeometryDrawing.Pen>
-                </GeometryDrawing>
-                <GeometryDrawing Brush="#111111"
-                                 Geometry="M38 64 L46 64 L44 105 Z M54 66 L62 66 L60 114 Z M70 68 L78 68 L76 124 Z M162 64 L154 64 L156 105 Z M146 66 L138 66 L140 114 Z M130 68 L122 68 L124 124 Z"/>
-                <GeometryDrawing Brush="#FFFFFF"
-                                 Geometry="M60 30 L90 16 L101 30 L103 50 L118 66 L126 112 L124 168 L100 194 L76 168 L74 112 L82 66 L95 50 L78 40 Z">
-                    <GeometryDrawing.Pen>
-                        <Pen Brush="#111111" Thickness="3.2" LineJoin="Round"/>
-                    </GeometryDrawing.Pen>
-                </GeometryDrawing>
-                <GeometryDrawing Brush="#111111" Geometry="M60 30 L79 34 L71 41 Z"/>
-                <GeometryDrawing Brush="#111111" Geometry="M87 69 L100 57 L113 69 L107 84 L100 69 L93 84 Z"/>
-                <GeometryDrawing Brush="#111111"
-                                 Geometry="M95 106 L105 106 L105 158 L100 166 L95 158 Z M79 114 L86 114 L86 139 L94 146 L94 158 L79 147 Z M121 114 L114 114 L114 139 L106 146 L106 158 L121 147 Z"/>
+                <GeometryDrawing Brush="#0054A5"
+                                 Geometry="M90,70 h120 v100 a60,60 0 0 1 -60,60 a60,60 0 0 1 -60,-60 Z"/>
+                <GeometryDrawing Brush="#FFC300"
+                                 Geometry="M90,96 l120,-22 v22 l-120,22 Z"/>
+                <GeometryDrawing Brush="#EDEFF1"
+                                 Geometry="M150,96 l30,34 -18,-4 12,84 -24,18 -24,-18 12,-84 -18,4 Z"/>
             </DrawingGroup>
         </DrawingImage.Drawing>
     </DrawingImage>
