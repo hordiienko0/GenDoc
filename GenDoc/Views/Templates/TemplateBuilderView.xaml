@@ -429,7 +429,17 @@
                                                         <TextBlock Grid.Column="1" Text="{Binding LayoutCaption}" VerticalAlignment="Center"
                                                                    HorizontalAlignment="Right" Margin="10,0,10,0" FontSize="11"
                                                                    TextTrimming="CharacterEllipsis"
-                                                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}"/>
+
+                                                        <!-- Згорнуту картку інакше не відрізнити від сусідньої:
+                                                             показуємо перший рядок тексту (або кількість колонок
+                                                             чи рядків підпису). -->
+                                                        <TextBlock Grid.Column="1" Text="{Binding CollapsedSummary}" VerticalAlignment="Center"
+                                                                   HorizontalAlignment="Left" Margin="12,0,10,0" FontSize="11.5"
+                                                                   TextTrimming="CharacterEllipsis" FontStyle="Italic"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   Visibility="{Binding IsCollapsed, Converter={StaticResource BoolToVisibility}}"/>
 
                                                         <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
                                                             <!-- Оформлення блока. ToggleButton, а не Button: поповер
@@ -564,9 +574,20 @@
                                                             <Button Content="✕" Style="{StaticResource BlockActionStyle}" ToolTip="Видалити блок"
                                                                     Command="{Binding DataContext.RemoveBlockCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                     CommandParameter="{Binding}"/>
+
+                                                            <!-- Згортання картки: у довгому документі інакше доводиться
+                                                                 гортати повз розкриті блоки, щоб дістатись потрібного. -->
+                                                            <Button Content="{Binding CollapseIcon}" Style="{StaticResource BlockActionStyle}"
+                                                                    ToolTip="{Binding CollapseTooltip}" FontWeight="Bold"
+                                                                    Command="{Binding ToggleCollapsedCommand}"/>
                                                         </StackPanel>
                                                     </Grid>
                                                 </Border>
+
+                                                <!-- Тіло картки: ховається згортанням. Три різновиди вмісту
+                                                     (текст / підписи / таблиця) лежать в одному контейнері,
+                                                     щоб згортання не довелось повторювати для кожного. -->
+                                                <StackPanel Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibility}}">
 
                                                 <!-- Текстові блоки: гриф, заголовок, дата і місто, абзац.
                                                      Оформлення приходить зі стилю блока (раніше було зашите
@@ -703,6 +724,7 @@
                                                                Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"
                                                                Margin="0,8,0,0"
                                                                Visibility="{Binding IsRepeatHintVisible, Converter={StaticResource BoolToVisibility}}"/>
+                                                </StackPanel>
                                                 </StackPanel>
                                             </StackPanel>
                                         </Border>

@@ -147,11 +147,48 @@ public partial class BuilderBlockViewModel : ObservableObject
     };
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CollapsedSummary))]
     private string text;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HeaderTitle))]
     private bool isEditing;
+
+    /// <summary>Картка згорнута в самий заголовок. Стан в'юхи, а не документа:
+    /// у BuilderJson не потрапляє й прев'ю не перебудовує.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsExpanded))]
+    [NotifyPropertyChangedFor(nameof(CollapseIcon))]
+    [NotifyPropertyChangedFor(nameof(CollapseTooltip))]
+    private bool isCollapsed;
+
+    public bool IsExpanded => !IsCollapsed;
+
+    public string CollapseIcon => IsCollapsed ? "⌄" : "⌃";
+
+    public string CollapseTooltip => IsCollapsed ? "Розгорнути блок" : "Згорнути блок";
+
+    /// <summary>Що видно у згорнутій картці — інакше згорнуті блоки не
+    /// відрізнити один від одного.</summary>
+    public string CollapsedSummary
+    {
+        get
+        {
+            if (IsTable)
+                return $"колонок: {Columns.Count}";
+
+            if (IsSignatures)
+                return $"рядків підпису: {Signatures.Count}";
+
+            var firstLine = (Text ?? string.Empty)
+                .Replace("\r\n", "\n")
+                .Split('\n')
+                .FirstOrDefault(l => !string.IsNullOrWhiteSpace(l))?
+                .Trim() ?? string.Empty;
+
+            return firstLine.Length > 60 ? firstLine[..60] + "…" : firstLine;
+        }
+    }
 
     // ─── Оформлення блока ────────────────────────────────────────────────────
     //
@@ -287,6 +324,9 @@ public partial class BuilderBlockViewModel : ObservableObject
     [RelayCommand]
     private void ResetStyle() => Apply(new BlockStyle());
 
+    [RelayCommand]
+    private void ToggleCollapsed() => IsCollapsed = !IsCollapsed;
+
     /// <summary>Властивості, від яких сам документ не змінюється: підсвітка картки,
     /// підписи розкладки і дзеркальні властивості поповера. Останні важливі —
     /// одна зміна стилю сповіщає про десяток похідних, і без цього переліку
@@ -296,6 +336,9 @@ public partial class BuilderBlockViewModel : ObservableObject
     {
         nameof(IsEditing), nameof(HeaderTitle), nameof(LayoutCaption), nameof(IsStyleOpen),
         nameof(DisplayStyle),
+        // Згортання — суто вигляд картки, документ від нього не змінюється.
+        nameof(IsCollapsed), nameof(IsExpanded), nameof(CollapseIcon),
+        nameof(CollapseTooltip), nameof(CollapsedSummary),
         nameof(SelectedFont), nameof(SelectedFontSize), nameof(SelectedColor),
         nameof(IsBold), nameof(IsItalic),
         nameof(IsAlignLeft), nameof(IsAlignCenter), nameof(IsAlignRight), nameof(IsAlignJustify)
