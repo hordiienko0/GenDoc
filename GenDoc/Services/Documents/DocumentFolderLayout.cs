@@ -33,6 +33,10 @@ namespace GenDoc.Services.Documents
         /// у корінь обраної теки — упереміш із папками наборів.</summary>
         public const string PermanentStaffFolder = "Постійний склад";
 
+        /// <summary>Верхній рівень для групових документів, склад яких не
+        /// зводиться до одного набору.</summary>
+        public const string SharedFolder = "Спільні";
+
         private const string FallbackFolder = "Без назви";
 
         /// <summary>Документ на одну особу: набір / тип документа / особа.</summary>
@@ -63,6 +67,31 @@ namespace GenDoc.Services.Documents
                 new[] { IntakeFolder(intakeName), Sanitize(templateName) },
                 // ISO-подібна дата, а не «13.08.2026»: у переліку папок вона
                 // сортується хронологічно сама собою.
+                generatedAt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        }
+
+        /// <summary>
+        /// Груповий документ, набір якого виводиться зі складу відомості.
+        ///
+        /// Окремий шлях, бо в моделі груповий документ НЕ належить наборові
+        /// (у запитах `IntakeId == null`), тож єдине чесне джерело верхнього
+        /// рівня — люди, які в нього потрапили. Усі з одного набору — беремо
+        /// його; мішанина або взагалі без набору — «Спільні», бо покласти таку
+        /// відомість в один із наборів означало б збрехати про її склад.
+        /// </summary>
+        public static DocumentPlacement ForGroup(
+            IEnumerable<string?> memberIntakeNames, string? templateName, DateTime generatedAt)
+        {
+            var distinct = memberIntakeNames
+                .Select(n => string.IsNullOrWhiteSpace(n) ? null : n.Trim())
+                .Distinct(StringComparer.Ordinal)
+                .Take(2)
+                .ToList();
+
+            var uniform = distinct.Count == 1 ? distinct[0] : null;
+
+            return new DocumentPlacement(
+                new[] { uniform is null ? SharedFolder : Sanitize(uniform), Sanitize(templateName) },
                 generatedAt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
         }
 

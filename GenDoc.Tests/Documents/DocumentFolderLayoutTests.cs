@@ -93,6 +93,56 @@ public class DocumentFolderLayoutTests
         Assert.Contains("ХН-001", first.FileName);
     }
 
+    // Груповий документ у моделі не належить наборові (IntakeId == null), тож
+    // верхній рівень виводиться зі складу відомості.
+    [Fact]
+    public void Group_takes_the_intake_of_its_members_when_they_all_share_one()
+    {
+        var placement = DocumentFolderLayout.ForGroup(
+            new[] { "Набір №15", "Набір №15", "Набір №15" }, "Відомість", new DateTime(2026, 8, 13));
+
+        Assert.Equal("Набір №15", placement.Folders[0]);
+    }
+
+    // Покласти змішану відомість в один із наборів означало б збрехати про її
+    // склад, тому для неї окрема папка.
+    [Fact]
+    public void Group_of_mixed_intakes_goes_to_the_shared_folder()
+    {
+        var placement = DocumentFolderLayout.ForGroup(
+            new[] { "Набір №15", "Набір №16" }, "Відомість", new DateTime(2026, 8, 13));
+
+        Assert.Equal(DocumentFolderLayout.SharedFolder, placement.Folders[0]);
+    }
+
+    [Fact]
+    public void Group_without_any_intake_goes_to_the_shared_folder()
+    {
+        var placement = DocumentFolderLayout.ForGroup(
+            new string?[] { null, null }, "Відомість", new DateTime(2026, 8, 13));
+
+        Assert.Equal(DocumentFolderLayout.SharedFolder, placement.Folders[0]);
+    }
+
+    // Один із людей поза набором — це вже не «весь набір», отже теж «Спільні».
+    [Fact]
+    public void One_member_outside_the_intake_makes_the_group_shared()
+    {
+        var placement = DocumentFolderLayout.ForGroup(
+            new[] { "Набір №15", null }, "Відомість", new DateTime(2026, 8, 13));
+
+        Assert.Equal(DocumentFolderLayout.SharedFolder, placement.Folders[0]);
+    }
+
+    [Fact]
+    public void Empty_group_goes_to_the_shared_folder()
+    {
+        var placement = DocumentFolderLayout.ForGroup(
+            Array.Empty<string?>(), "Відомість", new DateTime(2026, 8, 13));
+
+        Assert.Equal(DocumentFolderLayout.SharedFolder, placement.Folders[0]);
+    }
+
     [Fact]
     public void Without_a_service_number_the_name_stays_clean()
     {
