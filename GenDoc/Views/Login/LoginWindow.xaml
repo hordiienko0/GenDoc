@@ -8,7 +8,7 @@
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=login:LoginViewModel, IsDesignTimeCreatable=False}"
         Style="{StaticResource {x:Type Window}}"
-        Title="Вхід — GenDoc" Height="560" Width="420"
+        Title="Вхід — GenDoc" Height="660" Width="440"
         Background="{StaticResource BackgroundBrush}"
         WindowStyle="None" ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
@@ -50,31 +50,52 @@
                 </Grid>
             </Border>
 
-            <Grid Background="{StaticResource BackgroundBrush}">
+            <!-- Темно-синє полотно з великим знаком-водяним. Знак навмисно
+                 виходить за межі вікна і приглушений: у макеті він тло, а не
+                 елемент, тож не має конкурувати з карткою. -->
+            <Grid Background="{StaticResource NavyBrush}" ClipToBounds="True">
+                <Image Source="{StaticResource UnitEmblemImage}" Width="620" Height="620"
+                       Opacity="0.06" HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Margin="0,40,0,0" IsHitTestVisible="False"/>
+
                 <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
-                        BorderThickness="1" Margin="24,0,24,0" Padding="24"
+                        BorderThickness="1" Margin="24,0,24,0"
                         VerticalAlignment="Center" Effect="{StaticResource ModalShadowEffect}">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" Text="Автоматизована система обліку особового складу"
-                                   Foreground="{StaticResource TextPrimaryBrush}"
-                                   FontSize="15" FontWeight="SemiBold" Margin="0 0 0 20" TextWrapping="Wrap"/>
+                        <!-- Шапка картки: знак, назва частини, назва системи -->
+                        <StackPanel Grid.Row="0" Margin="24,26,24,20">
+                            <Image Source="{StaticResource UnitEmblemImage}" Width="64" Height="64"
+                                   HorizontalAlignment="Center"
+                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                            <TextBlock Text="ХНУПС ім. Івана Кожедуба" HorizontalAlignment="Center"
+                                       Margin="0,14,0,0" FontSize="15" FontWeight="Bold"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Text="GenDoc — облік особового складу" HorizontalAlignment="Center"
+                                       Margin="0,4,0,0" FontSize="12"
+                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                        </StackPanel>
 
-                        <StackPanel Grid.Row="1"
+                        <Border Grid.Row="1" Height="1" Background="{StaticResource BorderLineBrush}"/>
+
+                        <StackPanel Grid.Row="2" Margin="24,20,24,0"
                                     Visibility="{Binding Stage, Converter={StaticResource EnumToVisibility}, ConverterParameter=DatabasePassword, FallbackValue=Visible}">
                             <TextBlock Text="Пароль бази даних" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" Margin="0 0 0 6"/>
                             <PasswordBox x:Name="DatabasePasswordBox"
                                          PasswordChanged="DatabasePasswordBox_PasswordChanged"/>
+                            <!-- Кнопка на всю ширину картки — як у макеті -->
                             <Button Content="Розблокувати" Command="{Binding UnlockDatabaseCommand}"
-                                    Margin="0 16 0 0" HorizontalAlignment="Left"/>
+                                    Margin="0 18 0 0" Padding="0,11" HorizontalAlignment="Stretch"/>
                         </StackPanel>
 
-                        <StackPanel Grid.Row="1"
+                        <StackPanel Grid.Row="2" Margin="24,20,24,0"
                                     Visibility="{Binding Stage, Converter={StaticResource EnumToVisibility}, ConverterParameter=ProfileSelect, FallbackValue=Collapsed}">
                             <TextBlock Text="Профіль" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" Margin="0 0 0 6"/>
                             <ComboBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}">
@@ -87,9 +108,11 @@
                             <TextBlock Text="Пароль профілю" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" Margin="0 14 0 6"/>
                             <PasswordBox x:Name="ProfilePasswordBox"
                                          PasswordChanged="ProfilePasswordBox_PasswordChanged"/>
-                            <Button Content="Увійти" Command="{Binding SelectLoginCommand}" Margin="0 16 0 0" HorizontalAlignment="Left"/>
+                            <Button Content="Увійти" Command="{Binding SelectLoginCommand}"
+                                    Margin="0 18 0 0" Padding="0,11" HorizontalAlignment="Stretch"/>
 
                             <TextBlock Text="+ Створити профіль" Margin="0 14 0 0" FontSize="12.5" FontWeight="SemiBold" Cursor="Hand"
+                                       HorizontalAlignment="Center"
                                        Foreground="{StaticResource AccentBrush}">
                                 <TextBlock.InputBindings>
                                     <MouseBinding MouseAction="LeftClick" Command="{Binding ShowCreateProfileCommand}"/>
@@ -106,7 +129,7 @@
                             </TextBlock>
                         </StackPanel>
 
-                        <StackPanel Grid.Row="1"
+                        <StackPanel Grid.Row="2" Margin="24,20,24,0"
                                     Visibility="{Binding Stage, Converter={StaticResource EnumToVisibility}, ConverterParameter=CreateProfile, FallbackValue=Collapsed}">
                             <TextBlock Text="Повне ім'я" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" Margin="0 0 0 6"/>
                             <TextBox x:Name="NewProfileFullNameBox" Text="{Binding NewProfileFullName, UpdateSourceTrigger=PropertyChanged}"/>
@@ -123,8 +146,24 @@
                             </StackPanel>
                         </StackPanel>
 
-                        <TextBlock Grid.Row="2" Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}"
-                                   TextWrapping="Wrap" Margin="0 12 0 0"/>
+                        <TextBlock Grid.Row="3" Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}"
+                                   TextWrapping="Wrap" Margin="24,12,24,0"/>
+
+                        <!-- Підвал картки: версія збірки й режим бази. Версію
+                             читаємо зі складання, а не пишемо рядком — інакше
+                             вона розійдеться з реальною при першому ж релізі. -->
+                        <Border Grid.Row="4" Background="{StaticResource RowAltBrush}" Margin="0,22,0,0"
+                                BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,0,0"
+                                Padding="24,11">
+                            <Grid>
+                                <TextBlock HorizontalAlignment="Left" FontSize="11.5"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="{Binding AppVersionText, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                                <TextBlock HorizontalAlignment="Right" FontSize="11.5"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           Text="Локальна база · офлайн-режим"/>
+                            </Grid>
+                        </Border>
                     </Grid>
                 </Border>
             </Grid>

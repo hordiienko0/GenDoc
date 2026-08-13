@@ -12,6 +12,18 @@ public partial class LoginWindow : Window
 {
     private readonly LoginViewModel _viewModel;
 
+    /// <summary>Версія в підвалі картки входу. Береться зі складання, а не
+    /// пишеться рядком у розмітці: інакше вона розійдеться з реальною при
+    /// першому ж релізі й буде брехати оператору.</summary>
+    public string AppVersionText
+    {
+        get
+        {
+            var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
+            return version is null ? "Версія —" : $"Версія {version.Major}.{version.Minor}.{version.Build}";
+        }
+    }
+
     public LoginWindow(LoginViewModel viewModel)
     {
         InitializeComponent();
