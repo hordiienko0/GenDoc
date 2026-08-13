@@ -6,6 +6,10 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <!-- Знак застосунку окремим словником: він згенерований із
+                     GenDoc/Assets/chevron-mark.svg і перегенеровується цілком,
+                     тож не має мішатися з рукописною темою. -->
+                <ResourceDictionary Source="Themes/UnitEmblem.xaml"/>
                 <ResourceDictionary Source="Themes/Theme.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 

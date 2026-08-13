@@ -29,26 +29,9 @@
     <SolidColorBrush x:Key="ScrollThumbBrush" Color="#B0C0D1"/>
     <SolidColorBrush x:Key="ScrollTrackBrush" Color="#EAEFF5"/>
 
-    <!-- Знак застосунку: щит, золота смуга, силует птаха.
-         Це СПРОЩЕНИЙ варіант шеврона з макета «Логотип», і саме він тут доречний:
-         макет призначає повну деталізацію (стріли, пера, сірий контур) розмірам
-         від 64 px, а на 24/32 px — цей силует. У застосунку емблема стоїть на
-         18 px (титульний рядок) і 32 px (бічна панель), тобто обидва місця —
-         зона спрощеного знака. Повний шеврон піде на заставку входу.
-         Геометрія один-до-одного з макета, viewBox 0 0 300 300; фонову плашку
-         не переносимо — DrawingImage сам обрізається по межах малюнка. -->
-    <DrawingImage x:Key="UnitEmblemImage">
-        <DrawingImage.Drawing>
-            <DrawingGroup>
-                <GeometryDrawing Brush="#0054A5"
-                                 Geometry="M90,70 h120 v100 a60,60 0 0 1 -60,60 a60,60 0 0 1 -60,-60 Z"/>
-                <GeometryDrawing Brush="#FFC300"
-                                 Geometry="M90,96 l120,-22 v22 l-120,22 Z"/>
-                <GeometryDrawing Brush="#EDEFF1"
-                                 Geometry="M150,96 l30,34 -18,-4 12,84 -24,18 -24,-18 12,-84 -18,4 Z"/>
-            </DrawingGroup>
-        </DrawingImage.Drawing>
-    </DrawingImage>
+    <!-- UnitEmblemImage живе в Themes/UnitEmblem.xaml — згенерований повний
+         шеврон із GenDoc/Assets/chevron-mark.svg. Тут його немає навмисно:
+         той словник перегенеровується цілком і правити його руками не можна. -->
 
     <!-- Тіні: модалка / права висувна картка / контекст-меню (лише ці три) -->
     <DropShadowEffect x:Key="ModalShadowEffect" Color="#00183F" Opacity="0.35" BlurRadius="40" Direction="270" ShadowDepth="10"/>

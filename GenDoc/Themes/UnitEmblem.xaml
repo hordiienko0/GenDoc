@@ -1,0 +1,466 @@
+﻿<!-- ЗГЕНЕРОВАНО скриптом svg2xaml.ps1 з GenDoc/Assets/chevron-mark.svg. Руками не правити — перегенерувати з асета. -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <DrawingImage x:Key="UnitEmblemImage">
+        <DrawingImage.Drawing>
+            <DrawingGroup ClipGeometry="F1 M0 0 C272.2 0 544.5 0 825 0 C825 90.8 825.1 181.5 825.1 275 C825.1 303.7 825.2 332.3 825.2 361.9 C825.2 396.9 825.2 396.9 825.2 413.2 C825.2 425.4 825.2 437.6 825.2 449.8 C825.2 462.3 825.2 474.7 825.2 487.2 C825.2 493.9 825.2 500.7 825.2 507.4 C825.2 513.5 825.2 519.6 825.2 525.7 C825.2 528 825.2 530.2 825.2 532.4 C825.3 544.4 824.8 556 823 568 C822.8 569.9 822.6 571.9 822.4 573.8 C822.3 574.7 822.2 575.5 822.2 576.4 C822 578 821.9 579.7 821.7 581.4 C821.6 582.2 821.5 583 821.5 583.9 C821.4 584.6 821.3 585.3 821.3 586.1 C821 588 821 588 820 591 C819.8 592.4 819.7 593.9 819.6 595.3 C819.1 600.7 818 605.9 816.8 611.3 C816.3 613.9 815.7 616.4 815.2 619.1 C815.1 619.7 814.9 620.4 814.8 621.1 C814.5 623 814.1 624.8 813.7 626.7 C813.1 629.7 812.1 632.2 811 635 C810.6 636.6 810.3 638.1 810.1 639.7 C809.1 644.9 807.6 649.9 806 655 C805.8 655.7 805.6 656.4 805.4 657.1 C800.7 671.5 795.2 685.9 788.2 699.4 C786.9 702.2 785.7 705.1 784.6 707.9 C782.1 713.9 779.2 719.4 776 725 C775 726.8 774.1 728.6 773.1 730.4 C770 736.1 766.6 741.6 763.1 747.2 C761.9 749.1 760.7 751.1 759.5 753.1 C755.5 759.7 751.4 766 746.5 772 C744.4 774.7 742.7 777.6 741 780.6 C740.7 781 740.4 781.5 740 782 C739.3 782 738.7 782 738 782 C737.9 782.4 737.9 782.4 737.2 784.2 C732.2 795.6 719.7 806.3 711 815 C709.3 816.7 707.7 818.4 706 820.1 C704.5 821.5 703.1 822.9 701.7 824.4 C700.7 825.4 699.7 826.4 698.7 827.3 C684.1 842.1 684.1 842.1 677 847 C676.3 847 675.7 847 675 847 C675 847.7 675 848.3 675 849 C671.5 852 671.5 852 669 852 C669 852.7 669 853.3 669 854 C667 855.7 667 855.7 664.2 857.6 C663.7 858 663.7 858 661.1 859.8 C660.1 860.5 659.1 861.2 658 862 C656.1 863.4 654.2 864.7 652.4 866.1 C647.7 869.5 642.9 872.8 638 876 C637.6 876.3 637.6 876.3 635.5 877.6 C614.3 891.4 591.1 904.2 567.3 912.9 C562.4 914.7 557.6 916.6 552.9 918.6 C547.6 920.9 542.3 922.4 536.8 923.9 C533.6 924.8 530.5 925.8 527.4 926.9 C520.9 929.1 514.4 930.7 507.8 932.1 C506.7 932.4 505.6 932.6 504.4 932.9 C502.3 933.4 500.1 933.9 498 934.3 C496.1 934.8 494.2 935.2 492.3 935.6 C488.4 936.5 485 937 481 937 C480 937.3 479 937.6 477.9 937.9 C473.6 939.2 469.3 939.6 464.8 940 C463 940.2 461.2 940.3 459.4 940.5 C458.5 940.6 457.6 940.7 456.7 940.7 C454.2 941 451.7 941.3 449.3 941.6 C434.5 943.3 419.8 943.2 405 943 C405 942.3 405 941.7 405 941 C403.9 941 402.8 941.1 401.6 941.1 C367.9 941.8 334.4 935.4 301.9 926.8 C299.4 926.1 296.8 925.4 294.3 924.8 C288.3 923.3 282.6 921.5 276.8 919.1 C273.8 917.9 270.8 916.8 267.7 915.6 C249.4 908.6 231.7 900.9 214.5 891.4 C211 889.5 207.5 887.7 204 886 C204 885.3 204 884.7 204 884 C203.3 883.8 202.7 883.5 202 883.3 C198.2 881.6 194.8 879.5 191.4 877.3 C190.7 876.9 190 876.4 189.3 876 C187.8 875.1 186.4 874.2 185 873.3 C183.2 872.1 181.4 871 179.5 869.9 C179 869.5 179 869.5 176.5 868 C175.6 867.5 174.7 866.9 173.8 866.4 C173.5 866.1 173.5 866.1 172 865 C172 864.3 172 863.7 172 863 C170.7 862.7 169.4 862.3 168 862 C168 861.3 168 860.7 168 860 C167.5 859.7 166.9 859.5 166.3 859.2 C156.5 854 147.9 845.7 139.6 838.4 C138.2 837.1 136.8 835.9 135.3 834.8 C134.6 834.1 133.9 833.5 133.1 832.9 C132.5 832.4 131.9 831.8 131.3 831.3 C130 830 130 830 130 828 C129.4 827.7 128.8 827.5 128.2 827.2 C122.6 824.2 117.6 819.2 114 814 C114 813.3 114 812.7 114 812 C113.4 811.7 112.8 811.5 112.2 811.2 C109.8 809.9 108.6 808.6 106.8 806.5 C103.3 802.3 99.7 798.3 96 794.3 C91 788.6 91 788.6 91 786 C90.3 786 89.7 786 89 786 C89 785.3 89 784.7 89 784 C88.3 784 87.7 784 87 784 C86.4 782.9 85.9 781.9 85.3 780.8 C83.9 778.2 82.6 776.6 80.5 774.5 C76.9 770.9 74.6 766.9 73 762 C72.3 762 71.7 762 71 762 C70.6 761.1 70.2 760.3 69.8 759.4 C68 756 68 756 65.8 752.8 C64 750 64 750 64 748 C63.3 748 62.7 748 62 748 C61.7 746.4 61.3 744.7 61 743 C60.3 743 59.7 743 59 743 C16.8 665.6 -0.6 589.6 -0.3 501.8 C-0.3 495.6 -0.3 489.5 -0.3 483.3 C-0.3 470.9 -0.3 458.4 -0.3 446 C-0.3 429.1 -0.3 412.3 -0.3 395.4 C-0.3 355 -0.2 314.5 -0.2 274.1 C-0.1 183.6 -0.1 93.2 0 0Z">
+                <GeometryDrawing Brush="#BDC0C5">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 C272.2 0 544.5 0 825 0 C825 90.8 825.1 181.5 825.1 275 C825.1 303.7 825.2 332.3 825.2 361.9 C825.2 396.9 825.2 396.9 825.2 413.2 C825.2 425.4 825.2 437.6 825.2 449.8 C825.2 462.3 825.2 474.7 825.2 487.2 C825.2 493.9 825.2 500.7 825.2 507.4 C825.2 513.5 825.2 519.6 825.2 525.7 C825.2 528 825.2 530.2 825.2 532.4 C825.3 544.4 824.8 556 823 568 C822.8 569.9 822.6 571.9 822.4 573.8 C822.3 574.7 822.2 575.5 822.2 576.4 C822 578 821.9 579.7 821.7 581.4 C821.6 582.2 821.5 583 821.5 583.9 C821.4 584.6 821.3 585.3 821.3 586.1 C821 588 821 588 820 591 C819.8 592.4 819.7 593.9 819.6 595.3 C819.1 600.7 818 605.9 816.8 611.3 C816.3 613.9 815.7 616.4 815.2 619.1 C815.1 619.7 814.9 620.4 814.8 621.1 C814.5 623 814.1 624.8 813.7 626.7 C813.1 629.7 812.1 632.2 811 635 C810.6 636.6 810.3 638.1 810.1 639.7 C809.1 644.9 807.6 649.9 806 655 C805.8 655.7 805.6 656.4 805.4 657.1 C800.7 671.5 795.2 685.9 788.2 699.4 C786.9 702.2 785.7 705.1 784.6 707.9 C782.1 713.9 779.2 719.4 776 725 C775 726.8 774.1 728.6 773.1 730.4 C770 736.1 766.6 741.6 763.1 747.2 C761.9 749.1 760.7 751.1 759.5 753.1 C755.5 759.7 751.4 766 746.5 772 C744.4 774.7 742.7 777.6 741 780.6 C740.7 781 740.4 781.5 740 782 C739.3 782 738.7 782 738 782 C737.9 782.4 737.9 782.4 737.2 784.2 C732.2 795.6 719.7 806.3 711 815 C709.3 816.7 707.7 818.4 706 820.1 C704.5 821.5 703.1 822.9 701.7 824.4 C700.7 825.4 699.7 826.4 698.7 827.3 C684.1 842.1 684.1 842.1 677 847 C676.3 847 675.7 847 675 847 C675 847.7 675 848.3 675 849 C671.5 852 671.5 852 669 852 C669 852.7 669 853.3 669 854 C667 855.7 667 855.7 664.2 857.6 C663.7 858 663.7 858 661.1 859.8 C660.1 860.5 659.1 861.2 658 862 C656.1 863.4 654.2 864.7 652.4 866.1 C647.7 869.5 642.9 872.8 638 876 C637.6 876.3 637.6 876.3 635.5 877.6 C614.3 891.4 591.1 904.2 567.3 912.9 C562.4 914.7 557.6 916.6 552.9 918.6 C547.6 920.9 542.3 922.4 536.8 923.9 C533.6 924.8 530.5 925.8 527.4 926.9 C520.9 929.1 514.4 930.7 507.8 932.1 C506.7 932.4 505.6 932.6 504.4 932.9 C502.3 933.4 500.1 933.9 498 934.3 C496.1 934.8 494.2 935.2 492.3 935.6 C488.4 936.5 485 937 481 937 C480 937.3 479 937.6 477.9 937.9 C473.6 939.2 469.3 939.6 464.8 940 C463 940.2 461.2 940.3 459.4 940.5 C458.5 940.6 457.6 940.7 456.7 940.7 C454.2 941 451.7 941.3 449.3 941.6 C434.5 943.3 419.8 943.2 405 943 C405 942.3 405 941.7 405 941 C403.9 941 402.8 941.1 401.6 941.1 C367.9 941.8 334.4 935.4 301.9 926.8 C299.4 926.1 296.8 925.4 294.3 924.8 C288.3 923.3 282.6 921.5 276.8 919.1 C273.8 917.9 270.8 916.8 267.7 915.6 C249.4 908.6 231.7 900.9 214.5 891.4 C211 889.5 207.5 887.7 204 886 C204 885.3 204 884.7 204 884 C203.3 883.8 202.7 883.5 202 883.3 C198.2 881.6 194.8 879.5 191.4 877.3 C190.7 876.9 190 876.4 189.3 876 C187.8 875.1 186.4 874.2 185 873.3 C183.2 872.1 181.4 871 179.5 869.9 C179 869.5 179 869.5 176.5 868 C175.6 867.5 174.7 866.9 173.8 866.4 C173.5 866.1 173.5 866.1 172 865 C172 864.3 172 863.7 172 863 C170.7 862.7 169.4 862.3 168 862 C168 861.3 168 860.7 168 860 C167.5 859.7 166.9 859.5 166.3 859.2 C156.5 854 147.9 845.7 139.6 838.4 C138.2 837.1 136.8 835.9 135.3 834.8 C134.6 834.1 133.9 833.5 133.1 832.9 C132.5 832.4 131.9 831.8 131.3 831.3 C130 830 130 830 130 828 C129.4 827.7 128.8 827.5 128.2 827.2 C122.6 824.2 117.6 819.2 114 814 C114 813.3 114 812.7 114 812 C113.4 811.7 112.8 811.5 112.2 811.2 C109.8 809.9 108.6 808.6 106.8 806.5 C103.3 802.3 99.7 798.3 96 794.3 C91 788.6 91 788.6 91 786 C90.3 786 89.7 786 89 786 C89 785.3 89 784.7 89 784 C88.3 784 87.7 784 87 784 C86.4 782.9 85.9 781.9 85.3 780.8 C83.9 778.2 82.6 776.6 80.5 774.5 C76.9 770.9 74.6 766.9 73 762 C72.3 762 71.7 762 71 762 C70.6 761.1 70.2 760.3 69.8 759.4 C68 756 68 756 65.8 752.8 C64 750 64 750 64 748 C63.3 748 62.7 748 62 748 C61.7 746.4 61.3 744.7 61 743 C60.3 743 59.7 743 59 743 C16.8 665.6 -0.6 589.6 -0.3 501.8 C-0.3 495.6 -0.3 489.5 -0.3 483.3 C-0.3 470.9 -0.3 458.4 -0.3 446 C-0.3 429.1 -0.3 412.3 -0.3 395.4 C-0.3 355 -0.2 314.5 -0.2 274.1 C-0.1 183.6 -0.1 93.2 0 0Z">
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#0054A5">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L841 0 L841 959 L0 959Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="-8" Y="-8"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#BDC0C5">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L841 0 L841 959 L0 959Z M119 23 L117 25 L122 31 L130 38 L138 47 L146 54 L154 63 L162 70 L170 79 L177 85 L180 89 L182 89 L184 93 L188 97 L190 97 L192 101 L194 101 L196 105 L198 105 L200 109 L204 113 L206 113 L208 117 L210 117 L212 121 L214 121 L216 125 L220 129 L222 129 L224 133 L226 133 L228 137 L230 137 L232 141 L236 145 L238 145 L240 149 L242 149 L244 153 L246 153 L248 157 L252 161 L254 161 L256 165 L258 165 L260 169 L262 169 L264 173 L268 177 L270 177 L272 181 L274 181 L276 185 L278 185 L280 189 L284 193 L286 193 L288 197 L290 197 L292 201 L294 201 L296 205 L300 209 L302 209 L304 213 L306 213 L308 217 L310 217 L312 221 L315 224 L161 225 L161 269 L159 269 L154 264 L149 259 L140 251 L135 246 L129 239 L124 235 L119 230 L113 223 L108 219 L103 214 L97 207 L92 203 L87 198 L81 191 L76 187 L71 182 L65 175 L60 171 L55 166 L46 156 L44 156 L42 152 L39 149 L37 149 L35 145 L25 135 L23 137 L23 555 L26 589 L31 619 L39 651 L48 678 L54 692 L56 691 L59 675 L68 639 L71 627 L71 623 L73 623 L74 631 L84 671 L87 685 L91 701 L100 736 L102 747 L106 762 L101 763 L101 761 L98 761 L98 759 L91 755 L88 756 L100 773 L110 786 L122 800 L133 812 L140 820 L141 820 L146 798 L150 782 L161 737 L163 733 L166 746 L170 761 L180 800 L181 809 L184 818 L190 841 L195 863 L197 863 L198 867 L215 878 L234 889 L236 889 L239 882 L243 865 L247 849 L252 829 L252 827 L255 827 L256 835 L260 851 L262 861 L273 905 L274 907 L293 914 L316 921 L332 925 L337 925 L343 899 L343 895 L345 895 L346 901 L352 927 L353 929 L373 932 L398 934 L405 934 L409 933 L409 935 L413 935 L413 933 L417 933 L417 935 L424 935 L424 933 L427 933 L427 935 L431 935 L431 933 L434 934 L457 933 L486 929 L507 925 L512 923 L517 905 L519 895 L522 895 L523 903 L527 919 L537 917 L563 908 L584 899 L586 897 L592 871 L597 852 L604 822 L610 799 L610 795 L612 795 L614 809 L619 827 L628 863 L629 871 L631 871 L632 873 L651 860 L664 850 L674 842 L678 839 L678 837 L682 835 L695 823 L703 815 L702 813 L700 813 L698 809 L696 809 L694 805 L692 805 L690 801 L686 797 L684 797 L682 793 L680 793 L678 789 L676 789 L674 785 L670 781 L668 781 L666 777 L664 777 L662 773 L660 773 L658 769 L553 664 L548 659 L544 657 L542 653 L535 617 L522 547 L509 479 L497 415 L496 410 L504 417 L521 434 L529 441 L568 480 L576 487 L606 517 L608 517 L610 521 L626 536 L663 573 L671 580 L681 591 L689 598 L697 607 L705 614 L713 623 L721 630 L729 639 L737 646 L745 655 L753 662 L761 671 L769 678 L772 681 L773 684 L777 685 L777 687 L783 692 L785 692 L793 672 L801 647 L807 623 L812 596 L815 569 L816 546 L816 24 L813 23Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="-8" Y="-8"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#BDC0C5">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L33 7 L29 8 L32 16 L36 19 L44 19 L50 15 L51 12 L59 13 L94 21 L98 30 L121 93 L133 126 L133 128 L322 128 L322 471 L315 466 L315 464 L313 464 L309 459 L301 452 L269 420 L266 418 L266 416 L264 416 L259 411 L225 377 L223 376 L223 374 L221 374 L214 366 L206 359 L175 328 L169 323 L164 318 L139 293 L141 307 L185 542 L203 638 L202 643 L187 655 L174 665 L161 675 L148 685 L135 695 L117 709 L105 718 L92 728 L74 742 L69 745 L50 731 L32 718 L13 704 L-6 690 L-24 677 L-43 663 L-62 649 L-61 637 L-36 478 L-8 300 L-8 294 L-47 333 L-52 338 L-57 343 L-66 353 L-101 388 L-106 393 L-120 408 L-157 445 L-162 450 L-171 460 L-183 472 L-184 472 L-184 128 L13 127 L33 61 L34 56 L24 45 L15 34 L8 26 L0 37 L-3 42 L-5 42 L-4 29Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="342" Y="94"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#0054A5">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L694 0 L697 1 L697 529 L695 558 L690 590 L684 617 L675 646 L667 667 L666 669 L662 667 L658 664 L658 662 L654 661 L651 656 L644 649 L638 644 L631 636 L622 628 L615 620 L606 612 L599 604 L590 596 L583 588 L574 580 L567 572 L559 565 L558 563 L558 202 L371 202 L366 199 L363 190 L352 159 L346 143 L336 116 L334 111 L334 104 L332 104 L329 97 L314 93 L298 89 L282 86 L246 78 L235 75 L227 73 L224 98 L221 122 L220 127 L223 126 L231 126 L233 121 L239 113 L244 118 L248 122 L248 124 L250 124 L258 134 L260 138 L256 151 L255 152 L253 162 L244 191 L241 200 L238 200 L238 202 L201 202 L194 199 L191 196 L191 194 L187 192 L187 190 L183 188 L183 186 L179 184 L175 180 L175 178 L171 176 L171 174 L167 172 L167 170 L163 168 L159 164 L159 162 L155 160 L155 158 L151 156 L151 154 L147 152 L143 148 L143 146 L139 144 L139 142 L135 140 L135 138 L131 136 L127 132 L127 130 L123 128 L123 126 L119 124 L119 122 L115 120 L111 116 L111 114 L107 112 L107 110 L103 108 L103 106 L99 104 L95 100 L95 98 L91 96 L91 94 L87 92 L87 90 L83 88 L79 84 L79 82 L75 80 L75 78 L71 76 L71 74 L67 72 L63 68 L63 66 L59 64 L53 57 L48 53 L41 45 L32 37 L25 29 L16 21 L9 13 L0 5 L-2 1Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="111" Y="15"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#1D1D1B">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L17 3 L28 6 L55 12 L74 16 L99 22 L103 24 L105 31 L107 31 L109 41 L116 59 L123 77 L126 86 L137 117 L141 127 L144 128 L327 128 L331 129 L331 489 L324 483 L308 468 L271 431 L263 424 L262 421 L258 419 L224 385 L216 378 L177 339 L169 332 L152 315 L150 314 L162 377 L175 447 L188 515 L195 553 L197 558 L198 561 L202 563 L207 568 L314 675 L314 677 L318 679 L318 681 L322 683 L322 685 L326 687 L330 691 L330 693 L334 695 L334 697 L338 699 L338 701 L342 703 L346 707 L346 709 L350 711 L350 713 L354 715 L354 717 L357 718 L351 725 L341 735 L334 741 L332 741 L332 743 L318 754 L301 767 L289 775 L285 777 L285 775 L283 774 L280 759 L269 715 L267 709 L266 699 L264 699 L263 706 L252 751 L248 767 L241 795 L239 802 L227 808 L209 815 L184 823 L181 823 L176 803 L176 799 L173 799 L169 815 L166 827 L156 830 L128 835 L111 837 L88 838 L85 837 L85 839 L81 839 L81 837 L78 837 L78 839 L71 839 L71 837 L67 837 L67 839 L63 839 L63 837 L59 837 L60 829 L74 773 L76 764 L76 757 L71 756 L69 755 L69 753 L64 751 L61 749 L61 747 L56 745 L41 734 L39 733 L39 731 L34 729 L24 722 L25 729 L30 751 L33 762 L33 766 L28 764 L22 761 L22 759 L18 758 L11 753 L11 751 L6 751 L0 747 L-5 748 L-21 758 L-28 763 L-33 764 L-32 767 L-37 767 L-36 758 L-21 698 L-21 687 L-25 686 L-32 681 L-32 679 L-37 677 L-37 675 L-41 674 L-52 666 L-54 664 L-58 663 L-58 668 L-64 667 L-70 663 L-70 661 L-74 660 L-79 657 L-79 655 L-84 654 L-86 653 L-86 651 L-95 650 L-99 653 L-101 653 L-101 655 L-106 657 L-123 668 L-128 670 L-127 663 L-121 638 L-118 627 L-112 601 L-97 541 L-94 530 L-91 531 L-87 547 L-75 595 L-71 612 L-67 629 L-63 641 L-61 634 L-54 592 L-52 575 L-49 558 L-40 501 L-38 491 L-36 475 L-23 394 L-20 373 L-11 317 L-14 317 L-19 322 L-25 329 L-27 329 L-27 331 L-29 331 L-31 335 L-33 335 L-35 339 L-37 339 L-39 343 L-61 365 L-66 371 L-70 375 L-72 375 L-72 377 L-74 377 L-74 379 L-76 379 L-78 383 L-81 386 L-82 389 L-76 415 L-72 431 L-68 447 L-64 463 L-64 467 L-69 466 L-74 463 L-78 461 L-78 459 L-81 459 L-81 457 L-85 456 L-96 449 L-96 447 L-103 450 L-122 462 L-132 468 L-134 467 L-128 441 L-127 433 L-129 433 L-129 435 L-134 440 L-137 441 L-139 445 L-143 447 L-145 451 L-149 453 L-151 457 L-171 477 L-172 479 L-174 479 L-169 496 L-162 526 L-156 550 L-151 570 L-151 575 L-155 574 L-170 565 L-170 563 L-174 562 L-176 561 L-176 559 L-181 558 L-186 556 L-196 562 L-215 574 L-220 576 L-219 565 L-214 547 L-208 521 L-199 485 L-191 452 L-186 433 L-185 355 L-195 359 L-200 363 L-212 370 L-221 375 L-221 369 L-218 360 L-212 335 L-201 291 L-198 280 L-193 258 L-190 246 L-188 235 L-186 235 L-185 167 L-185 129 L-31 128 L-28 127 L-26 128 L11 129 L11 127 L14 127 L18 111 L25 89 L27 79 L31 69 L32 63 L23 53 L23 51 L21 51 L13 41 L9 45 L4 53 L-7 54 L-6 43 L-4 25 L-1 3Z M4 6 L-1 42 L-1 48 L1 48 L11 33 L13 33 L26 48 L38 62 L35 73 L17 133 L-180 134 L-180 478 L-173 472 L-160 459 L-155 454 L-146 444 L-107 405 L-101 398 L-96 393 L-55 352 L-48 344 L-43 339 L-4 300 L-5 312 L-36 509 L-58 649 L-58 655 L-46 664 L-28 677 L-9 691 L10 705 L28 718 L47 732 L66 746 L74 751 L88 740 L106 726 L126 711 L140 700 L153 690 L166 680 L179 670 L197 656 L207 648 L206 639 L168 436 L143 302 L143 299 L169 325 L176 331 L181 336 L216 371 L224 378 L225 380 L227 380 L227 382 L235 389 L263 417 L268 422 L270 422 L271 425 L279 432 L311 464 L316 468 L317 470 L319 470 L319 472 L326 477 L326 134 L137 134 L134 123 L113 66 L99 28 L90 25 L59 18 L55 18 L52 23 L48 25 L40 25 L35 21 L33 14 L37 13Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="338" Y="88"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#FFC300">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L4 2 L25 23 L33 30 L72 69 L80 76 L110 106 L115 111 L130 125 L167 162 L175 169 L182 176 L187 181 L197 191 L201 196 L209 203 L217 212 L225 219 L233 228 L241 235 L249 244 L257 251 L265 260 L273 267 L277 271 L277 274 L281 275 L281 277 L283 278 L287 283 L286 289 L285 293 L283 293 L282 299 L280 303 L278 303 L276 311 L275 313 L273 313 L271 319 L268 325 L266 325 L266 329 L264 329 L262 335 L259 341 L257 341 L256 345 L254 345 L252 351 L251 353 L249 353 L248 357 L245 357 L244 363 L242 363 L242 365 L240 365 L239 369 L237 369 L236 373 L233 373 L232 377 L230 377 L228 383 L226 383 L226 385 L224 385 L223 389 L220 389 L219 393 L217 393 L217 395 L214 395 L212 401 L209 401 L209 403 L204 403 L198 396 L193 391 L188 387 L182 380 L177 375 L172 371 L166 364 L161 359 L56 254 L56 252 L52 250 L47 245 L45 243 L38 207 L25 137 L12 69 L0 5Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="488" Y="402"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#FFC300">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L92 0 L97 7 L105 14 L113 23 L121 30 L129 39 L137 46 L145 55 L150 59 L150 61 L153 62 L160 70 L165 74 L171 81 L176 86 L181 90 L187 97 L192 102 L197 106 L203 113 L208 118 L213 122 L219 129 L224 134 L229 138 L235 145 L240 150 L245 154 L251 161 L256 166 L261 170 L267 177 L272 182 L277 186 L283 193 L288 198 L291 202 L136 202 L137 207 L137 246 L135 248 L130 244 L125 239 L120 233 L114 228 L109 223 L104 217 L98 212 L93 207 L88 201 L82 196 L77 191 L72 185 L66 180 L61 175 L56 169 L50 164 L45 159 L40 153 L34 148 L29 143 L21 134 L16 129 L11 124 L0 113 L-2 114 L-1 110 L-2 109 L-2 2 L0 2Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="17" Y="15"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#0054A5">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L4 1 L9 5 L16 13 L117 114 L117 116 L121 118 L121 120 L125 122 L125 124 L129 126 L133 130 L133 132 L137 134 L137 136 L141 138 L141 140 L145 142 L149 146 L149 148 L153 150 L153 152 L157 154 L157 156 L160 157 L154 164 L144 174 L137 180 L135 180 L135 182 L121 193 L104 206 L92 214 L88 216 L88 214 L86 213 L83 198 L72 154 L70 148 L69 138 L67 138 L66 145 L55 190 L51 206 L44 234 L42 241 L30 247 L12 254 L-13 262 L-16 262 L-21 242 L-21 238 L-24 238 L-28 254 L-31 266 L-41 269 L-69 274 L-79 274 L-84 256 L-90 234 L-93 220 L-102 184 L-101 179 L-94 173 L-81 163 L-68 153 L-61 148 L-59 148 L-59 146 L-57 146 L-57 144 L-54 142 L-48 142 L-50 153 L-58 186 L-49 181 L-39 174 L-27 167 L-21 165 L-9 173 L-3 176 L-3 178 L1 179 L7 183 L12 184 L6 164 L3 150 L-7 110 L-6 106 L1 100 L3 100 L3 98 L6 98 L8 94 L11 94 L11 92 L14 90 L14 82 L6 40 L5 30 L2 17 L0 8Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="535" Y="649"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#FFC300">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L3 2 L6 17 L11 35 L20 71 L22 81 L27 100 L35 132 L36 139 L32 139 L32 137 L28 136 L20 131 L20 129 L15 128 L13 127 L13 125 L9 124 L3 120 L-1 121 L-27 137 L-32 140 L-34 140 L-32 127 L-28 111 L-14 55 L-2 5Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="57" Y="214"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#FFC300">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L3 4 L14 48 L16 58 L30 113 L32 124 L35 136 L35 140 L30 138 L30 136 L25 135 L16 129 L13 128 L13 126 L10 126 L10 124 L6 123 L4 121 L-1 121 L-15 130 L-24 136 L-32 140 L-34 141 L-33 131 L-20 78 L-16 62 L-4 14 L-2 2 L0 2Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="63" Y="415"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#9A7638">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L3 1 L7 17 L19 65 L23 82 L27 99 L31 114 L31 127 L35 130 L36 138 L30 137 L24 133 L24 131 L20 130 L15 127 L15 125 L10 124 L8 123 L8 121 L-1 120 L-5 123 L-7 123 L-7 125 L-12 127 L-29 138 L-34 140 L-33 133 L-27 108 L-24 97 L-18 71 L-3 11Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="244" Y="618"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#FFC300">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L1 0 L2 56 L11 47 L13 48 L21 80 L26 101 L31 120 L35 137 L35 142 L31 141 L16 132 L16 130 L12 129 L10 128 L10 126 L5 125 L0 123 L-10 129 L-29 141 L-34 143 L-33 132 L-28 114 L-22 88 L-13 52 L-5 19Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="152" Y="521"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#9A7638">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L2 4 L13 47 L15 58 L20 76 L24 94 L17 96 L-6 97 L-9 96 L-9 98 L-13 98 L-13 96 L-16 96 L-16 98 L-23 98 L-23 96 L-27 96 L-27 98 L-31 98 L-31 96 L-35 96 L-34 88 L-20 32 L-16 14 L-11 8 L-7 7 L-7 5Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="432" Y="829"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#1D1D1B">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L1 0 L10 49 L25 131 L24 135 L-13 172 L-14 172 L-14 162 L-5 51 L-1 1Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="293" Y="252"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#1D1D1B">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L1 0 L14 169 L13 173 L13 171 L9 169 L2 162 L2 160 L-2 158 L-9 150 L-25 134 L-23 120 L-2 6Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="530" Y="253"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#9A7638">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L3 4 L5 15 L9 30 L19 69 L20 78 L23 87 L29 110 L33 127 L33 132 L35 132 L34 135 L34 133 L29 131 L15 121 L2 110 L0 106 L-4 106 L-4 104 L-6 104 L-7 100 L-12 100 L-14 94 L-17 94 L-17 92 L-19 92 L-20 90 L-20 80 L-14 56 L-2 6Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="154" Y="723"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#9A7638">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L2 0 L14 48 L17 62 L21 78 L30 113 L32 124 L36 140 L30 140 L30 138 L27 138 L27 136 L23 135 L16 132 L3 110 L0 104 L0 102 L-2 102 L-2 96 L-5 96 L-11 84 L-11 80 L-13 80 L-15 72 L-17 71 L-12 48 L-4 16Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="63" Y="615"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#1D1D1B">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L2 2 L11 97 L17 161 L17 167 L10 161 L-20 131 L-19 120Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="580" Y="313"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#9A7638">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L2 3 L14 50 L16 60 L20 77 L15 77 L8 72 L5 71 L5 69 L-1 67 L-13 59 L-19 61 L-34 70 L-47 79 L-50 79 L-49 71 L-39 30 L-24 18 L-8 6Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="527" Y="756"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#FFC300">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L7 4 L19 13 L38 27 L42 31 L46 47 L49 61 L52 72 L52 76 L47 74 L41 71 L41 69 L37 68 L30 63 L30 61 L25 61 L19 57 L14 58 L-2 68 L-9 73 L-14 74 L-13 77 L-18 77 L-17 68 L-2 8Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="319" Y="778"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#9A7638">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L2 2 L8 28 L12 44 L16 60 L20 76 L20 80 L15 79 L10 76 L6 74 L6 72 L3 72 L3 70 L-1 69 L-12 62 L-12 60 L-19 63 L-38 75 L-48 81 L-50 80 L-44 54 L-41 42 L-1 2Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="254" Y="475"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#1D1D1B">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L2 2 L22 125 L21 129 L16 134 L13 137 L11 137 L9 141 L7 141 L5 145 L-3 153 L-8 158 L-12 162 L-14 162 L-12 134 L-1 9Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="240" Y="315"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#1D1D1B">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L2 1 L16 134 L16 143 L9 137 L6 134 L6 132 L2 130 L-12 115 L-19 108 L-18 98Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="629" Y="386"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#1D1D1B">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L2 0 L20 105 L20 111 L17 112 L17 114 L15 114 L13 118 L9 120 L9 122 L7 122 L5 126 L1 128 L-1 132 L-13 144 L-15 143 L-6 56Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="192" Y="383"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#FFC300">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L1 0 L1 119 L-6 124 L-11 127 L-26 136 L-35 141 L-35 135 L-32 126 L-26 101 L-15 57 L-12 46 L-7 24 L-4 12 L-2 1Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="152" Y="322"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#9A7638">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L3 2 L6 17 L11 35 L20 71 L22 81 L27 100 L35 132 L36 139 L32 139 L32 137 L28 136 L20 131 L20 129 L15 128 L13 127 L13 125 L9 124 L0 119 L0 11 L-1 9 L-1 2Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="57" Y="214"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#9A7638">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L3 4 L14 48 L16 58 L30 113 L32 124 L35 136 L35 140 L30 138 L30 136 L25 135 L16 129 L13 128 L13 126 L10 126 L10 124 L6 123 L4 121 L0 120 L0 14 L-1 8 L-2 8 L-2 2 L0 2Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="63" Y="415"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#FFC300">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L2 0 L2 110 L0 110 L-1 114 L-6 116 L-6 118 L-11 120 L-28 131 L-33 133 L-32 126 L-26 101 L-23 90 L-17 64 L-2 4 L0 4Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="243" Y="625"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#FFC300">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L2 0 L4 10 L11 36 L19 68 L20 75 L20 79 L5 88 L2 90 L-1 90 L-1 92 L-6 92 L-6 94 L-8 94 L-8 96 L-13 96 L-13 98 L-15 98 L-15 100 L-23 100 L-24 96 L-16 64 L-13 52Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="602" Y="787"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#9A7638">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L1 0 L2 56 L11 47 L13 48 L21 80 L26 101 L31 120 L35 137 L35 142 L31 141 L16 132 L16 130 L12 129 L10 128 L10 126 L5 125 L0 123 L-4 124 L-1 121 L0 14 L-2 14 L-3 16 L-1 3Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="152" Y="521"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#1D1D1B">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L2 3 L21 58 L31 87 L30 92 L1 121 L0 121Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="433" Y="133"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#1D1D1B">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L60 0 L60 7 L52 56 L50 55 L41 8 L40 6 L32 55 L30 55 L20 5 L12 54 L10 56 L0 5Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="418" Y="514"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#1D1D1B">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L61 0 L52 56 L50 54 L41 8 L40 6 L32 56 L30 55 L21 8 L20 6 L12 55 L10 55 L0 4Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="341" Y="514"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#FFC300">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L3 1 L3 89 L0 89 L0 91 L-4 91 L-4 89 L-7 89 L-7 91 L-14 91 L-14 89 L-18 89 L-18 91 L-22 91 L-22 89 L-26 89 L-25 81 L-11 25 L-7 7 L-2 1Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="423" Y="836"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#9A7638">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L3 0 L7 16 L11 34 L22 78 L20 79 L5 73 L1 71 L1 68 L-7 68 L-7 66 L-11 66 L-11 64 L-13 64 L-14 60 L-12 49 L-9 36 L-2 6Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="244" Y="819"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#FFC300">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L2 2 L2 44 L-1 44 L-2 48 L-17 57 L-30 66 L-33 66 L-32 58 L-22 17 L-7 5Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="510" Y="769"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#FFC300">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L2 1 L2 98 L-3 98 L-3 96 L-5 96 L-6 92 L-11 92 L-13 86 L-16 86 L-16 84 L-18 84 L-19 82 L-19 72 L-13 48 L-3 6 L-1 6Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="153" Y="731"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#9A7638">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L5 2 L21 14 L25 18 L29 34 L32 48 L35 59 L35 63 L30 61 L24 58 L24 56 L20 55 L13 50 L13 48 L8 48 L2 44 L-3 44 L-3 42 L0 42Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="336" Y="791"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#FFC300">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L2 0 L2 42 L-8 49 L-23 58 L-31 63 L-33 62 L-27 36 L-24 24Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="237" Y="493"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#FFC300">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L2 2 L2 92 L1 94 L-1 94 L-1 88 L-4 88 L-10 76 L-10 72 L-12 72 L-14 64 L-16 63 L-11 40 L-3 8Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="62" Y="623"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#9A7638">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L2 0 L4 10 L11 36 L19 68 L20 75 L20 79 L5 88 L1 90 L1 8 L-1 8Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="602" Y="787"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#FFC300">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L2 0 L2 60 L-6 60 L-6 58 L-10 58 L-10 56 L-12 56 L-13 52 L-11 41 L-8 28 L-3 6 L-1 6Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="243" Y="827"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#9A7638">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L2 0 L6 16 L10 33 L-6 32 L-5 20Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="335" Y="887"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#9A7638">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L1 2 L3 2 L8 22 L7 27 L-2 28 L-2 30 L-7 28 L-3 12Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="511" Y="885"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#1D1D1B">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L8 0 L23 3 L21 8 L15 12 L7 12 L1 7Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="371" Y="102"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#9A7638">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L4 4 L-151 4 L-151 3 L0 3Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="304" Y="213"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#9A7638">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L1 0 L1 119 L0 119 L-1 11 L-3 17 L-4 17 L-3 5 L-2 1Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="152" Y="322"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#FFC300">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L2 0 L2 24 L-5 24 L-4 12Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="334" Y="895"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#FFC300">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L2 1 L2 19 L1 21 L-1 21 L-1 23 L-6 21 L-2 5Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="510" Y="892"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+                <GeometryDrawing Brush="#9A7638">
+                    <GeometryDrawing.Geometry>
+                        <PathGeometry FillRule="Nonzero" Figures="M0 0 L1 0 L1 57 L0 57 L0 14 L-2 14 L-3 16 L-1 3Z">
+                            <PathGeometry.Transform>
+                                <TranslateTransform X="152" Y="521"/>
+                            </PathGeometry.Transform>
+                        </PathGeometry>
+                    </GeometryDrawing.Geometry>
+                </GeometryDrawing>
+            </DrawingGroup>
+        </DrawingImage.Drawing>
+    </DrawingImage>
+</ResourceDictionary>
