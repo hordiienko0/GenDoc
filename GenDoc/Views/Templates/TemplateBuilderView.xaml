@@ -73,12 +73,15 @@
              Комірки бачать лише свій вміст, тож стиль дістається з DataContext'у
              ItemsControl'а — там лежить PreviewTableViewModel. -->
         <DataTemplate DataType="{x:Type builderVm:PreviewTableViewModel}">
-            <!-- Таблиця свого прокрутника НЕ має: широка таблиця просто робить
-                 сторінку ширшою, і її гортає один спільний прокрутник унизу
-                 панелі. Абзаци при цьому переносяться, бо їм задано явну
-                 PreviewTextWidth. -->
+            <!-- Ширина — рівно сторінка, і це не косметика: writer ставить таблиці
+                 TableWidth=5000 Pct, тобто 100% ширини сторінки. У Word таблиця НІКОЛИ
+                 не буває ширшою за аркуш — зайві колонки просто вужчають. Тому тут
+                 UniformGrid ділить ширину порівну й жодних Min/Max на клітинках: інакше
+                 перегляд показував би те, чого документ не робить. Прокрутка вбік
+                 доречна лише у відомості Excel, де аркуш справді ширший за екран. -->
             <Border BorderBrush="#333333" BorderThickness="1,1,0,0" HorizontalAlignment="Left"
-                    Margin="0,4,0,10">
+                    Margin="0,4,0,10"
+                    Width="{Binding DataContext.PreviewTextWidth, RelativeSource={RelativeSource AncestorType=UserControl}}">
                 <StackPanel>
                     <ItemsControl ItemsSource="{Binding Headers}">
                         <ItemsControl.ItemsPanel>
@@ -88,12 +91,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <!-- MinWidth: інакше UniformGrid ділить ширину панелі на
-                                     всі колонки, і з шостої клітинки стають нечитними.
-                                     Разом із горизонтальною прокруткою сторінки таблиця
-                                     тепер просто їде вбік. -->
-                                <Border BorderBrush="#333333" BorderThickness="0,0,1,1" Padding="5,4"
-                                        MinWidth="86" MaxWidth="220">
+                                <Border BorderBrush="#333333" BorderThickness="0,0,1,1" Padding="5,4">
                                     <TextBlock Text="{Binding}" TextWrapping="Wrap"
                                                FontFamily="{Binding DataContext.HeaderStyle.Family, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                FontSize="{Binding DataContext.HeaderStyle.Size, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -113,8 +111,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border BorderBrush="#333333" BorderThickness="0,0,1,1" Padding="5,4"
-                                        MinWidth="86" MaxWidth="220">
+                                <Border BorderBrush="#333333" BorderThickness="0,0,1,1" Padding="5,4">
                                     <TextBlock local:PreviewInlines.Runs="{Binding}" TextWrapping="Wrap"
                                                FontFamily="{Binding DataContext.Style.Family, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                FontSize="{Binding DataContext.Style.Size, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -807,10 +804,11 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Word: сторінка документа. Один горизонтальний прокрутник
-                         унизу панелі гортає широку таблицю; текст при цьому все одно
-                         переноситься, бо рядкам задано явну PreviewTextWidth. -->
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                    <!-- Word: сторінка документа. Прокрутки вбік немає й не треба —
+                         ніщо на аркуші не буває ширшим за аркуш: таблиця займає рівно
+                         100% ширини (як і в .docx), а рядки тексту переносяться по
+                         явній PreviewTextWidth. -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
                                   Background="{StaticResource BackgroundBrush}"
                                   Visibility="{Binding IsWordMode, Converter={StaticResource BoolToVisibility}}">
                         <!-- MinWidth, а не Width: вузький документ заповнює панель, а
@@ -963,8 +961,22 @@
                               IsChecked="{Binding RepeatSheetPerDate, Mode=TwoWay}"
                               Visibility="{Binding IsExcelMode, Converter={StaticResource BoolToVisibility}}"/>
 
+                    <!-- MaxWidth і обрізання: повідомлення буває довгим, а воно стоїть
+                         однією групою з кнопками — без стелі воно виштовхувало
+                         «Зберегти шаблон» за край вікна. Повний текст — у підказці. -->
                     <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center"
-                               Margin="14,0" FontSize="12" Foreground="{StaticResource SuccessBrush}"/>
+                               Margin="14,0" FontSize="12" Foreground="{StaticResource SuccessBrush}"
+                               MaxWidth="260" TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding StatusMessage}"/>
+                    <!-- «Як буде насправді»: панель перегляду не вміє полів сторінки
+                         й перенесення на наступну сторінку, тож справжню розмітку
+                         показує сам Word. Це перегляд — правки у файлі назад не
+                         повертаються. -->
+                    <Button Content="{Binding OpenExternallyButtonText}" Style="{StaticResource SecondaryButtonStyle}"
+                            Margin="0,0,8,0" Padding="14,8"
+                            ToolTip="Відкрити зібраний файл у Word — правки у ньому назад у шаблон не повертаються"
+                            Command="{Binding OpenExternallyCommand}"/>
+
                     <Button Content="{Binding ExportButtonText}" Style="{StaticResource SecondaryButtonStyle}"
                             Padding="16,8" FontSize="12.5" FontWeight="SemiBold"
                             Command="{Binding ExportCommand}"/>

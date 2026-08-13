@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Media;
@@ -384,6 +385,7 @@ public partial class TemplateBuilderViewModel : ObservableObject
     partial void OnModeChanged(TemplateBuilderMode value)
     {
         OnPropertyChanged(nameof(ExportButtonText));
+        OnPropertyChanged(nameof(OpenExternallyButtonText));
         OnPropertyChanged(nameof(SubtitleText));
 
         // Відомості потрібно ширше — але лише поки оператор не пересунув роздільник.
@@ -607,6 +609,53 @@ public partial class TemplateBuilderViewModel : ObservableObject
             MessageBox.Show(ex.Message, "Не вдалося вивантажити файл", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
+
+    public string OpenExternallyButtonText => IsExcelMode ? "Перегляд у Excel" : "Перегляд у Word";
+
+    /// <summary>
+    /// Показати документ таким, яким його побачить Word (чи Excel). Панель
+    /// перегляду — це наближення: вона не вміє ні реальних полів сторінки, ні
+    /// перенесення на наступну сторінку, ні того, як Word насправді розкладе
+    /// таблицю. Тому «як буде насправді» дивимось у самому Word.
+    ///
+    /// Це перегляд, а не редагування: зміни, зроблені у відкритому файлі, назад
+    /// у блоки НЕ повертаються. Розкласти довільно виправлений .docx назад у
+    /// типізовані блоки надійно неможливо, і мовчазна спроба це вгадати зіпсувала
+    /// б шаблон непомітно для оператора. Файл лягає в тимчасову теку саме тому,
+    /// що його правки нікуди не ведуть.
+    /// </summary>
+    [RelayCommand]
+    private void OpenExternally()
+    {
+        if (!Validate()) return;
+
+        try
+        {
+            var document = ToDocument();
+            var extension = IsExcelMode ? ".xlsx" : ".docx";
+            var bytes = IsExcelMode
+                ? _builderService.BuildXlsx(document).Content
+                : _builderService.BuildDocx(document);
+
+            var name = string.IsNullOrWhiteSpace(TemplateName) ? "Перегляд" : TemplateName.Trim();
+            var path = Path.Combine(
+                Path.GetTempPath(), $"GenDoc_{SafeFileName(name)}_{DateTime.Now:HHmmss}{extension}");
+
+            File.WriteAllBytes(path, bytes);
+
+            // UseShellExecute — інакше .NET не знає, чим відкривати .docx.
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+
+            StatusMessage = "Відкрито для перегляду; правки у файлі назад у шаблон не повертаються.";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Не вдалося відкрити перегляд", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private static string SafeFileName(string name)
+        => new(name.Where(c => !Path.GetInvalidFileNameChars().Contains(c)).ToArray());
 
     [RelayCommand]
     private void Close() => RequestClose?.Invoke();
