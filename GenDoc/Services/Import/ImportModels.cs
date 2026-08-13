@@ -115,6 +115,32 @@ public class ImportRowPreview
     public string Note { get; set; } = string.Empty;
 }
 
+/// <summary>Звідки береться набір, у який лягають імпортовані люди.</summary>
+public enum ImportTargetKind
+{
+    /// <summary>Набір виводиться з колонки «Підрозділ» у файлі — так імпорт
+    /// поводився до появи майстра, і так він поводиться, якщо ціль не задана.</summary>
+    FromFile,
+
+    /// <summary>Оператор обрав конкретний набір і гілку в ньому (крок «Набір і
+    /// гілка»). Колонка «Підрозділ» тоді описує лише підрозділ людини, а не те,
+    /// куди її класти.</summary>
+    Intake,
+
+    /// <summary>Постійний склад — поза наборами.</summary>
+    PermanentStaff
+}
+
+/// <summary>Куди імпортувати. OrgNodeId — гілка всередині набору; null означає
+/// корінь набору.</summary>
+public record ImportTarget(
+    ImportTargetKind Kind = ImportTargetKind.FromFile,
+    int? IntakeId = null,
+    int? OrgNodeId = null)
+{
+    public static ImportTarget FromFile { get; } = new(ImportTargetKind.FromFile);
+}
+
 public class ImportParseResult
 {
     public string FilePath { get; set; } = string.Empty;

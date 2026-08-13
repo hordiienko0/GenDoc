@@ -76,8 +76,10 @@ public class ImportService : IImportService
         return result;
     }
 
-    public List<ImportRowPreview> Validate(ImportParseResult parsed)
+    public List<ImportRowPreview> Validate(ImportParseResult parsed, ImportTarget? target = null)
     {
+        target ??= ImportTarget.FromFile;
+
         using var db = _dbFactory.CreateDbContext();
 
         var rows = ParseRows(parsed);
@@ -90,7 +92,7 @@ public class ImportService : IImportService
         var previews = new List<ImportRowPreview>();
         foreach (var row in rows)
         {
-            var intakeId = ResolveIntakeId(orgNodeIntakeMap, row.Fields.UnitName);
+            var intakeId = ResolveTargetIntakeId(target, orgNodeIntakeMap, row.Fields.UnitName);
             var (status, note) = EvaluateRow(row.Fields, row.IncompleteFullName, row.CourseArrivalDateInvalid,
                 existingServiceNumbers, seenInFile, intakeId, existingNameKeys, seenNameKeysInFile);
             previews.Add(new ImportRowPreview
@@ -107,8 +109,10 @@ public class ImportService : IImportService
         return previews;
     }
 
-    public ImportSummary Import(ImportParseResult parsed, bool importAsPermanentStaff = false)
+    public ImportSummary Import(ImportParseResult parsed, ImportTarget? target = null)
     {
+        target ??= ImportTarget.FromFile;
+
         var rows = ParseRows(parsed);
         using var db = _dbFactory.CreateDbContext();
 
@@ -129,7 +133,7 @@ public class ImportService : IImportService
 
         foreach (var row in rows)
         {
-            var intakeId = importAsPermanentStaff ? null : ResolveIntakeId(orgNodeIntakeMap, row.Fields.UnitName);
+            var intakeId = ResolveTargetIntakeId(target, orgNodeIntakeMap, row.Fields.UnitName);
             var (status, _) = EvaluateRow(row.Fields, row.IncompleteFullName, row.CourseArrivalDateInvalid,
                 existingServiceNumbers, seenInFile, intakeId, existingNameKeys, seenNameKeysInFile);
             if (status is ImportRowStatus.Error or ImportRowStatus.Duplicate)
@@ -144,16 +148,29 @@ public class ImportService : IImportService
                 var orgNode = ResolveOrgNode(db, orgNodeCache, row.Fields.UnitName);
                 var room = ResolveRoom(db, roomCache, row.Fields.Building, row.Fields.RoomNumber);
 
-                // "Це постійний склад" — людина не належить жодному набору,
-                // навіть якщо підрозділ з файлу технічно прив'язаний до набору.
-                var resolvedIntakeId = importAsPermanentStaff ? null : orgNode?.IntakeId;
+                // Постійний склад — людина не належить жодному набору, навіть якщо
+                // підрозділ з файлу технічно прив'язаний до набору. Обраний набір
+                // перебиває той, що виводиться з файлу: на кроці «Набір і гілка»
+                // оператор сказав прямо, куди кладемо.
+                var resolvedIntakeId = target.Kind switch
+                {
+                    ImportTargetKind.PermanentStaff => null,
+                    ImportTargetKind.Intake => target.IntakeId,
+                    _ => orgNode?.IntakeId
+                };
+
                 var fitnessCategory = ParseFitnessCategory(row.Fields.FitnessRaw);
 
                 // Якщо людина потрапляє в набір — розкласти її по «Придатні»/
                 // «Обмежено придатні»/«Всі» замість того вузла, куди її поставило
                 // саме лише зіставлення підрозділу. Старі набори без цих трьох
                 // папок — лишаємо як є, без падіння.
-                var resolvedOrgNodeId = orgNode?.Id;
+                // Обрана гілка — база для людини; підрозділ із файлу її не
+                // перебиває, інакше вибір оператора не мав би сенсу.
+                var resolvedOrgNodeId = target.Kind == ImportTargetKind.Intake
+                    ? target.OrgNodeId ?? orgNode?.Id
+                    : orgNode?.Id;
+
                 if (resolvedIntakeId is int intakeIdForRouting)
                 {
                     var folderId = ResolveIntakeFitnessFolderId(db, intakeFolderCache, intakeIdForRouting, fitnessCategory);
@@ -476,6 +493,17 @@ public class ImportService : IImportService
         var dobPart = dateOfBirth?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) ?? "-";
         return $"{intakePart}|{normalizedName}|{dobPart}";
     }
+
+    /// <summary>Набір, у межах якого рядок вважається дублем і в який він ляже.
+    /// Для FromFile це, як і раніше, набір підрозділу з файлу.</summary>
+    internal static int? ResolveTargetIntakeId(
+        ImportTarget target, Dictionary<string, int?> orgNodeIntakeMap, string unitName)
+        => target.Kind switch
+        {
+            ImportTargetKind.PermanentStaff => null,
+            ImportTargetKind.Intake => target.IntakeId,
+            _ => ResolveIntakeId(orgNodeIntakeMap, unitName)
+        };
 
     private static int? ResolveIntakeId(Dictionary<string, int?> orgNodeIntakeMap, string unitName)
     {

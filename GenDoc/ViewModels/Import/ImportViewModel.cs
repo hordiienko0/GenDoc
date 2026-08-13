@@ -62,6 +62,14 @@ public partial class ImportViewModel : ObservableObject
     [ObservableProperty]
     private bool importAsPermanentStaff;
 
+    /// <summary>Ціль імпорту. Поки крок «Набір і гілка» не під'єднано до в'юхи,
+    /// тут лишається стара поведінка: постійний склад за галочкою, інакше набір
+    /// виводиться з колонки «Підрозділ» у файлі.</summary>
+    private ImportTarget BuildTarget()
+        => ImportAsPermanentStaff
+            ? new ImportTarget(ImportTargetKind.PermanentStaff)
+            : ImportTarget.FromFile;
+
     [RelayCommand]
     private void PickFile()
     {
@@ -84,7 +92,7 @@ public partial class ImportViewModel : ObservableObject
             MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (confirm != MessageBoxResult.Yes) return;
 
-        var summary = _importService.Import(_parsed, ImportAsPermanentStaff);
+        var summary = _importService.Import(_parsed, BuildTarget());
 
         var message = $"Імпортовано {summary.Imported}, пропущено {summary.Skipped}, помилок {summary.Errors}";
         if (summary.ErrorMessages.Count > 0)
