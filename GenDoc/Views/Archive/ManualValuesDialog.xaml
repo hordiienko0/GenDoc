@@ -17,17 +17,62 @@
                    Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,10"/>
 
         <ScrollViewer VerticalScrollBarVisibility="Auto">
-            <ItemsControl ItemsSource="{Binding Tags}">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Margin="0,0,0,10">
-                            <TextBlock Text="{Binding Tag}" FontSize="11.5"
-                                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"/>
-                        </StackPanel>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <StackPanel DataContext="{Binding Form}">
+                <!-- Ті самі рядки, що й у генерації: дату обирають пікером, а не
+                     набирають (руками в документи потрапляли і «13.08.2026», і
+                     «13.8.26»), тексти вже підставлені з минулого разу. -->
+                <ItemsControl ItemsSource="{Binding Rows}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,0,0,10">
+                                <TextBlock Text="{Binding Tag}" FontFamily="Consolas" FontSize="11.5"
+                                           Foreground="{StaticResource AccentBrush}" Margin="0,0,0,4"/>
+
+                                <DatePicker SelectedDate="{Binding DateValue}">
+                                    <DatePicker.Style>
+                                        <Style TargetType="DatePicker">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Kind}" Value="Text">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </DatePicker.Style>
+                                </DatePicker>
+
+                                <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}">
+                                    <TextBox.Style>
+                                        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Kind}" Value="Date">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBox.Style>
+                                </TextBox>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Підписант зі списку постійного складу, а не текстом -->
+                <StackPanel Margin="0,6,0,0">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Signer}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock Text="Підписант" FontSize="11.5" Margin="0,0,0,4"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                    <ComboBox ItemsSource="{Binding Signer.Options}" DisplayMemberPath="DisplayLabel"
+                              SelectedItem="{Binding Signer.Selected, Mode=TwoWay}"/>
+                </StackPanel>
+            </StackPanel>
         </ScrollViewer>
     </DockPanel>
 </Window>

@@ -30,6 +30,11 @@ namespace GenDoc.ViewModels.Personnel
         private readonly IGenerationService _generationService;
         private readonly IIntakeService _intakeService;
         private readonly IDialogService _dialogService;
+        private readonly Services.Generation.IManualTagFormBuilder _manualTagFormBuilder;
+
+        /// <summary>Ключ, під яким запам'ятовуються минулі значення саме для
+        /// цього місця — щоб вони не змішувалися з іншими екранами.</summary>
+        private const string ManualTagContextKey = "person-card-regenerate";
         private string _snapshot = string.Empty;
         private bool _documentsLoaded;
         private int? _packageId;
@@ -43,8 +48,10 @@ namespace GenDoc.ViewModels.Personnel
             IPersonnelService personnelService, ICompletenessService completenessService,
             IDocumentArchiveService archiveService, IGenerationService generationService,
             IIntakeService intakeService, IDialogService dialogService,
+            Services.Generation.IManualTagFormBuilder manualTagFormBuilder,
             PersonEditModel model, string unitDisplay)
         {
+            _manualTagFormBuilder = manualTagFormBuilder;
             _personnelService = personnelService;
             _completenessService = completenessService;
             _archiveService = archiveService;
@@ -240,8 +247,12 @@ namespace GenDoc.ViewModels.Personnel
             var manualTags = await _archiveService.GetManualTagsAsync(templateIds);
             if (manualTags.Count == 0) return new Dictionary<string, string>();
 
-            var dialog = new ManualValuesDialogViewModel(manualTags);
+            // Та сама форма, що в генерації: дати пікером, тексти з минулого разу.
+            var form = await _manualTagFormBuilder.BuildAsync(manualTags, ManualTagContextKey);
+            var dialog = new ManualValuesDialogViewModel(form);
             if (_dialogService.ShowDialog(dialog, Application.Current.MainWindow) != true) return null;
+
+            await _manualTagFormBuilder.SaveAsync(ManualTagContextKey, form);
             return dialog.GetValues();
         }
 

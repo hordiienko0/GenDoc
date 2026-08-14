@@ -31,14 +31,22 @@ namespace GenDoc.ViewModels.Archive
         private bool _suppressFilterReload;
         private bool _suppressHeaderCheck;
 
+        /// <summary>Ключ для запам'ятовування минулих значень і підписанта.
+        /// Окремий від генерації: перегенерація з архіву — свій контекст.</summary>
+        private const string ManualTagContextKey = "archive-regenerate";
+
+        private readonly Services.Generation.IManualTagFormBuilder _manualTagFormBuilder;
+
         public ArchiveViewModel(
             IDocumentArchiveService archiveService,
             IDialogService dialogService,
-            ActiveIntakeState activeIntakeState)
+            ActiveIntakeState activeIntakeState,
+            Services.Generation.IManualTagFormBuilder manualTagFormBuilder)
         {
             _archiveService = archiveService;
             _dialogService = dialogService;
             _activeIntakeState = activeIntakeState;
+            _manualTagFormBuilder = manualTagFormBuilder;
 
             _searchDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
             _searchDebounceTimer.Tick += (_, _) =>
@@ -481,9 +489,14 @@ namespace GenDoc.ViewModels.Archive
             var manualValues = new Dictionary<string, string>();
             if (manualTags.Count > 0)
             {
-                var dialog = new ManualValuesDialogViewModel(manualTags);
+                // Та сама форма, що й у звичайній генерації: дати пікером, тексти
+                // підставлені з минулого разу, підписант зі списку.
+                var form = await _manualTagFormBuilder.BuildAsync(manualTags, ManualTagContextKey);
+                var dialog = new ManualValuesDialogViewModel(form);
                 if (_dialogService.ShowDialog(dialog, Application.Current.MainWindow) != true) return;
+
                 manualValues = dialog.GetValues();
+                await _manualTagFormBuilder.SaveAsync(ManualTagContextKey, form);
             }
 
             IsBusy = true;

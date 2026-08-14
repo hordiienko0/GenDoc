@@ -24,6 +24,11 @@ namespace GenDoc.ViewModels.Recipients
         private readonly IExportService _exportService;
         private readonly IExportTemplateService _exportTemplateService;
         private readonly IDialogService _dialogService;
+        private readonly Services.Generation.IManualTagFormBuilder _manualTagFormBuilder;
+
+        /// <summary>Ключ, під яким запам'ятовуються минулі значення саме для
+        /// цього місця — щоб вони не змішувалися з іншими екранами.</summary>
+        private const string ManualTagContextKey = "recipients-export";
         private readonly IServiceProvider _serviceProvider;
         private readonly DispatcherTimer _searchDebounceTimer;
 
@@ -32,8 +37,10 @@ namespace GenDoc.ViewModels.Recipients
             IExportService exportService,
             IExportTemplateService exportTemplateService,
             IDialogService dialogService,
-            IServiceProvider serviceProvider)
+            IServiceProvider serviceProvider,
+            Services.Generation.IManualTagFormBuilder manualTagFormBuilder)
         {
+            _manualTagFormBuilder = manualTagFormBuilder;
             _recipientService = recipientService;
             _exportService = exportService;
             _exportTemplateService = exportTemplateService;
@@ -197,9 +204,13 @@ namespace GenDoc.ViewModels.Recipients
             var manualValues = new Dictionary<string, string>();
             if (manualTags.Count > 0)
             {
-                var manualDialog = new ManualValuesDialogViewModel(manualTags);
+                // Та сама форма, що в генерації: дати пікером, тексти з минулого разу.
+                var form = await _manualTagFormBuilder.BuildAsync(manualTags, ManualTagContextKey);
+                var manualDialog = new ManualValuesDialogViewModel(form);
                 if (_dialogService.ShowDialog(manualDialog, Application.Current.MainWindow) != true) return;
+
                 manualValues = manualDialog.GetValues();
+                await _manualTagFormBuilder.SaveAsync(ManualTagContextKey, form);
             }
 
             var dialog = new SaveFileDialog

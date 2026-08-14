@@ -1,36 +1,29 @@
-using System.Collections.ObjectModel;
-using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using GenDoc.ViewModels.Generation;
 using GenDoc.ViewModels.Personnel;
 
 namespace GenDoc.ViewModels.Archive
 {
-    public partial class ManualTagRowViewModel : ObservableObject
-    {
-        public ManualTagRowViewModel(string tag)
-        {
-            Tag = tag;
-        }
-
-        public string Tag { get; }
-
-        [ObservableProperty]
-        private string value = string.Empty;
-    }
-
-    // Одна форма ручних міток на весь батч перегенерації.
+    /// <summary>
+    /// Ручні мітки для перегенерації з архіву — одна форма на весь батч.
+    ///
+    /// Форму будує той самий ManualTagFormBuilder, що й для звичайної генерації,
+    /// і це не заради стрункості: раніше цей діалог мав власний примітивний
+    /// список і через те розходився з генерацією в трьох речах — дати набиралися
+    /// текстом (у документи потрапляли і «13.08.2026», і «13.8.26»), поля не
+    /// підставлялися з минулого разу, і не було вибору підписанта. Тепер
+    /// перегенерація поводиться так само, як генерація.
+    /// </summary>
     public partial class ManualValuesDialogViewModel : DialogViewModelBase
     {
-        public ManualValuesDialogViewModel(IEnumerable<string> tags)
+        public ManualValuesDialogViewModel(ManualTagFormViewModel form)
         {
-            foreach (var tag in tags)
-                Tags.Add(new ManualTagRowViewModel(tag));
+            Form = form;
         }
 
-        public ObservableCollection<ManualTagRowViewModel> Tags { get; } = new();
+        public ManualTagFormViewModel Form { get; }
 
-        public Dictionary<string, string> GetValues()
-            => Tags.ToDictionary(t => t.Tag, t => t.Value);
+        public Dictionary<string, string> GetValues() => Form.GetValues();
 
         [RelayCommand]
         private void Ok() => CloseDialog(true);

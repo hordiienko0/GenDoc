@@ -33,6 +33,9 @@ namespace GenDoc.ViewModels.Personnel
         private readonly IGenerationService _generationService;
         private readonly IIntakeService _intakeService;
         private readonly IDialogService _dialogService;
+
+        // Передається далі в картку особи: там теж є перегенерація з ручними мітками.
+        private readonly Services.Generation.IManualTagFormBuilder _manualTagFormBuilder;
         private readonly DispatcherTimer _searchDebounceTimer;
 
         private List<PersonRowViewModel> _allRows = new();
@@ -46,8 +49,10 @@ namespace GenDoc.ViewModels.Personnel
             IDocumentArchiveService archiveService,
             IGenerationService generationService,
             IIntakeService intakeService,
-            IDialogService dialogService)
+            IDialogService dialogService,
+            Services.Generation.IManualTagFormBuilder manualTagFormBuilder)
         {
+            _manualTagFormBuilder = manualTagFormBuilder;
             Tree = tree;
             _personnelService = personnelService;
             _completenessService = completenessService;
@@ -352,7 +357,7 @@ namespace GenDoc.ViewModels.Personnel
 
             var card = new PersonCardViewModel(
                 _personnelService, _completenessService, _archiveService, _generationService, _intakeService,
-                _dialogService, model, unitDisplay);
+                _dialogService, _manualTagFormBuilder, model, unitDisplay);
             card.Saved += OnCardSaved;
             card.CloseRequested += () => Card = null;
             Card = card;

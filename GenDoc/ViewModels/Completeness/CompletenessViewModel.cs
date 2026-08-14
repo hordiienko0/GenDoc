@@ -29,6 +29,11 @@ namespace GenDoc.ViewModels.Completeness
         private readonly ICompletenessService _completenessService;
         private readonly IDocumentArchiveService _archiveService;
         private readonly IDialogService _dialogService;
+        private readonly Services.Generation.IManualTagFormBuilder _manualTagFormBuilder;
+
+        /// <summary>Ключ, під яким запам'ятовуються минулі значення саме для
+        /// цього місця — щоб вони не змішувалися з іншими екранами.</summary>
+        private const string ManualTagContextKey = "completeness-regenerate";
         private readonly IServiceProvider _serviceProvider;
         private readonly DispatcherTimer _searchDebounceTimer;
 
@@ -42,8 +47,10 @@ namespace GenDoc.ViewModels.Completeness
             ICompletenessService completenessService,
             IDocumentArchiveService archiveService,
             IDialogService dialogService,
-            IServiceProvider serviceProvider)
+            IServiceProvider serviceProvider,
+            Services.Generation.IManualTagFormBuilder manualTagFormBuilder)
         {
+            _manualTagFormBuilder = manualTagFormBuilder;
             _completenessService = completenessService;
             _archiveService = archiveService;
             _dialogService = dialogService;
@@ -457,8 +464,12 @@ namespace GenDoc.ViewModels.Completeness
             var tags = await _archiveService.GetManualTagsAsync(templateIds);
             if (tags.Count == 0) return new Dictionary<string, string>();
 
-            var dialog = new ManualValuesDialogViewModel(tags);
+            // Та сама форма, що в генерації: дати пікером, тексти з минулого разу.
+            var form = await _manualTagFormBuilder.BuildAsync(tags, ManualTagContextKey);
+            var dialog = new ManualValuesDialogViewModel(form);
             if (_dialogService.ShowDialog(dialog, Application.Current.MainWindow) != true) return null;
+
+            await _manualTagFormBuilder.SaveAsync(ManualTagContextKey, form);
             return dialog.GetValues();
         }
 
