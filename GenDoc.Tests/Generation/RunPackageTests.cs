@@ -115,7 +115,8 @@ public class RunPackageTests : IDisposable
         // (DocumentFolderLayout). Намір тесту той самий: технічний префікс
         // «Шаблон_» і підкреслення до назви не доходять.
         var file = Directory.GetFiles(_folder, "*.docx", SearchOption.AllDirectories).Single();
-        var templateFolder = Path.GetFileName(Path.GetDirectoryName(file));
+        // Через рівень вище: безпосередня тека файлу — це позначка прогону.
+        var templateFolder = Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(file)));
 
         Assert.Equal("Рапорт котлове ІНДИВІДУАЛЬНИЙ", templateFolder);
         Assert.StartsWith("ШЕВЧЕНКО Тарас", Path.GetFileName(file));
@@ -138,11 +139,13 @@ public class RunPackageTests : IDisposable
         var relative = Path.GetRelativePath(_folder, file);
         var parts = relative.Split(Path.DirectorySeparatorChar);
 
-        // Три рівні: набір (для людини поза набором — «Постійний склад»),
-        // тип документа, файл на особу.
-        Assert.Equal(3, parts.Length);
+        // Чотири рівні: набір (для людини поза набором — «Постійний склад»),
+        // тип документа, позначка прогону, файл на особу. Рівень прогону тут
+        // ключовий — без нього повторна генерація затирала б попередню.
+        Assert.Equal(4, parts.Length);
         Assert.Equal("Рапорт котлове ІНДИВІДУАЛЬНИЙ", parts[1]);
-        Assert.EndsWith(".docx", parts[2]);
+        Assert.StartsWith(DateTime.Now.ToString("yyyy-MM-dd"), parts[2]);
+        Assert.EndsWith(".docx", parts[3]);
     }
 
     [Fact]

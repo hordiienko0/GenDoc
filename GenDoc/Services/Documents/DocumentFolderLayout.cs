@@ -40,8 +40,26 @@ namespace GenDoc.Services.Documents
         private const string FallbackFolder = "Без назви";
 
         /// <summary>Документ на одну особу: набір / тип документа / особа.</summary>
+        /// <summary>
+        /// Позначка прогону — рівень папки, що відділяє один запуск генерації від
+        /// іншого. Рахується ОДИН раз на запуск і передається всім документам:
+        /// інакше перші файли впали б у «2026-08-14», а ті, що згенерувалися вже
+        /// після півночі чи після перевірки — в іншу папку, і один прогін
+        /// розповзся б по двох теках.
+        ///
+        /// Час додається лише за потреби: звичайний випадок — один прогін на день
+        /// — лишається чистим «2026-08-14», а другий за той самий день дістає
+        /// «2026-08-14 14-30» замість того, щоб затерти перший.
+        /// </summary>
+        public static string RunStamp(DateTime now, bool dateFolderAlreadyUsed)
+            => dateFolderAlreadyUsed
+                // Двокрапка в шляху неприпустима, тож година від хвилин через дефіс.
+                ? now.ToString("yyyy-MM-dd HH-mm", CultureInfo.InvariantCulture)
+                : now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
         public static DocumentPlacement ForPerson(
-            string? intakeName, string? templateName, string? personName, string? serviceNumber = null)
+            string? intakeName, string? templateName, string? runStamp,
+            string? personName, string? serviceNumber = null)
         {
             var person = SanitizeFileStem(personName);
 
@@ -52,22 +70,11 @@ namespace GenDoc.Services.Documents
             if (!string.IsNullOrWhiteSpace(serviceNumber))
                 person = $"{person} ({Sanitize(serviceNumber)})";
 
+            // Рівень дати відділяє прогони: без нього повторна генерація затирала б
+            // попередню, і на диску не лишалося б історії.
             return new DocumentPlacement(
-                new[] { IntakeFolder(intakeName), Sanitize(templateName) },
+                new[] { IntakeFolder(intakeName), Sanitize(templateName), Sanitize(runStamp) },
                 person);
-        }
-
-        /// <summary>Груповий документ: набір / тип документа / дата. Рівень
-        /// «особа» тут безглуздий — документ на весь список, а не на людину,
-        /// тож його місце займає дата генерації.</summary>
-        public static DocumentPlacement ForGroup(
-            string? intakeName, string? templateName, DateTime generatedAt)
-        {
-            return new DocumentPlacement(
-                new[] { IntakeFolder(intakeName), Sanitize(templateName) },
-                // ISO-подібна дата, а не «13.08.2026»: у переліку папок вона
-                // сортується хронологічно сама собою.
-                generatedAt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
         }
 
         /// <summary>
@@ -80,7 +87,7 @@ namespace GenDoc.Services.Documents
         /// відомість в один із наборів означало б збрехати про її склад.
         /// </summary>
         public static DocumentPlacement ForGroup(
-            IEnumerable<string?> memberIntakeNames, string? templateName, DateTime generatedAt)
+            IEnumerable<string?> memberIntakeNames, string? templateName, string? runStamp)
         {
             var distinct = memberIntakeNames
                 .Select(n => string.IsNullOrWhiteSpace(n) ? null : n.Trim())
@@ -90,9 +97,11 @@ namespace GenDoc.Services.Documents
 
             var uniform = distinct.Count == 1 ? distinct[0] : null;
 
+            // У груповому документі позначка прогону і є іменем файлу: документ
+            // один на весь список, окрема папка під нього була б порожньою.
             return new DocumentPlacement(
                 new[] { uniform is null ? SharedFolder : Sanitize(uniform), Sanitize(templateName) },
-                generatedAt.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+                Sanitize(runStamp));
         }
 
         private static string IntakeFolder(string? intakeName)

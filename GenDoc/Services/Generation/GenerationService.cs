@@ -319,10 +319,11 @@ namespace GenDoc.Services.Generation
 
             Directory.CreateDirectory(outputFolder);
             var usedFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var runStamp = ResolveRunStamp(outputFolder);
 
-            var docx = RunDocxPhase(db, templates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, regenerateExisting, progress);
-            var xlsx = RunXlsxPhase(db, exportLinks, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, regenerateExisting, progress);
-            var docxGroup = RunDocxGroupPhase(db, groupDocxTemplates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, regenerateExisting, progress);
+            var docx = RunDocxPhase(db, templates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress);
+            var xlsx = RunXlsxPhase(db, exportLinks, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress);
+            var docxGroup = RunDocxGroupPhase(db, groupDocxTemplates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress);
 
             // Раніше писали лише лічильники docx-фази — помилки XLSX і групового
             // DOCX ставали невидимими на екрані «Запуски». Тепер підсумовуємо всі три.
@@ -391,6 +392,7 @@ namespace GenDoc.Services.Generation
             Dictionary<string, string> manualValues,
             string outputFolder,
             HashSet<string> usedFileNames,
+            string runStamp,
             bool regenerateExisting,
             IProgress<string> progress)
         {
@@ -451,7 +453,7 @@ namespace GenDoc.Services.Generation
                             ? display
                             : null;
 
-                        var fileName = BuildFileName(recipient, template.Name, intakeName, usedFileNames);
+                        var fileName = BuildFileName(recipient, template.Name, intakeName, runStamp, usedFileNames);
                         var outputPath = Path.Combine(outputFolder, fileName);
                         EnsureFolder(outputPath);
 
@@ -530,6 +532,7 @@ namespace GenDoc.Services.Generation
             Dictionary<string, string> manualValues,
             string outputFolder,
             HashSet<string> usedFileNames,
+            string runStamp,
             bool regenerateExisting,
             IProgress<string> progress)
         {
@@ -597,7 +600,7 @@ namespace GenDoc.Services.Generation
                     }
 
                     var fileName = BuildGroupFileName(
-                        template.Name, IntakeNamesOf(roster, intakeNames), usedFileNames);
+                        template.Name, IntakeNamesOf(roster, intakeNames), runStamp, usedFileNames);
                     var outputPath = Path.Combine(outputFolder, fileName);
                     EnsureFolder(outputPath);
                     File.WriteAllBytes(outputPath, result.Content!);
@@ -674,6 +677,7 @@ namespace GenDoc.Services.Generation
             Dictionary<string, string> manualValues,
             string outputFolder,
             HashSet<string> usedFileNames,
+            string runStamp,
             bool regenerateExisting,
             IProgress<string> progress)
         {
@@ -727,7 +731,7 @@ namespace GenDoc.Services.Generation
                     }
 
                     var fileName = BuildGroupFileName(
-                        template.Name, IntakeNamesOf(roster, intakeNames), usedFileNames, ".docx");
+                        template.Name, IntakeNamesOf(roster, intakeNames), runStamp, usedFileNames, ".docx");
                     var outputPath = Path.Combine(outputFolder, fileName);
                     EnsureFolder(outputPath);
 
@@ -920,6 +924,20 @@ namespace GenDoc.Services.Generation
             => !string.IsNullOrWhiteSpace(fileName)
                && File.Exists(Path.Combine(outputFolder, fileName));
 
+        /// <summary>Позначка прогону для цього запуску. Час у ній з'являється
+        /// лише тоді, коли папка з сьогоднішньою датою вже десь є — тобто це
+        /// другий прогін за день і без часу він затер би перший.</summary>
+        private static string ResolveRunStamp(string outputFolder)
+        {
+            var now = DateTime.Now;
+            var dateFolder = now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+            var alreadyUsed = Directory.Exists(outputFolder)
+                && Directory.EnumerateDirectories(outputFolder, dateFolder, SearchOption.AllDirectories).Any();
+
+            return DocumentFolderLayout.RunStamp(now, alreadyUsed);
+        }
+
         /// <summary>Назви наборів для верхнього рівня папок. Одним запитом перед
         /// циклом: у циклі є лише IntakeId, і запит на кожен документ був би
         /// сотнями звернень до БД заради кількох різних рядків.</summary>
@@ -950,10 +968,11 @@ namespace GenDoc.Services.Generation
         // рахує DocumentFolderLayout — одне місце і для диска, і для дерева в
         // архіві. Без дати — документ прив'язаний до людини, а не до дня.
         private static string BuildFileName(
-            Recipient recipient, string templateName, string? intakeName, HashSet<string> usedFileNames)
+            Recipient recipient, string templateName, string? intakeName, string runStamp,
+            HashSet<string> usedFileNames)
         {
             var placement = DocumentFolderLayout.ForPerson(
-                intakeName, TemplateNaming.Clean(templateName),
+                intakeName, TemplateNaming.Clean(templateName), runStamp,
                 $"{recipient.LastName} {recipient.FirstName}", recipient.ServiceNumber);
 
             return MakeUnique(placement, usedFileNames, ".docx");
@@ -963,11 +982,11 @@ namespace GenDoc.Services.Generation
         // Набір виводиться зі складу відомості — сам груповий документ наборові
         // не належить (IntakeId == null у запитах нижче).
         private static string BuildGroupFileName(
-            string templateName, IEnumerable<string?> memberIntakeNames,
+            string templateName, IEnumerable<string?> memberIntakeNames, string runStamp,
             HashSet<string> usedFileNames, string extension = ".xlsx")
         {
             var placement = DocumentFolderLayout.ForGroup(
-                memberIntakeNames, TemplateNaming.Clean(templateName), DateTime.Now);
+                memberIntakeNames, TemplateNaming.Clean(templateName), runStamp);
 
             return MakeUnique(placement, usedFileNames, extension);
         }
