@@ -148,6 +148,8 @@
                 <Grid>
                     <DataGrid x:Name="DocsGrid" ItemsSource="{Binding Rows}"
                               AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+                              HorizontalScrollBarVisibility="Auto"
+                              CanUserResizeColumns="True"
                               CanUserSortColumns="False"
                               EnableRowVirtualization="True"
                               MouseLeftButtonUp="DocsGrid_MouseLeftButtonUp"
@@ -181,7 +183,7 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
 
-                            <DataGridTextColumn Header="ПІБ" Binding="{Binding ShortName}" Width="1.3*">
+                            <DataGridTextColumn Header="ПІБ" Binding="{Binding ShortName}" Width="1.3*" MinWidth="150">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="FontWeight" Value="Bold"/>
@@ -190,7 +192,7 @@
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
-                            <DataGridTextColumn Header="ШАБЛОН" Binding="{Binding TemplateDisplay}" Width="1.8*">
+                            <DataGridTextColumn Header="ШАБЛОН" Binding="{Binding TemplateDisplay}" Width="1.8*" MinWidth="200">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
@@ -199,7 +201,7 @@
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
-                            <DataGridTemplateColumn Header="ВЕР." Width="52" CanUserResize="False">
+                            <DataGridTemplateColumn Header="ВЕР." Width="72">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Border HorizontalAlignment="Left" VerticalAlignment="Center" Padding="5,1">
@@ -231,7 +233,7 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
 
-                            <DataGridTextColumn Header="НАБІР" Binding="{Binding IntakeText}" Width="70">
+                            <DataGridTextColumn Header="НАБІР" Binding="{Binding IntakeText}" Width="84">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
@@ -239,7 +241,7 @@
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
-                            <DataGridTextColumn Header="ПІДРОЗДІЛ" Binding="{Binding UnitLast}" Width="1.3*">
+                            <DataGridTextColumn Header="ПІДРОЗДІЛ" Binding="{Binding UnitLast}" Width="1.3*" MinWidth="150">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
@@ -248,8 +250,8 @@
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
-                            <DataGridTextColumn Header="ДАТА" Binding="{Binding DateText}" Width="86"/>
-                            <DataGridTextColumn Header="АВТОР" Binding="{Binding Author}" Width="1*">
+                            <DataGridTextColumn Header="ДАТА" Binding="{Binding DateText}" Width="120"/>
+                            <DataGridTextColumn Header="АВТОР" Binding="{Binding Author}" Width="1*" MinWidth="130">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
@@ -457,6 +459,8 @@
                 <Grid>
                     <DataGrid x:Name="GroupGrid" ItemsSource="{Binding GroupRows}"
                               AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
+                              HorizontalScrollBarVisibility="Auto"
+                              CanUserResizeColumns="True"
                               CanUserSortColumns="False" EnableRowVirtualization="True"
                               MouseLeftButtonUp="GroupGrid_MouseLeftButtonUp"
                               Visibility="{Binding GroupHasRows, Converter={StaticResource BoolToVisibility}}">
@@ -471,7 +475,7 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
 
-                            <DataGridTextColumn Header="ШАБЛОН (ВІДОМІСТЬ)" Binding="{Binding TemplateDisplay}" Width="1.8*">
+                            <DataGridTextColumn Header="ШАБЛОН (ВІДОМІСТЬ)" Binding="{Binding TemplateDisplay}" Width="1.8*" MinWidth="200">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="FontWeight" Value="Bold"/>
@@ -492,7 +496,7 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
 
-                            <DataGridTextColumn Header="ВЕР." Binding="{Binding VersionText}" Width="60">
+                            <DataGridTextColumn Header="ВЕР." Binding="{Binding VersionText}" Width="72">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
@@ -500,15 +504,15 @@
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
-                            <DataGridTextColumn Header="ДАТА" Binding="{Binding DateText}" Width="86"/>
-                            <DataGridTextColumn Header="АВТОР" Binding="{Binding Author}" Width="1*">
+                            <DataGridTextColumn Header="ДАТА" Binding="{Binding DateText}" Width="120"/>
+                            <DataGridTextColumn Header="АВТОР" Binding="{Binding Author}" Width="1*" MinWidth="130">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="РОЗМІР" Binding="{Binding SizeText}" Width="80">
+                            <DataGridTextColumn Header="РОЗМІР" Binding="{Binding SizeText}" Width="96">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
