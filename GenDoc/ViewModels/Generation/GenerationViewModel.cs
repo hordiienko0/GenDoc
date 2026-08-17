@@ -287,6 +287,40 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     {
         Packages = new ObservableCollection<GenerationPackageListItemViewModel>(
             _generationService.GetPackages().Select(p => new GenerationPackageListItemViewModel(p.Id, p.Name, p.Description, p.TemplateCount)));
+
+        RefreshLastRun();
+    }
+
+    // Останній запуск на порожньому боці екрана. Кнопки «повторити» свідомо
+    // немає: тека виводу в прогоні не зберігається, а повторна генерація
+    // переписує документи — такого в один клік бути не повинно.
+    [ObservableProperty] private string lastRunPackageName = string.Empty;
+    [ObservableProperty] private string lastRunSummary = string.Empty;
+    [ObservableProperty] private bool hasLastRun;
+
+    private int? _lastRunPackageId;
+
+    private void RefreshLastRun()
+    {
+        var last = _generationService.GetLastRun();
+
+        _lastRunPackageId = last?.PackageId;
+        HasLastRun = last is not null;
+        LastRunPackageName = last?.PackageName ?? string.Empty;
+        LastRunSummary = last is null
+            ? string.Empty
+            : $"{last.RunAt:dd.MM.yyyy HH:mm} · згенеровано {last.GeneratedCount}"
+              + (last.ErrorCount > 0 ? $", помилок {last.ErrorCount}" : string.Empty);
+    }
+
+    [RelayCommand]
+    private Task OpenLastPackageAsync()
+    {
+        var item = _lastRunPackageId is int id
+            ? Packages.FirstOrDefault(p => p.Id == id)
+            : null;
+
+        return item is null ? Task.CompletedTask : SelectPackageAsync(item);
     }
 
     [RelayCommand]

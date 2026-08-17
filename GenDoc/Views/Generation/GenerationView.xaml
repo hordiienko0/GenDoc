@@ -130,9 +130,37 @@
 
                 <!-- Права панель: обраний пакет -->
                 <Grid Grid.Column="2">
-                    <TextBlock Text="Оберіть пакет ліворуч або створіть новий" Foreground="{StaticResource PlaceholderBrush}"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" Padding="48"
-                               Visibility="{Binding NoSelectedPackage, Converter={StaticResource BoolToVisibility}}"/>
+                    <!-- Порожній бік екрана більше не мовчить: показує, що
+                         запускали минулого разу. Найчастіша дія — знову взятися
+                         за той самий пакет — переставала вимагати згадувати,
+                         який то був, і шукати його серед карток.
+                         Кнопки «повторити» тут навмисно немає: тека виводу в
+                         прогоні не зберігається, а повторна генерація переписує
+                         документи — такого в один клік бути не повинно. -->
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="48"
+                                Visibility="{Binding NoSelectedPackage, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="Оберіть пакет ліворуч або створіть новий"
+                                   Foreground="{StaticResource PlaceholderBrush}"
+                                   HorizontalAlignment="Center"/>
+
+                        <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                                BorderThickness="1" Padding="18" Margin="0,22,0,0" MaxWidth="420"
+                                Visibility="{Binding HasLastRun, Converter={StaticResource BoolToVisibility}}">
+                            <StackPanel>
+                                <TextBlock Text="ОСТАННІЙ ЗАПУСК" FontSize="10.5" FontWeight="Bold"
+                                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                                <TextBlock Text="{Binding LastRunPackageName}" FontSize="14" FontWeight="SemiBold"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           TextTrimming="CharacterEllipsis" Margin="0,8,0,0"/>
+                                <TextBlock Text="{Binding LastRunSummary}" FontSize="12"
+                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                           TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                <Button Content="Відкрити цей пакет" Style="{StaticResource SecondaryButtonStyle}"
+                                        HorizontalAlignment="Left" Margin="0,14,0,0"
+                                        Command="{Binding OpenLastPackageCommand}"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
 
                     <StackPanel Visibility="{Binding HasSelectedPackage, Converter={StaticResource BoolToVisibility}}">
 

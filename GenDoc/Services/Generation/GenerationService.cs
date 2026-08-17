@@ -285,6 +285,27 @@ namespace GenDoc.Services.Generation
                 && m.FieldKey == nameof(ExportFieldKey.CourseOfficerSignature));
         }
 
+        /// <summary>
+        /// Останній запуск разом із назвою пакета. З'єднання ВНУТРІШНЄ навмисно:
+        /// пакет могли видалити після запуску, і запис прогону лишається сиротою —
+        /// показувати його не можна, бо кнопка «відкрити пакет» вела б у нікуди.
+        /// </summary>
+        public LastRunInfo? GetLastRun()
+        {
+            using var db = _dbFactory.CreateDbContext();
+
+            return db.GenerationPackageRuns
+                .OrderByDescending(r => r.RunAt)
+                .ThenByDescending(r => r.Id)
+                .Join(db.GenerationPackages,
+                    run => run.GenerationPackageId,
+                    package => package.Id,
+                    (run, package) => new LastRunInfo(
+                        package.Id, package.Name, run.RunAt,
+                        run.GeneratedCount, run.SkippedCount, run.ErrorCount))
+                .FirstOrDefault();
+        }
+
         public int GetRecipientCount()
         {
             using var db = _dbFactory.CreateDbContext();

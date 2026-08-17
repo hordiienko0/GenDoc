@@ -8,6 +8,13 @@ namespace GenDoc.Services.Generation
         int GroupGenerated, int GroupSkipped, int GroupErrors,
         int DocxGroupGenerated, int DocxGroupSkipped, int DocxGroupErrors);
 
+    /// <summary>Що показати на порожньому боці екрана генерації. Теки виводу
+    /// тут навмисно немає: у прогоні вона не зберігається, та й повторний
+    /// запуск переписує документи — такого в один клік бути не повинно.</summary>
+    public record LastRunInfo(
+        int PackageId, string PackageName, DateTime RunAt,
+        int GeneratedCount, int SkippedCount, int ErrorCount);
+
     // AllRecipients=true — весь особовий склад (RecipientIds ігнорується);
     // AllRecipients=false — лише RecipientIds. FitnessFilter, PermanentStaffOnly,
     // RankCategories і Ranks застосовуються завжди, поверх будь-якого з двох варіантів,
@@ -49,6 +56,11 @@ namespace GenDoc.Services.Generation
 
         List<string> GetManualTags(int packageId);
         bool PackageNeedsCourseOfficer(int packageId);
+
+        /// <summary>Останній запуск — щоб порожній бік екрана показував, що
+        /// саме запускали минулого разу, а не самий лише напис «оберіть пакет».
+        /// null, якщо запусків не було або пакет уже видалили.</summary>
+        LastRunInfo? GetLastRun();
         int GetRecipientCount();
         int GetRecipientCount(FitnessFilter filter);
 
