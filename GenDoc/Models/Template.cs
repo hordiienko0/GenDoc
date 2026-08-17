@@ -19,6 +19,10 @@ namespace GenDoc.Models
         // автоматично при завантаженні, користувач може перевизначити вручну.
         public TemplateKind Kind { get; set; } = TemplateKind.PerRecipient;
 
+        /// <summary>Для кого шаблон: набори чи постійний склад. Замовчування
+        /// Intake — шаблони, заведені до появи поділу, лишаються там, де були.</summary>
+        public TemplateAudience Audience { get; set; } = TemplateAudience.Intake;
+
         // Джерело шаблону, зібраного конструктором: JSON блоків (TemplateBuilderDocument).
         // Заповнене — шаблон відкривається в конструкторі; NULL — шаблон завантажений
         // файлом, конструктор його не чіпає (розібрати довільний .docx назад у блоки

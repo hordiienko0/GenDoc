@@ -6,7 +6,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 22;
+    private const int CurrentSchemaVersion = 23;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -162,6 +162,13 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     internal static readonly (string Name, string Type)[] ExportTemplateColumnsV22 =
     {
         ("BuilderJson", "TEXT")
+    };
+
+    // Для кого шаблон: 0 — набори, 1 — постійний склад. NOT NULL із DEFAULT 0,
+    // бо SQLite інакше не дасть ADD COLUMN, а нуль і є старою поведінкою.
+    internal static readonly (string Name, string Type)[] TemplateColumnsV23 =
+    {
+        ("Audience", "INTEGER NOT NULL DEFAULT 0")
     };
 
     private static readonly (string Name, string Type)[] AppSettingsColumnsV15 =
@@ -476,6 +483,19 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                 });
                 currentVersion = 22;
             }
+
+            if (currentVersion < 23)
+            {
+                AddMissingColumns(db, "Templates", TemplateColumnsV23);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 23,
+                    AppliedAt = DateTime.Now,
+                    Description = "Поділ шаблонів на набори й постійний склад: Template.Audience"
+                });
+                currentVersion = 23;
+            }
         }
 
         // Ідемпотентно, як EnsureExportTemplateTables: таблиці, додані в модель після
@@ -524,6 +544,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 
         AddMissingColumns(db, "Templates", TemplateColumnsV21);
         AddMissingColumns(db, "ExportTemplates", ExportTemplateColumnsV22);
+        AddMissingColumns(db, "Templates", TemplateColumnsV23);
 
         // Ідемпотентно (IF NOT EXISTS) — самовідновлюється незалежно від SchemaVersion,
         // так само як EnsureExportTemplateTables. Обгорнуто в try/catch: якщо в

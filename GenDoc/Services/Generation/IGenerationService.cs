@@ -27,8 +27,13 @@ namespace GenDoc.Services.Generation
     public interface IGenerationService
     {
         List<(int Id, string Name, string? Description, int TemplateCount)> GetPackages();
-        List<(int Id, string Name)> GetAllTemplates();
-        List<(int Id, string Name)> GetPerRecipientTemplates();
+        /// <summary>Аудиторія розділяє видимість шаблонів; замовчування Intake —
+        /// звичайна генерація й пакети постійного складу не бачать.</summary>
+        List<(int Id, string Name)> GetAllTemplates(
+            Models.Enums.TemplateAudience audience = Models.Enums.TemplateAudience.Intake);
+
+        List<(int Id, string Name)> GetPerRecipientTemplates(
+            Models.Enums.TemplateAudience audience = Models.Enums.TemplateAudience.Intake);
         List<(int Id, string Name)> GetAllExportTemplates();
 
         void CreatePackage(

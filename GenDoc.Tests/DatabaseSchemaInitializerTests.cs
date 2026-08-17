@@ -171,6 +171,49 @@ public class DatabaseSchemaInitializerTests
 
     // v21: конструктору потрібне джерело блоків поруч із байтами .docx. Колонка
     // додається до наявної таблиці з даними, тож мусить бути nullable — інакше
+    // Поділ шаблонів на набори й постійний склад. Найважливіше тут — що наявні
+    // шаблони дістають Audience = 0 (набори), тобто лишаються там, де були:
+    // мовчазне переселення половини шаблонів у постійний склад помітили б не
+    // одразу. NOT NULL без DEFAULT SQLite узагалі не дав би додати.
+    [Fact]
+    public void TemplateColumnsV23_AddsAudienceAndKeepsExistingTemplatesInIntake()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = """
+                CREATE TABLE "Templates" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_Templates" PRIMARY KEY AUTOINCREMENT,
+                    "Name" TEXT NOT NULL,
+                    "OriginalFileName" TEXT NOT NULL,
+                    "Content" BLOB NOT NULL,
+                    "UploadedAt" TEXT NOT NULL
+                );
+                INSERT INTO "Templates" ("Id", "Name", "OriginalFileName", "Content", "UploadedAt")
+                VALUES (1, 'Рапорт', 'raport.docx', x'0102', '2026-01-01');
+                """;
+            cmd.ExecuteNonQuery();
+        }
+
+        DatabaseSchemaInitializer.AddMissingColumns(
+            (DbConnection)connection, "Templates", DatabaseSchemaInitializer.TemplateColumnsV23);
+        DatabaseSchemaInitializer.AddMissingColumns(
+            (DbConnection)connection, "Templates", DatabaseSchemaInitializer.TemplateColumnsV23); // повторно
+
+        var columns = DatabaseSchemaInitializer.GetExistingColumns((DbConnection)connection, "Templates");
+        Assert.Contains("Audience", columns);
+
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = """SELECT "Audience" FROM "Templates" WHERE "Id" = 1;""";
+            using var reader = cmd.ExecuteReader();
+            Assert.True(reader.Read());
+            Assert.Equal(0, reader.GetInt32(0));
+        }
+    }
+
     // SQLite не дасть ADD COLUMN без DEFAULT.
     [Fact]
     public void TemplateColumnsV21_AddsBuilderJsonToExistingTemplates()

@@ -90,7 +90,13 @@ namespace GenDoc.ViewModels.Staff
             PeopleText = string.Join(", ", people.Select(p => p.FullName));
 
             Templates.Clear();
-            var source = kind is null ? _generationService.GetPerRecipientTemplates() : _generationService.GetAllTemplates();
+            // Лише шаблони постійного складу: раніше тут показувався весь перелік
+            // підряд, і серед нього були шаблони наборів, які сюди не стосуються.
+            const Models.Enums.TemplateAudience audience = Models.Enums.TemplateAudience.PermanentStaff;
+
+            var source = kind is null
+                ? _generationService.GetPerRecipientTemplates(audience)
+                : _generationService.GetAllTemplates(audience);
             foreach (var (id, name) in source)
             {
                 var item = new TemplateCheckOptionViewModel(id, name);

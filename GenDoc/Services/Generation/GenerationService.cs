@@ -45,10 +45,15 @@ namespace GenDoc.Services.Generation
                 .ToList();
         }
 
-        public List<(int Id, string Name)> GetAllTemplates()
+        // Аудиторія розділяє видимість: шаблон постійного складу не має
+        // з'являтися у звичайній генерації й пакетах, і навпаки. Замовчування
+        // Intake — усі наявні виклики лишаються при старому наборі шаблонів.
+        public List<(int Id, string Name)> GetAllTemplates(
+            Models.Enums.TemplateAudience audience = Models.Enums.TemplateAudience.Intake)
         {
             using var db = _dbFactory.CreateDbContext();
             return db.Templates
+                .Where(t => t.Audience == audience)
                 .OrderBy(t => t.Name)
                 .Select(t => new { t.Id, t.Name })
                 .AsEnumerable()
@@ -56,11 +61,12 @@ namespace GenDoc.Services.Generation
                 .ToList();
         }
 
-        public List<(int Id, string Name)> GetPerRecipientTemplates()
+        public List<(int Id, string Name)> GetPerRecipientTemplates(
+            Models.Enums.TemplateAudience audience = Models.Enums.TemplateAudience.Intake)
         {
             using var db = _dbFactory.CreateDbContext();
             return db.Templates
-                .Where(t => t.Kind == Models.Enums.TemplateKind.PerRecipient)
+                .Where(t => t.Kind == Models.Enums.TemplateKind.PerRecipient && t.Audience == audience)
                 .OrderBy(t => t.Name)
                 .Select(t => new { t.Id, t.Name })
                 .AsEnumerable()
