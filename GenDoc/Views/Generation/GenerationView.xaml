@@ -336,6 +336,47 @@
                                                   ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}"
                                                   DisplayMemberPath="DisplayLabel"/>
                                     </Grid>
+
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.Style>
+                                            <Style TargetType="Grid">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding CourseOfficer}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Grid.Style>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="1*"/>
+                                            <ColumnDefinition Width="1.4*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="курсовий офіцер" FontFamily="Consolas"
+                                                   Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"
+                                                   TextWrapping="Wrap"/>
+                                        <StackPanel Grid.Column="1">
+                                            <ComboBox DataContext="{Binding CourseOfficer}"
+                                                      ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}"
+                                                      DisplayMemberPath="DisplayLabel"/>
+                                            <!-- Порожній перелік означає, що жодну людину постійного складу не
+                                                 позначено курсовим офіцером. Сказати це тут, а не після запуску:
+                                                 інакше оператор дізнається про зупинку аж із «Запусків». -->
+                                            <TextBlock Text="Немає жодного курсового офіцера — відомості з підписом не сформуються"
+                                                       Foreground="{StaticResource WarnTextBrush}" TextWrapping="Wrap"
+                                                       Margin="0,4,0,0" FontSize="11">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding CourseOfficer.Options.Count}" Value="0">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Grid>
                                 </StackPanel>
                             </Border>
                         </StackPanel>

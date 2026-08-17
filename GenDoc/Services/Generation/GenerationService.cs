@@ -269,6 +269,22 @@ namespace GenDoc.Services.Generation
             return tags;
         }
 
+        /// <summary>Чи просить бодай одна відомість пакета підпис курсового
+        /// офіцера. Дропліст на екрані генерації показується лише за цим —
+        /// пакету, якому підпис не потрібен, зайве поле ні до чого.</summary>
+        public bool PackageNeedsCourseOfficer(int packageId)
+        {
+            using var db = _dbFactory.CreateDbContext();
+
+            var exportTemplateIds = db.GenerationPackageExportTemplates
+                .Where(pt => pt.GenerationPackageId == packageId)
+                .Select(pt => pt.ExportTemplateId);
+
+            return db.ExportTemplateColumnMappings.Any(m =>
+                exportTemplateIds.Contains(m.ExportTemplateId)
+                && m.FieldKey == nameof(ExportFieldKey.CourseOfficerSignature));
+        }
+
         public int GetRecipientCount()
         {
             using var db = _dbFactory.CreateDbContext();
@@ -290,7 +306,8 @@ namespace GenDoc.Services.Generation
             Dictionary<string, string> manualValues,
             bool regenerateExisting,
             RosterSelection rosterSelection,
-            IProgress<string> progress)
+            IProgress<string> progress,
+            int? courseOfficerId = null)
         {
             using var db = _dbFactory.CreateDbContext();
 
@@ -328,7 +345,7 @@ namespace GenDoc.Services.Generation
             var runStamp = ResolveRunStamp(outputFolder);
 
             var docx = RunDocxPhase(db, templates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress);
-            var xlsx = RunXlsxPhase(db, exportLinks, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress);
+            var xlsx = RunXlsxPhase(db, exportLinks, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress, courseOfficerId);
             var docxGroup = RunDocxGroupPhase(db, groupDocxTemplates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress);
 
             // Раніше писали лише лічильники docx-фази — помилки XLSX і групового
@@ -540,7 +557,8 @@ namespace GenDoc.Services.Generation
             HashSet<string> usedFileNames,
             string runStamp,
             bool regenerateExisting,
-            IProgress<string> progress)
+            IProgress<string> progress,
+            int? courseOfficerId)
         {
             var generated = 0;
             var skipped = 0;
@@ -590,7 +608,25 @@ namespace GenDoc.Services.Generation
                         continue;
                     }
 
-                    var courseOfficerSignature = Services.CourseOfficerSignature.Build(db);
+                    // Обраний оператором підписант має перевагу; авто-вибір лишився
+                    // лише для викликів без інтерфейсу (там питати нема кого).
+                    var courseOfficerSignature = courseOfficerId is int chosenId
+                        ? Services.CourseOfficerSignature.BuildFor(db, chosenId)
+                        : Services.CourseOfficerSignature.Build(db);
+
+                    // Відомість, що просить підпис курсового офіцера, без нього не
+                    // має сенсу: раніше тег тихо падав у unfilledTags, документ
+                    // виходив із порожнім місцем підпису — і цього ніхто не бачив,
+                    // доки папір не йшов далі. Краще зупинити цю одну відомість і
+                    // сказати вголос; решта пакета генерується як звичайно.
+                    if (mappings.Any(m => m.FieldKey == nameof(ExportFieldKey.CourseOfficerSignature))
+                        && string.IsNullOrEmpty(courseOfficerSignature))
+                    {
+                        errors++;
+                        issues.Add(new RunIssue(RunIssue.PhaseXlsx, string.Empty, template.Name,
+                            "немає курсового офіцера серед постійного складу — відомість не сформовано"));
+                        continue;
+                    }
 
                     var result = _xlsxGenerationService.Generate(
                         template.Content, template.TemplateRowIndex, template.UsesPlaceholders,

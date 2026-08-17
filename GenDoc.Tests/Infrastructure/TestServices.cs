@@ -25,6 +25,12 @@ public static class TestServices
         new FakeCurrentUser(),
         new DocumentHashService());
 
+    public static GenDoc.Services.Staff.StaffService Staff(TestDb db) => new(
+        db.Factory,
+        Completeness(db),
+        new FakeAuditLog(),
+        new FakeCurrentUser());
+
     public static CompletenessService Completeness(TestDb db) => new(
         db.Factory,
         new FakeAuditLog(),

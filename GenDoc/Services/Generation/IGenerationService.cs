@@ -48,6 +48,7 @@ namespace GenDoc.Services.Generation
         void SaveExportTemplates(int packageId, List<(int? LinkId, int ExportTemplateId, int SortOrder, FitnessFilter FitnessFilter)> rows);
 
         List<string> GetManualTags(int packageId);
+        bool PackageNeedsCourseOfficer(int packageId);
         int GetRecipientCount();
         int GetRecipientCount(FitnessFilter filter);
 
@@ -57,6 +58,7 @@ namespace GenDoc.Services.Generation
             Dictionary<string, string> manualValues,
             bool regenerateExisting,
             RosterSelection rosterSelection,
-            IProgress<string> progress);
+            IProgress<string> progress,
+            int? courseOfficerId = null);
     }
 }

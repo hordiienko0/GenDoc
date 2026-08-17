@@ -62,16 +62,26 @@ namespace GenDoc.ViewModels.Generation
         public const string SignerRankTag = "звання_підписанта";
         public const string SignerNameTag = "піб_підписанта";
 
-        public ManualTagFormViewModel(ObservableCollection<ManualTagRowViewModel> rows, SignerPickerViewModel? signer)
+        public ManualTagFormViewModel(
+            ObservableCollection<ManualTagRowViewModel> rows,
+            SignerPickerViewModel? signer,
+            SignerPickerViewModel? courseOfficer = null)
         {
             Rows = rows;
             Signer = signer;
+            CourseOfficer = courseOfficer;
         }
 
         public ObservableCollection<ManualTagRowViewModel> Rows { get; }
         public SignerPickerViewModel? Signer { get; }
 
-        public bool HasContent => Rows.Count > 0 || Signer is not null;
+        /// <summary>Окремий пікер для {{курсовий_офіцер}}. Це не той самий
+        /// підписант: список вужчий (лише ознака IsCourseOfficer), а значення
+        /// їде в генерацію не через Rows, а окремим ідентифікатором — тег
+        /// підставляє XlsxGenerationService, а не підстановка міток.</summary>
+        public SignerPickerViewModel? CourseOfficer { get; }
+
+        public bool HasContent => Rows.Count > 0 || Signer is not null || CourseOfficer is not null;
 
         public Dictionary<string, string> GetValues()
         {

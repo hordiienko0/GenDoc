@@ -309,8 +309,9 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         PackageTemplates = new ObservableCollection<PackageTemplateSummaryItemViewModel>(summary);
 
         var tags = _generationService.GetManualTags(item.Id);
-        ManualTagForm = tags.Count > 0
-            ? await _manualTagFormBuilder.BuildAsync(tags, $"pkg:{item.Id}")
+        var needsCourseOfficer = _generationService.PackageNeedsCourseOfficer(item.Id);
+        ManualTagForm = tags.Count > 0 || needsCourseOfficer
+            ? await _manualTagFormBuilder.BuildAsync(tags, $"pkg:{item.Id}", needsCourseOfficer)
             : null;
 
         RecipientCount = _generationService.GetRecipientCount();
@@ -423,6 +424,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         var regenerate = RegenerateExisting;
         var manualValues = ManualTagForm?.GetValues() ?? new Dictionary<string, string>();
         ApplyDocumentDate(manualValues, DocumentDate);
+        var courseOfficerId = ManualTagForm?.CourseOfficer?.Selected?.RecipientId;
         var progress = new Progress<string>(message => ProgressText = message);
 
         // Фільтр звань — орthogonal до вибору "весь склад / позначені": звужує
@@ -442,7 +444,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         ProgressText = "Підготовка…";
 
         var result = await Task.Run(() =>
-            _generationService.RunPackage(packageId, outputFolderPath, manualValues, regenerate, rosterSelection, progress));
+            _generationService.RunPackage(packageId, outputFolderPath, manualValues, regenerate, rosterSelection, progress, courseOfficerId));
 
         if (ManualTagForm is not null)
             await _manualTagFormBuilder.SaveAsync($"pkg:{packageId}", ManualTagForm);

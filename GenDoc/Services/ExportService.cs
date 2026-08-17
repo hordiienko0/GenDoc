@@ -2,6 +2,7 @@ using System.IO;
 using ClosedXML.Excel;
 using GenDoc.Data;
 using GenDoc.Models;
+using GenDoc.Models.Enums;
 using GenDoc.Services.Generation;
 using Microsoft.EntityFrameworkCore;
 
@@ -115,6 +116,17 @@ namespace GenDoc.Services
                     {
                         org = db.OrganizationSettings.FirstOrDefault();
                         courseOfficerSignature = CourseOfficerSignature.Build(db);
+                    }
+
+                    // Той самий сторож, що й у пакетній генерації: відомість із
+                    // порожнім місцем підпису гірша за явну відмову, бо порожнечу
+                    // помічають уже після того, як папір пішов далі.
+                    if (mappings.Any(m => m.FieldKey == nameof(ExportFieldKey.CourseOfficerSignature))
+                        && string.IsNullOrEmpty(courseOfficerSignature))
+                    {
+                        return new ExportResult(false, 0, null,
+                            "Немає жодного курсового офіцера серед постійного складу — " +
+                            "відомість не сформовано. Позначте курсового офіцера в розділі «Постійний склад».");
                     }
 
                     var result = _xlsxGenerationService.Generate(

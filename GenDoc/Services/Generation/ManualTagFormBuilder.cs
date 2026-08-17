@@ -23,7 +23,8 @@ namespace GenDoc.Services.Generation
             _intakeAccessor = intakeAccessor;
         }
 
-        public async Task<ManualTagFormViewModel> BuildAsync(IReadOnlyList<string> tags, string contextKey)
+        public async Task<ManualTagFormViewModel> BuildAsync(
+            IReadOnlyList<string> tags, string contextKey, bool needsCourseOfficer = false)
         {
             var hasSigner = ManualTagClassifier.HasSignerPair(tags);
             var arrival = _intakeAccessor.ActiveIntake?.DateStart ?? DateOnly.FromDateTime(DateTime.Today);
@@ -43,8 +44,32 @@ namespace GenDoc.Services.Generation
             }
 
             var signer = hasSigner ? await BuildSignerAsync(contextKey) : null;
-            return new ManualTagFormViewModel(rows, signer);
+            var courseOfficer = needsCourseOfficer ? await BuildCourseOfficerAsync(contextKey) : null;
+            return new ManualTagFormViewModel(rows, signer, courseOfficer);
         }
+
+        // Хтось має бути обраний завжди. Порожній дропліст поруч із запасним
+        // авто-вибором у генерації означав би, що підписанта знову визначає
+        // порядок рядків у базі; краще показати перше прізвище й дати змінити.
+        private async Task<SignerPickerViewModel> BuildCourseOfficerAsync(string contextKey)
+        {
+            var officers = await _staffService.GetCourseOfficersForPickerAsync();
+            var options = officers
+                .Select(s => new StaffPickerOption(
+                    s.Id, s.Rank, Services.NameFormatter.SignatureName(s.LastName, s.FirstName),
+                    $"{s.Rank} {Services.NameFormatter.SignatureName(s.LastName, s.FirstName)}"))
+                .ToList();
+
+            var lastId = await GetLastSignerIdAsync(CourseOfficerContextKey(contextKey));
+            var initial = lastId is int id ? options.FirstOrDefault(o => o.RecipientId == id) : null;
+
+            return new SignerPickerViewModel(options, initial ?? options.FirstOrDefault());
+        }
+
+        // Окремий ключ пам'яті: курсовий офіцер і підписант документа — різні
+        // ролі, і запам'ятовувати їх під одним ключем означало б, що вибір однієї
+        // ролі мовчки перебиває іншу.
+        private static string CourseOfficerContextKey(string contextKey) => $"{contextKey}#курсовий";
 
         private async Task<SignerPickerViewModel> BuildSignerAsync(string contextKey)
         {
@@ -94,12 +119,18 @@ namespace GenDoc.Services.Generation
                 settings.LastManualValuesJson = JsonSerializer.Serialize(mergedValues);
             }
 
-            if (form.Signer?.Selected is { } signer)
+            if (form.Signer?.Selected is not null || form.CourseOfficer?.Selected is not null)
             {
                 var mergedSigners = string.IsNullOrWhiteSpace(settings.LastSignerByTemplateJson)
                     ? new Dictionary<string, int>()
                     : JsonSerializer.Deserialize<Dictionary<string, int>>(settings.LastSignerByTemplateJson) ?? new Dictionary<string, int>();
-                mergedSigners[contextKey] = signer.RecipientId;
+
+                if (form.Signer?.Selected is { } chosenSigner)
+                    mergedSigners[contextKey] = chosenSigner.RecipientId;
+
+                if (form.CourseOfficer?.Selected is { } chosenOfficer)
+                    mergedSigners[CourseOfficerContextKey(contextKey)] = chosenOfficer.RecipientId;
+
                 settings.LastSignerByTemplateJson = JsonSerializer.Serialize(mergedSigners);
             }
 

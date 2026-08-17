@@ -21,13 +21,27 @@ namespace GenDoc.Services
         {
             var courseOfficer = FindCourseOfficer(db);
 
-            if (courseOfficer is null) return null;
+            return courseOfficer is null ? null : Compose(courseOfficer);
+        }
 
-            var unitName = courseOfficer.Unit?.Name;
+        /// <summary>Підпис КОНКРЕТНОЇ людини, обраної оператором у пікері.
+        /// Генерація більше не вибирає підписанта сама — вона лише складає рядок
+        /// із того, кого назвали.</summary>
+        public static string? BuildFor(AppDbContext db, int recipientId)
+        {
+            var courseOfficer = db.Recipients
+                .Include(r => r.Unit)
+                .FirstOrDefault(r => r.Id == recipientId && r.IsCourseOfficer && r.IntakeId == null);
+
+            return courseOfficer is null ? null : Compose(courseOfficer);
+        }
+
+        private static string Compose(Models.Recipient courseOfficer)
+        {
             var parts = new[]
             {
                 "Курсовий офіцер",
-                unitName,
+                courseOfficer.Unit?.Name,
                 courseOfficer.Rank,
                 NameFormatter.ShortName(courseOfficer.LastName, courseOfficer.FirstName, courseOfficer.MiddleName)
             };
