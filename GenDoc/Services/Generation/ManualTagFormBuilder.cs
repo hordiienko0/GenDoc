@@ -35,7 +35,7 @@ namespace GenDoc.Services.Generation
             var rows = new ObservableCollection<ManualTagRowViewModel>();
             foreach (var tag in tags)
             {
-                if (hasSigner && (tag == ManualTagFormViewModel.SignerRankTag || tag == ManualTagFormViewModel.SignerNameTag))
+                if (hasSigner && (ManualTagClassifier.IsSignerRank(tag) || ManualTagClassifier.IsSignerName(tag)))
                     continue;
 
                 rows.Add(ManualTagClassifier.Classify(tag) == ManualTagKind.Date
@@ -45,7 +45,14 @@ namespace GenDoc.Services.Generation
 
             var signer = hasSigner ? await BuildSignerAsync(contextKey) : null;
             var courseOfficer = needsCourseOfficer ? await BuildCourseOfficerAsync(contextKey) : null;
-            return new ManualTagFormViewModel(rows, signer, courseOfficer);
+
+            // Ключі підписанта — рівно ті рядки, що прийшли в переліку тегів
+            // (з дужками, як у PlaceholderTag), а не голі константи: інакше
+            // обране значення не знайшлося б під час підстановки.
+            return new ManualTagFormViewModel(
+                rows, signer, courseOfficer,
+                tags.FirstOrDefault(ManualTagClassifier.IsSignerRank),
+                tags.FirstOrDefault(ManualTagClassifier.IsSignerName));
         }
 
         // Хтось має бути обраний завжди. Порожній дропліст поруч із запасним
@@ -98,7 +105,10 @@ namespace GenDoc.Services.Generation
                 if (lastId is int id) initial = options.FirstOrDefault(o => o.RecipientId == id);
             }
 
-            return new SignerPickerViewModel(options, initial);
+            // Порожній вибір не давав тегам жодного значення, і документ виходив
+            // із порожнім місцем підпису — та сама тиха вада, проти якої заводився
+            // дропліст курсового офіцера. Перше прізвище видно й можна змінити.
+            return new SignerPickerViewModel(options, initial ?? options.FirstOrDefault());
         }
 
         public async Task SaveAsync(string contextKey, ManualTagFormViewModel form)

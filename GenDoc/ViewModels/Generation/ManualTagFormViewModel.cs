@@ -65,12 +65,23 @@ namespace GenDoc.ViewModels.Generation
         public ManualTagFormViewModel(
             ObservableCollection<ManualTagRowViewModel> rows,
             SignerPickerViewModel? signer,
-            SignerPickerViewModel? courseOfficer = null)
+            SignerPickerViewModel? courseOfficer = null,
+            string? signerRankTag = null,
+            string? signerNameTag = null)
         {
             Rows = rows;
             Signer = signer;
             CourseOfficer = courseOfficer;
+
+            // Ключі підписанта мусять збігатися з тим, що шукає генерація, а
+            // шукає вона за PlaceholderTag — тобто з дужками. Тому запам'ятовуємо
+            // ТІ САМІ рядки, які прийшли в переліку тегів, а не константи.
+            _signerRankTag = signerRankTag ?? SignerRankTag;
+            _signerNameTag = signerNameTag ?? SignerNameTag;
         }
+
+        private readonly string _signerRankTag;
+        private readonly string _signerNameTag;
 
         public ObservableCollection<ManualTagRowViewModel> Rows { get; }
         public SignerPickerViewModel? Signer { get; }
@@ -89,8 +100,8 @@ namespace GenDoc.ViewModels.Generation
 
             if (Signer?.Selected is { } signer)
             {
-                values[SignerRankTag] = signer.Rank;
-                values[SignerNameTag] = signer.SignatureName;
+                values[_signerRankTag] = signer.Rank;
+                values[_signerNameTag] = signer.SignatureName;
             }
 
             return values;

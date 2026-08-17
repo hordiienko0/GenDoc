@@ -37,4 +37,33 @@ public class CourseOfficerPreselectionTests
         Assert.NotNull(form.CourseOfficer.Selected);
         Assert.Contains("КОВАЛЬЧУК", form.CourseOfficer.Selected!.DisplayLabel, StringComparison.Ordinal);
     }
+
+    // Те саме правило для підписанта документа. Порожній пікер не давав жодного
+    // значення тегам, і документ виходив із порожнім місцем підпису — рівно та
+    // вада, проти якої заводився дропліст курсового офіцера.
+    [Fact]
+    public async Task BuildAsync_SignerPickerIsNeverLeftEmptyWhenStaffExists()
+    {
+        using var db = new TestDb();
+
+        using (var ctx = db.Factory.CreateDbContext())
+        {
+            ctx.AppSettings.Add(new GenDoc.Models.AppSettings());
+            ctx.Recipients.AddRange(
+                new Recipient { LastName = "Мельник", FirstName = "Петро", Rank = "майор" },
+                new Recipient { LastName = "Ковальчук", FirstName = "Василь", Rank = "капітан" });
+            ctx.SaveChanges();
+        }
+
+        var form = await Build(db).BuildAsync(
+            new[] { "{{звання_підписанта}}", "{{піб_підписанта}}" }, "pkg:1");
+
+        Assert.NotNull(form.Signer);
+        Assert.NotNull(form.Signer!.Selected);
+
+        // І значення мусить лягти під ключем із дужками — саме його шукає генерація.
+        var values = form.GetValues();
+        Assert.True(values.ContainsKey("{{звання_підписанта}}"));
+        Assert.True(values.ContainsKey("{{піб_підписанта}}"));
+    }
 }

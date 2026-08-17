@@ -150,7 +150,7 @@
                         <!-- Явна ширина, НЕ Auto: Auto-колонка міряється нескінченністю,
                              і довга назва папки роздула б панель за край вікна.
                              Тягнеться роздільником, який правит цю ж ColumnDefinition. -->
-                        <ColumnDefinition Width="240" MinWidth="150" MaxWidth="480"/>
+                        <ColumnDefinition Width="200" MinWidth="140" MaxWidth="480"/>
                         <ColumnDefinition Width="6"/>
                         <ColumnDefinition Width="*" MinWidth="320"/>
                     </Grid.ColumnDefinitions>
@@ -163,7 +163,11 @@
                                 Background="{StaticResource PanelBrush}"
                                 BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1">
                             <StackPanel>
-                                <TextBlock Text="ПАПКИ" Style="{StaticResource TableHeaderTextStyle}" Margin="0"/>
+                                <!-- Властивості задані тут, а не стилем: TableHeaderTextStyle —
+                                     ЛОКАЛЬНИЙ ресурс ImportView.xaml, і посилання на нього
+                                     звідси валить застосунок при відкритті розділу. -->
+                                <TextBlock Text="ПАПКИ" Foreground="{StaticResource NavyBrush}"
+                                           FontSize="10.5" FontWeight="Bold"/>
                                 <TextBlock Text="{Binding FolderScopeText}" FontSize="11" Margin="0,4,0,0"
                                            TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
                                            ToolTip="{Binding FolderScopeText}"
