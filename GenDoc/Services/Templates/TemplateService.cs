@@ -109,7 +109,7 @@ namespace GenDoc.Services.Templates
             return new UploadResult(true, null);
         }
 
-        public List<(int Id, string Name, string? ShortName, string OriginalFileName, DateTime UploadedAt, int TagCount, bool IsFromBuilder)> GetTemplateListItems()
+        public List<(int Id, string Name, string? ShortName, string OriginalFileName, DateTime UploadedAt, int TagCount, bool IsFromBuilder, TemplateAudience Audience)> GetTemplateListItems()
         {
             using var db = _dbFactory.CreateDbContext();
             return db.Templates
@@ -118,11 +118,20 @@ namespace GenDoc.Services.Templates
                 {
                     t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt,
                     TagCount = t.FieldMappings.Count,
-                    IsFromBuilder = t.BuilderJson != null
+                    IsFromBuilder = t.BuilderJson != null,
+                    t.Audience
                 })
                 .AsEnumerable()
-                .Select(t => (t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, t.TagCount, t.IsFromBuilder))
+                .Select(t => (t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, t.TagCount, t.IsFromBuilder, t.Audience))
                 .ToList();
+        }
+
+        public void SaveAudience(int templateId, TemplateAudience audience)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var template = db.Templates.First(t => t.Id == templateId);
+            template.Audience = audience;
+            db.SaveChanges();
         }
 
         public void SaveShortName(int templateId, string? shortName)

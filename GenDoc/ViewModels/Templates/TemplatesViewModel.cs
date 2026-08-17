@@ -60,10 +60,16 @@ public partial class TemplatesViewModel : ObservableObject
 
     private void RefreshDocxTemplates()
     {
-        DocxTemplates = new ObservableCollection<DocxTemplateListItemViewModel>(
-            _templateService.GetTemplateListItems()
-                .Select(t => new DocxTemplateListItemViewModel(
-                    t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, t.TagCount, t.IsFromBuilder)));
+        var items = _templateService.GetTemplateListItems()
+            .Select(t => new DocxTemplateListItemViewModel(
+                t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, t.TagCount, t.IsFromBuilder, t.Audience))
+            .ToList();
+
+        // Зміна аудиторії зберігається одразу — окремої кнопки немає, як і в
+        // короткої назви поруч.
+        foreach (var item in items) item.AudienceChanged += OnTemplateAudienceChanged;
+
+        DocxTemplates = new ObservableCollection<DocxTemplateListItemViewModel>(items);
     }
 
     /// <summary>Конструктор живе всередині «Шаблонів»: не окремий пункт меню, а
@@ -297,6 +303,10 @@ public partial class TemplatesViewModel : ObservableObject
 
         MessageBox.Show("Мапінг міток збережено.", "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
     }
+
+    // Не команда, а обробник події рядка: перемикач у списку зберігає одразу.
+    private void OnTemplateAudienceChanged(DocxTemplateListItemViewModel item)
+        => _templateService.SaveAudience(item.Id, item.Audience);
 
     [RelayCommand]
     private void SaveShortName(DocxTemplateListItemViewModel? item)

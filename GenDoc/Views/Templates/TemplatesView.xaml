@@ -202,6 +202,23 @@
                                                                 Command="{Binding DataContext.SaveShortNameCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                 CommandParameter="{Binding}"/>
                                                     </Grid>
+
+                                                    <!-- Для кого шаблон. Зберігається одразу, без окремої кнопки:
+                                                         це один прапорець, а не текст, який ще треба доredагувати.
+                                                         Шаблон постійного складу зникає зі звичайної генерації й
+                                                         пакетів, і навпаки — тому підпис пояснює наслідок. -->
+                                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                                                        <TextBlock Text="Для кого:" VerticalAlignment="Center"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   FontSize="12" Margin="0,0,10,0"/>
+                                                        <CheckBox Content="Постійний склад" VerticalAlignment="Center"
+                                                                  IsChecked="{Binding IsForPermanentStaff, Mode=TwoWay}"
+                                                                  ToolTip="Такий шаблон видно лише в «Постійному складі» — у генерації й пакетах його не буде"/>
+                                                        <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" FontSize="11.5"
+                                                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                                                   Text="{Binding AudienceCaption, StringFormat=зараз: {0}}"/>
+                                                    </StackPanel>
+
                                                     <Grid Margin="0,0,0,8">
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="1*"/>
