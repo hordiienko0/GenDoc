@@ -39,6 +39,7 @@ public partial class RoomCardViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(OccupancyText))]
     [NotifyPropertyChangedFor(nameof(IsOverCapacity))]
+    [NotifyPropertyChangedFor(nameof(IsFull))]
     private int capacity = 1;
 
     [ObservableProperty]
@@ -79,6 +80,12 @@ public partial class RoomCardViewModel : ObservableObject
     public bool HasExtraOccupants => ExtraOccupantCount > 0;
     public bool IsEmpty => OccupantCount == 0;
     public bool IsOverCapacity => OccupantCount > Capacity;
+
+    /// <summary>Рівно повна кімната. Досі виглядала так само, як
+    /// недоукомплектована: «6 / 6» і «4 / 6» відрізнялися лише цифрою, і
+    /// побачити з сітки, куди вже нікого не поселиш, було не можна.</summary>
+    public bool IsFull => Capacity > 0 && OccupantCount == Capacity;
+
     public string OccupancyText => $"{OccupantCount} / {Capacity}";
 
     public void BeginEdit()
@@ -108,6 +115,7 @@ public partial class RoomCardViewModel : ObservableObject
         OnPropertyChanged(nameof(HasExtraOccupants));
         OnPropertyChanged(nameof(IsEmpty));
         OnPropertyChanged(nameof(IsOverCapacity));
+        OnPropertyChanged(nameof(IsFull));
         OnPropertyChanged(nameof(OccupancyText));
     }
 }

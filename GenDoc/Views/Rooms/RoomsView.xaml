@@ -76,10 +76,12 @@
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <Grid Width="280" Margin="0,0,10,0">
+                <!-- Ширше й підказка коротша: попередній варіант обрізався
+                     кнопкою «+ Додати кімнату» на середині слова. -->
+                <Grid Width="320" Margin="0,0,10,0">
                     <TextBox x:Name="SearchTextBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                              Padding="10,10"/>
-                    <TextBlock Text="Пошук за корпусом, номером або мешканцем…" Foreground="{StaticResource PlaceholderBrush}"
+                    <TextBlock Text="Пошук за номером або мешканцем…" Foreground="{StaticResource PlaceholderBrush}"
                                Margin="14,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False"
                                Visibility="{Binding IsSearchEmpty, Converter={StaticResource BoolToVisibility}}"/>
                 </Grid>
@@ -159,11 +161,22 @@
                                                                 <DataTrigger Binding="{Binding IsOverCapacity}" Value="True">
                                                                     <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
                                                                 </DataTrigger>
+                                                                <!-- Рівно повна: «6 / 6» досі виглядало так само,
+                                                                     як «4 / 6», і побачити з сітки, куди вже нікого
+                                                                     не поселиш, було не можна. -->
+                                                                <DataTrigger Binding="{Binding IsFull}" Value="True">
+                                                                    <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                                                    <Setter Property="FontWeight" Value="Bold"/>
+                                                                </DataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
                                                     </TextBlock.Style>
                                                 </TextBlock>
                                             </Grid>
+
+                                            <TextBlock Text="Місць немає" FontSize="12" Margin="0,0,0,10"
+                                                       Foreground="{StaticResource AccentBrush}"
+                                                       Visibility="{Binding IsFull, Converter={StaticResource BoolToVisibility}}"/>
 
                                             <ItemsControl ItemsSource="{Binding DisplayedOccupantNames}" Margin="0,0,0,4">
                                                 <ItemsControl.ItemTemplate>
