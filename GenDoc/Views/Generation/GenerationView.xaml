@@ -287,7 +287,11 @@
                                                         <ColumnDefinition Width="1*"/>
                                                         <ColumnDefinition Width="1.4*"/>
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0" Text="{Binding Tag}" FontFamily="Consolas"
+                                                    <!-- Людський підпис; сам тег — у підказці, бо за ним
+                                                         звіряються з шаблоном. Consolas прибрано: моноширинний
+                                                         шрифт доречний для коду, а не для назви поля. -->
+                                                    <TextBlock Grid.Column="0" Text="{Binding Label}"
+                                                               ToolTip="{Binding Tag}" TextWrapping="Wrap"
                                                                Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
                                                     <DatePicker Grid.Column="1" SelectedDate="{Binding DateValue}">
                                                         <DatePicker.Style>
@@ -330,7 +334,7 @@
                                             <ColumnDefinition Width="1*"/>
                                             <ColumnDefinition Width="1.4*"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="підписант" FontFamily="Consolas"
+                                        <TextBlock Grid.Column="0" Text="Підписант"
                                                    Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
                                         <ComboBox Grid.Column="1" DataContext="{Binding Signer}"
                                                   ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}"
@@ -351,7 +355,7 @@
                                             <ColumnDefinition Width="1*"/>
                                             <ColumnDefinition Width="1.4*"/>
                                         </Grid.ColumnDefinitions>
-                                        <TextBlock Grid.Column="0" Text="курсовий офіцер" FontFamily="Consolas"
+                                        <TextBlock Grid.Column="0" Text="Курсовий офіцер"
                                                    Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"
                                                    TextWrapping="Wrap"/>
                                         <StackPanel Grid.Column="1">

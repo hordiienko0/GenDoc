@@ -5,6 +5,65 @@
              xmlns:local="clr-namespace:GenDoc.Views.Templates">
 
     <UserControl.Resources>
+        <!-- Rows of the Word-template list. Kept in resources because the SAME
+             row is drawn by TWO groups; a copy would drift from the original. -->
+                            <DataTemplate x:Key="DocxTemplateRowTemplate">
+                                <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderLineBrush}">
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="1.8*"/>
+                                                <ColumnDefinition Width="1.4*"/>
+                                                <ColumnDefinition Width="1*"/>
+                                                <ColumnDefinition Width="0.8*"/>
+                                                <ColumnDefinition Width="0.8*"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- Grid, а не StackPanel: інакше довга назва виштовхує плашку
+                                                 за межі колонки (та сама причина, що в рядку Excel-шаблону). -->
+                                            <Grid Grid.Column="0" Margin="20,13" VerticalAlignment="Center">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
+                                                           VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"
+                                                           TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}"/>
+                                                <Border Grid.Column="1" Background="{StaticResource AccentSoftBrush}" Padding="6,2"
+                                                        Margin="8,0,0,0" VerticalAlignment="Center"
+                                                        Visibility="{Binding IsFromBuilder, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="Конструктор" FontSize="10.5" FontWeight="Bold"
+                                                               Foreground="{StaticResource AccentBrush}"/>
+                                                </Border>
+                                            </Grid>
+                                            <TextBlock Grid.Column="1" Text="{Binding OriginalFileName}" Margin="20,13" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                                       ToolTip="{Binding OriginalFileName}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Grid.Column="2" Text="{Binding UploadedAtDisplay}" Margin="20,13" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            <TextBlock Grid.Column="3" Text="{Binding TagCount}" Margin="20,13" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+
+                                            <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,13">
+                                                <!-- Лише для зібраних конструктором: розібрати завантажений
+                                                     .docx назад у блоки неможливо. -->
+                                                <Button Content="&#xE8A5;" Style="{StaticResource RowIconButtonStyle}"
+                                                        ToolTip="Відкрити в конструкторі"
+                                                        Visibility="{Binding IsFromBuilder, Converter={StaticResource BoolToVisibility}}"
+                                                        Command="{Binding DataContext.EditWithBuilderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                                <Button Content="&#xE70F;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Переглянути мапінг" Margin="4,0,0,0"
+                                                        Command="{Binding DataContext.SelectTemplateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                                <Button Content="&#xE74D;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Видалити" Margin="4,0,0,0"
+                                                        Command="{Binding DataContext.DeleteDocxTemplateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
         <Style x:Key="TemplatesHeaderTextStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
             <Setter Property="FontSize" Value="11"/>
@@ -345,65 +404,12 @@
                         <TextBlock Grid.Column="4" Text="" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
                     </Grid>
 
-                    <ItemsControl ItemsSource="{Binding DocxTemplates}">
+                    <!-- Лише шаблони для наборів. Шаблони постійного складу —
+                         окремою групою нижче: у них інша аудиторія й інший шлях
+                         видачі, тож одним списком вони плутають. -->
+                    <ItemsControl ItemsSource="{Binding IntakeTemplatesView}">
                         <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderLineBrush}">
-                                    <StackPanel>
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="1.8*"/>
-                                                <ColumnDefinition Width="1.4*"/>
-                                                <ColumnDefinition Width="1*"/>
-                                                <ColumnDefinition Width="0.8*"/>
-                                                <ColumnDefinition Width="0.8*"/>
-                                            </Grid.ColumnDefinitions>
-
-                                            <!-- Grid, а не StackPanel: інакше довга назва виштовхує плашку
-                                                 за межі колонки (та сама причина, що в рядку Excel-шаблону). -->
-                                            <Grid Grid.Column="0" Margin="20,13" VerticalAlignment="Center">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
-                                                           VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"
-                                                           TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}"/>
-                                                <Border Grid.Column="1" Background="{StaticResource AccentSoftBrush}" Padding="6,2"
-                                                        Margin="8,0,0,0" VerticalAlignment="Center"
-                                                        Visibility="{Binding IsFromBuilder, Converter={StaticResource BoolToVisibility}}">
-                                                    <TextBlock Text="Конструктор" FontSize="10.5" FontWeight="Bold"
-                                                               Foreground="{StaticResource AccentBrush}"/>
-                                                </Border>
-                                            </Grid>
-                                            <TextBlock Grid.Column="1" Text="{Binding OriginalFileName}" Margin="20,13" VerticalAlignment="Center"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"
-                                                       ToolTip="{Binding OriginalFileName}" TextTrimming="CharacterEllipsis"/>
-                                            <TextBlock Grid.Column="2" Text="{Binding UploadedAtDisplay}" Margin="20,13" VerticalAlignment="Center"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
-                                            <TextBlock Grid.Column="3" Text="{Binding TagCount}" Margin="20,13" VerticalAlignment="Center"
-                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
-
-                                            <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,13">
-                                                <!-- Лише для зібраних конструктором: розібрати завантажений
-                                                     .docx назад у блоки неможливо. -->
-                                                <Button Content="&#xE8A5;" Style="{StaticResource RowIconButtonStyle}"
-                                                        ToolTip="Відкрити в конструкторі"
-                                                        Visibility="{Binding IsFromBuilder, Converter={StaticResource BoolToVisibility}}"
-                                                        Command="{Binding DataContext.EditWithBuilderCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                        CommandParameter="{Binding}"/>
-                                                <Button Content="&#xE70F;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Переглянути мапінг" Margin="4,0,0,0"
-                                                        Command="{Binding DataContext.SelectTemplateCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                                        CommandParameter="{Binding}"/>
-                                                <Button Content="&#xE74D;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Видалити" Margin="4,0,0,0"
-                                                        Command="{Binding DataContext.DeleteDocxTemplateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}"/>
-                                            </StackPanel>
-                                        </Grid>
-
-                                    </StackPanel>
-                                </Border>
-                            </DataTemplate>
+                            <StaticResource ResourceKey="DocxTemplateRowTemplate"/>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
@@ -425,6 +431,43 @@
                     </StackPanel>
                 </StackPanel>
             </Border>
+
+            <!-- ШАБЛОНИ ПОСТІЙНОГО СКЛАДУ. Поділ за аудиторією вже працював у
+                 даних (Template.Audience, схема v23) — «Видати документ» показує
+                 лише ці, — але на екрані шаблони обох аудиторій лежали одним
+                 списком, і зрозуміти, який куди піде, було ніяк.
+                 Група ховається, доки таких шаблонів немає. -->
+            <StackPanel Visibility="{Binding HasPermanentStaffTemplates, Converter={StaticResource BoolToVisibility}}">
+                <TextBlock Text="Шаблони постійного складу" Style="{StaticResource TemplatesSectionTitleStyle}"/>
+                <TextBlock Text="Видаються офіцерам і персоналу поза наборами — через «Постійний склад», а не через генерацію по набору"
+                           Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"
+                           TextWrapping="Wrap" Margin="0,-6,0,10"/>
+                <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                        BorderThickness="1" CornerRadius="0" Margin="0,0,0,28">
+                    <StackPanel>
+                        <Grid Background="{StaticResource RowAltBrush}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="1.8*"/>
+                                <ColumnDefinition Width="1.4*"/>
+                                <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="0.8*"/>
+                                <ColumnDefinition Width="0.8*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="НАЗВА" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
+                            <TextBlock Grid.Column="1" Text="ФАЙЛ" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
+                            <TextBlock Grid.Column="2" Text="ЗАВАНТАЖЕНО" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
+                            <TextBlock Grid.Column="3" Text="МІТОК" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
+                            <TextBlock Grid.Column="4" Text="" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
+                        </Grid>
+
+                        <ItemsControl ItemsSource="{Binding PermanentStaffTemplatesView}">
+                            <ItemsControl.ItemTemplate>
+                                <StaticResource ResourceKey="DocxTemplateRowTemplate"/>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
 
             <TextBlock Text="Шаблони експорту списків" Style="{StaticResource TemplatesSectionTitleStyle}"/>
             <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"

@@ -28,6 +28,11 @@ namespace GenDoc.ViewModels.Generation
         }
 
         public string Tag { get; }
+
+        /// <summary>Підпис поля для оператора. Сам тег нікуди не зникає — він
+        /// лишається в підказці, бо саме за ним звіряються з шаблоном.</summary>
+        public string Label => Services.Generation.ManualTagLabel.Human(Tag);
+
         public ManualTagKind Kind { get; }
 
         [ObservableProperty] private string value = string.Empty;

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
+using System.Windows.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GenDoc.Models.Enums;
@@ -43,6 +44,23 @@ public partial class TemplatesViewModel : ObservableObject
     [ObservableProperty]
     private ObservableCollection<DocxTemplateListItemViewModel> docxTemplates = new();
 
+    /// <summary>
+    /// Два ВИДИ над ТІЄЮ САМОЮ колекцією, а не дві окремі колекції: елементи
+    /// лишаються тими самими об'єктами, тож вибір, завантажений мапінг і
+    /// перемикач аудиторії працюють як раніше. Дві копії списку довелося б
+    /// синхронізувати, і рядок губив би стан при переході між групами.
+    /// </summary>
+    [ObservableProperty]
+    private ListCollectionView? intakeTemplatesView;
+
+    [ObservableProperty]
+    private ListCollectionView? permanentStaffTemplatesView;
+
+    /// <summary>Група постійного складу ховається, доки жодного такого шаблону
+    /// немає: порожній розділ лише додає шуму.</summary>
+    [ObservableProperty]
+    private bool hasPermanentStaffTemplates;
+
     private void Refresh()
     {
         var all = _exportTemplateService.GetTemplateListItems()
@@ -70,6 +88,23 @@ public partial class TemplatesViewModel : ObservableObject
         foreach (var item in items) item.AudienceChanged += OnTemplateAudienceChanged;
 
         DocxTemplates = new ObservableCollection<DocxTemplateListItemViewModel>(items);
+
+        IntakeTemplatesView = TemplateAudienceGroups.Intake(DocxTemplates);
+        PermanentStaffTemplatesView = TemplateAudienceGroups.PermanentStaff(DocxTemplates);
+
+        RefreshAudienceGroups();
+    }
+
+    /// <summary>Перерахувати обидві групи. Викликається й після перемикання
+    /// аудиторії — інакше рядок лишався б у старій групі до перезаходу
+    /// в розділ, і скидалося б, ніби перемикач не спрацював.</summary>
+    private void RefreshAudienceGroups()
+    {
+        IntakeTemplatesView?.Refresh();
+        PermanentStaffTemplatesView?.Refresh();
+
+        HasPermanentStaffTemplates =
+            DocxTemplates.Any(t => t.Audience == TemplateAudience.PermanentStaff);
     }
 
     /// <summary>Конструктор живе всередині «Шаблонів»: не окремий пункт меню, а
@@ -306,7 +341,10 @@ public partial class TemplatesViewModel : ObservableObject
 
     // Не команда, а обробник події рядка: перемикач у списку зберігає одразу.
     private void OnTemplateAudienceChanged(DocxTemplateListItemViewModel item)
-        => _templateService.SaveAudience(item.Id, item.Audience);
+    {
+        _templateService.SaveAudience(item.Id, item.Audience);
+        RefreshAudienceGroups();
+    }
 
     [RelayCommand]
     private void SaveShortName(DocxTemplateListItemViewModel? item)
