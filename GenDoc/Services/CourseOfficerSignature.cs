@@ -8,15 +8,18 @@ namespace GenDoc.Services
     // щоб обидва шляхи генерації не розходились у поведінці.
     public static class CourseOfficerSignature
     {
-        // Пріоритет — постійний склад (IntakeId == null): курсовий офіцер за
-        // визначенням не належить набору. Але якщо позначену людину завели
-        // всередині набору, підпис усе одно мусить заповнитись — інакше тег
-        // мовчки лишається порожнім, і незрозуміло, чому. Тому запасний прохід
-        // без фільтра за набором.
+        // ЛИШЕ постійний склад (IntakeId == null). Раніше тут був запасний прохід
+        // без фільтра за набором — щоб тег не лишався мовчки порожнім. Він
+        // прибраний: у наборі люди ПРОХОДЯТЬ навчання, курсовим офіцером ніхто з
+        // них бути не може, тож той прохід прикривав випадок, якого за моделлю не
+        // існує, і натомість дозволяв підписати документ людині з набору.
+        //
+        // null тепер означає рівно одне: підписанта немає. Викликач мусить
+        // попередити й НЕ генерувати — документ із порожнім місцем підпису гірший
+        // за явну зупинку, бо його ніхто не помітить.
         public static string? Build(AppDbContext db)
         {
-            var courseOfficer =
-                FindFirst(db, permanentStaffOnly: true) ?? FindFirst(db, permanentStaffOnly: false);
+            var courseOfficer = FindCourseOfficer(db);
 
             if (courseOfficer is null) return null;
 
@@ -32,11 +35,16 @@ namespace GenDoc.Services
             return string.Join(' ', parts.Where(p => !string.IsNullOrWhiteSpace(p)));
         }
 
-        private static Models.Recipient? FindFirst(AppDbContext db, bool permanentStaffOnly)
+        /// <summary>Курсовий офіцер серед постійного складу. Прапорця
+        /// «шукати будь-де» тут навмисно немає: людина з набору підписантом бути
+        /// не може, і можливість це обійти не мусить існувати в коді.</summary>
+        internal static Models.Recipient? FindCourseOfficer(AppDbContext db)
         {
-            var query = db.Recipients.Include(r => r.Unit).Where(r => r.IsCourseOfficer);
-            if (permanentStaffOnly) query = query.Where(r => r.IntakeId == null);
-            return query.OrderBy(r => r.Id).FirstOrDefault();
+            return db.Recipients
+                .Include(r => r.Unit)
+                .Where(r => r.IsCourseOfficer && r.IntakeId == null)
+                .OrderBy(r => r.Id)
+                .FirstOrDefault();
         }
     }
 }
