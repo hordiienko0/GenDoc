@@ -3,6 +3,11 @@ namespace GenDoc.Services.Documents
     public interface IDocumentArchiveService
     {
         Task<List<ArchiveRowDto>> QueryAsync(ArchiveFilter filter);
+
+        /// <summary>Дерево папок для лівої панелі «Архіву». Читає ті самі
+        /// збережені шляхи, за якими фільтрується список, тож розійтися з ним
+        /// не може.</summary>
+        Task<IReadOnlyList<ArchiveFolderNode>> GetFolderTreeAsync(ArchiveFilter filter);
         Task<ArchiveStats> GetStatsAsync(ArchiveFilter filter);
         Task<ArchiveFilterOptions> GetFilterOptionsAsync();
 

@@ -2,6 +2,9 @@ using GenDoc.Models.Enums;
 
 namespace GenDoc.Services.Documents
 {
+    /// <summary>FolderPath — обрана гілка дерева. Це префікс збереженого
+    /// відносного шляху, а не окреме поле: дерево й список читають ОДИН рядок,
+    /// тому розійтися не можуть.</summary>
     public record ArchiveFilter(
         int? IntakeId,
         int? TemplateId,
@@ -9,7 +12,8 @@ namespace GenDoc.Services.Documents
         int? UserId,
         int? Year,
         int Skip,
-        int Take);
+        int Take,
+        string? FolderPath = null);
 
     public record ArchiveRowDto(
         int Id,

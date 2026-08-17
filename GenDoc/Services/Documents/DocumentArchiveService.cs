@@ -78,7 +78,44 @@ namespace GenDoc.Services.Documents
             if (filter.Year is int year)
                 query = query.Where(g => g.GeneratedAt.Year == year);
 
+            query = ApplyFolder(query, filter.FolderPath);
+
             return query;
+        }
+
+        /// <summary>Гілка дерева — префікс збереженого відносного шляху.
+        /// Роздільник у кінці обов'язковий: без нього «Набір №1» захопив би
+        /// ще й «Набір №15».</summary>
+        private static IQueryable<GeneratedDocument> ApplyFolder(
+            IQueryable<GeneratedDocument> query, string? folderPath)
+        {
+            if (string.IsNullOrWhiteSpace(folderPath)) return query;
+
+            // Записи до переходу на папки шляху не мають — у них саме лише ім'я
+            // файлу. Дерево збирає їх в окремому вузлі, і фільтр мусить уміти
+            // те саме, інакше вони стали б недосяжні назавжди.
+            if (folderPath == ArchiveFolderTree.UnsortedFolder)
+                return query.Where(g => !g.FileName.Contains("\\") && !g.FileName.Contains("/"));
+
+            var prefix = folderPath + "\\";
+            return query.Where(g => g.FileName.StartsWith(prefix));
+        }
+
+        /// <summary>
+        /// Дерево папок для лівої панелі. Будується з тих самих документів, які
+        /// проходять решту фільтрів, але БЕЗ урахування вже обраної гілки:
+        /// інакше клік по гілці обрізав би дерево до неї самої й повернутися
+        /// вгору стало б нікуди.
+        /// </summary>
+        public async Task<IReadOnlyList<ArchiveFolderNode>> GetFolderTreeAsync(ArchiveFilter filter)
+        {
+            using var db = _dbFactory.CreateDbContext();
+
+            var paths = await ApplyFilter(db, filter with { FolderPath = null })
+                .Select(g => g.FileName)
+                .ToListAsync();
+
+            return ArchiveFolderTree.Build(paths);
         }
 
         public async Task<List<ArchiveRowDto>> QueryAsync(ArchiveFilter filter)

@@ -197,7 +197,43 @@ namespace GenDoc.ViewModels.Archive
 
         private ArchiveFilter BuildFilter(int skip) => new(
             SelectedIntake?.Id, SelectedTemplate?.Id, SelectedPackage?.Id,
-            SelectedAuthor?.Id, SelectedYear?.Id, skip, PageSize);
+            SelectedAuthor?.Id, SelectedYear?.Id, skip, PageSize, SelectedFolderPath);
+
+        /// <summary>Дерево папок ліворуч. Порожній рядок = «Усі документи».</summary>
+        public ObservableCollection<ArchiveFolderNodeViewModel> FolderTree { get; } = new();
+
+        [ObservableProperty] private string? selectedFolderPath;
+
+        [ObservableProperty] private string folderScopeText = "Усі документи";
+
+        [RelayCommand]
+        private async Task SelectFolderAsync(ArchiveFolderNodeViewModel? node)
+        {
+            // Повторний клік по вже обраній гілці знімає вибір — інакше
+            // повернутися до повного списку можна було б лише кнопкою збоку.
+            var path = node is null || node.Path == SelectedFolderPath ? null : node.Path;
+
+            foreach (var root in FolderTree)
+                foreach (var candidate in root.SelfAndDescendants())
+                    candidate.IsSelected = path is not null && candidate.Path == path;
+
+            SelectedFolderPath = path;
+            FolderScopeText = path ?? "Усі документи";
+
+            await ResetAndReloadAsync();
+        }
+
+        [RelayCommand]
+        private Task ClearFolderAsync() => SelectFolderAsync(null);
+
+        private async Task ReloadFolderTreeAsync()
+        {
+            var nodes = await _archiveService.GetFolderTreeAsync(BuildFilter(0));
+
+            FolderTree.Clear();
+            foreach (var node in nodes)
+                FolderTree.Add(new ArchiveFolderNodeViewModel(node, SelectedFolderPath));
+        }
 
         private async Task ResetAndReloadAsync()
         {
@@ -205,6 +241,7 @@ namespace GenDoc.ViewModels.Archive
             _loadedRows.Clear();
             await LoadPageAsync();
             await ReloadStatsAsync();
+            await ReloadFolderTreeAsync();
         }
 
         private async Task LoadPageAsync()
