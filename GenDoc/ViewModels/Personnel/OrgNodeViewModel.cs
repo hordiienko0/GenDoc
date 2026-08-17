@@ -42,13 +42,21 @@ namespace GenDoc.ViewModels.Personnel
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(CountLabel))]
+        [NotifyPropertyChangedFor(nameof(CountTooltip))]
         private int ownCount;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(CountLabel))]
+        [NotifyPropertyChangedFor(nameof(CountTooltip))]
         private int totalCount;
 
         public string CountLabel => $"{OwnCount} / {TotalCount}";
+
+        /// <summary>Два числа поспіль нічого не пояснюють: «0 / 33» на корені
+        /// читалося як помилка, хоча означає «тут нікого, у вкладених 33».
+        /// Розшифровка — у підказці, щоб не роздувати саму гілку.</summary>
+        public string CountTooltip =>
+            $"У самому підрозділі: {OwnCount}\nРазом із вкладеними: {TotalCount}";
 
         // Вузол-набір = корінь гілки набору.
         [ObservableProperty]

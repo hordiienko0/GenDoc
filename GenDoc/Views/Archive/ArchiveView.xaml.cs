@@ -13,6 +13,19 @@ public partial class ArchiveView : UserControl
         InitializeComponent();
     }
 
+    /// <summary>Тягнемо вправо — панель папок ширшає: роздільник стоїть на її
+    /// правому краю, тому знак прямий. Ширину тримає в'ю-модель, а не
+    /// ColumnDefinition, інакше прив'язка розірвалася б першим же перетягуванням.</summary>
+    private void FolderResizeThumb_DragDelta(object sender, System.Windows.Controls.Primitives.DragDeltaEventArgs e)
+    {
+        if (DataContext is not ArchiveViewModel vm) return;
+
+        vm.FolderPanelWidth = System.Math.Clamp(
+            vm.FolderPanelWidth + e.HorizontalChange,
+            ArchiveViewModel.FolderPanelMinWidth,
+            ArchiveViewModel.FolderPanelMaxWidth);
+    }
+
     private async void ArchiveView_Loaded(object sender, RoutedEventArgs e)
     {
         if (DataContext is ArchiveViewModel vm)

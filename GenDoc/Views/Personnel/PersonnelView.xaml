@@ -194,7 +194,11 @@
                         </Style>
                     </TextBlock.Style>
                 </TextBlock>
+                <!-- «0 / 33» саме по собі читається як помилка. Розшифровка —
+                     у підказці: роздувати гілку підписом не можна, а лишати
+                     два числа без пояснення теж. -->
                 <TextBlock Grid.Column="2" Text="{Binding CountLabel}" FontSize="10.5"
+                           ToolTip="{Binding CountTooltip}"
                            Foreground="{StaticResource TextSecondaryBrush}"
                            Typography.NumeralAlignment="Tabular"
                            VerticalAlignment="Center" Margin="0,0,6,0"/>

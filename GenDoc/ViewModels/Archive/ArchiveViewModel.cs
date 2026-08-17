@@ -206,6 +206,49 @@ namespace GenDoc.ViewModels.Archive
 
         [ObservableProperty] private string folderScopeText = "Усі документи";
 
+        public const double FolderPanelMinWidth = 140;
+        public const double FolderPanelMaxWidth = 480;
+        private const double CollapsedFolderPanelWidth = 46;
+
+        /// <summary>Колонка панелі ЗАВЖДИ явна, ніколи не Auto — та сама причина,
+        /// що й у конструкторі шаблонів: Auto міряється нескінченністю, і довга
+        /// назва папки роздула б панель за край вікна.</summary>
+        public GridLength FolderPanelColumnWidth =>
+            new(IsFolderPanelCollapsed ? CollapsedFolderPanelWidth : FolderPanelWidth);
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(FolderPanelColumnWidth))]
+        private double folderPanelWidth = 200;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(FolderPanelColumnWidth))]
+        [NotifyPropertyChangedFor(nameof(IsFolderPanelExpanded))]
+        private bool isFolderPanelCollapsed = true;
+
+        /// <summary>Зустрічна властивість замість конвертера-інвертора: у темі
+        /// його немає, а заводити цілий конвертер заради одного місця — зайве.</summary>
+        public bool IsFolderPanelExpanded => !IsFolderPanelCollapsed;
+
+        // Щойно оператор сам чіпнув панель, автоматика більше не втручається:
+        // інакше його вибір скидався б після кожного перезавантаження списку.
+        private bool _folderPanelTouchedByUser;
+
+        [RelayCommand]
+        private void ToggleFolderPanel()
+        {
+            _folderPanelTouchedByUser = true;
+            IsFolderPanelCollapsed = !IsFolderPanelCollapsed;
+        }
+
+        /// <summary>Дерево з єдиного вузла нічого не дає, а панель забирає ширину
+        /// в таблиці — тож доки гілка одна, панель складена. Кнопка розгортання
+        /// лишається: нічого не зникає, лише не заважає.</summary>
+        private void AutoCollapseTrivialTree()
+        {
+            if (_folderPanelTouchedByUser) return;
+            IsFolderPanelCollapsed = FolderTree.Count <= 1;
+        }
+
         [RelayCommand]
         private async Task SelectFolderAsync(ArchiveFolderNodeViewModel? node)
         {
@@ -233,6 +276,8 @@ namespace GenDoc.ViewModels.Archive
             FolderTree.Clear();
             foreach (var node in nodes)
                 FolderTree.Add(new ArchiveFolderNodeViewModel(node, SelectedFolderPath));
+
+            AutoCollapseTrivialTree();
         }
 
         private async Task ResetAndReloadAsync()
