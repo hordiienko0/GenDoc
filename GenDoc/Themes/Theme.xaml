@@ -202,6 +202,23 @@
         <Setter Property="BorderBrush" Value="Transparent"/>
     </Style>
 
+    <!-- Клітинка таблиці, чий текст може не влізти в колонку.
+
+         Підказка бере ТЕКСТ САМОГО елемента, а не конкретну прив'язку, тому
+         стиль однаково працює в будь-якій колонці й гарантує головне: обрізане
+         значення завжди можна прочитати повністю, нічого не втрачається.
+         Порожня клітинка підказки не показує — інакше під курсором спливала б
+         порожня рамка. -->
+    <Style x:Key="TruncatedCellStyle" TargetType="TextBlock">
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+        <Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}"/>
+        <Style.Triggers>
+            <Trigger Property="Text" Value="">
+                <Setter Property="ToolTip" Value="{x:Null}"/>
+            </Trigger>
+        </Style.Triggers>
+    </Style>
+
     <!-- Текстова кнопка-посилання (Редагувати/Видалити/Виселити тощо) -->
     <Style x:Key="TextLinkButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="Transparent"/>

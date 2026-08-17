@@ -21,6 +21,10 @@ namespace GenDoc.ViewModels.Staff
         public int Id { get; }
         public string FullName { get; }
         public string Rank { get; }
+
+        /// <summary>Звання для КОЛОНКИ списку — див. PersonRowViewModel.RankShort.
+        /// Повне звання лишається в підказці й у документах.</summary>
+        public string RankShort => Services.RankAbbreviation.Short(Rank);
         public string Position { get; }
         public string? UnitName { get; }
         public StaffEventKind? CurrentState { get; }

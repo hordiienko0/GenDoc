@@ -18,6 +18,11 @@ namespace GenDoc.ViewModels.Personnel
         public string FirstName => Item.FirstName;
         public string? MiddleName => Item.MiddleName;
         public string Rank => Item.Rank;
+
+        /// <summary>Звання для КОЛОНКИ списку. «молодший лейтенант» не влазить
+        /// поруч із ПІБ і посадою й забирає ширину в прізвища; повне звання
+        /// лишається в підказці, у картці й у документах.</summary>
+        public string RankShort => Services.RankAbbreviation.Short(Item.Rank);
         public string Position => Item.Position;
         public string FitnessDisplay => string.IsNullOrWhiteSpace(Item.FitnessCategory) ? "—" : Item.FitnessCategory;
 

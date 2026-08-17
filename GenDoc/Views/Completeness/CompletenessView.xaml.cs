@@ -97,6 +97,12 @@ public partial class CompletenessView : UserControl
         };
         MatrixGrid.Columns.Add(personColumn);
 
+        // Підписи рахуються ОДРАЗУ ДЛЯ ВСІХ колонок, бо вибір короткої назви
+        // залежить від сусідів: два «Рапорт котлове …» мають показати те, чим
+        // вони різняться, а не спільний початок.
+        var columnLabels = Services.Completeness.MatrixColumnLabels.Build(
+            vm.Columns.Select(BuildColumnHeader).ToList());
+
         for (var i = 0; i < vm.Columns.Count; i++)
         {
             var template = vm.Columns[i];
@@ -107,7 +113,7 @@ public partial class CompletenessView : UserControl
 
             var headerText = new TextBlock
             {
-                Text = BuildColumnHeader(template),
+                Text = columnLabels[i],
                 ToolTip = template.Name,
                 TextTrimming = TextTrimming.CharacterEllipsis,
                 FontSize = 11,
@@ -142,11 +148,11 @@ public partial class CompletenessView : UserControl
         MatrixGrid.ItemsSource = vm.Rows;
     }
 
-    private static string BuildColumnHeader(Services.Completeness.MatrixTemplateInfo template)
-    {
-        if (!string.IsNullOrWhiteSpace(template.ShortName)) return template.ShortName;
-        return template.Name.Length > 12 ? template.Name[..12] + "…" : template.Name;
-    }
+    // Коротка назва шаблону, якщо її задали руками, інакше повна: скорочення
+    // й розведення двійників — робота MatrixColumnLabels, яка бачить усі
+    // колонки одразу.
+    private static string BuildColumnHeader(Services.Completeness.MatrixTemplateInfo template) =>
+        string.IsNullOrWhiteSpace(template.ShortName) ? template.Name : template.ShortName;
 
     // Ліва кнопка теж відкриває контекстне меню клітинки (права — стандартною поведінкою WPF).
     private void MatrixGrid_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)

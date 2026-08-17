@@ -108,6 +108,8 @@
 
                     <DataGrid x:Name="StaffGrid" ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True"
                               CanUserSortColumns="False" EnableRowVirtualization="True"
+                              CanUserResizeColumns="True"
+                              HorizontalScrollBarVisibility="Auto"
                               Visibility="{Binding HasRows, Converter={StaticResource BoolToVisibility}}">
                         <DataGrid.RowStyle>
                             <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
@@ -138,11 +140,29 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
 
-                            <DataGridTextColumn Header="ПІБ" Binding="{Binding FullName}" Width="1.9*"/>
-                            <DataGridTextColumn Header="Звання" Binding="{Binding Rank}" Width="1.1*"/>
-                            <DataGridTextColumn Header="Посада" Binding="{Binding Position}" Width="1.6*"/>
+                            <!-- Тут ПІБ повний («Пономаренко Сергій Олександрович»), тому
+                                 частка більша, ніж в інших списках; підказка на кожній
+                                 колонці гарантує, що обрізане читається повністю. -->
+                            <!-- Тут ПІБ ПОВНИЙ («Пономаренко Сергій Олександрович»), тому
+                                 змінних полів два — ПІБ і посада, і частки між ними
+                                 доречні. Звання фіксоване з тієї ж причини, що й у
+                                 «Особовому складі». -->
+                            <DataGridTextColumn Header="ПІБ" Binding="{Binding FullName}" Width="2.1*"
+                                                 ElementStyle="{StaticResource TruncatedCellStyle}"/>
+                            <DataGridTextColumn Header="Звання" Binding="{Binding RankShort}" Width="132">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource TruncatedCellStyle}">
+                                        <Setter Property="ToolTip" Value="{Binding Rank}"/>
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="Посада" Binding="{Binding Position}" Width="1.8*"
+                                                 ElementStyle="{StaticResource TruncatedCellStyle}"/>
 
-                            <DataGridTemplateColumn Header="КО" Width="40">
+                            <!-- «КО» у 40 px не вміщалось навіть як заголовок і читалось
+                                 «К…» — з обрізаної літери зрозуміти, що це ознака курсового
+                                 офіцера, неможливо. Повний підпис і підказка. -->
+                            <DataGridTemplateColumn Header="Курсовий офіцер" Width="128">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="✓" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"
@@ -162,7 +182,7 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
 
-                            <DataGridTextColumn Header="Документів" Binding="{Binding DocsCount}" Width="84"
+                            <DataGridTextColumn Header="Документів" Binding="{Binding DocsCount}" Width="110"
                                                  HeaderStyle="{StaticResource DocsCountHeaderStyle}">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock" BasedOn="{StaticResource DocsCountCellStyle}"/>

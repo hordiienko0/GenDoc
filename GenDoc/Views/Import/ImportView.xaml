@@ -387,7 +387,10 @@
                         <StackPanel>
                             <Grid Background="{StaticResource SkySoftBrush}">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="0.7*"/>
+                                    <!-- Явна ширина: значок мусить вміщати найдовше зі своїх значень
+                                         («КОНФЛІКТ»). Частка стискалась щоразу, коли в таблиці
+                                         з'являлась нова колонка. -->
+                                    <ColumnDefinition Width="104"/>
                                     <ColumnDefinition Width="1.8*"/>
                                     <ColumnDefinition Width="1.2*"/>
                                     <ColumnDefinition Width="1.6*"/>
@@ -421,7 +424,9 @@
                                             </Border.Style>
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="0.7*"/>
+                                                    <!-- Та сама явна ширина, що й у шапці: колонки
+                                                         рядка мусять збігатися з нею стовпець у стовпець. -->
+                                                    <ColumnDefinition Width="104"/>
                                                     <ColumnDefinition Width="1.8*"/>
                                                     <ColumnDefinition Width="1.2*"/>
                                                     <ColumnDefinition Width="1.6*"/>

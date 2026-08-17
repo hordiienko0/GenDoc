@@ -255,11 +255,10 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
 
-                            <DataGridTextColumn Header="ПІБ" Binding="{Binding ShortName}" Width="1.3*" MinWidth="150">
+                            <DataGridTextColumn Header="ПІБ" Binding="{Binding ShortName}" Width="1.2*" MinWidth="130">
                                 <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource TruncatedCellStyle}">
                                         <Setter Property="FontWeight" Value="Bold"/>
-                                        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
@@ -323,13 +322,8 @@
                             </DataGridTextColumn>
 
                             <DataGridTextColumn Header="ДАТА" Binding="{Binding DateText}" Width="120"/>
-                            <DataGridTextColumn Header="АВТОР" Binding="{Binding Author}" Width="1*" MinWidth="130">
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-                                    </Style>
-                                </DataGridTextColumn.ElementStyle>
-                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="АВТОР" Binding="{Binding Author}" Width="1*" MinWidth="110"
+                                                 ElementStyle="{StaticResource TruncatedCellStyle}"/>
                             <DataGridTextColumn Header="ВКЛ." Binding="{Binding AttachText}" Width="52">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
@@ -577,13 +571,8 @@
                             </DataGridTextColumn>
 
                             <DataGridTextColumn Header="ДАТА" Binding="{Binding DateText}" Width="120"/>
-                            <DataGridTextColumn Header="АВТОР" Binding="{Binding Author}" Width="1*" MinWidth="130">
-                                <DataGridTextColumn.ElementStyle>
-                                    <Style TargetType="TextBlock">
-                                        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-                                    </Style>
-                                </DataGridTextColumn.ElementStyle>
-                            </DataGridTextColumn>
+                            <DataGridTextColumn Header="АВТОР" Binding="{Binding Author}" Width="1*" MinWidth="110"
+                                                 ElementStyle="{StaticResource TruncatedCellStyle}"/>
                             <DataGridTextColumn Header="РОЗМІР" Binding="{Binding SizeText}" Width="96">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
