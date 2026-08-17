@@ -93,7 +93,7 @@ public class ImportService : IImportService
         foreach (var row in rows)
         {
             var intakeId = ResolveTargetIntakeId(target, orgNodeIntakeMap, row.Fields.UnitName);
-            var (status, note) = EvaluateRow(row.Fields, row.IncompleteFullName, row.CourseArrivalDateInvalid,
+            var (status, note, existingRecipientId) = EvaluateRow(row.Fields, row.IncompleteFullName, row.CourseArrivalDateInvalid,
                 existingServiceNumbers, seenInFile, intakeId, existingNameKeys, seenNameKeysInFile);
             previews.Add(new ImportRowPreview
             {
@@ -102,16 +102,21 @@ public class ImportService : IImportService
                 RankDisplay = row.Fields.Rank,
                 UnitDisplay = row.Fields.UnitName,
                 Status = status,
-                Note = note
+                Note = note,
+                ExistingRecipientId = existingRecipientId
             });
         }
 
         return previews;
     }
 
-    public ImportSummary Import(ImportParseResult parsed, ImportTarget? target = null)
+    public ImportSummary Import(
+        ImportParseResult parsed, ImportTarget? target = null, IReadOnlyCollection<int>? moveRowNumbers = null)
     {
         target ??= ImportTarget.FromFile;
+        var moveRows = moveRowNumbers is null || moveRowNumbers.Count == 0
+            ? null
+            : new HashSet<int>(moveRowNumbers);
 
         var rows = ParseRows(parsed);
         using var db = _dbFactory.CreateDbContext();
@@ -129,13 +134,39 @@ public class ImportService : IImportService
         var imported = 0;
         var skipped = 0;
         var errors = 0;
+        var moved = 0;
         var errorMessages = new List<string>();
 
         foreach (var row in rows)
         {
             var intakeId = ResolveTargetIntakeId(target, orgNodeIntakeMap, row.Fields.UnitName);
-            var (status, _) = EvaluateRow(row.Fields, row.IncompleteFullName, row.CourseArrivalDateInvalid,
+            var (status, _, existingRecipientId) = EvaluateRow(row.Fields, row.IncompleteFullName, row.CourseArrivalDateInvalid,
                 existingServiceNumbers, seenInFile, intakeId, existingNameKeys, seenNameKeysInFile);
+
+            // Позначений дубль — єдиний випадок, коли імпорт пише в НАЯВНУ картку,
+            // а не вставляє нову. Без позначки поведінка стара: пропустити.
+            var moveThisRow = status == ImportRowStatus.Duplicate
+                && existingRecipientId is not null
+                && moveRows?.Contains(row.RowNumber) == true;
+
+            if (moveThisRow)
+            {
+                try
+                {
+                    MoveExistingRecipient(
+                        db, existingRecipientId!.Value, row.Fields, target,
+                        unitCache, orgNodeCache, roomCache, intakeFolderCache, parsed.FilePath);
+                    moved++;
+                }
+                catch (Exception ex)
+                {
+                    DetachPending(db);
+                    errors++;
+                    errorMessages.Add($"Рядок {row.RowNumber}: {ex.Message}");
+                }
+                continue;
+            }
+
             if (status is ImportRowStatus.Error or ImportRowStatus.Duplicate)
             {
                 skipped++;
@@ -239,26 +270,136 @@ public class ImportService : IImportService
                 // рядок валив увесь подальший імпорт. Від'єднуємо незбережене.
                 // Кеші unitCache/orgNodeCache/roomCache від цього не страждають:
                 // Resolve* роблять SaveChanges одразу, тож їхні сутності вже Unchanged.
-                foreach (var entry in db.ChangeTracker.Entries()
-                             .Where(e => e.State != EntityState.Unchanged).ToList())
-                {
-                    entry.State = EntityState.Detached;
-                }
+                DetachPending(db);
 
                 errors++;
                 errorMessages.Add($"Рядок {row.RowNumber}: {ex.GetBaseException().Message}");
             }
         }
 
-        if (imported > 0)
+        if (imported > 0 || moved > 0)
         {
-            _auditLogService.LogImport(db, "Recipient", imported, $"з файлу {Path.GetFileName(parsed.FilePath)}");
+            if (imported > 0)
+                _auditLogService.LogImport(db, "Recipient", imported, $"з файлу {Path.GetFileName(parsed.FilePath)}");
+
             db.SaveChanges();
             WeakReferenceMessenger.Default.Send(new CountsChangedMessage());
         }
 
-        return new ImportSummary(imported, skipped, errors) { ErrorMessages = errorMessages };
+        return new ImportSummary(imported, skipped, errors, moved) { ErrorMessages = errorMessages };
     }
+
+    // Невдалий SaveChanges лишає сутності в ChangeTracker у стані Added, і тоді
+    // КОЖЕН наступний SaveChanges падає на них знову — один битий рядок валив
+    // увесь подальший імпорт. Кеші unitCache/orgNodeCache/roomCache від цього не
+    // страждають: Resolve* роблять SaveChanges одразу, тож їхні сутності вже Unchanged.
+    private static void DetachPending(AppDbContext db)
+    {
+        foreach (var entry in db.ChangeTracker.Entries()
+                     .Where(e => e.State != EntityState.Unchanged).ToList())
+        {
+            entry.State = EntityState.Detached;
+        }
+    }
+
+    /// <summary>
+    /// Переносить наявну людину в цільовий набір і оновлює її картку з файлу.
+    ///
+    /// Правило одне й наскрізне: ПОРОЖНЄ ЗНАЧЕННЯ НІЧОГО НЕ ЗАТИРАЄ. Вивантажки
+    /// бувають скорочені — три колонки замість тридцяти, — і запис порожнеч
+    /// витер би зброю, адреси й усю анкету, зібрану раніше. Тому оновлюється
+    /// лише те, що у файлі справді є.
+    ///
+    /// Документи, згенеровані людині в попередньому наборі, лишаються на місці:
+    /// вони справді були видані там, і переписувати історію переїзд не мусить.
+    /// </summary>
+    private void MoveExistingRecipient(
+        AppDbContext db, int recipientId, RowFields fields, ImportTarget target,
+        Dictionary<string, Unit> unitCache, Dictionary<string, OrgNode> orgNodeCache,
+        Dictionary<(string Building, string Number), Room> roomCache,
+        Dictionary<int, Dictionary<string, int>> intakeFolderCache, string filePath)
+    {
+        var person = db.Recipients.FirstOrDefault(r => r.Id == recipientId)
+            ?? throw new InvalidOperationException("Картку не знайдено — можливо, її видалили в іншій сесії.");
+
+        var previousIntakeId = person.IntakeId;
+
+        var unit = ResolveUnit(db, unitCache, fields.UnitName);
+        var orgNode = ResolveOrgNode(db, orgNodeCache, fields.UnitName);
+        var room = ResolveRoom(db, roomCache, fields.Building, fields.RoomNumber);
+
+        var resolvedIntakeId = target.Kind switch
+        {
+            ImportTargetKind.PermanentStaff => null,
+            ImportTargetKind.Intake => target.IntakeId,
+            _ => orgNode?.IntakeId
+        };
+
+        var fitnessCategory = ParseFitnessCategory(fields.FitnessRaw) ?? person.FitnessCategory;
+
+        var resolvedOrgNodeId = target.Kind == ImportTargetKind.Intake
+            ? target.OrgNodeId ?? orgNode?.Id
+            : orgNode?.Id;
+
+        if (resolvedIntakeId is int intakeIdForRouting)
+        {
+            var folderId = ResolveIntakeFitnessFolderId(db, intakeFolderCache, intakeIdForRouting, fitnessCategory);
+            if (folderId is int fid) resolvedOrgNodeId = fid;
+        }
+
+        // Набір і гілка — власне переїзд, вони задані ціллю, а не файлом, тож
+        // ставляться беззастережно. Постійний склад навмисно лишає null.
+        person.IntakeId = resolvedIntakeId;
+        if (resolvedOrgNodeId is int nodeId) person.OrgNodeId = nodeId;
+        if (unit is not null) person.UnitId = unit.Id;
+        if (room is not null) person.RoomId = room.Id;
+        person.FitnessCategory = fitnessCategory;
+
+        person.LastName = Keep(fields.LastName, person.LastName);
+        person.FirstName = Keep(fields.FirstName, person.FirstName);
+        person.MiddleName = KeepNullable(fields.MiddleName, person.MiddleName);
+        person.Rank = Keep(fields.Rank, person.Rank);
+        person.Position = Keep(fields.Position, person.Position);
+        person.ServiceNumber = Keep(fields.ServiceNumber, person.ServiceNumber);
+        person.DateOfBirth = fields.DateOfBirth ?? person.DateOfBirth;
+        person.CourseArrivalDate = fields.CourseArrivalDate ?? person.CourseArrivalDate;
+
+        person.Nationality = KeepNullable(fields.Nationality, person.Nationality);
+        person.Vos = KeepNullable(fields.Vos, person.Vos);
+        person.MaritalStatus = KeepNullable(fields.MaritalStatus, person.MaritalStatus);
+        person.RegistrationAddress = KeepNullable(fields.RegistrationAddress, person.RegistrationAddress);
+        person.ResidenceAddress = KeepNullable(fields.ResidenceAddress, person.ResidenceAddress);
+        person.Phone = KeepNullable(fields.Phone, person.Phone);
+        person.Note = KeepNullable(fields.Note, person.Note);
+        person.GroupName = KeepNullable(fields.GroupName, person.GroupName);
+        person.NameTransliterated = KeepNullable(fields.NameTransliterated, person.NameTransliterated);
+        person.ServedBefore = KeepNullable(fields.ServedBefore, person.ServedBefore);
+        person.ExtraNote = KeepNullable(fields.ExtraNote, person.ExtraNote);
+        person.CommanderContact = KeepNullable(fields.CommanderContact, person.CommanderContact);
+        person.TravelCertificateNumber = KeepNullable(fields.TravelCertificateNumber, person.TravelCertificateNumber);
+        person.FoodCertificate = KeepNullable(fields.FoodCertificate, person.FoodCertificate);
+        person.IdDocumentNumber = KeepNullable(fields.IdDocumentNumber, person.IdDocumentNumber);
+        person.MedicalBoard = KeepNullable(fields.MedicalBoard, person.MedicalBoard);
+        person.MedicalBoardConclusion = KeepNullable(fields.MedicalBoardConclusion, person.MedicalBoardConclusion);
+        person.OriginUnit = KeepNullable(fields.OriginUnit, person.OriginUnit);
+        person.Vehicle = KeepNullable(fields.Vehicle, person.Vehicle);
+
+        // Зміна чужої картки мусить лишати слід: інакше «звідки він тут узявся»
+        // не має відповіді ніде.
+        _auditLogService.LogUpdate(
+            db, "Recipient", person.Id,
+            oldValue: $"набір {previousIntakeId?.ToString() ?? "постійний склад"}",
+            newValue: $"набір {resolvedIntakeId?.ToString() ?? "постійний склад"}",
+            details: $"перенесено імпортом з файлу {Path.GetFileName(filePath)}");
+
+        db.SaveChanges();
+    }
+
+    private static string Keep(string? incoming, string current)
+        => string.IsNullOrWhiteSpace(incoming) ? current : incoming.Trim();
+
+    private static string? KeepNullable(string? incoming, string? current)
+        => string.IsNullOrWhiteSpace(incoming) ? current : incoming.Trim();
 
     private static string? NullIfEmpty(string value) => string.IsNullOrWhiteSpace(value) ? null : value;
 
@@ -432,26 +573,29 @@ public class ImportService : IImportService
         return result;
     }
 
-    private static (ImportRowStatus Status, string Note) EvaluateRow(
+    // ExistingRecipientId заповнюється ЛИШЕ для збігу з карткою в базі. Дубль
+    // усередині файлу його не має: там переносити нема кого, і колонка «ДІЯ»
+    // для такого рядка мусить лишитись порожньою.
+    private static (ImportRowStatus Status, string Note, int? ExistingRecipientId) EvaluateRow(
         RowFields fields, bool incompleteFullName, bool courseArrivalDateInvalid,
-        HashSet<string> existingServiceNumbers, HashSet<string> seenInFile,
-        int? intakeId, HashSet<string> existingNameKeys, HashSet<string> seenNameKeysInFile)
+        Dictionary<string, int> existingServiceNumbers, HashSet<string> seenInFile,
+        int? intakeId, Dictionary<string, int> existingNameKeys, HashSet<string> seenNameKeysInFile)
     {
         if (string.IsNullOrWhiteSpace(fields.LastName) && string.IsNullOrWhiteSpace(fields.FirstName))
-            return (ImportRowStatus.Error, "Порожнє поле ПІБ");
+            return (ImportRowStatus.Error, "Порожнє поле ПІБ", null);
 
         if (!string.IsNullOrWhiteSpace(fields.DateOfBirthRaw) && fields.DateOfBirth is null)
-            return (ImportRowStatus.Error, "Некоректна дата народження");
+            return (ImportRowStatus.Error, "Некоректна дата народження", null);
 
         var serviceNumber = fields.ServiceNumber.Trim();
         var nameCheckedInstead = false;
         if (serviceNumber.Length > 0)
         {
-            if (existingServiceNumbers.Contains(serviceNumber))
-                return (ImportRowStatus.Duplicate, "Вже є в базі — рядок пропущено");
+            if (existingServiceNumbers.TryGetValue(serviceNumber, out var byNumber))
+                return (ImportRowStatus.Duplicate, "Вже є в базі — рядок пропущено", byNumber);
 
             if (!seenInFile.Add(serviceNumber))
-                return (ImportRowStatus.Duplicate, "Дублюється в файлі — рядок пропущено");
+                return (ImportRowStatus.Duplicate, "Дублюється в файлі — рядок пропущено", null);
         }
         else
         {
@@ -459,28 +603,28 @@ public class ImportService : IImportService
             // народження в межах того самого набору (в іншому наборі однакове
             // ПІБ — це не обов'язково та сама людина).
             var nameKey = BuildNameKey(intakeId, fields.LastName, fields.FirstName, fields.MiddleName, fields.DateOfBirth);
-            if (existingNameKeys.Contains(nameKey))
-                return (ImportRowStatus.Duplicate, "Схожий запис (ПІБ і дата народження) вже є в наборі — рядок пропущено");
+            if (existingNameKeys.TryGetValue(nameKey, out var byName))
+                return (ImportRowStatus.Duplicate, "Схожий запис (ПІБ і дата народження) вже є в наборі — рядок пропущено", byName);
 
             if (!seenNameKeysInFile.Add(nameKey))
-                return (ImportRowStatus.Duplicate, "Дублюється в файлі — рядок пропущено");
+                return (ImportRowStatus.Duplicate, "Дублюється в файлі — рядок пропущено", null);
 
             nameCheckedInstead = true;
         }
 
         if (incompleteFullName)
-            return (ImportRowStatus.Warning, "Неповне ПІБ");
+            return (ImportRowStatus.Warning, "Неповне ПІБ", null);
 
         if (courseArrivalDateInvalid)
-            return (ImportRowStatus.Warning, "Некоректна дата прибуття — поле пропущено");
+            return (ImportRowStatus.Warning, "Некоректна дата прибуття — поле пропущено", null);
 
         if (string.IsNullOrWhiteSpace(fields.RoomNumber))
-            return (ImportRowStatus.Warning, "Немає поля «Кімната» — додасться без розміщення");
+            return (ImportRowStatus.Warning, "Немає поля «Кімната» — додасться без розміщення", null);
 
         if (nameCheckedInstead)
-            return (ImportRowStatus.Warning, "Без особового номера — дубль перевірено за ПІБ і датою народження");
+            return (ImportRowStatus.Warning, "Без особового номера — дубль перевірено за ПІБ і датою народження", null);
 
-        return (ImportRowStatus.Ok, string.Empty);
+        return (ImportRowStatus.Ok, string.Empty, null);
     }
 
     private static string BuildNameKey(int? intakeId, string lastName, string firstName, string? middleName, DateOnly? dateOfBirth)
@@ -618,27 +762,41 @@ public class ImportService : IImportService
         return map;
     }
 
-    private static HashSet<string> LoadExistingNameKeys(AppDbContext db)
+    // Мапи, а не множини: рядок-дубль мусить назвати КАРТКУ, з якою зіткнувся,
+    // інакше «Перемістити» не має що оновлювати. Раніше вистачало факту збігу.
+    private static Dictionary<string, int> LoadExistingNameKeys(AppDbContext db)
     {
         var recipients = db.Recipients
-            .Select(r => new { r.IntakeId, r.LastName, r.FirstName, r.MiddleName, r.DateOfBirth })
+            .Select(r => new { r.Id, r.IntakeId, r.LastName, r.FirstName, r.MiddleName, r.DateOfBirth })
             .ToList();
 
-        var keys = new HashSet<string>(StringComparer.Ordinal);
+        var keys = new Dictionary<string, int>(StringComparer.Ordinal);
         foreach (var r in recipients)
-            keys.Add(BuildNameKey(r.IntakeId, r.LastName, r.FirstName, r.MiddleName, r.DateOfBirth));
+        {
+            var key = BuildNameKey(r.IntakeId, r.LastName, r.FirstName, r.MiddleName, r.DateOfBirth);
+            // Перший виграє: якщо в базі вже лежать два однакові ПІБ, вибирати
+            // між ними імпорт не має права — це рішення людини, а не збігу.
+            if (!keys.ContainsKey(key)) keys[key] = r.Id;
+        }
 
         return keys;
     }
 
-    private static HashSet<string> LoadExistingServiceNumbers(AppDbContext db)
+    private static Dictionary<string, int> LoadExistingServiceNumbers(AppDbContext db)
     {
-        var numbers = db.Recipients
+        var people = db.Recipients
             .Where(r => r.ServiceNumber != null && r.ServiceNumber != "")
-            .Select(r => r.ServiceNumber)
+            .Select(r => new { r.Id, r.ServiceNumber })
             .ToList();
 
-        return new HashSet<string>(numbers.Select(n => n.Trim()), StringComparer.OrdinalIgnoreCase);
+        var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var p in people)
+        {
+            var key = p.ServiceNumber.Trim();
+            if (!map.ContainsKey(key)) map[key] = p.Id;
+        }
+
+        return map;
     }
 
     private static Unit? ResolveUnit(AppDbContext db, Dictionary<string, Unit> cache, string name)

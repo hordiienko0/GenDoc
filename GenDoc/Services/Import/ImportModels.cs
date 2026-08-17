@@ -113,6 +113,16 @@ public class ImportRowPreview
     public string UnitDisplay { get; set; } = string.Empty;
     public ImportRowStatus Status { get; set; }
     public string Note { get; set; } = string.Empty;
+
+    /// <summary>Картка, з якою зіткнувся рядок, якщо вона вже є в базі.
+    /// Заповнена рівно для дублів, які МОЖНА перенести: «дублюється у файлі»
+    /// такої картки не має, тож там колонка «ДІЯ» лишається порожньою.
+    /// Розрізняти дублі за текстом примітки не можна — тексти змінюються.</summary>
+    public int? ExistingRecipientId { get; set; }
+
+    /// <summary>Оператор позначив рядок до перенесення (колонка «ДІЯ»).
+    /// Має сенс лише разом із ExistingRecipientId.</summary>
+    public bool Move { get; set; }
 }
 
 /// <summary>Звідки береться набір, у який лягають імпортовані люди.</summary>
@@ -149,7 +159,10 @@ public class ImportParseResult
     public int TotalRows { get; set; }
 }
 
-public record ImportSummary(int Imported, int Skipped, int Errors)
+/// <summary>Moved — люди, чиї картки вже були в базі й яких оператор позначив
+/// до перенесення. Це не Imported (нових рядків не з'явилось) і не Skipped
+/// (рядок таки щось змінив), тож окремий лічильник.</summary>
+public record ImportSummary(int Imported, int Skipped, int Errors, int Moved = 0)
 {
     // Причини збоїв, а не лише їх кількість: анонімна "31 помилка" колись приховала
     // цілком конкретне 'no such column: w.RawText'.

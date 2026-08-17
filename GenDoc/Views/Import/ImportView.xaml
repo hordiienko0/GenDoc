@@ -369,6 +369,20 @@
                                    Foreground="{StaticResource TextSecondaryBrush}"/>
                     </Border>
 
+                    <!-- Перемикач діє на ВЕСЬ файл, а таблиця нижче показує лише перші
+                         вісім рядків — тому кількість названа тут явно, інакше було б
+                         незрозуміло, скільки саме людей зачепить одна галочка. -->
+                    <Border Style="{StaticResource CardStyle}" Padding="16,12" Margin="0,0,0,14"
+                            Visibility="{Binding HasMovableDuplicates, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel>
+                            <CheckBox IsChecked="{Binding MoveAllDuplicates}" Content="{Binding MoveAllText}"
+                                      VerticalContentAlignment="Center"/>
+                            <TextBlock Text="Наявні картки будуть змінені: набір і гілка — на обрані, решта полів — лише там, де у файлі є значення. Документи, видані в попередньому наборі, лишаться на місці."
+                                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"
+                                       TextWrapping="Wrap" Margin="24,6,0,0"/>
+                        </StackPanel>
+                    </Border>
+
                     <Border Style="{StaticResource CardStyle}">
                         <StackPanel>
                             <Grid Background="{StaticResource SkySoftBrush}">
@@ -378,12 +392,14 @@
                                     <ColumnDefinition Width="1.2*"/>
                                     <ColumnDefinition Width="1.6*"/>
                                     <ColumnDefinition Width="2.2*"/>
+                                    <ColumnDefinition Width="0.9*"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="СТАТУС" Style="{StaticResource TableHeaderTextStyle}"/>
                                 <TextBlock Grid.Column="1" Text="ПІБ" Style="{StaticResource TableHeaderTextStyle}"/>
                                 <TextBlock Grid.Column="2" Text="ЗВАННЯ" Style="{StaticResource TableHeaderTextStyle}"/>
                                 <TextBlock Grid.Column="3" Text="ПІДРОЗДІЛ" Style="{StaticResource TableHeaderTextStyle}"/>
                                 <TextBlock Grid.Column="4" Text="ПРИМІТКА" Style="{StaticResource TableHeaderTextStyle}"/>
+                                <TextBlock Grid.Column="5" Text="ДІЯ" Style="{StaticResource TableHeaderTextStyle}"/>
                             </Grid>
 
                             <ItemsControl ItemsSource="{Binding Preview}">
@@ -410,6 +426,7 @@
                                                     <ColumnDefinition Width="1.2*"/>
                                                     <ColumnDefinition Width="1.6*"/>
                                                     <ColumnDefinition Width="2.2*"/>
+                                                    <ColumnDefinition Width="0.9*"/>
                                                 </Grid.ColumnDefinitions>
 
                                                 <Border Grid.Column="0" Padding="6,3"
@@ -486,6 +503,27 @@
                                                         </Style>
                                                     </TextBlock.Style>
                                                 </TextBlock>
+
+                                                <!-- Прапорець лише там, де є що переносити. Дубль усередині
+                                                     файлу картки в базі не має, тож у нього тут прочерк. -->
+                                                <Grid Grid.Column="5" Margin="16,10">
+                                                    <CheckBox IsChecked="{Binding Move}" Content="перенести"
+                                                              VerticalAlignment="Center" FontSize="11"
+                                                              Visibility="{Binding CanMove, Converter={StaticResource BoolToVisibility}}"/>
+                                                    <TextBlock Text="—" VerticalAlignment="Center"
+                                                               Foreground="{StaticResource TextSecondaryBrush}">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding CanMove}" Value="True">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </Grid>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>

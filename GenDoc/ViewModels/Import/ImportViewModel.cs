@@ -251,7 +251,36 @@ public partial class ImportViewModel : ObservableObject
     private ObservableCollection<ImportColumnViewModel> columns = new();
 
     [ObservableProperty]
-    private ObservableCollection<ImportRowPreview> preview = new();
+    private ObservableCollection<ImportPreviewRowViewModel> preview = new();
+
+    // Повний перелік перевірених рядків. Preview показує лише перші вісім, а
+    // перенесення мусить діяти на всі — інакше дубль, що не потрапив у видиму
+    // вісімку, лишався б недосяжним, і функція працювала б через раз.
+    private List<ImportRowPreview> _validatedRows = new();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasMovableDuplicates))]
+    private int movableDuplicateCount;
+
+    public bool HasMovableDuplicates => MovableDuplicateCount > 0;
+
+    [ObservableProperty]
+    private string moveAllText = string.Empty;
+
+    /// <summary>Перемикач «перенести всі дублі». Діє на ВЕСЬ файл, не лише на
+    /// видимі рядки — тому поруч завжди стоїть точна кількість.</summary>
+    [ObservableProperty]
+    private bool moveAllDuplicates;
+
+    partial void OnMoveAllDuplicatesChanged(bool value)
+    {
+        foreach (var row in _validatedRows)
+            if (row.ExistingRecipientId is not null) row.Move = value;
+
+        foreach (var visible in Preview) visible.SyncFromModel();
+
+        UpdateImportButton();
+    }
 
     [ObservableProperty]
     private string previewHeaderText = string.Empty;
@@ -295,14 +324,24 @@ public partial class ImportViewModel : ObservableObject
     {
         if (_parsed is null) return;
 
+        var moveRowNumbers = _validatedRows.Where(r => r.Move).Select(r => r.RowNumber).ToList();
+
+        // Перенесення пише в НАЯВНІ картки, тож питаємо про нього окремо й
+        // прямо: наслідки в нього інші, ніж у вставки нових рядків.
+        var question = moveRowNumbers.Count == 0
+            ? $"Імпортувати {ReadyCount} записів?"
+            : $"Імпортувати {ReadyCount} записів і перенести {moveRowNumbers.Count} людей, "
+              + "які вже є в базі? Їхні наявні картки будуть змінені.";
+
         var confirm = MessageBox.Show(
-            $"Імпортувати {ReadyCount} записів?", "Підтвердження імпорту",
+            question, "Підтвердження імпорту",
             MessageBoxButton.YesNo, MessageBoxImage.Question);
         if (confirm != MessageBoxResult.Yes) return;
 
-        var summary = _importService.Import(_parsed, BuildTarget());
+        var summary = _importService.Import(_parsed, BuildTarget(), moveRowNumbers);
 
-        var message = $"Імпортовано {summary.Imported}, пропущено {summary.Skipped}, помилок {summary.Errors}";
+        var message = $"Імпортовано {summary.Imported}, перенесено {summary.Moved}, "
+                      + $"пропущено {summary.Skipped}, помилок {summary.Errors}";
         if (summary.ErrorMessages.Count > 0)
         {
             message += "\n\nПричини:\n" + string.Join("\n", summary.ErrorMessages.Take(3));
@@ -316,7 +355,9 @@ public partial class ImportViewModel : ObservableObject
         Reset();
     }
 
-    private bool CanRunImport() => HasFile && ReadyCount > 0;
+    // Самих лише перенесень достатньо: файл може не містити жодного нового
+    // рядка, а бути саме списком тих, кого переводять у інший набір.
+    private bool CanRunImport() => HasFile && (ReadyCount > 0 || MoveCount > 0);
 
     private void LoadFile(string filePath)
     {
@@ -352,14 +393,45 @@ public partial class ImportViewModel : ObservableObject
         ReadyCount = rows.Count(r => r.Status is ImportRowStatus.Ok or ImportRowStatus.Warning);
         IssueCount = rows.Count(r => r.Status is ImportRowStatus.Error or ImportRowStatus.Duplicate);
 
-        Preview = new ObservableCollection<ImportRowPreview>(rows.Take(8));
+        // Зміна мапінгу колонок перебудовує перевірку з нуля, тож позначки
+        // перенесення скидаються разом із рядками — вони більше не про ті дані.
+        _validatedRows = rows;
+        MoveAllDuplicates = false;
+
+        MovableDuplicateCount = rows.Count(r => r.ExistingRecipientId is not null);
+        MoveAllText = MovableDuplicateCount == 1
+            ? "Перенести 1 людину, яка вже є в базі, у цей набір"
+            : $"Перенести {MovableDuplicateCount} людей, які вже є в базі, у цей набір";
+
+        Preview = new ObservableCollection<ImportPreviewRowViewModel>(
+            rows.Take(8).Select(r => new ImportPreviewRowViewModel(r)));
+        foreach (var visible in Preview) visible.PropertyChanged += OnPreviewRowChanged;
+
         PreviewHeaderText = $"Попередній перегляд ({Preview.Count} з {TotalRows} рядків)";
 
         OnPropertyChanged(nameof(RowStatsText));
 
-        ImportButtonText = $"Імпортувати {ReadyCount} записів";
+        UpdateImportButton();
         HasSkippedRows = IssueCount > 0;
         SkippedNoteText = IssueCount > 0 ? $"{IssueCount} рядків буде пропущено — причини вказані вище" : string.Empty;
+    }
+
+    private void OnPreviewRowChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ImportPreviewRowViewModel.Move)) UpdateImportButton();
+    }
+
+    private int MoveCount => _validatedRows.Count(r => r.Move);
+
+    // Кнопка мусить називати обидві дії: інакше при нулі нових рядків вона
+    // читалась би як «Імпортувати 0 записів» і виглядала б зламаною, хоча
+    // перенесення відбудеться.
+    private void UpdateImportButton()
+    {
+        var moving = MoveCount;
+        ImportButtonText = moving == 0
+            ? $"Імпортувати {ReadyCount} записів"
+            : $"Імпортувати {ReadyCount}, перенести {moving}";
 
         RunImportCommand.NotifyCanExecuteChanged();
     }
@@ -374,7 +446,11 @@ public partial class ImportViewModel : ObservableObject
         ReadyCount = 0;
         IssueCount = 0;
         Columns = new ObservableCollection<ImportColumnViewModel>();
-        Preview = new ObservableCollection<ImportRowPreview>();
+        Preview = new ObservableCollection<ImportPreviewRowViewModel>();
+        _validatedRows = new List<ImportRowPreview>();
+        MovableDuplicateCount = 0;
+        MoveAllDuplicates = false;
+        MoveAllText = string.Empty;
         PreviewHeaderText = string.Empty;
         ImportButtonText = "Імпортувати 0 записів";
         SkippedNoteText = string.Empty;
