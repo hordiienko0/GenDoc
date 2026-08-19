@@ -607,9 +607,7 @@
                             </TextBlock>
 
                             <TextBlock Text="Кімната (корпус / №)" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,10,0,4"/>
-                            <TextBlock Style="{StaticResource CardReadValueStyle}">
-                                <Run Text="{Binding RoomBuilding, Mode=OneWay}"/><Run Text=" / "/><Run Text="{Binding RoomNumber, Mode=OneWay}"/>
-                            </TextBlock>
+                            <TextBlock Text="{Binding RoomDisplay}" Style="{StaticResource CardReadValueStyle}"/>
                             <Grid Style="{StaticResource CardEditGridStyle}">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>

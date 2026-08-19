@@ -104,8 +104,25 @@ namespace GenDoc.ViewModels.Personnel
         [ObservableProperty] private string rank;
         [ObservableProperty] private string position;
         [ObservableProperty] private string serviceNumber;
-        [ObservableProperty] private string? roomBuilding;
-        [ObservableProperty] private string? roomNumber;
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(RoomDisplay))]
+        private string? roomBuilding;
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(RoomDisplay))]
+        private string? roomNumber;
+
+        // 2.6: «307», а не « / 307», коли корпусу немає.
+        public string RoomDisplay => FormatRoom(RoomBuilding, RoomNumber);
+
+        internal static string FormatRoom(string? building, string? number)
+        {
+            var b = building?.Trim();
+            var n = number?.Trim();
+            if (string.IsNullOrEmpty(b) && string.IsNullOrEmpty(n)) return "-";
+            if (string.IsNullOrEmpty(b)) return n!;
+            if (string.IsNullOrEmpty(n)) return b;
+            return $"{b} / {n}";
+        }
         [ObservableProperty] private string? fitness;
 
         [ObservableProperty] private string? lastNameError;

@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using GenDoc.Models.Enums;
 using GenDoc.Services;
 using GenDoc.Services.Documents;
@@ -769,6 +770,12 @@ namespace GenDoc.ViewModels.Archive
         }
 
         // ── Таб «Запуски» ────────────────────────────────────────────────
+
+        // 2.6: порожній стан «Запусків» веде до дії.
+        [RelayCommand]
+        private void GoToGeneration()
+            => WeakReferenceMessenger.Default.Send(
+                new Services.Navigation.NavigateToSectionMessage(Shell.MainViewModel.GenerationSectionTitle, null));
 
         // 2.4: «Показати в архіві» з картки підсумку - вкладка «Запуски», потрібний запуск розгорнуто.
         public async Task ApplyNavigationPayloadAsync(object payload)
