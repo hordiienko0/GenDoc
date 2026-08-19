@@ -539,6 +539,10 @@
                                           Margin="{TemplateBinding Padding}"
                                           TextBlock.Foreground="{TemplateBinding Foreground}"
                                           VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                        <!-- Підказка порожнього комбобокса: текст беремо з Tag, як у TextBox -->
+                        <TextBlock x:Name="comboPlaceholder" Text="{TemplateBinding Tag}" IsHitTestVisible="False"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="{TemplateBinding Padding}"
+                                   VerticalAlignment="Center" HorizontalAlignment="Left" Visibility="Collapsed"/>
                         <TextBox x:Name="PART_EditableTextBox" Style="{x:Null}" Visibility="Collapsed"
                                  Background="Transparent" Foreground="{StaticResource TextPrimaryBrush}"
                                  BorderThickness="0" Margin="{TemplateBinding Padding}"
@@ -556,6 +560,13 @@
                         </Popup>
                     </Grid>
                     <ControlTemplate.Triggers>
+                        <MultiTrigger>
+                            <MultiTrigger.Conditions>
+                                <Condition Property="SelectedItem" Value="{x:Null}"/>
+                                <Condition Property="IsEditable" Value="False"/>
+                            </MultiTrigger.Conditions>
+                            <Setter TargetName="comboPlaceholder" Property="Visibility" Value="Visible"/>
+                        </MultiTrigger>
                         <Trigger Property="IsEditable" Value="True">
                             <Setter TargetName="PART_EditableTextBox" Property="Visibility" Value="Visible"/>
                             <Setter TargetName="ContentSite" Property="Visibility" Value="Collapsed"/>

@@ -3,9 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:GenDoc.ViewModels.Completeness"
         Style="{StaticResource {x:Type Window}}"
-        Title="Вимоги пакета" Width="620" Height="760"
+        Title="Вимоги пакета" Width="860" Height="720" MinWidth="760" MinHeight="480"
         Background="{StaticResource PanelBrush}"
-        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResize">
 
     <Window.Resources>
         <Style x:Key="RequirementSegmentStyle" TargetType="Button">
@@ -14,7 +14,7 @@
             <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="FontSize" Value="10.5"/>
-            <Setter Property="Padding" Value="0,4"/>
+            <Setter Property="Padding" Value="6,4"/>
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template">
                 <Setter.Value>
@@ -26,6 +26,15 @@
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <!-- Перемикачі вимог показуються лише персональним шаблонам -->
+        <Style x:Key="PersonalOnlyPanelStyle" TargetType="UniformGrid">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsGroup}" Value="True">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
     </Window.Resources>
 
@@ -63,10 +72,13 @@
             </StackPanel>
         </Border>
 
+        <!-- Уся форма прокручується як одне ціле: список росте вниз, а «+ Додати…» іде
+             одразу під ним (раніше список займав * і лишав пів вікна порожнім). -->
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
         <Grid Margin="16,12">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
@@ -76,9 +88,9 @@
             <Grid Grid.Row="0" Margin="0,0,0,6">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="188"/>
-                    <ColumnDefinition Width="188"/>
-                    <ColumnDefinition Width="70"/>
+                    <ColumnDefinition Width="258"/>
+                    <ColumnDefinition Width="258"/>
+                    <ColumnDefinition Width="96"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="ШАБЛОН" FontSize="10.5" FontWeight="Bold"
                            Foreground="{StaticResource TextSecondaryBrush}"/>
@@ -88,23 +100,29 @@
                            Foreground="{StaticResource TextSecondaryBrush}"/>
             </Grid>
 
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-                <ItemsControl ItemsSource="{Binding Rows}">
+            <ItemsControl Grid.Row="1" ItemsSource="{Binding Rows}">
+
                     <ItemsControl.ItemTemplate>
                         <DataTemplate DataType="{x:Type vm:RequirementTemplateRowViewModel}">
                             <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1" Padding="0,9">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="188"/>
-                                        <ColumnDefinition Width="188"/>
-                                        <ColumnDefinition Width="70"/>
+                                        <ColumnDefinition Width="258"/>
+                                        <ColumnDefinition Width="258"/>
+                                        <ColumnDefinition Width="96"/>
                                     </Grid.ColumnDefinitions>
 
                                     <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="12.5" VerticalAlignment="Center"
-                                               Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                               Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}"/>
 
-                                    <UniformGrid Grid.Column="1" Columns="3" VerticalAlignment="Center">
+                                    <!-- Груповий шаблон (1.4/1.5): один документ на весь склад, обов'язковість на особу не застосовна -->
+                                    <TextBlock Grid.Column="1" Grid.ColumnSpan="2" FontSize="11" VerticalAlignment="Center" TextWrapping="Wrap"
+                                               Foreground="{StaticResource TextSecondaryBrush}" Margin="8,0"
+                                               Text="груповий - формується на весь склад, обов'язковість на особу не застосовна"
+                                               Visibility="{Binding IsGroup, Converter={StaticResource BoolToVisibility}}"/>
+
+                                    <UniformGrid Grid.Column="1" Columns="3" VerticalAlignment="Center" Style="{StaticResource PersonalOnlyPanelStyle}">
                                         <Button Content="Обов'язк."
                                                 Command="{Binding DataContext.SetRegularCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                 CommandParameter="{Binding}">
@@ -149,7 +167,7 @@
                                         </Button>
                                     </UniformGrid>
 
-                                    <UniformGrid Grid.Column="2" Columns="3" VerticalAlignment="Center">
+                                    <UniformGrid Grid.Column="2" Columns="3" VerticalAlignment="Center" Style="{StaticResource PersonalOnlyPanelStyle}">
                                         <Button Content="Обов'язк."
                                                 Command="{Binding DataContext.SetLimitedRequiredCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                 CommandParameter="{Binding}">
@@ -195,13 +213,13 @@
                                     </UniformGrid>
 
                                     <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                        <Button Content="▲" Style="{StaticResource RowIconButtonStyle}"
+                                        <Button Content="&#xE70E;" ToolTip="Вище" Style="{StaticResource RowIconButtonStyle}"
                                                 Command="{Binding DataContext.MoveUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                 CommandParameter="{Binding}"/>
-                                        <Button Content="▼" Style="{StaticResource RowIconButtonStyle}" Margin="2,0,0,0"
+                                        <Button Content="&#xE70D;" ToolTip="Нижче" Style="{StaticResource RowIconButtonStyle}" Margin="2,0,0,0"
                                                 Command="{Binding DataContext.MoveDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                 CommandParameter="{Binding}"/>
-                                        <Button Content="✕" Style="{StaticResource RowIconButtonStyle}" Margin="4,0,0,0"
+                                        <Button Content="&#xE711;" ToolTip="Прибрати з пакета" Style="{StaticResource RowIconButtonStyle}" Margin="4,0,0,0"
                                                 Foreground="{StaticResource DangerBrush}"
                                                 Command="{Binding DataContext.RemoveTemplateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                 CommandParameter="{Binding}"/>
@@ -210,14 +228,14 @@
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
+
+            </ItemsControl>
 
             <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,12,0,0">
-                <ComboBox Width="260" ItemsSource="{Binding AvailableTemplates}" SelectedItem="{Binding SelectedTemplateToAdd}"
+                <ComboBox Width="300" Tag="Оберіть шаблон…" ItemsSource="{Binding AvailableTemplates}" SelectedItem="{Binding SelectedTemplateToAdd}"
                           DisplayMemberPath="Name"/>
                 <Button Content="+ Додати шаблон до пакета" Style="{StaticResource SecondaryButtonStyle}"
-                        Margin="10,0,0,0" Command="{Binding AddTemplateCommand}"/>
+                        Margin="10,0,0,0" Command="{Binding AddTemplateCommand}" IsEnabled="{Binding CanAddTemplate}"/>
             </StackPanel>
 
             <TextBlock Grid.Row="3" Text="ШАБЛОНИ ЕКСПОРТУ (.XLSX) - ГРУПОВІ ВІДОМОСТІ" FontSize="10.5" FontWeight="Bold"
@@ -282,7 +300,7 @@
                                     </Button>
                                 </UniformGrid>
 
-                                <Button Grid.Column="2" Content="✕" Style="{StaticResource RowIconButtonStyle}"
+                                <Button Grid.Column="2" Content="&#xE711;" ToolTip="Прибрати з пакета" Style="{StaticResource RowIconButtonStyle}"
                                         Foreground="{StaticResource DangerBrush}" HorizontalAlignment="Right"
                                         Command="{Binding DataContext.RemoveExportTemplateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                         CommandParameter="{Binding}"/>
@@ -293,11 +311,12 @@
             </ItemsControl>
 
             <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,12,0,0">
-                <ComboBox Width="260" ItemsSource="{Binding AvailableExportTemplates}" SelectedItem="{Binding SelectedExportTemplateToAdd}"
+                <ComboBox Width="300" Tag="Оберіть шаблон експорту…" ItemsSource="{Binding AvailableExportTemplates}" SelectedItem="{Binding SelectedExportTemplateToAdd}"
                           DisplayMemberPath="Name"/>
                 <Button Content="+ Додати шаблон експорту" Style="{StaticResource SecondaryButtonStyle}"
-                        Margin="10,0,0,0" Command="{Binding AddExportTemplateCommand}"/>
+                        Margin="10,0,0,0" Command="{Binding AddExportTemplateCommand}" IsEnabled="{Binding CanAddExportTemplate}"/>
             </StackPanel>
         </Grid>
+        </ScrollViewer>
     </DockPanel>
 </Window>

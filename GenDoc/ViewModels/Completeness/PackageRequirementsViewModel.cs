@@ -49,8 +49,10 @@ namespace GenDoc.ViewModels.Completeness
             Name = info.Name;
             SortOrder = info.SortOrder;
             HasDocuments = hasDocuments;
-            regular = info.RequirementRegular;
-            limited = info.RequirementLimited;
+            IsGroup = info.IsGroup;
+            // Груповий шаблон формує один документ на весь склад - обов'язковість на особу до нього не застосовна.
+            regular = info.IsGroup ? TemplateRequirement.NotApplicable : info.RequirementRegular;
+            limited = info.IsGroup ? TemplateRequirement.NotApplicable : info.RequirementLimited;
         }
 
         public int? LinkId { get; }
@@ -58,6 +60,7 @@ namespace GenDoc.ViewModels.Completeness
         public string Name { get; }
         public int SortOrder { get; set; }
         public bool HasDocuments { get; }
+        public bool IsGroup { get; }
 
         [ObservableProperty]
         private TemplateRequirement regular;
@@ -91,10 +94,15 @@ namespace GenDoc.ViewModels.Completeness
         public ObservableCollection<TemplateChoice> AvailableExportTemplates { get; } = new();
 
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(CanAddTemplate))]
         private TemplateChoice? selectedTemplateToAdd;
 
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(CanAddExportTemplate))]
         private TemplateChoice? selectedExportTemplateToAdd;
+
+        public bool CanAddTemplate => SelectedTemplateToAdd is not null;
+        public bool CanAddExportTemplate => SelectedExportTemplateToAdd is not null;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasPreview))]
@@ -313,20 +321,30 @@ namespace GenDoc.ViewModels.Completeness
                 return;
             }
 
-            var requiredRegular = Rows.Count(r => r.Regular == TemplateRequirement.Required);
-            var requiredLimited = Rows.Count(r => r.Limited == TemplateRequirement.Required);
-            var optionalRegular = Rows.Count(r => r.Regular == TemplateRequirement.Optional);
-            var optionalLimited = Rows.Count(r => r.Limited == TemplateRequirement.Optional);
+            var personal = Rows.Where(r => !r.IsGroup).ToList();
+            var requiredRegular = personal.Count(r => r.Regular == TemplateRequirement.Required);
+            var requiredLimited = personal.Count(r => r.Limited == TemplateRequirement.Required);
+            var optionalRegular = personal.Count(r => r.Regular == TemplateRequirement.Optional);
+            var optionalLimited = personal.Count(r => r.Limited == TemplateRequirement.Optional);
 
-            PreviewText = $"Для набору №{_previewIntakeId}: обов'язкових - {requiredRegular} (звич.) / {requiredLimited} (обмеж.), " +
-                          $"опційних - {optionalRegular} / {optionalLimited}";
+            PreviewText = BuildPreviewText(_previewIntakeId.Value, requiredRegular, optionalRegular, requiredLimited, optionalLimited);
         }
+
+        internal static string BuildPreviewText(int intakeNumber, int requiredRegular, int optionalRegular, int requiredLimited, int optionalLimited)
+            => $"Для набору №{intakeNumber}: звичайні - {requiredRegular} {Plural(requiredRegular, "обов'язковий", "обов'язкових")}, " +
+               $"{optionalRegular} {Plural(optionalRegular, "опційний", "опційних")} · " +
+               $"обмежено придатні - {requiredLimited} {Plural(requiredLimited, "обов'язковий", "обов'язкових")}, " +
+               $"{optionalLimited} {Plural(optionalLimited, "опційний", "опційних")}";
+
+        private static string Plural(int n, string one, string many) => n == 1 ? one : many;
 
         private void Validate()
         {
-            if (Rows.Count == 0)
+            // Групові рядки (1.4/1.5) вимог на особу не мають - у перевірці не беруть участі.
+            var personal = Rows.Where(r => !r.IsGroup).ToList();
+            if (personal.Count == 0)
             {
-                // Пакет без docx-шаблонів (лише групові XLSX-відомості) не бере участі
+                // Пакет без персональних docx-шаблонів (лише групові відомості) не бере участі
                 // в матриці комплектності - вимоги нема до чого застосовувати.
                 ValidationError = Rows.Count == 0 && ExportRows.Count == 0
                     ? "Пакет повинен мати хоча б один шаблон"
@@ -334,8 +352,8 @@ namespace GenDoc.ViewModels.Completeness
                 return;
             }
 
-            var hasAnyRegular = Rows.Any(r => r.Regular != TemplateRequirement.NotApplicable);
-            var hasAnyLimited = Rows.Any(r => r.Limited != TemplateRequirement.NotApplicable);
+            var hasAnyRegular = personal.Any(r => r.Regular != TemplateRequirement.NotApplicable);
+            var hasAnyLimited = personal.Any(r => r.Limited != TemplateRequirement.NotApplicable);
 
             ValidationError = !hasAnyRegular || !hasAnyLimited
                 ? "Пакет повинен мати хоча б один шаблон, застосовний до кожної категорії"
