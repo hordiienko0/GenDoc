@@ -74,6 +74,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     private ObservableCollection<PackageTemplateSummaryItemViewModel> packageTemplates = new();
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(GenerateButtonText))]
     private int recipientCount;
 
     [ObservableProperty]
@@ -129,6 +130,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     [NotifyPropertyChangedFor(nameof(UseSelectedRecipients))]
     [NotifyPropertyChangedFor(nameof(ShowNoRecipientsSelectedHint))]
     [NotifyCanExecuteChangedFor(nameof(GenerateAllCommand))]
+    [NotifyPropertyChangedFor(nameof(GenerateButtonText))]
     private bool useAllRecipients = true;
 
     public bool UseSelectedRecipients => !UseAllRecipients;
@@ -139,10 +141,24 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     [NotifyPropertyChangedFor(nameof(SelectedRecipientsCountLabel))]
     [NotifyPropertyChangedFor(nameof(ShowNoRecipientsSelectedHint))]
     [NotifyCanExecuteChangedFor(nameof(GenerateAllCommand))]
+    [NotifyPropertyChangedFor(nameof(GenerateButtonText))]
     private int selectedRecipientsCount;
 
     public string SelectedRecipientsCountLabel => $"Обрано {SelectedRecipientsCount} з {RecipientOptions.Count(r => r.IsVisible)}";
     public bool ShowNoRecipientsSelectedHint => UseSelectedRecipients && SelectedRecipientsCount == 0;
+
+    // 2.3: пошук за ПІБ у списку «Вибрані» - лише показ, позначки не скидає.
+    [ObservableProperty] private string recipientSearchText = string.Empty;
+
+    partial void OnRecipientSearchTextChanged(string value)
+    {
+        foreach (var row in RecipientOptions) row.MatchesSearch = RecipientCheckRowViewModel.Matches(row.FullName, value);
+    }
+
+    public string GenerateButtonText => BuildGenerateButtonText(UseAllRecipients, RecipientCount, SelectedRecipientsCount);
+
+    internal static string BuildGenerateButtonText(bool useAll, int all, int selected)
+        => useAll ? $"Згенерувати всім ({all})" : $"Згенерувати обраним ({selected})";
 
     private void RefreshRecipientOptions()
     {
