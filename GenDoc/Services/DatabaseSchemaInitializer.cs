@@ -6,7 +6,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 23;
+    private const int CurrentSchemaVersion = 24;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -169,6 +169,12 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     internal static readonly (string Name, string Type)[] TemplateColumnsV23 =
     {
         ("Audience", "INTEGER NOT NULL DEFAULT 0")
+    };
+
+    // Тека, куди лягають документи, якщо оператор не обрав іншої (NULL = Документи\GenDoc).
+    internal static readonly (string Name, string Type)[] AppSettingsColumnsV24 =
+    {
+        ("DefaultOutputFolder", "TEXT")
     };
 
     private static readonly (string Name, string Type)[] AppSettingsColumnsV15 =
@@ -496,6 +502,22 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                 });
                 currentVersion = 23;
             }
+
+            if (currentVersion < 24)
+            {
+                AddMissingColumns(db, "AppSettings", AppSettingsColumnsV24);
+                // Перебудова копіює IntakeId/BranchName - для дуже старих БД вони мають уже бути.
+                AddMissingColumns(db, "GenerationPackageRuns", RunColumnsV6);
+                MigrateGenerationPackageRunsForAdHocRuns(db);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 24,
+                    AppliedAt = DateTime.Now,
+                    Description = "Тека генерації за замовчуванням; запуски без пакета (вибіркова генерація)"
+                });
+                currentVersion = 24;
+            }
         }
 
         // Ідемпотентно, як EnsureExportTemplateTables: таблиці, додані в модель після
@@ -546,6 +568,8 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         AddMissingColumns(db, "Templates", TemplateColumnsV21);
         AddMissingColumns(db, "ExportTemplates", ExportTemplateColumnsV22);
         AddMissingColumns(db, "Templates", TemplateColumnsV23);
+        AddMissingColumns(db, "AppSettings", AppSettingsColumnsV24);
+        MigrateGenerationPackageRunsForAdHocRuns(db);
 
         // Ідемпотентно (IF NOT EXISTS) - самовідновлюється незалежно від SchemaVersion,
         // так само як EnsureExportTemplateTables. Обгорнуто в try/catch: якщо в
@@ -1239,6 +1263,86 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         // проміжного білда без частини колонок.
         AddMissingColumns(connection, "Weapons", WeaponColumnsV18);
         AddMissingColumns(connection, "Vehicles", VehicleColumnsV18);
+    }
+
+    private static void MigrateGenerationPackageRunsForAdHocRuns(AppDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        var wasClosed = connection.State != System.Data.ConnectionState.Open;
+        if (wasClosed) connection.Open();
+        try { MigrateGenerationPackageRunsForAdHocRuns(connection); }
+        finally { if (wasClosed) connection.Close(); }
+    }
+
+    internal static bool ColumnIsNotNull(System.Data.Common.DbConnection connection, string table, string column)
+    {
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = $"PRAGMA table_info(\"{table}\");";
+        using var reader = cmd.ExecuteReader();
+        while (reader.Read())
+        {
+            if (string.Equals(reader.GetString(reader.GetOrdinal("name")), column, StringComparison.OrdinalIgnoreCase))
+                return reader.GetInt64(reader.GetOrdinal("notnull")) == 1;
+        }
+        return false;
+    }
+
+    // v24: GenerationPackageId стає NULL-able (запуск «Вибірково» без пакета). Патерн той
+    // самий, що в MigrateGeneratedGroupDocumentsForDocxSupport. Ознака «вже зроблено» -
+    // PRAGMA table_info: notnull = 0.
+    internal static void MigrateGenerationPackageRunsForAdHocRuns(System.Data.Common.DbConnection connection)
+    {
+        if (!TableExists(connection, "GenerationPackageRuns")) return;
+        if (!ColumnIsNotNull(connection, "GenerationPackageRuns", "GenerationPackageId")) return;
+
+        using (var pragmaOff = connection.CreateCommand())
+        {
+            pragmaOff.CommandText = "PRAGMA foreign_keys=OFF;";
+            pragmaOff.ExecuteNonQuery();
+        }
+
+        using var transaction = connection.BeginTransaction();
+        try
+        {
+            Exec(connection, transaction, """
+                CREATE TABLE "GenerationPackageRuns_New" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_GenerationPackageRuns" PRIMARY KEY AUTOINCREMENT,
+                    "GenerationPackageId" INTEGER NULL,
+                    "RunAt" TEXT NOT NULL,
+                    "RunByUserId" INTEGER NOT NULL,
+                    "GeneratedCount" INTEGER NOT NULL DEFAULT 0,
+                    "SkippedCount" INTEGER NOT NULL DEFAULT 0,
+                    "ErrorCount" INTEGER NOT NULL DEFAULT 0,
+                    "Summary" TEXT NULL,
+                    "IntakeId" INTEGER NULL,
+                    "BranchName" TEXT NULL,
+                    CONSTRAINT "FK_GenerationPackageRuns_GenerationPackages_GenerationPackageId" FOREIGN KEY ("GenerationPackageId") REFERENCES "GenerationPackages" ("Id") ON DELETE SET NULL,
+                    CONSTRAINT "FK_GenerationPackageRuns_Users_RunByUserId" FOREIGN KEY ("RunByUserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+                );
+                """);
+            Exec(connection, transaction, """
+                INSERT INTO "GenerationPackageRuns_New"
+                    ("Id","GenerationPackageId","RunAt","RunByUserId","GeneratedCount","SkippedCount","ErrorCount","Summary","IntakeId","BranchName")
+                SELECT "Id","GenerationPackageId","RunAt","RunByUserId","GeneratedCount","SkippedCount","ErrorCount","Summary","IntakeId","BranchName"
+                FROM "GenerationPackageRuns";
+                """);
+            Exec(connection, transaction, """DROP TABLE "GenerationPackageRuns";""");
+            Exec(connection, transaction, """ALTER TABLE "GenerationPackageRuns_New" RENAME TO "GenerationPackageRuns";""");
+            Exec(connection, transaction, """CREATE INDEX "IX_GenerationPackageRuns_GenerationPackageId" ON "GenerationPackageRuns" ("GenerationPackageId");""");
+            Exec(connection, transaction, """CREATE INDEX "IX_GenerationPackageRuns_RunByUserId" ON "GenerationPackageRuns" ("RunByUserId");""");
+            transaction.Commit();
+        }
+        catch
+        {
+            transaction.Rollback();
+            throw;
+        }
+        finally
+        {
+            using var pragmaOn = connection.CreateCommand();
+            pragmaOn.CommandText = "PRAGMA foreign_keys=ON;";
+            pragmaOn.ExecuteNonQuery();
+        }
     }
 
     private static void BackfillRunIntakeIds(AppDbContext db)

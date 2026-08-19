@@ -654,7 +654,7 @@ namespace GenDoc.Services.Documents
                 .Select(r => new
                 {
                     r.Id, r.RunAt,
-                    PackageName = r.GenerationPackage != null ? r.GenerationPackage.Name : "-",
+                    PackageName = r.GenerationPackage != null ? r.GenerationPackage.Name : "Вибірково",
                     r.IntakeId, r.BranchName, r.GeneratedCount, r.SkippedCount, r.ErrorCount
                 })
                 .ToListAsync();

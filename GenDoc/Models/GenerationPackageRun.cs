@@ -4,7 +4,8 @@
     {
         public int Id { get; set; }
 
-        public int GenerationPackageId { get; set; }
+        // NULL - вибіркова генерація поза пакетом (2.2).
+        public int? GenerationPackageId { get; set; }
         public GenerationPackage? GenerationPackage { get; set; }
 
         public DateTime RunAt { get; set; }

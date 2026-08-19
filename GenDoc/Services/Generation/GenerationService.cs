@@ -295,10 +295,11 @@ namespace GenDoc.Services.Generation
             using var db = _dbFactory.CreateDbContext();
 
             return db.GenerationPackageRuns
+                .Where(r => r.GenerationPackageId != null) // вибіркові прогони без пакета - не «повторити пакет»
                 .OrderByDescending(r => r.RunAt)
                 .ThenByDescending(r => r.Id)
                 .Join(db.GenerationPackages,
-                    run => run.GenerationPackageId,
+                    run => run.GenerationPackageId!.Value,
                     package => package.Id,
                     (run, package) => new LastRunInfo(
                         package.Id, package.Name, run.RunAt,
@@ -392,7 +393,8 @@ namespace GenDoc.Services.Generation
             return new RunResult(
                 docx.Generated, docx.Skipped, docx.Errors,
                 xlsx.Generated, xlsx.Skipped, xlsx.Errors,
-                docxGroup.Generated, docxGroup.Skipped, docxGroup.Errors);
+                docxGroup.Generated, docxGroup.Skipped, docxGroup.Errors,
+                run.Id, issues);
         }
 
         // Особовий склад для запуску: весь або лише позначені, завжди звужений

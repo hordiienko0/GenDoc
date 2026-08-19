@@ -3,10 +3,13 @@ using GenDoc.Services;
 
 namespace GenDoc.Services.Generation
 {
+    // RunId та Issues додано для картки підсумку (2.4): звідти - перехід до запуску
+    // в архіві та список проблем без повторного читання БД.
     public record RunResult(
         int Generated, int Skipped, int Errors,
         int GroupGenerated, int GroupSkipped, int GroupErrors,
-        int DocxGroupGenerated, int DocxGroupSkipped, int DocxGroupErrors);
+        int DocxGroupGenerated, int DocxGroupSkipped, int DocxGroupErrors,
+        int RunId = 0, IReadOnlyList<RunIssue>? Issues = null);
 
     /// <summary>Що показати на порожньому боці екрана генерації. Теки виводу
     /// тут навмисно немає: у прогоні вона не зберігається, та й повторний

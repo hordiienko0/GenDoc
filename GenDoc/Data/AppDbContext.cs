@@ -116,6 +116,14 @@ namespace GenDoc.Data
                 .HasForeignKey(t => t.GenerationPackageId)
                 .OnDelete(DeleteBehavior.Cascade);
 
+            // v24: запуск без пакета (вибіркова генерація) і запуск, чий пакет видалили,
+            // лишаються в історії - пакет обнуляється, а не тягне запуск за собою.
+            modelBuilder.Entity<GenerationPackageRun>()
+                .HasOne(r => r.GenerationPackage)
+                .WithMany(p => p.Runs)
+                .HasForeignKey(r => r.GenerationPackageId)
+                .OnDelete(DeleteBehavior.SetNull);
+
             modelBuilder.Entity<OrgNode>()
                 .HasOne(n => n.Parent)
                 .WithMany(n => n.Children)

@@ -24,6 +24,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     private readonly Services.Completeness.ICompletenessService _completenessService;
     private readonly IRecipientService _recipientService;
     private readonly IManualTagFormBuilder _manualTagFormBuilder;
+    private readonly IOutputFolderService _outputFolderService;
 
     public GenerationViewModel(
         IGenerationService generationService,
@@ -31,7 +32,8 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         IServiceProvider serviceProvider,
         Services.Completeness.ICompletenessService completenessService,
         IRecipientService recipientService,
-        IManualTagFormBuilder manualTagFormBuilder)
+        IManualTagFormBuilder manualTagFormBuilder,
+        IOutputFolderService outputFolderService)
     {
         _generationService = generationService;
         _dialogService = dialogService;
@@ -39,8 +41,10 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         _completenessService = completenessService;
         _recipientService = recipientService;
         _manualTagFormBuilder = manualTagFormBuilder;
+        _outputFolderService = outputFolderService;
         RefreshPackages();
         RefreshRecipientOptions();
+        _ = LoadDefaultOutputFolderAsync();
     }
 
     public async Task ApplyNavigationPayloadAsync(object payload)
@@ -96,6 +100,13 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     private string? outputFolder;
 
     public bool HasOutputFolder => !string.IsNullOrWhiteSpace(OutputFolder);
+
+    private async Task LoadDefaultOutputFolderAsync()
+        => OutputFolder = await _outputFolderService.GetDefaultAsync();
+
+    // 2.4: підсумок останнього прогону замість MessageBox; скидається при зміні пакета.
+    [ObservableProperty]
+    private GenerationResultViewModel? lastResult;
 
     [ObservableProperty]
     private bool regenerateExisting;
@@ -350,7 +361,9 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
 
         RecipientCount = _generationService.GetRecipientCount();
         RefreshRecipientOptions();
-        OutputFolder = null;
+        // 2.1: тека не скидається при виборі пакета; порожня - підставляється типова.
+        if (string.IsNullOrWhiteSpace(OutputFolder)) await LoadDefaultOutputFolderAsync();
+        LastResult = null;
         ProgressText = string.Empty;
     }
 
@@ -437,12 +450,13 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     }
 
     [RelayCommand]
-    private void PickOutputFolder()
+    private async Task PickOutputFolderAsync()
     {
         var dialog = new OpenFolderDialog { Title = "Оберіть папку для документів" };
         if (dialog.ShowDialog() != true) return;
 
         OutputFolder = dialog.FolderName;
+        await _outputFolderService.SaveDefaultAsync(dialog.FolderName);
     }
 
     private bool CanGenerateAll() =>

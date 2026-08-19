@@ -413,12 +413,16 @@
                             </Border>
                         </StackPanel>
 
+                        <!-- 2.1: тека підставляється сама (налаштування або Документи\GenDoc) і не
+                             скидається при зміні пакета; «Змінити…» зберігає нову як типову. -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
-                            <Button Content="Обрати папку…" Style="{StaticResource SecondaryButtonStyle}"
+                            <TextBlock Text="Тека документів:" Foreground="{StaticResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center" Margin="0,0,8,0"/>
+                            <TextBlock Text="{Binding OutputFolder}" Foreground="{StaticResource TextPrimaryBrush}"
+                                       VerticalAlignment="Center" Margin="0,0,10,0" TextTrimming="CharacterEllipsis"
+                                       MaxWidth="520" ToolTip="{Binding OutputFolder}"/>
+                            <Button Content="Змінити…" Style="{StaticResource SecondaryButtonStyle}"
                                     Command="{Binding PickOutputFolderCommand}"/>
-                            <TextBlock Text="{Binding OutputFolder}" Foreground="{StaticResource TextSecondaryBrush}"
-                                       VerticalAlignment="Center" Margin="10,0,0,0" TextTrimming="CharacterEllipsis"
-                                       ToolTip="{Binding OutputFolder}"/>
                         </StackPanel>
 
                         <CheckBox Content="Генерувати повторно вже наявні" IsChecked="{Binding RegenerateExisting}" Margin="0,0,0,20"/>

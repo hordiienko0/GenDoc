@@ -419,6 +419,44 @@ public class DatabaseSchemaInitializerTests
         Assert.Equal(9L, Scalar(connection, """SELECT "IntakeId" FROM "GenerationPackageRuns" WHERE "Id" = 3""")); // вже заповнений - не чіпати
     }
 
+    // v24: запуск «Вибірково» (2.2) не має пакета, а колонка була NOT NULL. SQLite не
+    // знімає NOT NULL через ALTER - перебудова таблиці; дані й зовнішні ключі документів
+    // (RunId → Id) лишаються.
+    [Fact]
+    public void MigrateGenerationPackageRunsForAdHocRuns_MakesPackageNullableAndKeepsRows()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        Exec(connection, """
+            CREATE TABLE "GenerationPackages" ("Id" INTEGER NOT NULL CONSTRAINT "PK_GenerationPackages" PRIMARY KEY AUTOINCREMENT, "Name" TEXT NOT NULL);
+            CREATE TABLE "Users" ("Id" INTEGER NOT NULL CONSTRAINT "PK_Users" PRIMARY KEY AUTOINCREMENT, "FullName" TEXT NOT NULL);
+            CREATE TABLE "GenerationPackageRuns" (
+                "Id" INTEGER NOT NULL CONSTRAINT "PK_GenerationPackageRuns" PRIMARY KEY AUTOINCREMENT,
+                "GenerationPackageId" INTEGER NOT NULL,
+                "RunAt" TEXT NOT NULL,
+                "RunByUserId" INTEGER NOT NULL,
+                "GeneratedCount" INTEGER NOT NULL,
+                "SkippedCount" INTEGER NOT NULL,
+                "ErrorCount" INTEGER NOT NULL,
+                "Summary" TEXT NULL,
+                "IntakeId" INTEGER NULL,
+                "BranchName" TEXT NULL,
+                CONSTRAINT "FK_GenerationPackageRuns_GenerationPackages_GenerationPackageId" FOREIGN KEY ("GenerationPackageId") REFERENCES "GenerationPackages" ("Id") ON DELETE CASCADE,
+                CONSTRAINT "FK_GenerationPackageRuns_Users_RunByUserId" FOREIGN KEY ("RunByUserId") REFERENCES "Users" ("Id") ON DELETE CASCADE);
+            INSERT INTO "GenerationPackages" VALUES (7, 'П'); INSERT INTO "Users" VALUES (1, 'Тест');
+            INSERT INTO "GenerationPackageRuns" ("Id","GenerationPackageId","RunAt","RunByUserId","GeneratedCount","SkippedCount","ErrorCount","Summary","IntakeId","BranchName")
+            VALUES (1, 7, '2026-08-12 09:35:00', 1, 4, 0, 0, NULL, 4, NULL);
+            """);
+
+        DatabaseSchemaInitializer.MigrateGenerationPackageRunsForAdHocRuns((DbConnection)connection);
+        DatabaseSchemaInitializer.MigrateGenerationPackageRunsForAdHocRuns((DbConnection)connection); // ідемпотентно
+
+        Assert.Equal(1L, Scalar(connection, """SELECT COUNT(*) FROM "GenerationPackageRuns" WHERE "Id" = 1 AND "GenerationPackageId" = 7 AND "IntakeId" = 4"""));
+        Exec(connection, """INSERT INTO "GenerationPackageRuns" ("GenerationPackageId","RunAt","RunByUserId","GeneratedCount","SkippedCount","ErrorCount") VALUES (NULL, '2026-08-19', 1, 0, 0, 0);""");
+        Assert.Equal(2L, Scalar(connection, """SELECT COUNT(*) FROM "GenerationPackageRuns";"""));
+        Assert.False(DatabaseSchemaInitializer.ColumnIsNotNull((DbConnection)connection, "GenerationPackageRuns", "GenerationPackageId"));
+    }
+
     private static void Exec(SqliteConnection connection, string sql)
     {
         using var cmd = connection.CreateCommand();

@@ -29,6 +29,7 @@ public partial class MainViewModel : ObservableObject
     public const string IntakesSectionTitle = "Набори";
     public const string CompletenessSectionTitle = "Комплектність";
     public const string GenerationSectionTitle = "Генерація";
+    public const string ArchiveSectionTitle = "Архів документів";
 
     private readonly IServiceProvider _serviceProvider;
 
@@ -98,7 +99,7 @@ public partial class MainViewModel : ObservableObject
                 (_completenessNavItem = new NavigationItem(CompletenessSectionTitle, "\uE73E",
                     () => _serviceProvider.GetRequiredService<GenDoc.ViewModels.Completeness.CompletenessViewModel>(),
                     NavigationBadgeKind.Attention)),
-                new NavigationItem("Архів документів", "\uE8B7", () => _serviceProvider.GetRequiredService<ArchiveViewModel>()),
+                new NavigationItem(ArchiveSectionTitle, "\uE8B7", () => _serviceProvider.GetRequiredService<ArchiveViewModel>()),
             }, showDividerAfter: true),
             new(new[]
             {

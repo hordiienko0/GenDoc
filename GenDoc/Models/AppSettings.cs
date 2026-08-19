@@ -16,6 +16,9 @@
         // Шаблон імені файлу при експорті з архіву; {ПІБ}, {Шаблон}, {Дата}.
         public string? ExportFileNameTemplate { get; set; }
 
+        // Тека, куди лягають документи, якщо оператор не обрав іншої; NULL = ДокументиGenDoc.
+        public string? DefaultOutputFolder { get; set; }
+
         // Ліміт розміру завантажуваної версії документа, КБ.
         public int? MaxDocumentSizeKb { get; set; }
 
