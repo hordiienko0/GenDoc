@@ -41,6 +41,19 @@ namespace GenDoc
         {
             base.OnStartup(e);
 
+            // Вада 1.3: без обробника застосунок зникав мовчки. Диспетчерські помилки
+            // логуємо й показуємо, не завершуючи роботу; решту - лише логуємо.
+            DispatcherUnhandledException += OnDispatcherUnhandledException;
+            AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            {
+                if (args.ExceptionObject is Exception ex) ErrorLog.Write(ex, CurrentUserName());
+            };
+            TaskScheduler.UnobservedTaskException += (_, args) =>
+            {
+                ErrorLog.Write(args.Exception, CurrentUserName());
+                args.SetObserved();
+            };
+
             var services = new ServiceCollection();
             ConfigureServices(services);
             Services = services.BuildServiceProvider();
@@ -108,6 +121,28 @@ namespace GenDoc
             services.AddSingleton<ViewModels.Completeness.CompletenessViewModel>();
             services.AddTransient<TrashViewModel>();
             services.AddTransient<MainWindow>();
+        }
+
+        private static string? CurrentUserName()
+        {
+            try { return Services?.GetService<ICurrentUserContext>()?.CurrentUserFullName; }
+            catch { return null; }
+        }
+
+        private void OnDispatcherUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+        {
+            var path = ErrorLog.Write(e.Exception, CurrentUserName());
+            e.Handled = true;
+
+            var answer = MessageBox.Show(
+                "Сталася помилка. Застосунок продовжує роботу.\n\n" +
+                $"{e.Exception.Message}\n\nДеталі збережено в\n{path}\n\nВідкрити теку журналів?",
+                "GenDoc - помилка", MessageBoxButton.YesNo, MessageBoxImage.Error);
+            if (answer == MessageBoxResult.Yes)
+            {
+                try { System.Diagnostics.Process.Start("explorer.exe", $"\"{System.IO.Path.GetDirectoryName(path)}\""); }
+                catch { }
+            }
         }
 
         protected override void OnExit(ExitEventArgs e)
