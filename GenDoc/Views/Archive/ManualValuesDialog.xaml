@@ -73,6 +73,36 @@
                     <ComboBox ItemsSource="{Binding Signer.Options}" DisplayMemberPath="DisplayLabel"
                               SelectedItem="{Binding Signer.Selected, Mode=TwoWay}"/>
                 </StackPanel>
+
+                <!-- Курсовий офіцер для відомостей з підписом (вибіркова генерація, 2.2) -->
+                <StackPanel Margin="0,6,0,0">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding CourseOfficer}" Value="{x:Null}">
+                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock Text="Курсовий офіцер" FontSize="11.5" Margin="0,0,0,4"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                    <ComboBox ItemsSource="{Binding CourseOfficer.Options}" DisplayMemberPath="DisplayLabel"
+                              SelectedItem="{Binding CourseOfficer.Selected, Mode=TwoWay}"/>
+                    <TextBlock Text="Немає жодного курсового офіцера - відомості з підписом не сформуються"
+                               Foreground="{StaticResource WarnTextBrush}" TextWrapping="Wrap" Margin="0,4,0,0" FontSize="11">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding CourseOfficer.Options.Count}" Value="0">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
             </StackPanel>
         </ScrollViewer>
     </DockPanel>

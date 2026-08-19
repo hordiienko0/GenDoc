@@ -234,11 +234,11 @@
             <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,12,0,0">
                 <ComboBox Width="300" Tag="Оберіть шаблон…" ItemsSource="{Binding AvailableTemplates}" SelectedItem="{Binding SelectedTemplateToAdd}"
                           DisplayMemberPath="Name"/>
-                <Button Content="+ Додати шаблон до пакета" Style="{StaticResource SecondaryButtonStyle}"
+                <Button Content="+ Додати шаблон" Style="{StaticResource SecondaryButtonStyle}"
                         Margin="10,0,0,0" Command="{Binding AddTemplateCommand}" IsEnabled="{Binding CanAddTemplate}"/>
             </StackPanel>
 
-            <TextBlock Grid.Row="3" Text="ШАБЛОНИ ЕКСПОРТУ (.XLSX) - ГРУПОВІ ВІДОМОСТІ" FontSize="10.5" FontWeight="Bold"
+            <TextBlock Grid.Row="3" Text="ВІДОМОСТІ (EXCEL) - ОДИН АРКУШ НА ВЕСЬ СКЛАД" FontSize="10.5" FontWeight="Bold"
                        Foreground="{StaticResource TextSecondaryBrush}" Margin="0,20,0,8"/>
 
             <ItemsControl Grid.Row="4" ItemsSource="{Binding ExportRows}">
@@ -248,7 +248,7 @@
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="300"/>
+                                    <ColumnDefinition Width="372"/>
                                     <ColumnDefinition Width="30"/>
                                 </Grid.ColumnDefinitions>
 
@@ -311,9 +311,9 @@
             </ItemsControl>
 
             <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,12,0,0">
-                <ComboBox Width="300" Tag="Оберіть шаблон експорту…" ItemsSource="{Binding AvailableExportTemplates}" SelectedItem="{Binding SelectedExportTemplateToAdd}"
+                <ComboBox Width="300" Tag="Оберіть відомість…" ItemsSource="{Binding AvailableExportTemplates}" SelectedItem="{Binding SelectedExportTemplateToAdd}"
                           DisplayMemberPath="Name"/>
-                <Button Content="+ Додати шаблон експорту" Style="{StaticResource SecondaryButtonStyle}"
+                <Button Content="+ Додати відомість" Style="{StaticResource SecondaryButtonStyle}"
                         Margin="10,0,0,0" Command="{Binding AddExportTemplateCommand}" IsEnabled="{Binding CanAddExportTemplate}"/>
             </StackPanel>
         </Grid>

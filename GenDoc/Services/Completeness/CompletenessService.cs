@@ -433,15 +433,20 @@ namespace GenDoc.Services.Completeness
                 .Where(t => t.IsGroup).ToList();
             if (groupTemplates.Count == 0) return new List<PackageGroupDocumentStatus>();
 
+            // Відомість набору або «спільна» (IntakeId = null - склад із кількох наборів
+            // чи постійний склад): спершу своя, інакше спільна.
             var ids = groupTemplates.Select(t => t.TemplateId).ToList();
             var docs = await db.GeneratedGroupDocuments
-                .Where(g => g.TemplateId != null && ids.Contains(g.TemplateId.Value) && g.IsCurrent && g.IntakeId == intakeId)
-                .Select(g => new { g.TemplateId, g.Id, g.Version })
+                .Where(g => g.TemplateId != null && ids.Contains(g.TemplateId.Value) && g.IsCurrent
+                            && (g.IntakeId == intakeId || g.IntakeId == null))
+                .Select(g => new { g.TemplateId, g.IntakeId, g.Id, g.Version })
                 .ToListAsync();
 
             return groupTemplates.Select(t =>
             {
-                var doc = docs.FirstOrDefault(d => d.TemplateId == t.TemplateId);
+                var doc = docs.Where(d => d.TemplateId == t.TemplateId)
+                    .OrderByDescending(d => d.IntakeId == intakeId)
+                    .FirstOrDefault();
                 return new PackageGroupDocumentStatus(t.TemplateId, t.Name, doc?.Id, doc?.Version ?? 0);
             }).ToList();
         }

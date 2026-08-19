@@ -76,15 +76,25 @@ namespace GenDoc.Services.Generation
             IProgress<string> progress,
             int? courseOfficerId = null);
 
-        /// <summary>Вибіркова генерація: обрані шаблони × обрані особи, поза пакетом.
-        /// Той самий конвеєр, що й RunPackage (розкладка, версії, архів, RunIssue);
-        /// запуск пишеться з GenerationPackageId = null і підписується «Вибірково».
-        /// Наявні документи завжди перегенеровуються (оператор попросив явно).</summary>
+        /// <summary>Вибіркова генерація: обрані шаблони (Word на особу і Excel-відомості
+        /// на обраних) × обрані особи, поза пакетом. Той самий конвеєр, що й RunPackage
+        /// (розкладка, версії, архів, RunIssue); запуск пишеться з GenerationPackageId = null
+        /// і підписується «Вибірково». Наявні документи завжди перегенеровуються
+        /// (оператор попросив явно).</summary>
         RunResult GenerateTemplatesForRecipients(
             IReadOnlyList<int> templateIds,
+            IReadOnlyList<int> exportTemplateIds,
             IReadOnlyList<int> recipientIds,
             string outputFolder,
             Dictionary<string, string> manualValues,
-            IProgress<string> progress);
+            IProgress<string> progress,
+            int? courseOfficerId = null);
+
+        /// <summary>Ручні теги обраних шаблонів (Word + Excel) - для форми перед
+        /// вибірковою генерацією; те саме правило, що й GetManualTags для пакета.</summary>
+        List<string> GetManualTagsForTemplates(IReadOnlyList<int> templateIds, IReadOnlyList<int> exportTemplateIds);
+
+        /// <summary>Чи просить бодай одна з обраних відомостей підпис курсового офіцера.</summary>
+        bool ExportTemplatesNeedCourseOfficer(IReadOnlyList<int> exportTemplateIds);
     }
 }

@@ -229,6 +229,26 @@ namespace GenDoc.Services.Generation
                 .Select(pt => pt.TemplateId)
                 .ToList();
 
+            var exportTemplateIds = db.GenerationPackageExportTemplates
+                .Where(pt => pt.GenerationPackageId == packageId)
+                .OrderBy(pt => pt.SortOrder)
+                .Select(pt => pt.ExportTemplateId)
+                .ToList();
+
+            return CollectManualTags(db, templateIds, exportTemplateIds);
+        }
+
+        public List<string> GetManualTagsForTemplates(IReadOnlyList<int> templateIds, IReadOnlyList<int> exportTemplateIds)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            return CollectManualTags(db, templateIds, exportTemplateIds);
+        }
+
+        // Спільне для пакета й вибіркової генерації: ручні теги Word-шаблонів (поза
+        // повторюваними блоками) і Excel-відомостей, без дублів, у порядку шаблонів.
+        private static List<string> CollectManualTags(
+            AppDbContext db, IReadOnlyList<int> templateIds, IReadOnlyList<int> exportTemplateIds)
+        {
             var seen = new HashSet<string>();
             var tags = new List<string>();
 
@@ -246,12 +266,6 @@ namespace GenDoc.Services.Generation
                 }
             }
 
-            var exportTemplateIds = db.GenerationPackageExportTemplates
-                .Where(pt => pt.GenerationPackageId == packageId)
-                .OrderBy(pt => pt.SortOrder)
-                .Select(pt => pt.ExportTemplateId)
-                .ToList();
-
             foreach (var templateId in exportTemplateIds)
             {
                 var manualTags = db.ExportTemplateColumnMappings
@@ -267,6 +281,15 @@ namespace GenDoc.Services.Generation
             }
 
             return tags;
+        }
+
+        public bool ExportTemplatesNeedCourseOfficer(IReadOnlyList<int> exportTemplateIds)
+        {
+            if (exportTemplateIds.Count == 0) return false;
+            using var db = _dbFactory.CreateDbContext();
+            return db.ExportTemplateColumnMappings.Any(m =>
+                exportTemplateIds.Contains(m.ExportTemplateId)
+                && m.FieldKey == nameof(ExportFieldKey.CourseOfficerSignature));
         }
 
         /// <summary>Чи просить бодай одна відомість пакета підпис курсового
@@ -399,16 +422,32 @@ namespace GenDoc.Services.Generation
 
         public RunResult GenerateTemplatesForRecipients(
             IReadOnlyList<int> templateIds,
+            IReadOnlyList<int> exportTemplateIds,
             IReadOnlyList<int> recipientIds,
             string outputFolder,
             Dictionary<string, string> manualValues,
-            IProgress<string> progress)
+            IProgress<string> progress,
+            int? courseOfficerId = null)
         {
             using var db = _dbFactory.CreateDbContext();
 
             var templates = db.Templates
                 .Where(t => templateIds.Contains(t.Id) && t.Kind == TemplateKind.PerRecipient)
                 .ToList();
+
+            // Excel-відомості - через ті самі «зв'язки», що й у пакеті, але тимчасові
+            // (не в БД): RunXlsxPhase бере з них лише шаблон і фільтр придатності.
+            var exportTemplates = db.ExportTemplates
+                .Where(t => exportTemplateIds.Contains(t.Id))
+                .AsNoTracking()
+                .ToList();
+            var exportLinks = exportTemplates
+                .Select((t, i) => new GenerationPackageExportTemplate
+                {
+                    ExportTemplateId = t.Id, ExportTemplate = t, FitnessFilter = FitnessFilter.All, SortOrder = i
+                })
+                .ToList();
+
             var recipients = LoadRosterRecipients(db, new RosterSelection(
                 false, recipientIds, FitnessFilter.All, false, Array.Empty<RankCategory>(), Array.Empty<string>()));
             var orgSettings = db.OrganizationSettings.FirstOrDefault();
@@ -429,17 +468,25 @@ namespace GenDoc.Services.Generation
 
             var docx = RunDocxPhase(db, templates, recipients, orgSettings, run, manualValues, outputFolder,
                 usedFileNames, runStamp, regenerateExisting: true, progress);
+            var xlsx = RunXlsxPhase(db, exportLinks, recipients, orgSettings, run, manualValues, outputFolder,
+                usedFileNames, runStamp, regenerateExisting: true, progress, courseOfficerId);
 
-            run.GeneratedCount = docx.Generated;
-            run.SkippedCount = docx.Skipped;
-            run.ErrorCount = docx.Errors;
-            run.Summary = RunIssue.Serialize(docx.Issues);
+            run.GeneratedCount = docx.Generated + xlsx.Generated;
+            run.SkippedCount = docx.Skipped + xlsx.Skipped;
+            run.ErrorCount = docx.Errors + xlsx.Errors;
+            var issues = new List<RunIssue>(docx.Issues);
+            issues.AddRange(xlsx.Issues);
+            run.Summary = RunIssue.Serialize(issues);
 
             _auditLogService.LogGenerate(db, "GenerationPackageRun", run.Id,
-                $"Вибірково: шаблонів {templates.Count}, осіб {recipients.Count}; згенеровано {docx.Generated}, помилок {docx.Errors}");
+                $"Вибірково: шаблонів {templates.Count}, відомостей {exportTemplates.Count}, осіб {recipients.Count}; " +
+                $"згенеровано {run.GeneratedCount}, помилок {run.ErrorCount}");
             db.SaveChanges();
 
-            return new RunResult(docx.Generated, docx.Skipped, docx.Errors, 0, 0, 0, 0, 0, 0, run.Id, docx.Issues);
+            return new RunResult(
+                docx.Generated, docx.Skipped, docx.Errors,
+                xlsx.Generated, xlsx.Skipped, xlsx.Errors,
+                0, 0, 0, run.Id, issues);
         }
 
         // Особовий склад для запуску: весь або лише позначені, завжди звужений

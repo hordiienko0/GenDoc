@@ -358,10 +358,10 @@
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
-                            <DataGridTextColumn Header="ДАТА" Binding="{Binding DateText}" Width="120"/>
+                            <DataGridTextColumn Header="ДАТА" Binding="{Binding DateText}" Width="120" MinWidth="120"/>
                             <DataGridTextColumn Header="АВТОР" Binding="{Binding Author}" Width="1*" MinWidth="110"
                                                  ElementStyle="{StaticResource TruncatedCellStyle}"/>
-                            <DataGridTextColumn Header="ВКЛ." Binding="{Binding AttachText}" Width="52">
+                            <DataGridTextColumn Header="ВКЛ." Binding="{Binding AttachText}" Width="52" MinWidth="52">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
@@ -597,7 +597,7 @@
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
-                            <DataGridTemplateColumn Header="ОСІБ" Width="90">
+                            <DataGridTemplateColumn Header="ОСІБ" Width="90" MinWidth="90">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Border Background="{StaticResource AccentSoftBrush}" HorizontalAlignment="Left"
@@ -609,7 +609,7 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
 
-                            <DataGridTextColumn Header="ВЕР." Binding="{Binding VersionText}" Width="72">
+                            <DataGridTextColumn Header="ВЕР." Binding="{Binding VersionText}" Width="72" MinWidth="72">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
@@ -617,10 +617,10 @@
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
-                            <DataGridTextColumn Header="ДАТА" Binding="{Binding DateText}" Width="120"/>
+                            <DataGridTextColumn Header="ДАТА" Binding="{Binding DateText}" Width="120" MinWidth="120"/>
                             <DataGridTextColumn Header="АВТОР" Binding="{Binding Author}" Width="1*" MinWidth="110"
                                                  ElementStyle="{StaticResource TruncatedCellStyle}"/>
-                            <DataGridTextColumn Header="РОЗМІР" Binding="{Binding SizeText}" Width="96">
+                            <DataGridTextColumn Header="РОЗМІР" Binding="{Binding SizeText}" Width="96" MinWidth="96">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>

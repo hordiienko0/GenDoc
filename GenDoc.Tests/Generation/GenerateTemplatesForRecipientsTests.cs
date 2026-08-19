@@ -53,7 +53,7 @@ public class GenerateTemplatesForRecipientsTests : IDisposable
         var (templateId, peopleIds, intakeId) = Seed(db);
 
         var result = TestServices.Generation(db).GenerateTemplatesForRecipients(
-            new[] { templateId }, peopleIds.Take(2).ToList(), _folder, new Dictionary<string, string>(), NoProgress);
+            new[] { templateId }, Array.Empty<int>(), peopleIds.Take(2).ToList(), _folder, new Dictionary<string, string>(), NoProgress);
 
         Assert.Equal(2, result.Generated);
         Assert.Equal(0, result.Errors);
@@ -73,7 +73,7 @@ public class GenerateTemplatesForRecipientsTests : IDisposable
         using var db = new TestDb();
         var (templateId, peopleIds, intakeId) = Seed(db);
         TestServices.Generation(db).GenerateTemplatesForRecipients(
-            new[] { templateId }, peopleIds.Take(1).ToList(), _folder, new Dictionary<string, string>(), NoProgress);
+            new[] { templateId }, Array.Empty<int>(), peopleIds.Take(1).ToList(), _folder, new Dictionary<string, string>(), NoProgress);
 
         var runs = await TestServices.Archive(db).GetRunsAsync(intakeId, null);
 
@@ -87,11 +87,51 @@ public class GenerateTemplatesForRecipientsTests : IDisposable
         using var db = new TestDb();
         var (templateId, peopleIds, _) = Seed(db);
         var svc = TestServices.Generation(db);
-        svc.GenerateTemplatesForRecipients(new[] { templateId }, peopleIds.Take(1).ToList(), _folder, new(), NoProgress);
-        svc.GenerateTemplatesForRecipients(new[] { templateId }, peopleIds.Take(1).ToList(), _folder, new(), NoProgress);
+        svc.GenerateTemplatesForRecipients(new[] { templateId }, Array.Empty<int>(), peopleIds.Take(1).ToList(), _folder, new(), NoProgress);
+        svc.GenerateTemplatesForRecipients(new[] { templateId }, Array.Empty<int>(), peopleIds.Take(1).ToList(), _folder, new(), NoProgress);
 
         using var check = db.Factory.CreateDbContext();
         Assert.Equal(2, check.GeneratedDocuments.IgnoreQueryFilters().Count());
         Assert.Equal(2, check.GeneratedDocuments.Single(g => g.IsCurrent).Version);
+    }
+
+    // Excel-відомість для курсового - такий самий шаблон: на обраних людей формується
+    // один аркуш (рядок на особу), без пакета, з тим самим записом прогону.
+    [Fact]
+    public void ExcelSheet_ForSelectedPeople_GeneratesOneWorkbookWithRowPerPerson()
+    {
+        using var db = new TestDb();
+        var (_, peopleIds, _) = Seed(db);
+        int exportTemplateId;
+        using (var ctx = db.Factory.CreateDbContext())
+        {
+            var (row, mappings) = XlsxTemplateScan.ForGeneration(TemplateFixtures.RozdavalnaXlsx);
+            var export = new ExportTemplate
+            {
+                Name = "Роздавальна відомість", OriginalFileName = "rozd.xlsx",
+                Content = TemplateFixtures.Bytes(TemplateFixtures.RozdavalnaXlsx),
+                UploadedAt = DateTime.Now, TemplateRowIndex = row, UsesPlaceholders = true
+            };
+            foreach (var m in mappings) export.ColumnMappings.Add(m);
+            ctx.ExportTemplates.Add(export);
+            ctx.SaveChanges();
+            exportTemplateId = export.Id;
+        }
+
+        var result = TestServices.Generation(db).GenerateTemplatesForRecipients(
+            Array.Empty<int>(), new[] { exportTemplateId }, peopleIds.Take(2).ToList(), _folder,
+            new Dictionary<string, string> { ["{{дата_аркуша}}"] = "19.08.2026" }, NoProgress);
+
+        Assert.Equal(1, result.GroupGenerated);
+        Assert.Equal(0, result.GroupErrors);
+        var file = Assert.Single(Directory.GetFiles(_folder, "*.xlsx", SearchOption.AllDirectories));
+        using var workbook = new ClosedXML.Excel.XLWorkbook(file);
+        var text = string.Join(" ", workbook.Worksheets.First().RangeUsed()!.CellsUsed().Select(c => c.GetString()));
+        Assert.Contains("ПРІЗВИЩЕ01", text);
+        Assert.Contains("ПРІЗВИЩЕ02", text);
+        Assert.DoesNotContain("ПРІЗВИЩЕ03", text);
+
+        using var check = db.Factory.CreateDbContext();
+        Assert.Equal(1, check.GeneratedGroupDocuments.Count(g => g.RunId == result.RunId));
     }
 }

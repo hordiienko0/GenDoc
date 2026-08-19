@@ -14,16 +14,19 @@ namespace GenDoc.ViewModels.Personnel
 {
     public partial class TemplateChoiceItem : ObservableObject
     {
-        public TemplateChoiceItem(int id, string name, string group)
+        public TemplateChoiceItem(int id, string name, string group, bool isExport = false)
         {
             Id = id;
             Name = name;
             Group = group;
+            IsExport = isExport;
         }
 
         public int Id { get; }
         public string Name { get; }
         public string Group { get; }
+        // Excel-відомість (ExportTemplate) - окрема таблиця з власними Id.
+        public bool IsExport { get; }
 
         [ObservableProperty] private bool isChecked;
     }
@@ -94,18 +97,24 @@ namespace GenDoc.ViewModels.Personnel
                 ? (await _completenessService.GetPackageLinksAsync(pid)).Where(l => !l.IsGroup).Select(l => l.TemplateId).ToList()
                 : new List<int>();
 
+            // Excel-відомості з тегами - такі ж шаблони для курсового, лише на обраних
+            // людей формується один аркуш, а не документ на кожного.
+            var exports = _generationService.GetAllExportTemplates();
+
             Templates.Clear();
-            foreach (var item in OrderTemplates(all, packageTemplateIds))
+            foreach (var item in OrderTemplates(all, packageTemplateIds, exports))
             {
                 item.PropertyChanged += OnTemplateChanged;
                 Templates.Add(item);
             }
         }
 
-        // Спочатку шаблони типового пакета (у його порядку), далі решта за назвою; групових
-        // тут нема - GetPerRecipientTemplates повертає лише персональні.
+        // Спочатку шаблони типового пакета (у його порядку), далі решта Word за назвою,
+        // далі Excel-відомості; групових Word тут нема - GetPerRecipientTemplates
+        // повертає лише персональні.
         internal static List<TemplateChoiceItem> OrderTemplates(
-            IReadOnlyList<(int Id, string Name)> all, IReadOnlyList<int> defaultPackageTemplateIds)
+            IReadOnlyList<(int Id, string Name)> all, IReadOnlyList<int> defaultPackageTemplateIds,
+            IReadOnlyList<(int Id, string Name)>? exportTemplates = null)
         {
             var byId = all.ToDictionary(t => t.Id);
             var result = new List<TemplateChoiceItem>();
@@ -114,6 +123,8 @@ namespace GenDoc.ViewModels.Personnel
             var rest = all.Where(t => !defaultPackageTemplateIds.Contains(t.Id))
                 .OrderBy(t => t.Name, UkrainianCollation.Surname);
             foreach (var t in rest) result.Add(new TemplateChoiceItem(t.Id, t.Name, "Інші шаблони"));
+            foreach (var t in (exportTemplates ?? Array.Empty<(int, string)>()).OrderBy(t => t.Name, UkrainianCollation.Surname))
+                result.Add(new TemplateChoiceItem(t.Id, t.Name, "Відомості (Excel) - один аркуш на обраних", isExport: true));
             return result;
         }
 
@@ -129,16 +140,20 @@ namespace GenDoc.ViewModels.Personnel
         [RelayCommand(CanExecute = nameof(CanGenerate))]
         private async Task GenerateAsync()
         {
-            var templateIds = Templates.Where(t => t.IsChecked).Select(t => t.Id).ToList();
-            var manualTags = await _archiveService.GetManualTagsAsync(templateIds);
+            var templateIds = Templates.Where(t => t.IsChecked && !t.IsExport).Select(t => t.Id).ToList();
+            var exportTemplateIds = Templates.Where(t => t.IsChecked && t.IsExport).Select(t => t.Id).ToList();
+            var manualTags = _generationService.GetManualTagsForTemplates(templateIds, exportTemplateIds);
+            var needsCourseOfficer = _generationService.ExportTemplatesNeedCourseOfficer(exportTemplateIds);
             var manualValues = new Dictionary<string, string>();
-            if (manualTags.Count > 0)
+            int? courseOfficerId = null;
+            if (manualTags.Count > 0 || needsCourseOfficer)
             {
-                var form = await _manualTagFormBuilder.BuildAsync(manualTags, ManualTagContextKey);
+                var form = await _manualTagFormBuilder.BuildAsync(manualTags, ManualTagContextKey, needsCourseOfficer);
                 var dialog = new ManualValuesDialogViewModel(form);
                 if (_dialogService.ShowDialog(dialog, Application.Current.MainWindow) != true) return;
                 await _manualTagFormBuilder.SaveAsync(ManualTagContextKey, form);
                 manualValues = dialog.GetValues();
+                courseOfficerId = form.CourseOfficer?.Selected?.RecipientId;
             }
 
             var folder = await _outputFolderService.GetDefaultAsync();
@@ -149,7 +164,8 @@ namespace GenDoc.ViewModels.Personnel
             try
             {
                 var runResult = await Task.Run(() =>
-                    _generationService.GenerateTemplatesForRecipients(templateIds, recipientIds, folder, manualValues, progress));
+                    _generationService.GenerateTemplatesForRecipients(
+                        templateIds, exportTemplateIds, recipientIds, folder, manualValues, progress, courseOfficerId));
                 Result = new GenerationResultViewModel(runResult, folder);
             }
             finally

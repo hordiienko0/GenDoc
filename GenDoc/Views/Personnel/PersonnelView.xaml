@@ -787,9 +787,20 @@
                                 <ItemsControl ItemsSource="{Binding GroupDocumentRows}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <TextBlock FontSize="12" TextWrapping="Wrap" Margin="0,2">
-                                                <Run Text="{Binding TemplateName, Mode=OneWay}" Foreground="{StaticResource TextPrimaryBrush}"/><Run Text=" · " Foreground="{StaticResource TextSecondaryBrush}"/><Run Text="{Binding StateText, Mode=OneWay}" Foreground="{StaticResource TextSecondaryBrush}"/><Run Text=" " /><Hyperlink Command="{Binding DataContext.OpenGroupDocumentCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" TextDecorations="None" Foreground="{StaticResource AccentBrush}" FontWeight="Bold"><Hyperlink.Style><Style TargetType="Hyperlink"><Style.Triggers><DataTrigger Binding="{Binding CanOpen}" Value="False"><Setter Property="IsEnabled" Value="False"/></DataTrigger></Style.Triggers></Style></Hyperlink.Style>· Відкрити</Hyperlink>
-                                            </TextBlock>
+                                            <StackPanel Orientation="Horizontal" Margin="0,2">
+                                                <TextBlock FontSize="12" TextWrapping="Wrap">
+                                                    <Run Text="{Binding TemplateName, Mode=OneWay}" Foreground="{StaticResource TextPrimaryBrush}"/><Run Text=" · " Foreground="{StaticResource TextSecondaryBrush}"/><Run Text="{Binding StateText, Mode=OneWay}" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                </TextBlock>
+                                                <TextBlock Text=" · Відкрити" FontSize="12" FontWeight="Bold" Cursor="Hand"
+                                                           Foreground="{StaticResource AccentBrush}"
+                                                           Visibility="{Binding CanOpen, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock.InputBindings>
+                                                        <MouseBinding MouseAction="LeftClick"
+                                                                      Command="{Binding DataContext.OpenGroupDocumentCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                      CommandParameter="{Binding}"/>
+                                                    </TextBlock.InputBindings>
+                                                </TextBlock>
+                                            </StackPanel>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
