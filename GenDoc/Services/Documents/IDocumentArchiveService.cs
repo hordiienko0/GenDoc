@@ -12,6 +12,7 @@ namespace GenDoc.Services.Documents
         Task<ArchiveFilterOptions> GetFilterOptionsAsync();
 
         Task<ArchiveOpResult> OpenAsync(int documentId);
+        Task<ArchiveOpResult> PrintAsync(int documentId);
         Task<ArchiveOpResult> SaveAsAsync(int documentId, string targetPath);
         Task<(int Saved, List<string> Errors)> SaveManyAsync(IReadOnlyList<int> documentIds, string targetFolder);
 
@@ -41,6 +42,7 @@ namespace GenDoc.Services.Documents
         Task<List<GroupDocumentRowDto>> QueryGroupAsync(GroupArchiveFilter filter);
         Task<List<GroupTemplateOption>> GetGroupTemplateOptionsAsync();
         Task<ArchiveOpResult> OpenGroupAsync(int groupDocumentId);
+        Task<ArchiveOpResult> PrintGroupAsync(int groupDocumentId);
         Task<ArchiveOpResult> SaveGroupAsAsync(int groupDocumentId, string targetPath);
         Task DeleteGroupAsync(IReadOnlyList<int> groupDocumentIds);
         Task<List<GroupVersionDto>> GetGroupVersionsAsync(int? exportTemplateId, int? docxTemplateId);

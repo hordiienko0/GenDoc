@@ -722,6 +722,24 @@
                                                             </Style>
                                                         </TextBlock.Style>
                                                     </TextBlock>
+                                                    <!-- 2.5: друк із картки -->
+                                                    <TextBlock Text="Друк" FontSize="11.5" FontWeight="Bold" Margin="0,0,13,0" Cursor="Hand"
+                                                               Foreground="{StaticResource AccentBrush}">
+                                                        <TextBlock.InputBindings>
+                                                            <MouseBinding MouseAction="LeftClick"
+                                                                          Command="{Binding DataContext.PrintDocumentCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                          CommandParameter="{Binding}"/>
+                                                        </TextBlock.InputBindings>
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding HasContent}" Value="False">
+                                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
                                                     <TextBlock Text="{Binding ActionLabel}" FontSize="11.5" FontWeight="Bold" Cursor="Hand">
                                                         <TextBlock.InputBindings>
                                                             <MouseBinding MouseAction="LeftClick"

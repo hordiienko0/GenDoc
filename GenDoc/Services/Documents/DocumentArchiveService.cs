@@ -815,6 +815,39 @@ namespace GenDoc.Services.Documents
             return new ArchiveOpResult(true, null);
         }
 
+
+        // 2.5: друк - ті самі байти, що й «Відкрити», але через shell-verb print.
+        public async Task<ArchiveOpResult> PrintAsync(int documentId)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var doc = await db.GeneratedDocuments.FirstOrDefaultAsync(g => g.Id == documentId);
+            if (doc is null) return new ArchiveOpResult(false, RecordGoneMessage);
+            var content = await db.GeneratedDocumentContents
+                .FirstOrDefaultAsync(c => c.GeneratedDocumentId == documentId);
+            if (content is null) return new ArchiveOpResult(false, NoContentMessage);
+
+            await _tempFileService.PrintAsync(doc.FileName, content.Content);
+
+            _auditLogService.Log(db, "Надруковано документ", "GeneratedDocument", documentId, null, doc.FileName);
+            await db.SaveChangesAsync();
+            return new ArchiveOpResult(true, null);
+        }
+
+        public async Task<ArchiveOpResult> PrintGroupAsync(int groupDocumentId)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var doc = await db.GeneratedGroupDocuments.FirstOrDefaultAsync(g => g.Id == groupDocumentId);
+            if (doc is null) return new ArchiveOpResult(false, RecordGoneMessage);
+            var content = await db.GeneratedGroupDocumentContents
+                .FirstOrDefaultAsync(c => c.GeneratedGroupDocumentId == groupDocumentId);
+            if (content is null) return new ArchiveOpResult(false, NoContentMessage);
+
+            await _tempFileService.PrintAsync(doc.FileName, content.Content);
+
+            _auditLogService.Log(db, "Надруковано документ", "GeneratedGroupDocument", groupDocumentId, null, doc.FileName);
+            await db.SaveChangesAsync();
+            return new ArchiveOpResult(true, null);
+        }
         public async Task<ArchiveOpResult> SaveGroupAsAsync(int groupDocumentId, string targetPath)
         {
             using var db = _dbFactory.CreateDbContext();

@@ -8,6 +8,8 @@ namespace GenDoc.Services.Documents
         // Пише байти в ./_temp/{guid}/{fileName} з ReadOnly і відкриває асоційованою програмою.
         // Win32Exception (нема асоціації) прокидається до викликача.
         Task OpenAsync(string fileName, byte[] content);
+        // Те саме, але shell-verb "print": друкує Word/Excel, як вони ж і відкривають (2.5).
+        Task PrintAsync(string fileName, byte[] content);
         Task CleanupAsync();
     }
 
@@ -17,14 +19,25 @@ namespace GenDoc.Services.Documents
 
         public async Task OpenAsync(string fileName, byte[] content)
         {
+            var path = await WriteTempAsync(fileName, content);
+            Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+        }
+
+        public async Task PrintAsync(string fileName, byte[] content)
+        {
+            var path = await WriteTempAsync(fileName, content);
+            Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true, Verb = "print" });
+        }
+
+        private static async Task<string> WriteTempAsync(string fileName, byte[] content)
+        {
             var dir = Path.Combine(TempRoot, Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(dir);
             var path = Path.Combine(dir, SanitizeFileName(fileName));
 
             await File.WriteAllBytesAsync(path, content);
             File.SetAttributes(path, File.GetAttributes(path) | FileAttributes.ReadOnly);
-
-            Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+            return path;
         }
 
         public Task CleanupAsync() => Task.Run(() =>

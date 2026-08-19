@@ -400,6 +400,12 @@
                     <Button Content="Відкрити" Style="{StaticResource ArchiveActionButtonStyle}"
                             IsEnabled="{Binding CanOpen}" ToolTip="{Binding OpenTooltip}"
                             Command="{Binding OpenCommand}"/>
+                    <Button Content="Друк" Style="{StaticResource ArchiveActionButtonStyle}"
+                            IsEnabled="{Binding CanPrint}" ToolTip="Оберіть документи з файлом"
+                            Command="{Binding PrintCommand}"/>
+                    <Button Content="Показати в теці" Style="{StaticResource ArchiveActionButtonStyle}"
+                            IsEnabled="{Binding CanShowInFolder}" ToolTip="{Binding ShowInFolderTooltip}"
+                            Command="{Binding ShowInFolderCommand}"/>
                     <Button Content="Зберегти як…" Style="{StaticResource ArchiveActionButtonStyle}"
                             IsEnabled="{Binding CanSaveAs}" ToolTip="{Binding SaveAsTooltip}"
                             Command="{Binding SaveAsCommand}"/>
@@ -629,6 +635,12 @@
                 <Button Content="Відкрити" Style="{StaticResource ArchiveActionButtonStyle}"
                         IsEnabled="{Binding CanOpenGroup}" ToolTip="Оберіть одну відомість"
                         Command="{Binding OpenGroupCommand}"/>
+                <Button Content="Друк" Style="{StaticResource ArchiveActionButtonStyle}"
+                        IsEnabled="{Binding CanPrintGroup}" ToolTip="Оберіть відомості з файлом"
+                        Command="{Binding PrintGroupCommand}"/>
+                <Button Content="Показати в теці" Style="{StaticResource ArchiveActionButtonStyle}"
+                        IsEnabled="{Binding CanShowGroupInFolder}" ToolTip="{Binding ShowGroupInFolderTooltip}"
+                        Command="{Binding ShowGroupInFolderCommand}"/>
                 <Button Content="Зберегти як…" Style="{StaticResource ArchiveActionButtonStyle}"
                         IsEnabled="{Binding CanSaveGroupAs}" ToolTip="Оберіть відомості"
                         Command="{Binding SaveGroupAsCommand}"/>

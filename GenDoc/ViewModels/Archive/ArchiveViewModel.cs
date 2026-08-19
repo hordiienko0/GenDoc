@@ -36,13 +36,16 @@ namespace GenDoc.ViewModels.Archive
         private const string ManualTagContextKey = "archive-regenerate";
 
         private readonly Services.Generation.IManualTagFormBuilder _manualTagFormBuilder;
+        private readonly Services.Generation.IOutputFolderService _outputFolderService;
 
         public ArchiveViewModel(
             IDocumentArchiveService archiveService,
             IDialogService dialogService,
             ActiveIntakeState activeIntakeState,
-            Services.Generation.IManualTagFormBuilder manualTagFormBuilder)
+            Services.Generation.IManualTagFormBuilder manualTagFormBuilder,
+            Services.Generation.IOutputFolderService outputFolderService)
         {
+            _outputFolderService = outputFolderService;
             _archiveService = archiveService;
             _dialogService = dialogService;
             _activeIntakeState = activeIntakeState;
@@ -388,6 +391,8 @@ namespace GenDoc.ViewModels.Archive
         [NotifyPropertyChangedFor(nameof(CanAttach))]
         [NotifyPropertyChangedFor(nameof(CanHistory))]
         [NotifyPropertyChangedFor(nameof(CanDelete))]
+        [NotifyPropertyChangedFor(nameof(CanPrint))]
+        [NotifyPropertyChangedFor(nameof(ShowInFolderTooltip))]
         [NotifyPropertyChangedFor(nameof(OpenTooltip))]
         [NotifyPropertyChangedFor(nameof(SaveAsTooltip))]
         [NotifyPropertyChangedFor(nameof(RegenerateTooltip))]
@@ -400,6 +405,7 @@ namespace GenDoc.ViewModels.Archive
         {
             CheckedCount = Rows.Count(r => r.IsChecked);
             OnPropertyChanged(nameof(HeaderChecked));
+            _ = RefreshDiskPathAsync();
         }
 
         public void ClearChecked()
@@ -438,6 +444,56 @@ namespace GenDoc.ViewModels.Archive
         public bool CanAttach => CheckedCount == 1;
         public bool CanHistory => CheckedCount == 1;
         public bool CanDelete => CheckedCount >= 1;
+
+        // 2.5: друк і «Показати в теці». Шлях на диску відомий лише для документів,
+        // що лежать у типовій теці генерації (відносне ім'я файлу + DefaultOutputFolder).
+        public bool CanPrint => CheckedCount >= 1 && CheckedRows.All(r => r.HasContent);
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(CanShowInFolder))]
+        [NotifyPropertyChangedFor(nameof(ShowInFolderTooltip))]
+        private string? checkedRowDiskPath;
+
+        public bool CanShowInFolder => CheckedRowDiskPath is not null;
+        public string? ShowInFolderTooltip => CheckedCount != 1
+            ? "Оберіть один документ"
+            : CanShowInFolder ? CheckedRowDiskPath : "Файл не збережено на диску в типовій теці";
+
+        private async Task RefreshDiskPathAsync()
+        {
+            var row = CheckedCount == 1 ? CheckedRows.FirstOrDefault() : null;
+            CheckedRowDiskPath = row is null ? null : await _outputFolderService.ResolveOnDiskAsync(row.Dto.FileName);
+        }
+
+        [RelayCommand]
+        private async Task PrintAsync()
+        {
+            foreach (var row in CheckedRows.Where(r => r.HasContent))
+            {
+                try
+                {
+                    var result = await _archiveService.PrintAsync(row.Id);
+                    if (!result.Success)
+                    {
+                        MessageBox.Show(result.ErrorMessage, "Друк", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+                }
+                catch (System.ComponentModel.Win32Exception)
+                {
+                    MessageBox.Show("Не вдалося надрукувати: немає програми для цього типу файлу.", "Друк",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+            }
+        }
+
+        [RelayCommand]
+        private void ShowInFolder()
+        {
+            if (CheckedRowDiskPath is null) return;
+            try { System.Diagnostics.Process.Start("explorer.exe", ShellCommands.ExplorerSelectArguments(CheckedRowDiskPath)); } catch { }
+        }
 
         public string? SingleSelectionTooltip => CheckedCount == 1 ? null : "Оберіть один документ";
         public string? OpenTooltip => CheckedCount != 1
@@ -866,6 +922,7 @@ namespace GenDoc.ViewModels.Archive
         [NotifyPropertyChangedFor(nameof(CanSaveGroupAs))]
         [NotifyPropertyChangedFor(nameof(CanHistoryGroup))]
         [NotifyPropertyChangedFor(nameof(CanDeleteGroup))]
+        [NotifyPropertyChangedFor(nameof(CanPrintGroup))]
         private int groupCheckedCount;
 
         private bool _suppressGroupHeaderCheck;
@@ -874,6 +931,7 @@ namespace GenDoc.ViewModels.Archive
         {
             if (e.PropertyName == nameof(GroupDocumentRowViewModel.IsChecked) && !_suppressGroupHeaderCheck)
                 GroupCheckedCount = GroupRows.Count(r => r.IsChecked);
+                _ = RefreshGroupDiskPathAsync();
         }
 
         private List<GroupDocumentRowViewModel> CheckedGroupRows => GroupRows.Where(r => r.IsChecked).ToList();
@@ -893,6 +951,7 @@ namespace GenDoc.ViewModels.Archive
             }
             _suppressGroupHeaderCheck = false;
             GroupCheckedCount = GroupRows.Count(r => r.IsChecked);
+            _ = RefreshGroupDiskPathAsync();
         }
 
         private void ClearGroupChecked()
@@ -907,6 +966,55 @@ namespace GenDoc.ViewModels.Archive
         public bool CanSaveGroupAs => GroupCheckedCount >= 1 && CheckedGroupRows.All(r => r.HasContent);
         public bool CanHistoryGroup => GroupCheckedCount == 1;
         public bool CanDeleteGroup => GroupCheckedCount >= 1;
+
+        // 2.5 для групових відомостей - той самий набір дій, що й для документів.
+        public bool CanPrintGroup => GroupCheckedCount >= 1 && CheckedGroupRows.All(r => r.HasContent);
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(CanShowGroupInFolder))]
+        [NotifyPropertyChangedFor(nameof(ShowGroupInFolderTooltip))]
+        private string? checkedGroupDiskPath;
+
+        public bool CanShowGroupInFolder => CheckedGroupDiskPath is not null;
+        public string? ShowGroupInFolderTooltip => GroupCheckedCount != 1
+            ? "Оберіть одну відомість"
+            : CanShowGroupInFolder ? CheckedGroupDiskPath : "Файл не збережено на диску в типовій теці";
+
+        private async Task RefreshGroupDiskPathAsync()
+        {
+            var row = GroupCheckedCount == 1 ? CheckedGroupRows.FirstOrDefault() : null;
+            CheckedGroupDiskPath = row is null ? null : await _outputFolderService.ResolveOnDiskAsync(row.Dto.FileName);
+        }
+
+        [RelayCommand]
+        private async Task PrintGroupAsync()
+        {
+            foreach (var row in CheckedGroupRows.Where(r => r.HasContent))
+            {
+                try
+                {
+                    var result = await _archiveService.PrintGroupAsync(row.Id);
+                    if (!result.Success)
+                    {
+                        MessageBox.Show(result.ErrorMessage, "Друк", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+                }
+                catch (System.ComponentModel.Win32Exception)
+                {
+                    MessageBox.Show("Не вдалося надрукувати: немає програми для цього типу файлу.", "Друк",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+            }
+        }
+
+        [RelayCommand]
+        private void ShowGroupInFolder()
+        {
+            if (CheckedGroupDiskPath is null) return;
+            try { System.Diagnostics.Process.Start("explorer.exe", ShellCommands.ExplorerSelectArguments(CheckedGroupDiskPath)); } catch { }
+        }
 
         [RelayCommand]
         private async Task OpenGroupAsync()

@@ -60,10 +60,17 @@ public sealed class FakeCurrentUser : ICurrentUserContext
 public sealed class FakeTempFiles : ISecureTempFileService
 {
     public List<(string FileName, byte[] Content)> Opened { get; } = new();
+    public List<(string FileName, byte[] Content)> Printed { get; } = new();
 
     public Task OpenAsync(string fileName, byte[] content)
     {
         Opened.Add((fileName, content));
+        return Task.CompletedTask;
+    }
+
+    public Task PrintAsync(string fileName, byte[] content)
+    {
+        Printed.Add((fileName, content));
         return Task.CompletedTask;
     }
 

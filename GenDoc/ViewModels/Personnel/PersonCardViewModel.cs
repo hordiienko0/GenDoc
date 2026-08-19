@@ -214,6 +214,24 @@ namespace GenDoc.ViewModels.Personnel
                     MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
+        // 2.5: друк прямо з картки - той самий файл, що й «Відкрити».
+        [RelayCommand]
+        private async Task PrintDocumentAsync(RecipientDocRowViewModel? row)
+        {
+            if (row?.DocumentId is not int documentId) return;
+            try
+            {
+                var result = await _archiveService.PrintAsync(documentId);
+                if (!result.Success)
+                    MessageBox.Show(result.ErrorMessage, "Друк", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                MessageBox.Show("Не вдалося надрукувати: немає програми для цього типу файлу.", "Друк",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
         // 2.2: будь-який персональний шаблон, не лише типовий пакет.
         [RelayCommand]
         private async Task GenerateAnyDocumentAsync()
