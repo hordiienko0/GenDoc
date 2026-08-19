@@ -394,4 +394,42 @@ public class DatabaseSchemaInitializerTests
             cmd.ExecuteNonQuery();
         }
     }
+
+    // Вада 1.1, старі дані: запуски до виправлення мають IntakeId = NULL. Бекфіл
+    // бере найчастіший IntakeId серед документів прогону; без документів лишає NULL.
+    [Fact]
+    public void BackfillRunIntakeIds_TakesMostFrequentIntakeOfRunDocuments()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        Exec(connection, """
+            CREATE TABLE "GenerationPackageRuns" ("Id" INTEGER PRIMARY KEY, "IntakeId" INTEGER NULL);
+            CREATE TABLE "GeneratedDocuments" ("Id" INTEGER PRIMARY KEY, "RunId" INTEGER NULL, "IntakeId" INTEGER NULL);
+            CREATE TABLE "GeneratedGroupDocuments" ("Id" INTEGER PRIMARY KEY, "RunId" INTEGER NULL, "IntakeId" INTEGER NULL);
+            INSERT INTO "GenerationPackageRuns" VALUES (1, NULL), (2, NULL), (3, 9);
+            INSERT INTO "GeneratedDocuments" VALUES (1, 1, 4), (2, 1, 4), (3, 1, 5), (4, 3, 2);
+            INSERT INTO "GeneratedGroupDocuments" VALUES (1, 1, 5);
+            """);
+
+        DatabaseSchemaInitializer.BackfillRunIntakeIds((DbConnection)connection);
+        DatabaseSchemaInitializer.BackfillRunIntakeIds((DbConnection)connection); // ідемпотентно
+
+        Assert.Equal(4L, Scalar(connection, """SELECT "IntakeId" FROM "GenerationPackageRuns" WHERE "Id" = 1"""));
+        Assert.Equal(DBNull.Value, Scalar(connection, """SELECT "IntakeId" FROM "GenerationPackageRuns" WHERE "Id" = 2"""));
+        Assert.Equal(9L, Scalar(connection, """SELECT "IntakeId" FROM "GenerationPackageRuns" WHERE "Id" = 3""")); // вже заповнений - не чіпати
+    }
+
+    private static void Exec(SqliteConnection connection, string sql)
+    {
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = sql;
+        cmd.ExecuteNonQuery();
+    }
+
+    private static object Scalar(SqliteConnection connection, string sql)
+    {
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = sql;
+        return cmd.ExecuteScalar()!;
+    }
 }

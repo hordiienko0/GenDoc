@@ -452,8 +452,7 @@
                                                            Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,10,0"/>
                                                 <TextBlock Text="{Binding DateText}" FontWeight="SemiBold" FontSize="12.5"
                                                            Foreground="{StaticResource TextPrimaryBrush}" Margin="0,0,10,0"/>
-                                                <Border Background="{StaticResource AccentSoftBrush}" Padding="7,1" Margin="0,0,10,0"
-                                                        Visibility="{Binding HasIntake, Converter={StaticResource BoolToVisibility}}">
+                                                <Border Background="{StaticResource AccentSoftBrush}" Padding="7,1" Margin="0,0,10,0">
                                                     <TextBlock Text="{Binding IntakeChip}" FontSize="11" FontWeight="Bold"
                                                                Foreground="{StaticResource AccentBrush}"/>
                                                 </Border>

@@ -529,6 +529,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         AddMissingColumns(db, "Templates", TemplateColumnsV12);
         AddMissingColumns(db, "TemplateFieldMappings", TemplateFieldMappingColumnsV12);
         MigrateGeneratedGroupDocumentsForDocxSupport(db);
+        BackfillRunIntakeIds(db);
 
         AddMissingColumns(db, "AppSettings", AppSettingsColumnsV13);
         AddMissingColumns(db, "Recipients", RecipientColumnsV14);
@@ -1238,6 +1239,44 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         // проміжного білда без частини колонок.
         AddMissingColumns(connection, "Weapons", WeaponColumnsV18);
         AddMissingColumns(connection, "Vehicles", VehicleColumnsV18);
+    }
+
+    private static void BackfillRunIntakeIds(AppDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        var wasClosed = connection.State != System.Data.ConnectionState.Open;
+        if (wasClosed) connection.Open();
+        try { BackfillRunIntakeIds(connection); }
+        finally { if (wasClosed) connection.Close(); }
+    }
+
+    // Вада 1.1: запуски до виправлення мають IntakeId = NULL, і «Запуски» їх не показували.
+    // Те саме правило, що й RunIntakeResolver: найчастіший IntakeId серед документів прогону
+    // (персональних і групових); без документів - лишається NULL. Ідемпотентно: чіпає лише NULL.
+    internal static void BackfillRunIntakeIds(System.Data.Common.DbConnection connection)
+    {
+        if (!TableExists(connection, "GenerationPackageRuns")) return;
+        if (!GetExistingColumns(connection, "GenerationPackageRuns").Contains("IntakeId")) return;
+        if (!TableExists(connection, "GeneratedDocuments")) return;
+        var hasGroup = TableExists(connection, "GeneratedGroupDocuments")
+            && GetExistingColumns(connection, "GeneratedGroupDocuments").Contains("RunId");
+
+        var union = hasGroup
+            ? """
+              SELECT "IntakeId" FROM "GeneratedDocuments" WHERE "RunId" = "GenerationPackageRuns"."Id" AND "IntakeId" IS NOT NULL
+              UNION ALL
+              SELECT "IntakeId" FROM "GeneratedGroupDocuments" WHERE "RunId" = "GenerationPackageRuns"."Id" AND "IntakeId" IS NOT NULL
+              """
+            : """SELECT "IntakeId" FROM "GeneratedDocuments" WHERE "RunId" = "GenerationPackageRuns"."Id" AND "IntakeId" IS NOT NULL""";
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = $"""
+            UPDATE "GenerationPackageRuns" SET "IntakeId" = (
+                SELECT "IntakeId" FROM ({union}) GROUP BY "IntakeId" ORDER BY COUNT(*) DESC, "IntakeId" ASC LIMIT 1)
+            WHERE "IntakeId" IS NULL
+              AND EXISTS (SELECT 1 FROM ({union}));
+            """;
+        cmd.ExecuteNonQuery();
     }
 
     private static bool TableExists(System.Data.Common.DbConnection connection, string tableName)

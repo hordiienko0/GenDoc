@@ -296,4 +296,41 @@ public class RunPackageTests : IDisposable
         var run = Assert.Single(ctx.GenerationPackageRuns.ToList());
         Assert.Equal(packageId, run.GenerationPackageId);
     }
+
+    // Вада 1.1: запис прогону не мав IntakeId, і вкладка «Запуски», що фільтрує за
+    // набором, завжди була порожня.
+    [Fact]
+    public void RunPackage_RecordsIntakeOfRoster()
+    {
+        using var db = new TestDb();
+        int intakeId;
+        using (var ctx = db.Factory.CreateDbContext())
+        {
+            var intake = new Intake { Number = 15, DisplayNumber = "Набір №15" };
+            ctx.Intakes.Add(intake);
+            ctx.SaveChanges();
+            intakeId = intake.Id;
+        }
+        var people = TemplateFixtures.Roster(2);
+        foreach (var p in people) p.IntakeId = intakeId;
+        var (packageId, _) = SeedPackage(db, people);
+
+        Run(db, packageId);
+
+        using var check = db.Factory.CreateDbContext();
+        var run = check.GenerationPackageRuns.Single();
+        Assert.Equal(intakeId, run.IntakeId);
+    }
+
+    [Fact]
+    public void RunPackage_PermanentStaffOnly_RecordsNullIntake()
+    {
+        using var db = new TestDb();
+        var (packageId, _) = SeedPackage(db, TemplateFixtures.Roster(2)); // без IntakeId = постійний склад
+
+        Run(db, packageId, selection: RosterSelection.Everyone with { PermanentStaffOnly = true });
+
+        using var check = db.Factory.CreateDbContext();
+        Assert.Null(check.GenerationPackageRuns.Single().IntakeId);
+    }
 }

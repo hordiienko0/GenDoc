@@ -356,7 +356,9 @@ namespace GenDoc.Services.Generation
             {
                 GenerationPackageId = packageId,
                 RunAt = DateTime.Now,
-                RunByUserId = _currentUserContext.CurrentUserId ?? 0
+                RunByUserId = _currentUserContext.CurrentUserId ?? 0,
+                // Вада 1.1: без IntakeId вкладка «Запуски» (фільтр за набором) була порожня.
+                IntakeId = RunIntakeResolver.Resolve(recipients.Select(r => r.IntakeId))
             };
             db.GenerationPackageRuns.Add(run);
             db.SaveChanges();

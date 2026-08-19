@@ -645,7 +645,8 @@ namespace GenDoc.Services.Documents
             using var db = _dbFactory.CreateDbContext();
             var query = db.GenerationPackageRuns.AsNoTracking();
 
-            if (intakeId is int i) query = query.Where(r => r.IntakeId == i);
+            // Запуски без набору (постійний склад) показуємо разом із набором - інакше їх не видно ніде.
+            if (intakeId is int i) query = query.Where(r => r.IntakeId == i || r.IntakeId == null);
             if (year is int y) query = query.Where(r => r.RunAt.Year == y);
 
             var runs = await query
