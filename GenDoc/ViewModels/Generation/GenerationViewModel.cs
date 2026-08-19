@@ -516,21 +516,8 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         IsBusy = false;
         ProgressText = string.Empty;
 
-        var summary = $"DOCX - згенеровано: {result.Generated}, пропущено: {result.Skipped}, помилок: {result.Errors}";
-        if (result.GroupGenerated + result.GroupSkipped + result.GroupErrors > 0)
-            summary += $"\nXLSX (відомості) - згенеровано: {result.GroupGenerated}, пропущено: {result.GroupSkipped}, помилок: {result.GroupErrors}";
-        if (result.DocxGroupGenerated + result.DocxGroupSkipped + result.DocxGroupErrors > 0)
-            summary += $"\nГруповий DOCX - згенеровано: {result.DocxGroupGenerated}, пропущено: {result.DocxGroupSkipped}, помилок: {result.DocxGroupErrors}";
-
-        MessageBox.Show(summary, "Генерація завершена", MessageBoxButton.OK, MessageBoxImage.Information);
-
-        var openFolder = MessageBox.Show(
-            "Відкрити папку з документами?", "Готово", MessageBoxButton.YesNo, MessageBoxImage.Question);
-
-        if (openFolder == MessageBoxResult.Yes)
-        {
-            Process.Start("explorer.exe", outputFolderPath);
-        }
+        // 2.4: картка підсумку під кнопкою замість двох MessageBox («Завершено» → «Відкрити папку?»).
+        LastResult = new GenerationResultViewModel(result, outputFolderPath);
     }
 
     // Тег "{{дата}}" зарезервований під це поле - підставляється в кожен документ
