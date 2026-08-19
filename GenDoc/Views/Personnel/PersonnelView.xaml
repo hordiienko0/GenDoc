@@ -755,6 +755,23 @@
                                 </TextBlock.Style>
                             </TextBlock>
 
+                            <StackPanel Margin="0,14,0,0"
+                                        Visibility="{Binding HasGroupDocuments, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock Text="ГРУПОВІ ВІДОМОСТІ ПАКЕТА" FontSize="10.5" FontWeight="Bold"
+                                           Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
+                                <TextBlock Text="Формуються на весь склад на екрані «Генерація», не для однієї особи."
+                                           FontSize="11" TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
+                                <ItemsControl ItemsSource="{Binding GroupDocumentRows}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock FontSize="12" TextWrapping="Wrap" Margin="0,2">
+                                                <Run Text="{Binding TemplateName, Mode=OneWay}" Foreground="{StaticResource TextPrimaryBrush}"/><Run Text=" · " Foreground="{StaticResource TextSecondaryBrush}"/><Run Text="{Binding StateText, Mode=OneWay}" Foreground="{StaticResource TextSecondaryBrush}"/><Run Text=" " /><Hyperlink Command="{Binding DataContext.OpenGroupDocumentCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}" CommandParameter="{Binding}" TextDecorations="None" Foreground="{StaticResource AccentBrush}" FontWeight="Bold"><Hyperlink.Style><Style TargetType="Hyperlink"><Style.Triggers><DataTrigger Binding="{Binding CanOpen}" Value="False"><Setter Property="IsEnabled" Value="False"/></DataTrigger></Style.Triggers></Style></Hyperlink.Style>· Відкрити</Hyperlink>
+                                            </TextBlock>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+
                             <TextBlock Text="{Binding DocumentsFooterNote}" FontSize="11" TextWrapping="Wrap" Margin="0,12,0,0"
                                        Foreground="{StaticResource TextSecondaryBrush}"/>
                         </StackPanel>

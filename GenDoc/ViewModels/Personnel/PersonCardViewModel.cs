@@ -118,6 +118,10 @@ namespace GenDoc.ViewModels.Personnel
 
         public ObservableCollection<RecipientDocRowViewModel> DocumentRows { get; } = new();
 
+        // Групові відомості пакета (1.4): не серед персональних рядків, а в підвалі.
+        public ObservableCollection<GroupDocumentRowViewModel> GroupDocumentRows { get; } = new();
+        [ObservableProperty] private bool hasGroupDocuments;
+
         [ObservableProperty] private bool documentsLoading;
         [ObservableProperty] private bool hasMissingDocuments;
         [ObservableProperty] private string? documentsFooterNote;
@@ -172,6 +176,11 @@ namespace GenDoc.ViewModels.Personnel
                 HasMissingDocuments = statuses.Any(s => !s.HasContent);
                 DocumentsEmptyNote = statuses.Count == 0 ? "У пакеті немає шаблонів." : null;
                 DocumentsFooterNote = await BuildDocumentsFooterNoteAsync(packageId.Value);
+
+                var groupDocs = await _completenessService.GetPackageGroupDocumentsAsync(packageId.Value, IntakeId);
+                GroupDocumentRows.Clear();
+                foreach (var g in groupDocs) GroupDocumentRows.Add(new GroupDocumentRowViewModel(g));
+                HasGroupDocuments = GroupDocumentRows.Count > 0;
             }
             finally
             {
@@ -200,6 +209,15 @@ namespace GenDoc.ViewModels.Personnel
             if (!result.Success)
                 MessageBox.Show(result.ErrorMessage, "Відкриття документа",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+
+        [RelayCommand]
+        private async Task OpenGroupDocumentAsync(GroupDocumentRowViewModel? row)
+        {
+            if (row?.GroupDocumentId is not int id) return;
+            var result = await _archiveService.OpenGroupAsync(id);
+            if (!result.Success)
+                MessageBox.Show(result.ErrorMessage, "Відкриття відомості", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         [RelayCommand]

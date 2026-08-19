@@ -84,7 +84,7 @@ namespace GenDoc.Services.Completeness
             people = people.OrderBy(r => r.LastName).ThenBy(r => r.FirstName).ToList();
 
             // (b) зв'язки пакета з вимогами
-            var templates = await GetPackageLinksInternalAsync(db, packageId);
+            var templates = await GetPackageLinksInternalAsync(db, packageId, includeGroup: false);
 
             // (c) всі актуальні документи набору по шаблонах пакета - один запит
             var templateIds = templates.Select(t => t.TemplateId).ToList();
@@ -336,7 +336,9 @@ namespace GenDoc.Services.Completeness
 
         public async Task<List<RecipientDocStatus>> GetRecipientStatusAsync(int recipientId, int packageId)
         {
-            var templates = await GetPackageLinksAsync(packageId);
+            List<MatrixTemplateInfo> templates;
+            using (var db = _dbFactory.CreateDbContext())
+                templates = await GetPackageLinksInternalAsync(db, packageId, includeGroup: false);
             var result = new List<RecipientDocStatus>(templates.Count);
 
             foreach (var template in templates)
@@ -405,18 +407,43 @@ namespace GenDoc.Services.Completeness
         public async Task<List<MatrixTemplateInfo>> GetPackageLinksAsync(int packageId)
         {
             using var db = _dbFactory.CreateDbContext();
-            return await GetPackageLinksInternalAsync(db, packageId);
+            return await GetPackageLinksInternalAsync(db, packageId, includeGroup: true);
         }
 
-        private static async Task<List<MatrixTemplateInfo>> GetPackageLinksInternalAsync(AppDbContext db, int packageId)
+        private static async Task<List<MatrixTemplateInfo>> GetPackageLinksInternalAsync(AppDbContext db, int packageId, bool includeGroup)
         {
-            return await db.GenerationPackageTemplates
-                .Where(pt => pt.GenerationPackageId == packageId && pt.Template != null && pt.Template.DeletedAt == null)
+            var query = db.GenerationPackageTemplates
+                .Where(pt => pt.GenerationPackageId == packageId && pt.Template != null && pt.Template.DeletedAt == null);
+            // Вада 1.4: груповий шаблон у персональній матриці давав порожню колонку в кожного.
+            if (!includeGroup) query = query.Where(pt => pt.Template!.Kind != TemplateKind.Group);
+
+            return await query
                 .OrderBy(pt => pt.SortOrder)
                 .Select(pt => new MatrixTemplateInfo(
                     pt.Id, pt.TemplateId, pt.Template!.Name, pt.Template.ShortName,
-                    pt.SortOrder, pt.RequirementRegular, pt.RequirementLimited))
+                    pt.SortOrder, pt.RequirementRegular, pt.RequirementLimited,
+                    pt.Template.Kind == TemplateKind.Group))
                 .ToListAsync();
+        }
+
+        public async Task<List<PackageGroupDocumentStatus>> GetPackageGroupDocumentsAsync(int packageId, int? intakeId)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var groupTemplates = (await GetPackageLinksInternalAsync(db, packageId, includeGroup: true))
+                .Where(t => t.IsGroup).ToList();
+            if (groupTemplates.Count == 0) return new List<PackageGroupDocumentStatus>();
+
+            var ids = groupTemplates.Select(t => t.TemplateId).ToList();
+            var docs = await db.GeneratedGroupDocuments
+                .Where(g => g.TemplateId != null && ids.Contains(g.TemplateId.Value) && g.IsCurrent && g.IntakeId == intakeId)
+                .Select(g => new { g.TemplateId, g.Id, g.Version })
+                .ToListAsync();
+
+            return groupTemplates.Select(t =>
+            {
+                var doc = docs.FirstOrDefault(d => d.TemplateId == t.TemplateId);
+                return new PackageGroupDocumentStatus(t.TemplateId, t.Name, doc?.Id, doc?.Version ?? 0);
+            }).ToList();
         }
 
         public async Task<List<(int Id, string Name)>> GetTemplatesNotInPackageAsync(int packageId)

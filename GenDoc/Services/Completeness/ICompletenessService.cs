@@ -6,7 +6,12 @@ namespace GenDoc.Services.Completeness
 {
     public record MatrixTemplateInfo(
         int LinkId, int TemplateId, string Name, string? ShortName, int SortOrder,
-        TemplateRequirement RequirementRegular, TemplateRequirement RequirementLimited);
+        TemplateRequirement RequirementRegular, TemplateRequirement RequirementLimited,
+        bool IsGroup = false);
+
+    // Групові відомості пакета (один документ на весь склад) - показуються в підвалі
+    // картки особи, а не серед її персональних документів.
+    public record PackageGroupDocumentStatus(int TemplateId, string TemplateName, int? GroupDocumentId, int Version);
 
     public record MatrixDocDto(
         int Id, int RecipientId, int TemplateId, int Version, bool HasContent, bool IsStale,
@@ -38,6 +43,7 @@ namespace GenDoc.Services.Completeness
         Task<int?> GetDefaultPackageIdAsync();
 
         Task<List<RecipientDocStatus>> GetRecipientStatusAsync(int recipientId, int packageId);
+        Task<List<PackageGroupDocumentStatus>> GetPackageGroupDocumentsAsync(int packageId, int? intakeId);
         Task<(int Generated, int Skipped, List<string> Errors)> GenerateMissingForRecipientAsync(
             int recipientId, int packageId, Dictionary<string, string> manualValues);
 
