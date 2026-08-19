@@ -93,9 +93,14 @@ namespace GenDoc.ViewModels.Personnel
         {
             var all = _generationService.GetPerRecipientTemplates(Models.Enums.TemplateAudience.Intake);
             var packageId = await _completenessService.GetDefaultPackageIdAsync();
-            var packageTemplateIds = packageId is int pid
-                ? (await _completenessService.GetPackageLinksAsync(pid)).Where(l => !l.IsGroup).Select(l => l.TemplateId).ToList()
-                : new List<int>();
+            var packageLinks = packageId is int pid
+                ? (await _completenessService.GetPackageLinksAsync(pid)).Where(l => !l.IsGroup).ToList()
+                : new List<MatrixTemplateInfo>();
+            var packageTemplateIds = packageLinks.Select(l => l.TemplateId).ToList();
+            // Шаблон типового пакета - у списку завжди, навіть якщо його аудиторія інша:
+            // він у пакеті, отже стосується цих людей.
+            foreach (var link in packageLinks.Where(l => all.All(t => t.Id != l.TemplateId)))
+                all = all.Append((link.TemplateId, link.Name)).ToList();
 
             // Excel-відомості з тегами - такі ж шаблони для курсового, лише на обраних
             // людей формується один аркуш, а не документ на кожного.
