@@ -28,7 +28,7 @@ namespace GenDoc.Services.Generation
         {
             try
             {
-                // Копія байтів — MemoryStream(byte[]) інакше пише напряму у переданий
+                // Копія байтів - MemoryStream(byte[]) інакше пише напряму у переданий
                 // масив (кеш шаблону), а його не можна мутувати між генераціями.
                 using var stream = new MemoryStream();
                 stream.Write(templateContent, 0, templateContent.Length);
@@ -39,7 +39,7 @@ namespace GenDoc.Services.Generation
 
                 if (!usesPlaceholders)
                 {
-                    // Стара header-driven поведінка — лише перший аркуш, як і раніше.
+                    // Стара header-driven поведінка - лише перший аркуш, як і раніше.
                     FillByHeaderColumns(workbook.Worksheets.First(), mappings, roster);
                 }
                 else if (repeatSheetPerDate)
@@ -48,7 +48,7 @@ namespace GenDoc.Services.Generation
                     {
                         return new XlsxGenerationResult(
                             false, null,
-                            $"Не заповнено тег {PeriodTag} — потрібен для «аркуш на кожну дату періоду».",
+                            $"Не заповнено тег {PeriodTag} - потрібен для «аркуш на кожну дату періоду».",
                             Array.Empty<string>());
                     }
 
@@ -86,7 +86,7 @@ namespace GenDoc.Services.Generation
                             courseOfficerSignature, perSheetValues, unfilledTags);
                     }
 
-                    // Інші (довідкові) аркуші книги — заповнити один раз, без клонування.
+                    // Інші (довідкові) аркуші книги - заповнити один раз, без клонування.
                     var clonedNameSet = new HashSet<string>(clonedNames.Select(c => c.Name));
                     foreach (var sheet in workbook.Worksheets.Where(s => !clonedNameSet.Contains(s.Name)))
                     {
@@ -97,7 +97,7 @@ namespace GenDoc.Services.Generation
                 }
                 else
                 {
-                    // Кожен аркуш книги — аркуші без тегів у templateRowIndex просто
+                    // Кожен аркуш книги - аркуші без тегів у templateRowIndex просто
                     // не отримають клонованих рядків (перевірка всередині), але й досі
                     // отримають підстановку "зовнішніх" (org/manual) тегів, якщо є.
                     foreach (var sheet in workbook.Worksheets)
@@ -120,14 +120,14 @@ namespace GenDoc.Services.Generation
         }
 
         // "03.08.2026-07.08.2026, 09.08.2026" → відсортований список унікальних дат.
-        // Діапазони через дефіс, перелік через кому; кожна дата — дд.мм.рррр.
+        // Діапазони через дефіс, перелік через кому; кожна дата - дд.мм.рррр.
         internal static List<DateOnly> ParsePeriodDates(string raw)
         {
             var segments = raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (segments.Length == 0)
             {
                 throw new FormatException(
-                    $"Тег {PeriodTag} порожній — вкажіть дати у форматі «дд.мм.рррр-дд.мм.рррр, дд.мм.рррр».");
+                    $"Тег {PeriodTag} порожній - вкажіть дати у форматі «дд.мм.рррр-дд.мм.рррр, дд.мм.рррр».");
             }
 
             var result = new HashSet<DateOnly>();
@@ -140,7 +140,7 @@ namespace GenDoc.Services.Generation
                     if (!DateOnly.TryParseExact(segment, "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var single))
                     {
                         throw new FormatException(
-                            $"Не розпізнано дату «{segment}» у тегу {PeriodTag} — очікується формат дд.мм.рррр.");
+                            $"Не розпізнано дату «{segment}» у тегу {PeriodTag} - очікується формат дд.мм.рррр.");
                     }
                     result.Add(single);
                 }
@@ -153,7 +153,7 @@ namespace GenDoc.Services.Generation
                         !DateOnly.TryParseExact(endText, "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var end))
                     {
                         throw new FormatException(
-                            $"Не розпізнано діапазон «{segment}» у тегу {PeriodTag} — очікується дд.мм.рррр-дд.мм.рррр.");
+                            $"Не розпізнано діапазон «{segment}» у тегу {PeriodTag} - очікується дд.мм.рррр-дд.мм.рррр.");
                     }
 
                     if (end < start)
@@ -167,7 +167,7 @@ namespace GenDoc.Services.Generation
             return result.OrderBy(d => d).ToList();
         }
 
-        // Стара header-driven поведінка — без жодних стильових властивостей, лише
+        // Стара header-driven поведінка - без жодних стильових властивостей, лише
         // значення в жорстко визначений рядок 2, як і раніше.
         private static void FillByHeaderColumns(IXLWorksheet sheet, List<ExportTemplateColumnMapping> mappings, IReadOnlyList<Recipient> items)
         {
@@ -199,8 +199,8 @@ namespace GenDoc.Services.Generation
             }
         }
 
-        // Один аркуш: якщо в templateRowIndex справді є хоч один з очікуваних тегів —
-        // клонує рядок по одному на людину (як і раніше). Якщо ні — це довідковий
+        // Один аркуш: якщо в templateRowIndex справді є хоч один з очікуваних тегів -
+        // клонує рядок по одному на людину (як і раніше). Якщо ні - це довідковий
         // аркуш (напр. "Слухачі"): рядки не чіпаємо, лише підставляємо org/manual-теги
         // будь-де на аркуші.
         private static void FillSheetByPlaceholders(
@@ -223,7 +223,7 @@ namespace GenDoc.Services.Generation
                 sheet.Cell(t, m.ColumnIndex).GetString().Contains(m.PlaceholderTag, StringComparison.Ordinal));
 
             var excludeFrom = t;
-            var excludeTo = t - 1; // порожній діапазон — за замовчуванням нічого не виключає
+            var excludeTo = t - 1; // порожній діапазон - за замовчуванням нічого не виключає
 
             if (hasRowTemplate)
             {
@@ -243,8 +243,8 @@ namespace GenDoc.Services.Generation
 
                     string ResolveOne(ExportTemplateColumnMapping mapping)
                     {
-                        // Загальна оцінка — середнє по GradeRandom34-колонках ЦЬОГО рядка,
-                        // а не самостійне поле r-> ... — потребує сусідніх колонок мапінгу.
+                        // Загальна оцінка - середнє по GradeRandom34-колонках ЦЬОГО рядка,
+                        // а не самостійне поле r-> ... - потребує сусідніх колонок мапінгу.
                         if (mapping.SourceType == MappingSourceType.Recipient &&
                             mapping.FieldKey == nameof(ExportFieldKey.GradeOverall34))
                         {
@@ -296,7 +296,7 @@ namespace GenDoc.Services.Generation
         }
 
         // Стабільна "випадкова" оцінка 3 або 4: той самий (RecipientId, ColumnIndex)
-        // завжди дає те саме число — і між перегенераціями, і між колонками рядка
+        // завжди дає те саме число - і між перегенераціями, і між колонками рядка
         // відрізняється, бо колонка теж входить у seed.
         private static int ComputeGradeRandom34(int recipientId, int columnIndex)
         {
@@ -317,14 +317,14 @@ namespace GenDoc.Services.Generation
         }
 
         // Вставляє insertedCount порожніх рядків під шаблонним рядком і клонує туди
-        // його вміст/стиль — усе нижче (підсумки, блок підписів) зсувається разом
+        // його вміст/стиль - усе нижче (підсумки, блок підписів) зсувається разом
         // з об'єднаннями. ClosedXML сам зсуває більшість merged-діапазонів при
         // InsertRowsBelow, але про всяк випадок звіряємо адреси й довиправляємо
         // ті, що лишились на старому місці.
         private static void InsertClonedRows(IXLWorksheet sheet, int templateRow, int insertedCount)
         {
             // Об'єднання, що лежать ЦІЛКОМ у межах шаблонного рядка (напр. підпис на
-            // всю ширину) — CopyTo(row) не гарантує перенесення стану merge, тому
+            // всю ширину) - CopyTo(row) не гарантує перенесення стану merge, тому
             // повторно застосовуємо їх на кожному клоні за тими самими колонками.
             var inRowMergeColumnSpans = sheet.MergedRanges
                 .Where(m => m.RangeAddress.FirstAddress.RowNumber == templateRow && m.RangeAddress.LastAddress.RowNumber == templateRow)
@@ -408,7 +408,7 @@ namespace GenDoc.Services.Generation
                 .ToList();
 
             // Довідкові аркуші (напр. "Слухачі") не містять теги, мапнуті лише
-            // для іншого аркуша — рахуємо "незаповненим" тег лише тоді, коли він
+            // для іншого аркуша - рахуємо "незаповненим" тег лише тоді, коли він
             // справді присутній хоч в одній клітинці ЦЬОГО аркуша.
             var relevantMappings = outsideMappings
                 .Where(m => cellsOutsideRowTemplate.Any(c => c.GetString().Contains(m.PlaceholderTag, StringComparison.Ordinal)))
@@ -546,7 +546,7 @@ namespace GenDoc.Services.Generation
                 : string.Empty,
             ExportFieldKey.GradeRandom34 => ComputeGradeRandom34(r.Id, columnIndex).ToString(CultureInfo.InvariantCulture),
             // GradeOverall34/CourseOfficerSignature обробляються окремо в
-            // FillSheetByPlaceholders — потребують сусідніх колонок рядка /
+            // FillSheetByPlaceholders - потребують сусідніх колонок рядка /
             // даних поза поточним ростером відповідно.
             _ => string.Empty
         };

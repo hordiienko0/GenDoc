@@ -84,7 +84,7 @@ public partial class MainViewModel : ObservableObject
 
         Groups = new ObservableCollection<NavigationGroup>
         {
-            // Іконки — гліфи Segoe MDL2 Assets, тим самим шрифтом, що й кнопки
+            // Іконки - гліфи Segoe MDL2 Assets, тим самим шрифтом, що й кнопки
             // рядків таблиць. У згорнутій панелі меню від пункту лишається саме вона.
             new(new[]
             {
@@ -131,19 +131,19 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string organizationDisplayName = string.Empty;
 
-    /// <summary>Скорочена назва частини — перший рядок шапки бічної панелі.</summary>
+    /// <summary>Скорочена назва частини - перший рядок шапки бічної панелі.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSidebarUnitFullName))]
     private string sidebarUnitShortName = string.Empty;
 
-    /// <summary>Повна назва частини — другий рядок шапки бічної панелі.</summary>
+    /// <summary>Повна назва частини - другий рядок шапки бічної панелі.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSidebarUnitFullName))]
     private string sidebarUnitFullName = string.Empty;
 
     public bool HasSidebarUnitFullName => !string.IsNullOrWhiteSpace(SidebarUnitFullName);
 
-    /// <summary>Панель закріплена — займає місце й показує підписи. Знята з
+    /// <summary>Панель закріплена - займає місце й показує підписи. Знята з
     /// закріплення, вона згортається в смужку з іконок і розкривається поверх
     /// вмісту, коли на неї навести. Так на вузьких екранах розділу лишається
     /// вся ширина, а меню нікуди не зникає.</summary>
@@ -155,7 +155,7 @@ public partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(SidebarToggleTooltip))]
     private bool isSidebarPinned = true;
 
-    /// <summary>Курсор над панеллю — тимчасове розкриття незакріпленої панелі.</summary>
+    /// <summary>Курсор над панеллю - тимчасове розкриття незакріпленої панелі.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSidebarExpanded))]
     [NotifyPropertyChangedFor(nameof(SidebarWidth))]
@@ -166,11 +166,11 @@ public partial class MainViewModel : ObservableObject
     public const double SidebarExpandedWidth = 212;
     public const double SidebarRailWidth = 52;
 
-    /// <summary>Ширина самої панелі: розкрита — повна, згорнута — смужка іконок.</summary>
+    /// <summary>Ширина самої панелі: розкрита - повна, згорнута - смужка іконок.</summary>
     public double SidebarWidth => IsSidebarExpanded ? SidebarExpandedWidth : SidebarRailWidth;
 
     /// <summary>Скільки місця панель ЗАБИРАЄ в розділу. Незакріплена не забирає
-    /// нічого понад смужку — вона спливає поверх, не зсуваючи вміст.</summary>
+    /// нічого понад смужку - вона спливає поверх, не зсуваючи вміст.</summary>
     public GridLength SidebarColumnWidth => new(IsSidebarPinned ? SidebarExpandedWidth : SidebarRailWidth);
 
     public string SidebarToggleIcon => IsSidebarPinned ? "\uE76B" : "\uE76C";
@@ -182,9 +182,9 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private void ToggleSidebar() => IsSidebarPinned = !IsSidebarPinned;
 
-    private const string AppTitle = "GenDoc — Облік особового складу";
+    private const string AppTitle = "GenDoc - Облік особового складу";
 
-    /// <summary>Текст титульного рядка — з назвою частини, як у макеті.</summary>
+    /// <summary>Текст титульного рядка - з назвою частини, як у макеті.</summary>
     public string WindowTitleText { get; private set; } = AppTitle;
 
     public string StatusBarUserText { get; private set; } = string.Empty;

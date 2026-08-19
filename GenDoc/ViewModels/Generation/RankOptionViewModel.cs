@@ -3,7 +3,7 @@ using GenDoc.Services;
 
 namespace GenDoc.ViewModels.Generation;
 
-// Одне конкретне звання зі списку "Окремі звання" — будується з реальних даних
+// Одне конкретне звання зі списку "Окремі звання" - будується з реальних даних
 // складу (не з повної таблиці RankOrder), тому "генерал" не з'явиться, якщо
 // в частині генералів нема.
 public partial class RankOptionViewModel : ObservableObject

@@ -2,7 +2,7 @@ using GenDoc.Services.Completeness;
 
 namespace GenDoc.ViewModels.Personnel
 {
-    // Один рядок вкладки «Документи» картки особи — стан одного шаблону пакета.
+    // Один рядок вкладки «Документи» картки особи - стан одного шаблону пакета.
     public class RecipientDocRowViewModel
     {
         public RecipientDocRowViewModel(RecipientDocStatus status)
@@ -24,7 +24,7 @@ namespace GenDoc.ViewModels.Personnel
 
         public string StateText => !HasContent ? "Немає" : IsStale ? "Застарів" : "Є";
 
-        // Для DataTrigger у XAML — те саме, що StateText, але стабільний ключ (не залежить від локалізації).
+        // Для DataTrigger у XAML - те саме, що StateText, але стабільний ключ (не залежить від локалізації).
         public string StateKind => !HasContent ? "Missing" : IsStale ? "Stale" : "Current";
 
         public string ActionLabel => HasContent ? "Перегенерувати" : "Згенерувати";

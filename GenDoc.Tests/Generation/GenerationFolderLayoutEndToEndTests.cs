@@ -6,12 +6,12 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Generation;
 
-// Розкладка документів по папках — на СПРАВЖНЬОМУ диску, справжнім шаблоном.
+// Розкладка документів по папках - на СПРАВЖНЬОМУ диску, справжнім шаблоном.
 //
 // DocumentFolderLayout покритий власними тестами, але вони перевіряють саму
 // функцію. Тут перевіряється те, чого вони не бачать: що генерація справді
 // створює ці теки й кладе файли саме туди, і що ім'я, записане в архів,
-// збігається зі шляхом на диску — інакше дерево «Архіву» показувало б не те,
+// збігається зі шляхом на диску - інакше дерево «Архіву» показувало б не те,
 // що лежить у папках.
 public class GenerationFolderLayoutEndToEndTests : IDisposable
 {
@@ -80,7 +80,7 @@ public class GenerationFolderLayoutEndToEndTests : IDisposable
         var typeFolder = Path.Combine(intakeFolder, TemplateName);
         Assert.True(Directory.Exists(typeFolder), $"Немає теки типу документа: {typeFolder}");
 
-        // Рівень прогону — одна тека на весь запуск, і назва її рахується
+        // Рівень прогону - одна тека на весь запуск, і назва її рахується
         // ОДИН раз, інакше документи розповзлися б по двох теках.
         var runFolder = Assert.Single(Directory.GetDirectories(typeFolder));
 
@@ -116,7 +116,7 @@ public class GenerationFolderLayoutEndToEndTests : IDisposable
         }
     }
 
-    // Дерево «Архіву» будується розбором цього ж шляху — перевіряємо, що на
+    // Дерево «Архіву» будується розбором цього ж шляху - перевіряємо, що на
     // справжніх даних воно дає саме ті гілки, які є на диску.
     [Fact]
     public void ArchiveTree_BuiltFromStoredPaths_MatchesTheFoldersOnDisk()

@@ -147,7 +147,7 @@
                         Visibility="{Binding CanGoBack, Converter={StaticResource BoolToVisibility}}"/>
 
                 <!-- Підказка про пропущені рядки стоїть однією групою з кнопками,
-                     тож їй потрібна стеля — інакше вона виштовхує їх за край. -->
+                     тож їй потрібна стеля - інакше вона виштовхує їх за край. -->
                 <TextBlock Grid.Column="1" Text="{Binding SkippedNoteText}" VerticalAlignment="Center"
                            Margin="16,0" FontSize="11.5" MaxWidth="420"
                            TextTrimming="CharacterEllipsis" ToolTip="{Binding SkippedNoteText}"
@@ -222,7 +222,7 @@
                                              IsChecked="{Binding TargetNewIntake, Mode=TwoWay}"
                                              VerticalAlignment="Center" Margin="0,0,28,0"/>
                                 <!-- Постійного складу в макеті немає, але це наявна
-                                     можливість застосунку — вона лишається вибором. -->
+                                     можливість застосунку - вона лишається вибором. -->
                                 <RadioButton Content="Постійний склад (без набору)" GroupName="ImportTarget"
                                              IsChecked="{Binding TargetPermanentStaff, Mode=TwoWay}"
                                              VerticalAlignment="Center"/>
@@ -253,7 +253,7 @@
                                           Visibility="{Binding IsIntakeChoiceVisible, Converter={StaticResource BoolToVisibility}}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <!-- Уся смуга — кнопка вибору: у макеті рядок гілки
+                                        <!-- Уся смуга - кнопка вибору: у макеті рядок гілки
                                              клікабельний цілком, а не лише його назва. -->
                                         <Button Command="{Binding DataContext.SelectBranchCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}"
@@ -370,14 +370,14 @@
                     </Border>
 
                     <!-- Перемикач діє на ВЕСЬ файл, а таблиця нижче показує лише перші
-                         вісім рядків — тому кількість названа тут явно, інакше було б
+                         вісім рядків - тому кількість названа тут явно, інакше було б
                          незрозуміло, скільки саме людей зачепить одна галочка. -->
                     <Border Style="{StaticResource CardStyle}" Padding="16,12" Margin="0,0,0,14"
                             Visibility="{Binding HasMovableDuplicates, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel>
                             <CheckBox IsChecked="{Binding MoveAllDuplicates}" Content="{Binding MoveAllText}"
                                       VerticalContentAlignment="Center"/>
-                            <TextBlock Text="Наявні картки будуть змінені: набір і гілка — на обрані, решта полів — лише там, де у файлі є значення. Документи, видані в попередньому наборі, лишаться на місці."
+                            <TextBlock Text="Наявні картки будуть змінені: набір і гілка - на обрані, решта полів - лише там, де у файлі є значення. Документи, видані в попередньому наборі, лишаться на місці."
                                        Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"
                                        TextWrapping="Wrap" Margin="24,6,0,0"/>
                         </StackPanel>
@@ -506,7 +506,7 @@
                                                                         <Condition Binding="{Binding Status}" Value="Ok"/>
                                                                         <Condition Binding="{Binding Note}" Value=""/>
                                                                     </MultiDataTrigger.Conditions>
-                                                                    <Setter Property="Text" Value="—"/>
+                                                                    <Setter Property="Text" Value="-"/>
                                                                 </MultiDataTrigger>
                                                             </Style.Triggers>
                                                         </Style>
@@ -519,7 +519,7 @@
                                                     <CheckBox IsChecked="{Binding Move}" Content="перенести"
                                                               VerticalAlignment="Center" FontSize="11"
                                                               Visibility="{Binding CanMove, Converter={StaticResource BoolToVisibility}}"/>
-                                                    <TextBlock Text="—" VerticalAlignment="Center"
+                                                    <TextBlock Text="-" VerticalAlignment="Center"
                                                                Foreground="{StaticResource TextSecondaryBrush}">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock">

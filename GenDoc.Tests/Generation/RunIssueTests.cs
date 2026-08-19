@@ -2,7 +2,7 @@ using GenDoc.Services.Generation;
 
 namespace GenDoc.Tests.Generation;
 
-// RunIssue.TryDeserialize — єдине місце, чия робота полягає в тому, щоб пережити
+// RunIssue.TryDeserialize - єдине місце, чия робота полягає в тому, щоб пережити
 // будь-який вміст колонки GenerationPackageRun.Summary: без CHECK-обмеження, редагованої
 // вручну, з рантаймом System.Text.Json, який не перевіряє non-nullable параметри запису.
 public class RunIssueTests
@@ -10,8 +10,8 @@ public class RunIssueTests
     [Fact]
     public void TryDeserialize_RejectsJsonArrayOfShapeMismatchedObjects()
     {
-        // "[{}]" — валідний JSON-масив, System.Text.Json охоче створює з нього
-        // RunIssue(null, null, null, null), хоча всі чотири параметри — string,
+        // "[{}]" - валідний JSON-масив, System.Text.Json охоче створює з нього
+        // RunIssue(null, null, null, null), хоча всі чотири параметри - string,
         // а не string?. Якби це пройшло як "успіх", виклик у
         // DocumentArchiveService.GetRunItemsAsync ("issue.Person.Length") впав би
         // з NullReferenceException.
@@ -47,7 +47,7 @@ public class RunIssueTests
     {
         var json = RunIssue.Serialize(new List<RunIssue>
         {
-            new(RunIssue.PhaseXlsx, string.Empty, "Відомість", "не заповнено теги — {{дата}}", IsError: false)
+            new(RunIssue.PhaseXlsx, string.Empty, "Відомість", "не заповнено теги - {{дата}}", IsError: false)
         });
 
         var success = RunIssue.TryDeserialize(json, out var issues);
@@ -55,7 +55,7 @@ public class RunIssueTests
         Assert.True(success);
         var issue = Assert.Single(issues);
         Assert.False(issue.IsError);
-        Assert.Equal("не заповнено теги — {{дата}}", issue.Message);
+        Assert.Equal("не заповнено теги - {{дата}}", issue.Message);
     }
 
     // Зворотна сумісність: JSON, записаний до появи поля IsError (усі запуски

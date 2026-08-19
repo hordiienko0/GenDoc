@@ -6,8 +6,8 @@ namespace GenDoc.Models
     {
         public int Id { get; set; }
 
-        // Рівно одне з двох має бути заповнене: ExportTemplateId — для XLSX-відомості,
-        // TemplateId — для групового DOCX (повторюваний блок). Перевіряється в
+        // Рівно одне з двох має бути заповнене: ExportTemplateId - для XLSX-відомості,
+        // TemplateId - для групового DOCX (повторюваний блок). Перевіряється в
         // сервісах генерації, а не на рівні БД (SQLite не підтримує CHECK-обмеження
         // на вже існуючій таблиці без повного її перестворення).
         public int? ExportTemplateId { get; set; }
@@ -35,7 +35,7 @@ namespace GenDoc.Models
         public int Version { get; set; } = 1;
         public bool IsCurrent { get; set; } = true;
 
-        // Байти в окремій 1:1 таблиці; false — легасі-записи без збереженого файлу.
+        // Байти в окремій 1:1 таблиці; false - легасі-записи без збереженого файлу.
         public bool HasContent { get; set; }
 
         public DateTime? DeletedAt { get; set; }

@@ -24,7 +24,7 @@ public class SignatureNameTests
     [Fact]
     public void SignatureName_DiffersFromFullNameFormat()
     {
-        // ПІБ-формат (FullNameFormatted) — прізвище першим; SignatureName — ім'я першим.
+        // ПІБ-формат (FullNameFormatted) - прізвище першим; SignatureName - ім'я першим.
         var signature = NameFormatter.SignatureName("Іваненко", "Олег");
         Assert.StartsWith("Олег", signature);
         Assert.EndsWith("ІВАНЕНКО", signature);
@@ -37,7 +37,7 @@ public class ManualTagClassifierTests
     [InlineData("дата_прибуття", ManualTagKind.Date)]
     [InlineData("дата_зарахування", ManualTagKind.Date)]
     [InlineData("дата_рапорту", ManualTagKind.Date)]
-    [InlineData("дата_посвідчення", ManualTagKind.Text)] // не в manual-формі — це Recipient-джерело, а не ручна дата
+    [InlineData("дата_посвідчення", ManualTagKind.Text)] // не в manual-формі - це Recipient-джерело, а не ручна дата
     [InlineData("номер_посвідчення", ManualTagKind.Text)]
     [InlineData("звання_підписанта", ManualTagKind.Text)]
     public void Classify_ReturnsExpectedKind(string tag, ManualTagKind expected)

@@ -2,7 +2,7 @@ using GenDoc.Models.Enums;
 
 namespace GenDoc.Services
 {
-    // Єдина точка порівняння Recipient.FitnessCategory з FitnessFilter — рядки
+    // Єдина точка порівняння Recipient.FitnessCategory з FitnessFilter - рядки
     // ті самі, що пише картка людини (PersonCardViewModel.FitnessOptions).
     public static class FitnessCategoryHelper
     {

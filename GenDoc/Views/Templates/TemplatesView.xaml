@@ -78,7 +78,7 @@
         </Style>
         <!-- Рядок Excel-шаблону. Винесено в ресурси, бо той самий рядок тепер
              малюють два списки: Excel із тегами йде до шаблонів документів,
-             Excel без тегів — до шаблонів експорту списків. -->
+             Excel без тегів - до шаблонів експорту списків. -->
                             <DataTemplate DataType="{x:Type templatesVm:ExportTemplateListItemViewModel}">
                                 <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderLineBrush}">
                                     <StackPanel>
@@ -266,14 +266,14 @@
                                                     <!-- Для кого шаблон. Зберігається одразу, без окремої кнопки:
                                                          це один прапорець, а не текст, який ще треба доredагувати.
                                                          Шаблон постійного складу зникає зі звичайної генерації й
-                                                         пакетів, і навпаки — тому підпис пояснює наслідок. -->
+                                                         пакетів, і навпаки - тому підпис пояснює наслідок. -->
                                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                                         <TextBlock Text="Для кого:" VerticalAlignment="Center"
                                                                    Foreground="{StaticResource TextSecondaryBrush}"
                                                                    FontSize="12" Margin="0,0,10,0"/>
                                                         <CheckBox Content="Постійний склад" VerticalAlignment="Center"
                                                                   IsChecked="{Binding IsForPermanentStaff, Mode=TwoWay}"
-                                                                  ToolTip="Такий шаблон видно лише в «Постійному складі» — у генерації й пакетах його не буде"/>
+                                                                  ToolTip="Такий шаблон видно лише в «Постійному складі» - у генерації й пакетах його не буде"/>
                                                         <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" FontSize="11.5"
                                                                    Foreground="{StaticResource TextSecondaryBrush}"
                                                                    Text="{Binding AudienceCaption, StringFormat=зараз: {0}}"/>
@@ -357,13 +357,13 @@
     </UserControl.Resources>
 
   <Grid>
-    <!-- Конструктор — повноекранний режим цього ж розділу, не окремий пункт меню. -->
+    <!-- Конструктор - повноекранний режим цього ж розділу, не окремий пункт меню. -->
     <local:TemplateBuilderView DataContext="{Binding Builder}"
                                Visibility="{Binding DataContext.IsBuilderOpen, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}"/>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto"
                   Visibility="{Binding IsListVisible, Converter={StaticResource BoolToVisibility}}">
-        <!-- Майстер-деталь за макетом: перелік шаблонів ліворуч, мапінг обраного —
+        <!-- Майстер-деталь за макетом: перелік шаблонів ліворуч, мапінг обраного -
              праворуч, замість розкривного блоку всередині рядка. -->
         <Grid Margin="0,0,0,24">
             <Grid.ColumnDefinitions>
@@ -371,7 +371,7 @@
                      не має права звузитись до трьох літер у колонці «Назва». -->
                 <ColumnDefinition Width="*" MinWidth="380"/>
                 <!-- Auto: поки панель мапінгу схована, колонка має нульову ширину
-                     і переліки займають усе місце; коли показана — росте під вміст
+                     і переліки займають усе місце; коли показана - росте під вміст
                      у межах MinWidth/MaxWidth самої панелі. -->
                 <ColumnDefinition Width="{Binding MappingPanelColumnWidth}"/>
             </Grid.ColumnDefinitions>
@@ -404,7 +404,7 @@
                         <TextBlock Grid.Column="4" Text="" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
                     </Grid>
 
-                    <!-- Лише шаблони для наборів. Шаблони постійного складу —
+                    <!-- Лише шаблони для наборів. Шаблони постійного складу -
                          окремою групою нижче: у них інша аудиторія й інший шлях
                          видачі, тож одним списком вони плутають. -->
                     <ItemsControl ItemsSource="{Binding IntakeTemplatesView}">
@@ -413,7 +413,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <!-- Excel-шаблони з {{тегами}} — той самий розділ, той самий рядок,
+                    <!-- Excel-шаблони з {{тегами}} - той самий розділ, той самий рядок,
                          шаблон рядка береться з ресурсів за типом елемента. -->
                     <ItemsControl ItemsSource="{Binding DocumentExcelTemplates}"/>
 
@@ -433,13 +433,13 @@
             </Border>
 
             <!-- ШАБЛОНИ ПОСТІЙНОГО СКЛАДУ. Поділ за аудиторією вже працював у
-                 даних (Template.Audience, схема v23) — «Видати документ» показує
-                 лише ці, — але на екрані шаблони обох аудиторій лежали одним
+                 даних (Template.Audience, схема v23) - «Видати документ» показує
+                 лише ці, - але на екрані шаблони обох аудиторій лежали одним
                  списком, і зрозуміти, який куди піде, було ніяк.
                  Група ховається, доки таких шаблонів немає. -->
             <StackPanel Visibility="{Binding HasPermanentStaffTemplates, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="Шаблони постійного складу" Style="{StaticResource TemplatesSectionTitleStyle}"/>
-                <TextBlock Text="Видаються офіцерам і персоналу поза наборами — через «Постійний склад», а не через генерацію по набору"
+                <TextBlock Text="Видаються офіцерам і персоналу поза наборами - через «Постійний склад», а не через генерацію по набору"
                            Foreground="{StaticResource TextSecondaryBrush}" FontSize="12"
                            TextWrapping="Wrap" Margin="0,-6,0,10"/>
                 <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
@@ -499,11 +499,11 @@
 
             <!-- З'являється лише після кліку на олівець у рядку; поки шаблон не обрано,
                  панелі немає взагалі, щоб порожня картка не займала місце.
-                 Ширина — Auto (по вмісту) з межами, доки не потягнули роздільник. -->
+                 Ширина - Auto (по вмісту) з межами, доки не потягнули роздільник. -->
             <!-- MaxWidth 560, а не «скільки хоче вміст»: Grid віддає Auto-колонці
                  бажану ширину навіть коли її нема куди подіти, і панель просто
                  вилазила за край екрана (колонка «Поле» обрізалась). 560 + мінімум
-                 переліку вміщається навіть у вузьке вікно; ширше — роздільником. -->
+                 переліку вміщається навіть у вузьке вікно; ширше - роздільником. -->
             <Border Grid.Column="1" Margin="18,0,0,0"
                     MinWidth="320" MaxWidth="460"
                     Background="{StaticResource PanelBrush}"

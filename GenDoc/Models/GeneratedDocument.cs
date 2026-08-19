@@ -23,7 +23,7 @@ namespace GenDoc.Models
 
         public string? ContentHash { get; set; }
 
-        // Хеш замаплених (нерукописних) значень на момент генерації — для стану «застарів».
+        // Хеш замаплених (нерукописних) значень на момент генерації - для стану «застарів».
         public string? SourceHash { get; set; }
         public long SizeBytes { get; set; }
         public int Version { get; set; } = 1;
@@ -35,7 +35,7 @@ namespace GenDoc.Models
         public int? OrgNodeIdSnapshot { get; set; }
         public string? OrgPathSnapshot { get; set; }
 
-        // Байти в окремій 1:1 таблиці; false — легасі-записи без збереженого файлу.
+        // Байти в окремій 1:1 таблиці; false - легасі-записи без збереженого файлу.
         public bool HasContent { get; set; }
 
         public DateTime? DeletedAt { get; set; }

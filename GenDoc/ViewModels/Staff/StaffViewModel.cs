@@ -194,7 +194,7 @@ namespace GenDoc.ViewModels.Staff
         [RelayCommand(CanExecute = nameof(HasSelection))]
         private async Task GenerateDocumentAsync() => await OpenDocDialogAsync(null);
 
-        // Пункт контекстного меню рядка — генерація для однієї людини без чекбоксів.
+        // Пункт контекстного меню рядка - генерація для однієї людини без чекбоксів.
         [RelayCommand]
         private async Task GenerateDocumentForRowAsync(StaffRowViewModel? row)
         {

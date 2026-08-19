@@ -10,7 +10,7 @@
         public bool WatermarkEnabled { get; set; } = false;
         public string? WatermarkText { get; set; }
 
-        // Шаблон назви набору; {n} — порядковий номер.
+        // Шаблон назви набору; {n} - порядковий номер.
         public string? IntakeNumberTemplate { get; set; }
 
         // Шаблон імені файлу при експорті з архіву; {ПІБ}, {Шаблон}, {Дата}.
@@ -30,7 +30,7 @@
         public string? LastManualValuesJson { get; set; }
 
         // JSON-словник contextKey ("pkg:{id}"/"tpl:{id}") → RecipientId останнього
-        // обраного підписанта рапорту — щоб не обирати заново щоразу.
+        // обраного підписанта рапорту - щоб не обирати заново щоразу.
         public string? LastSignerByTemplateJson { get; set; }
     }
 }

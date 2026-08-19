@@ -352,7 +352,7 @@ namespace GenDoc.ViewModels.Personnel
         {
             var nodeVm = Tree.FindById(model.OrgNodeId);
             var unitDisplay = nodeVm is null
-                ? "—"
+                ? "-"
                 : nodeVm.DocumentName ?? Tree.GetFullPathNames(nodeVm);
 
             var card = new PersonCardViewModel(
@@ -368,7 +368,7 @@ namespace GenDoc.ViewModels.Personnel
             var row = _allRows.FirstOrDefault(r => r.Id == id);
             if (row is null)
             {
-                // Нова особа — повний перезапит гілки і лічильників.
+                // Нова особа - повний перезапит гілки і лічильників.
                 WeakReferenceMessenger.Default.Send(new CountsChangedMessage());
                 return;
             }

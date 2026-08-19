@@ -12,7 +12,7 @@
             <Button Content="Продовжити" Margin="8,0,0,0" MinWidth="110" Command="{Binding OkCommand}"/>
         </StackPanel>
 
-        <TextBlock DockPanel.Dock="Top" Text="Одна форма на весь батч — значення підставляться в усі документи"
+        <TextBlock DockPanel.Dock="Top" Text="Одна форма на весь батч - значення підставляться в усі документи"
                    FontSize="11.5" TextWrapping="Wrap"
                    Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,10"/>
 

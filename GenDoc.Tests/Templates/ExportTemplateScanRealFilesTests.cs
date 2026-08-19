@@ -8,7 +8,7 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Templates;
 
-// Рядок-шаблон — той, що описує ОДНУ людину і клонується на кожного зі списку.
+// Рядок-шаблон - той, що описує ОДНУ людину і клонується на кожного зі списку.
 // Помилка тут дає найгучніший симптом: шапка розмножується на всіх слухачів.
 public class ExportTemplateScanRealFilesTests
 {
@@ -16,7 +16,7 @@ public class ExportTemplateScanRealFilesTests
 
     // Лише теги, що реально трапляються в цих трьох XLSX-файлах. Навмисно не
     // включаємо DOCX-side ручні теги ({{дата_прибуття}}, {{звання_підписанта}}
-    // тощо) — за ними стежать тести DOCX-скану; надто широкий білий список тут
+    // тощо) - за ними стежать тести DOCX-скану; надто широкий білий список тут
     // мовчки відкрив би саме ту пастку, проти якої існує цей тест.
     private static readonly HashSet<string> ManualTagWhitelist = new(StringComparer.Ordinal)
     {
@@ -38,7 +38,7 @@ public class ExportTemplateScanRealFilesTests
 
     // Пін: у справжньому файлі рядком-шаблоном визначається рядок 10 (дані), а не
     // рядок 5/6 з номером в/ч чи описом підрозділу. Це не розрізняє «найбільше
-    // тегів людини» від «найбільше тегів загалом» — на цьому файлі обидва правила
+    // тегів людини» від «найбільше тегів загалом» - на цьому файлі обидва правила
     // дають ту саму відповідь; за розрізнення цих двох правил відповідає синтетичний
     // тест FindTemplateRow_RowWithMoreManualTags_LosesToRowWithRecipientTags.
     [Fact]
@@ -47,7 +47,7 @@ public class ExportTemplateScanRealFilesTests
 
     // Пін: у справжньому файлі рядком-шаблоном визначається рядок 9 (дані), хоча в
     // ньому лише ОДИН тег людини ({{піб_ініціали}}). Це не розрізняє «найбільше
-    // тегів людини» від «найбільше тегів загалом» — на цьому файлі обидва правила
+    // тегів людини» від «найбільше тегів загалом» - на цьому файлі обидва правила
     // дають ту саму відповідь; за розрізнення цих двох правил відповідає синтетичний
     // тест FindTemplateRow_RowWithMoreManualTags_LosesToRowWithRecipientTags.
     [Fact]
@@ -83,7 +83,7 @@ public class ExportTemplateScanRealFilesTests
             .ToList();
 
         Assert.True(unexpectedManual.Count == 0,
-            "Ці теги мовчки впали в Manual — додайте їх у PlaceholderTagMaps або в білий список тесту: "
+            "Ці теги мовчки впали в Manual - додайте їх у PlaceholderTagMaps або в білий список тесту: "
             + string.Join(", ", unexpectedManual));
     }
 

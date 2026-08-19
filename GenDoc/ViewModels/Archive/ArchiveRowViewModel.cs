@@ -40,14 +40,14 @@ namespace GenDoc.ViewModels.Archive
         public bool IsDim => !Dto.HasContent;
         public string VersionText => $"в.{Dto.Version}";
         public bool VersionIsChip => Dto.Version > 1;
-        public string IntakeText => Dto.IntakeNumber is int n ? $"№{n}" : "—";
-        public string UnitLast => (Dto.OrgPathSnapshot ?? "—")
+        public string IntakeText => Dto.IntakeNumber is int n ? $"№{n}" : "-";
+        public string UnitLast => (Dto.OrgPathSnapshot ?? "-")
             .Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .LastOrDefault() ?? "—";
-        public string UnitFull => Dto.OrgPathSnapshot ?? "—";
+            .LastOrDefault() ?? "-";
+        public string UnitFull => Dto.OrgPathSnapshot ?? "-";
         public string DateText => Dto.CreatedAt.ToString("dd.MM.yyyy", Uk);
         public string Author => Dto.Author;
-        public string AttachText => Dto.AttachmentCount > 0 ? $"▣{Dto.AttachmentCount}" : "—";
+        public string AttachText => Dto.AttachmentCount > 0 ? $"▣{Dto.AttachmentCount}" : "-";
 
         public string SearchHaystack => string.Join(' ', new[]
         {

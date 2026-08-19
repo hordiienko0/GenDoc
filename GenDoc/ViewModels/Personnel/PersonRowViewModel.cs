@@ -24,15 +24,15 @@ namespace GenDoc.ViewModels.Personnel
         /// лишається в підказці, у картці й у документах.</summary>
         public string RankShort => Services.RankAbbreviation.Short(Item.Rank);
         public string Position => Item.Position;
-        public string FitnessDisplay => string.IsNullOrWhiteSpace(Item.FitnessCategory) ? "—" : Item.FitnessCategory;
+        public string FitnessDisplay => string.IsNullOrWhiteSpace(Item.FitnessCategory) ? "-" : Item.FitnessCategory;
 
-        /// <summary>Чи показувати бейдж придатності — для порожньої категорії лишається прочерк.</summary>
+        /// <summary>Чи показувати бейдж придатності - для порожньої категорії лишається прочерк.</summary>
         public bool HasFitness => !string.IsNullOrWhiteSpace(Item.FitnessCategory);
 
-        /// <summary>Обмежено придатний / непридатний — бейдж стає застережливим.</summary>
+        /// <summary>Обмежено придатний / непридатний - бейдж стає застережливим.</summary>
         public bool IsLimitedFitness => !FitnessCategoryHelper.IsRegular(Item.FitnessCategory);
 
-        /// <summary>Підпис бейджа. Макет показує «обмежено» — повна категорія лишається у підказці.</summary>
+        /// <summary>Підпис бейджа. Макет показує «обмежено» - повна категорія лишається у підказці.</summary>
         public string FitnessBadgeText =>
             string.Equals(Item.FitnessCategory, "обмежено придатний", StringComparison.OrdinalIgnoreCase)
                 ? "обмежено"

@@ -149,7 +149,7 @@
                     <Grid.ColumnDefinitions>
                         <!-- Явна ширина, НЕ Auto: Auto-колонка міряється нескінченністю,
                              і довга назва папки роздула б панель за край вікна.
-                             Ширину тримає в'ю-модель, а Thumb лише зсуває число —
+                             Ширину тримає в'ю-модель, а Thumb лише зсуває число -
                              GridSplitter писав би в ColumnDefinition напряму й
                              розривав би прив'язку. -->
                         <ColumnDefinition Width="{Binding FolderPanelColumnWidth}"/>
@@ -157,12 +157,12 @@
                         <ColumnDefinition Width="*" MinWidth="320"/>
                     </Grid.ColumnDefinitions>
 
-                    <!-- ДЕРЕВО — навігатор, а не заміна списку. Клік по гілці лише
+                    <!-- ДЕРЕВО - навігатор, а не заміна списку. Клік по гілці лише
                          додає префікс шляху до запиту; фільтри, колонки, версії й
                          підвантаження праворуч працюють як раніше. -->
                     <!-- Складена смужка: сама лише кнопка розгортання. Дерево з
                          єдиної гілки нічого не дає, а панель забирає ширину в
-                         таблиці — тож доки гілок мало, вона складена. -->
+                         таблиці - тож доки гілок мало, вона складена. -->
                     <Border Grid.Column="0" Background="{StaticResource PanelBrush}"
                             BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,1,0"
                             Visibility="{Binding IsFolderPanelCollapsed, Converter={StaticResource BoolToVisibility}}">
@@ -184,7 +184,7 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0">
-                                    <!-- Властивості задані тут, а не стилем: TableHeaderTextStyle —
+                                    <!-- Властивості задані тут, а не стилем: TableHeaderTextStyle -
                                          ЛОКАЛЬНИЙ ресурс ImportView.xaml, і посилання на нього
                                          звідси валить застосунок при відкритті розділу. -->
                                     <TextBlock Text="ПАПКИ" Foreground="{StaticResource NavyBrush}"
@@ -551,7 +551,7 @@
             </Grid.RowDefinitions>
 
             <Grid Grid.Row="0" Margin="0,0,0,9">
-                <TextBlock Text="Групові документи охоплюють кількох людей в одному аркуші (відомості) — не плутати з персональними документами на вкладці «Документи»."
+                <TextBlock Text="Групові документи охоплюють кількох людей в одному аркуші (відомості) - не плутати з персональними документами на вкладці «Документи»."
                            FontSize="11.5" TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
                 <ComboBox Style="{StaticResource ArchiveFilterComboStyle}" ItemsSource="{Binding GroupTemplateOptions}"
                           SelectedItem="{Binding SelectedGroupTemplate}" DisplayMemberPath="Name" Margin="0,26,0,0"/>

@@ -108,7 +108,7 @@ namespace GenDoc.Services.Rooms
             {
                 occupant.RoomId = null;
                 _auditLogService.LogUpdate(db, "Recipient", occupant.Id,
-                    $"Кімната: {roomDisplay}", "Кімната: —", "Знято з розміщення (видалено кімнату)");
+                    $"Кімната: {roomDisplay}", "Кімната: -", "Знято з розміщення (видалено кімнату)");
             }
 
             room.DeletedAt = DateTime.Now;
@@ -136,7 +136,7 @@ namespace GenDoc.Services.Rooms
                     r.MiddleName,
                     r.Rank,
                     r.Position,
-                    UnitName = r.Unit != null ? r.Unit.Name : "—",
+                    UnitName = r.Unit != null ? r.Unit.Name : "-",
                     r.ServiceNumber
                 })
                 .ToList();
@@ -169,7 +169,7 @@ namespace GenDoc.Services.Rooms
                 .OrderBy(r => r.LastName).ThenBy(r => r.FirstName)
                 .Take(take)
                 .Select(r => new UnassignedRecipientDto(
-                    r.Id, NameFormatter.FullName(r.LastName, r.FirstName, r.MiddleName), r.Rank, r.Unit != null ? r.Unit.Name : "—"))
+                    r.Id, NameFormatter.FullName(r.LastName, r.FirstName, r.MiddleName), r.Rank, r.Unit != null ? r.Unit.Name : "-"))
                 .ToList();
         }
 
@@ -183,7 +183,7 @@ namespace GenDoc.Services.Rooms
             db.SaveChanges();
 
             var fullName = NameFormatter.FullName(recipient.LastName, recipient.FirstName, recipient.MiddleName);
-            _auditLogService.LogUpdate(db, "Розміщення", recipient.Id, "—", $"{room.Building} №{room.Number}", $"Поселено: {fullName}");
+            _auditLogService.LogUpdate(db, "Розміщення", recipient.Id, "-", $"{room.Building} №{room.Number}", $"Поселено: {fullName}");
             db.SaveChanges();
         }
 
@@ -191,13 +191,13 @@ namespace GenDoc.Services.Rooms
         {
             using var db = _dbFactory.CreateDbContext();
             var recipient = db.Recipients.Include(r => r.Room).First(r => r.Id == recipientId);
-            var oldValue = recipient.Room is not null ? $"{recipient.Room.Building} №{recipient.Room.Number}" : "—";
+            var oldValue = recipient.Room is not null ? $"{recipient.Room.Building} №{recipient.Room.Number}" : "-";
 
             recipient.RoomId = null;
             db.SaveChanges();
 
             var fullName = NameFormatter.FullName(recipient.LastName, recipient.FirstName, recipient.MiddleName);
-            _auditLogService.LogUpdate(db, "Розміщення", recipient.Id, oldValue, "—", $"Виселено: {fullName}");
+            _auditLogService.LogUpdate(db, "Розміщення", recipient.Id, oldValue, "-", $"Виселено: {fullName}");
             db.SaveChanges();
         }
 

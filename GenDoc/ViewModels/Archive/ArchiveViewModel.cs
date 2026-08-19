@@ -32,7 +32,7 @@ namespace GenDoc.ViewModels.Archive
         private bool _suppressHeaderCheck;
 
         /// <summary>Ключ для запам'ятовування минулих значень і підписанта.
-        /// Окремий від генерації: перегенерація з архіву — свій контекст.</summary>
+        /// Окремий від генерації: перегенерація з архіву - свій контекст.</summary>
         private const string ManualTagContextKey = "archive-regenerate";
 
         private readonly Services.Generation.IManualTagFormBuilder _manualTagFormBuilder;
@@ -175,7 +175,7 @@ namespace GenDoc.ViewModels.Archive
             foreach (var year in options.Years)
                 YearOptions.Add(new FilterOption(year, year.ToString()));
 
-            // Дефолт — активний набір, якщо він є.
+            // Дефолт - активний набір, якщо він є.
             var activeIntakeId = _activeIntakeState.Current?.Id;
             SelectedIntake = activeIntakeId is int aid
                 ? IntakeOptions.FirstOrDefault(o => o.Id == aid) ?? IntakeOptions[0]
@@ -210,7 +210,7 @@ namespace GenDoc.ViewModels.Archive
         public const double FolderPanelMaxWidth = 480;
         private const double CollapsedFolderPanelWidth = 46;
 
-        /// <summary>Колонка панелі ЗАВЖДИ явна, ніколи не Auto — та сама причина,
+        /// <summary>Колонка панелі ЗАВЖДИ явна, ніколи не Auto - та сама причина,
         /// що й у конструкторі шаблонів: Auto міряється нескінченністю, і довга
         /// назва папки роздула б панель за край вікна.</summary>
         public GridLength FolderPanelColumnWidth =>
@@ -226,7 +226,7 @@ namespace GenDoc.ViewModels.Archive
         private bool isFolderPanelCollapsed = true;
 
         /// <summary>Зустрічна властивість замість конвертера-інвертора: у темі
-        /// його немає, а заводити цілий конвертер заради одного місця — зайве.</summary>
+        /// його немає, а заводити цілий конвертер заради одного місця - зайве.</summary>
         public bool IsFolderPanelExpanded => !IsFolderPanelCollapsed;
 
         // Щойно оператор сам чіпнув панель, автоматика більше не втручається:
@@ -241,7 +241,7 @@ namespace GenDoc.ViewModels.Archive
         }
 
         /// <summary>Дерево з єдиного вузла нічого не дає, а панель забирає ширину
-        /// в таблиці — тож доки гілка одна, панель складена. Кнопка розгортання
+        /// в таблиці - тож доки гілка одна, панель складена. Кнопка розгортання
         /// лишається: нічого не зникає, лише не заважає.</summary>
         private void AutoCollapseTrivialTree()
         {
@@ -252,7 +252,7 @@ namespace GenDoc.ViewModels.Archive
         [RelayCommand]
         private async Task SelectFolderAsync(ArchiveFolderNodeViewModel? node)
         {
-            // Повторний клік по вже обраній гілці знімає вибір — інакше
+            // Повторний клік по вже обраній гілці знімає вибір - інакше
             // повернутися до повного списку можна було б лише кнопкою збоку.
             var path = node is null || node.Path == SelectedFolderPath ? null : node.Path;
 
@@ -322,7 +322,7 @@ namespace GenDoc.ViewModels.Archive
                 || (await _archiveService.GetStatsAsync(new ArchiveFilter(null, null, null, null, null, 0, 1))).Count > 0;
         }
 
-        // Пошук по ПІБ і FileName — у пам'яті, культура uk-UA (SQLite NOCASE ≠ кирилиця).
+        // Пошук по ПІБ і FileName - у пам'яті, культура uk-UA (SQLite NOCASE ≠ кирилиця).
         private void ApplySearch()
         {
             var query = SearchText?.Trim();
@@ -410,7 +410,7 @@ namespace GenDoc.ViewModels.Archive
             RefreshCheckedState();
         }
 
-        // Клік по рядку: одиночний вибір; Ctrl+клік — додає.
+        // Клік по рядку: одиночний вибір; Ctrl+клік - додає.
         public void HandleRowClick(ArchiveRowViewModel row, bool ctrl)
         {
             _suppressHeaderCheck = true;
@@ -442,7 +442,7 @@ namespace GenDoc.ViewModels.Archive
         public string? SingleSelectionTooltip => CheckedCount == 1 ? null : "Оберіть один документ";
         public string? OpenTooltip => CheckedCount != 1
             ? "Оберіть один документ"
-            : CanOpen ? null : "Файл не збережено — доступні Перегенерувати й Підгрузити";
+            : CanOpen ? null : "Файл не збережено - доступні Перегенерувати й Підгрузити";
         public string? SaveAsTooltip => CheckedCount == 0
             ? "Оберіть документи"
             : CanSaveAs ? null : "Серед обраних є документи без збереженого файлу";
@@ -787,7 +787,7 @@ namespace GenDoc.ViewModels.Archive
 
         public ObservableCollection<GroupDocumentRowViewModel> GroupRows { get; } = new();
 
-        // FilterOption несе один Id — для групового фільтра цього не досить, бо
+        // FilterOption несе один Id - для групового фільтра цього не досить, бо
         // XLSX- і DOCX-шаблони нумеруються незалежно й можуть збігтись числом.
         // Тому тут тримаємо GroupTemplateOption напряму, а не підганяємо спільний FilterOption.
         public ObservableCollection<GroupTemplateOption> GroupTemplateOptions { get; } = new();

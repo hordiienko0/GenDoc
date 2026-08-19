@@ -6,7 +6,7 @@ using Microsoft.Win32;
 
 namespace GenDoc.ViewModels.Staff
 {
-    // Один рядок кроку «Документи» у StaffDocDialog — і щойно згенерований, і
+    // Один рядок кроку «Документи» у StaffDocDialog - і щойно згенерований, і
     // будь-який раніше створений документ для обраних людей (перечитується через
     // IDocumentArchiveService.GetCurrentRowAsync після генерації).
     public partial class StaffDocResultRowViewModel : ObservableObject

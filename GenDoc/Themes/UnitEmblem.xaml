@@ -1,4 +1,4 @@
-﻿<!-- ЗГЕНЕРОВАНО скриптом svg2xaml.ps1 з GenDoc/Assets/chevron-mark.svg. Руками не правити — перегенерувати з асета. -->
+﻿<!-- ЗГЕНЕРОВАНО скриптом svg2xaml.ps1 з GenDoc/Assets/chevron-mark.svg. Руками не правити - перегенерувати з асета. -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <DrawingImage x:Key="UnitEmblemImage">

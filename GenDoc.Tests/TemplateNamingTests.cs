@@ -14,7 +14,7 @@ public class TemplateNamingTests
     public void Clean_StripsTemplatePrefixAndUnderscores(string input, string expected)
         => Assert.Equal(expected, TemplateNaming.Clean(input));
 
-    // Назва без префікса не повинна постраждати, а слово «шаблон» усередині назви —
+    // Назва без префікса не повинна постраждати, а слово «шаблон» усередині назви -
     // прибирається лише з початку.
     [Theory]
     [InlineData("Роздавальна відомість", "Роздавальна відомість")]
@@ -31,7 +31,7 @@ public class TemplateNamingTests
         Assert.Equal(once, TemplateNaming.Clean(once));
     }
 
-    // Назва з самого лише слова «Шаблон» не має перетворитись на порожній рядок —
+    // Назва з самого лише слова «Шаблон» не має перетворитись на порожній рядок -
     // інакше документ лишиться без імені.
     [Fact]
     public void Clean_NameThatIsOnlyThePrefix_KeepsOriginal()

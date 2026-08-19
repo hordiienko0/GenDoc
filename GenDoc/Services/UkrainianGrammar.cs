@@ -4,7 +4,7 @@ using GenDoc.Models.Enums;
 namespace GenDoc.Services
 {
     // Правила відмінювання (родовий рід і знахідний відмінок) для прізвищ, імен,
-    // по батькові й звань — покриває типові українські закінчення. Не претендує на
+    // по батькові й звань - покриває типові українські закінчення. Не претендує на
     // повноту: для нетипових форм оператор вводить {{...}}_зв уручну (Recipient.*Accusative).
     public static class UkrainianGrammar
     {
@@ -37,8 +37,8 @@ namespace GenDoc.Services
         public static string ArrivedVerb(Gender gender) => gender == Gender.Male ? "прибув" : "прибула";
         public static string SuchPronoun(Gender gender) => gender == Gender.Male ? "таким" : "такою";
 
-        // Звання можуть бути складеними («старший лейтенант») — відмінюється кожне слово:
-        // прикметникова частина за прикметниковим правилом, іменникова — за іменниковим.
+        // Звання можуть бути складеними («старший лейтенант») - відмінюється кожне слово:
+        // прикметникова частина за прикметниковим правилом, іменникова - за іменниковим.
         private static string DeclineRankPhrase(string phrase, Gender gender)
         {
             var words = phrase.Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -60,12 +60,12 @@ namespace GenDoc.Services
 
         private static string DeclineWord(string word, GrammaticalKind kind, Gender gender)
         {
-            // Прізвища на -ко незмінні (Шевченко, Петренко) — і чоловічі, і жіночі.
+            // Прізвища на -ко незмінні (Шевченко, Петренко) - і чоловічі, і жіночі.
             if (kind == GrammaticalKind.Surname && word.EndsWith("ко", StringComparison.OrdinalIgnoreCase))
                 return word;
 
             // Прикметникові закінчення трапляються лише в прізвищах і званнях
-            // (Ковальський, «старший»); особові імена на -ій (Юрій) — інший клас, нижче.
+            // (Ковальський, «старший»); особові імена на -ій (Юрій) - інший клас, нижче.
             if (kind is GrammaticalKind.Surname or GrammaticalKind.Rank)
             {
                 if (word.EndsWith("ій", StringComparison.OrdinalIgnoreCase))

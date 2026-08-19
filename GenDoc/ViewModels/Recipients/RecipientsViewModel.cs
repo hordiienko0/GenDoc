@@ -27,7 +27,7 @@ namespace GenDoc.ViewModels.Recipients
         private readonly Services.Generation.IManualTagFormBuilder _manualTagFormBuilder;
 
         /// <summary>Ключ, під яким запам'ятовуються минулі значення саме для
-        /// цього місця — щоб вони не змішувалися з іншими екранами.</summary>
+        /// цього місця - щоб вони не змішувалися з іншими екранами.</summary>
         private const string ManualTagContextKey = "recipients-export";
         private readonly IServiceProvider _serviceProvider;
         private readonly DispatcherTimer _searchDebounceTimer;
@@ -251,7 +251,7 @@ namespace GenDoc.ViewModels.Recipients
             };
             if (dialog.ShowDialog() != true) return;
 
-            // Та сама вибірка, що зараз у гріді (пошук/сортування враховані) —
+            // Та сама вибірка, що зараз у гріді (пошук/сортування враховані) -
             // а не весь особовий склад.
             var items = _recipientService.SearchEntities(SearchText, SortColumn, SortDescending);
 

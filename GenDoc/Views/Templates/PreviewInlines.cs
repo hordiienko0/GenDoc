@@ -9,7 +9,7 @@ namespace GenDoc.Views.Templates
     /// <summary>
     /// Заливає рядок попереднього перегляду в TextBlock.Inlines. Через ItemsControl
     /// це не зробити: кожен фрагмент рядка має свою заливку, але переносити рядок
-    /// вони мусять спільно — тобто це саме Inlines одного TextBlock, а не окремі
+    /// вони мусять спільно - тобто це саме Inlines одного TextBlock, а не окремі
     /// елементи в панелі.
     /// </summary>
     public static class PreviewInlines
@@ -58,7 +58,7 @@ namespace GenDoc.Views.Templates
             return run;
         }
 
-        // Ресурси читаються напряму: Run — не FrameworkElement, StaticResource
+        // Ресурси читаються напряму: Run - не FrameworkElement, StaticResource
         // всередині нього не резолвиться.
         private static Brush? Brush(string key)
             => Application.Current?.TryFindResource(key) as Brush;

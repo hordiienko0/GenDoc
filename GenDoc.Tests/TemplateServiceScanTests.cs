@@ -35,7 +35,7 @@ public class TemplateServiceScanTests
         Assert.True(result.Tags.First(t => t.Tag == "{{піб}}").IsInsideBlock);
     }
 
-    // Шаблон без блоку — HasBlock=false, усі теги позначені як "поза блоком".
+    // Шаблон без блоку - HasBlock=false, усі теги позначені як "поза блоком".
     [Fact]
     public void ScanPlaceholders_PerRecipientTemplate_HasNoBlock()
     {
@@ -45,7 +45,7 @@ public class TemplateServiceScanTests
             using (var wordDoc = WordprocessingDocument.Create(ms, DocumentFormat.OpenXml.WordprocessingDocumentType.Document, true))
             {
                 var mainPart = wordDoc.AddMainDocumentPart();
-                mainPart.Document = new Document(new Body(new Paragraph(new Run(new Text("{{піб}} — {{посада}}")))));
+                mainPart.Document = new Document(new Body(new Paragraph(new Run(new Text("{{піб}} - {{посада}}")))));
                 mainPart.Document.Save();
             }
             bytes = ms.ToArray();

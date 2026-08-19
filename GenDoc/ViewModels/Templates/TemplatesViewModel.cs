@@ -32,12 +32,12 @@ public partial class TemplatesViewModel : ObservableObject
         RefreshDocxTemplates();
     }
 
-    /// <summary>Excel-шаблони з {{тегами}} — вони формують документ, тож показуються
+    /// <summary>Excel-шаблони з {{тегами}} - вони формують документ, тож показуються
     /// разом із шаблонами Word, а не серед вивантажень списків.</summary>
     [ObservableProperty]
     private ObservableCollection<ExportTemplateListItemViewModel> documentExcelTemplates = new();
 
-    /// <summary>Excel без тегів — заголовок у рядку 1, дані нижче: просте вивантаження списку.</summary>
+    /// <summary>Excel без тегів - заголовок у рядку 1, дані нижче: просте вивантаження списку.</summary>
     [ObservableProperty]
     private ObservableCollection<ExportTemplateListItemViewModel> listExportTemplates = new();
 
@@ -83,7 +83,7 @@ public partial class TemplatesViewModel : ObservableObject
                 t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, t.TagCount, t.IsFromBuilder, t.Audience))
             .ToList();
 
-        // Зміна аудиторії зберігається одразу — окремої кнопки немає, як і в
+        // Зміна аудиторії зберігається одразу - окремої кнопки немає, як і в
         // короткої назви поруч.
         foreach (var item in items) item.AudienceChanged += OnTemplateAudienceChanged;
 
@@ -96,7 +96,7 @@ public partial class TemplatesViewModel : ObservableObject
     }
 
     /// <summary>Перерахувати обидві групи. Викликається й після перемикання
-    /// аудиторії — інакше рядок лишався б у старій групі до перезаходу
+    /// аудиторії - інакше рядок лишався б у старій групі до перезаходу
     /// в розділ, і скидалося б, ніби перемикач не спрацював.</summary>
     private void RefreshAudienceGroups()
     {
@@ -108,7 +108,7 @@ public partial class TemplatesViewModel : ObservableObject
     }
 
     /// <summary>Конструктор живе всередині «Шаблонів»: не окремий пункт меню, а
-    /// повноекранний режим цього ж розділу. Не null — розділ показує конструктор.</summary>
+    /// повноекранний режим цього ж розділу. Не null - розділ показує конструктор.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsBuilderOpen))]
     [NotifyPropertyChangedFor(nameof(IsListVisible))]
@@ -163,7 +163,7 @@ public partial class TemplatesViewModel : ObservableObject
         if (!builderViewModel.LoadTemplate(item.Id, TemplateBuilderMode.Word))
         {
             // Практично недосяжно: кнопка є лише в рядків з BuilderJson. Лишається
-            // на випадок зіпсованого JSON — краще сказати, ніж відкрити порожній екран.
+            // на випадок зіпсованого JSON - краще сказати, ніж відкрити порожній екран.
             MessageBox.Show(
                 "Цей шаблон завантажений файлом і не має джерела блоків, тож у конструкторі не відкривається.",
                 "Немає джерела блоків", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -223,7 +223,7 @@ public partial class TemplatesViewModel : ObservableObject
         }
     }
 
-    /// <summary>Обраний шаблон — його мапінг показує права панель. Типи різні
+    /// <summary>Обраний шаблон - його мапінг показує права панель. Типи різні
     /// (Word / Excel), тому object: розкладку добирає типізований DataTemplate у XAML.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedTemplate))]
@@ -243,14 +243,14 @@ public partial class TemplatesViewModel : ObservableObject
     public bool HasSelectedTemplate => SelectedTemplate is not null;
 
     // ContentControl із заданим ContentTemplate малює шаблон навіть при Content = null
-    // (порожні поля й друга кнопка «Зберегти мапінг» над справжньою) — тому слоти
+    // (порожні поля й друга кнопка «Зберегти мапінг» над справжньою) - тому слоти
     // ховаємо явно, а не покладаємось на порожній Content.
     public bool HasSelectedDocxTemplate => SelectedDocxTemplate is not null;
 
     public bool HasSelectedExportTemplate => SelectedExportTemplate is not null;
 
     /// <summary>Ширина панелі мапінгу. Поки оператор не чіпав роздільник, панель
-    /// розсувається сама під свій вміст (Auto) — довгі назви полів і теги інакше
+    /// розсувається сама під свій вміст (Auto) - довгі назви полів і теги інакше
     /// не вміщаються у фіксовану ширину. Щойно її потягнули, ширина стає явною
     /// й більше не стрибає під час перемикання шаблонів.</summary>
     [ObservableProperty]

@@ -46,7 +46,7 @@ namespace GenDoc.Services.Generation
             var signer = hasSigner ? await BuildSignerAsync(contextKey) : null;
             var courseOfficer = needsCourseOfficer ? await BuildCourseOfficerAsync(contextKey) : null;
 
-            // Ключі підписанта — рівно ті рядки, що прийшли в переліку тегів
+            // Ключі підписанта - рівно ті рядки, що прийшли в переліку тегів
             // (з дужками, як у PlaceholderTag), а не голі константи: інакше
             // обране значення не знайшлося б під час підстановки.
             return new ManualTagFormViewModel(
@@ -73,7 +73,7 @@ namespace GenDoc.Services.Generation
             return new SignerPickerViewModel(options, initial ?? options.FirstOrDefault());
         }
 
-        // Окремий ключ пам'яті: курсовий офіцер і підписант документа — різні
+        // Окремий ключ пам'яті: курсовий офіцер і підписант документа - різні
         // ролі, і запам'ятовувати їх під одним ключем означало б, що вибір однієї
         // ролі мовчки перебиває іншу.
         private static string CourseOfficerContextKey(string contextKey) => $"{contextKey}#курсовий";
@@ -106,7 +106,7 @@ namespace GenDoc.Services.Generation
             }
 
             // Порожній вибір не давав тегам жодного значення, і документ виходив
-            // із порожнім місцем підпису — та сама тиха вада, проти якої заводився
+            // із порожнім місцем підпису - та сама тиха вада, проти якої заводився
             // дропліст курсового офіцера. Перше прізвище видно й можна змінити.
             return new SignerPickerViewModel(options, initial ?? options.FirstOrDefault());
         }

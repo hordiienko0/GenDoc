@@ -29,7 +29,7 @@
     <SolidColorBrush x:Key="ScrollThumbBrush" Color="#B0C0D1"/>
     <SolidColorBrush x:Key="ScrollTrackBrush" Color="#EAEFF5"/>
 
-    <!-- UnitEmblemImage живе в Themes/UnitEmblem.xaml — згенерований повний
+    <!-- UnitEmblemImage живе в Themes/UnitEmblem.xaml - згенерований повний
          шеврон із GenDoc/Assets/chevron-mark.svg. Тут його немає навмисно:
          той словник перегенеровується цілком і правити його руками не можна. -->
 
@@ -46,7 +46,7 @@
         <Setter Property="FontSize" Value="12.5"/>
     </Style>
 
-    <!-- ScrollBar: 10px, без стрілок. Стиль мусить розрізняти орієнтацію —
+    <!-- ScrollBar: 10px, без стрілок. Стиль мусить розрізняти орієнтацію -
          неявний стиль накриває і горизонтальні смуги теж. Width="10" на
          горизонтальній перетворює її на скіпку 10 px, ще й посеред панелі
          (явна Width перебиває Stretch), а Track без Orientation розкладається
@@ -196,7 +196,7 @@
         </Setter>
     </Style>
 
-    <!-- Ghost (текстова) кнопка — напр. "Скасувати" без рамки -->
+    <!-- Ghost (текстова) кнопка - напр. "Скасувати" без рамки -->
     <Style x:Key="GhostButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
@@ -207,7 +207,7 @@
          Підказка бере ТЕКСТ САМОГО елемента, а не конкретну прив'язку, тому
          стиль однаково працює в будь-якій колонці й гарантує головне: обрізане
          значення завжди можна прочитати повністю, нічого не втрачається.
-         Порожня клітинка підказки не показує — інакше під курсором спливала б
+         Порожня клітинка підказки не показує - інакше під курсором спливала б
          порожня рамка. -->
     <Style x:Key="TruncatedCellStyle" TargetType="TextBlock">
         <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
@@ -273,7 +273,7 @@
         </Setter>
     </Style>
 
-    <!-- Кнопка "✕" закриття (модалка, вікно) — 23-24px квадрат, hover Danger -->
+    <!-- Кнопка "✕" закриття (модалка, вікно) - 23-24px квадрат, hover Danger -->
     <Style x:Key="CloseButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
@@ -592,7 +592,7 @@
         <Setter Property="FontSize" Value="11.5"/>
     </Style>
 
-    <!-- CheckBox: квадрат 13x13, checked — Accent фон+бордер, біла галочка -->
+    <!-- CheckBox: квадрат 13x13, checked - Accent фон+бордер, біла галочка -->
     <Style TargetType="CheckBox">
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
         <Setter Property="FontSize" Value="11"/>
@@ -652,7 +652,7 @@
         </Setter>
     </Style>
 
-    <!-- ContextMenu (меню вибору формату експорту тощо) — ПОВНИЙ ControlTemplate -->
+    <!-- ContextMenu (меню вибору формату експорту тощо) - ПОВНИЙ ControlTemplate -->
     <Style x:Key="AppContextMenuStyle" TargetType="ContextMenu">
         <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
@@ -774,7 +774,7 @@
     </Style>
 
     <!-- Вузькі колонки-чекбокси (36-40px): стандартний Padding="16,10" з'їдає майже всю
-         ширину і обрізає чекбокс — тут Padding зменшено під фактичний розмір колонки. -->
+         ширину і обрізає чекбокс - тут Padding зменшено під фактичний розмір колонки. -->
     <Style x:Key="CheckboxCellStyle" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
         <Setter Property="Padding" Value="0"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>

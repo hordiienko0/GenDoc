@@ -7,7 +7,7 @@ namespace GenDoc.Models
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
 
-        // Значення для підстановки в {{підрозділ}} у документах; якщо null — Name.
+        // Значення для підстановки в {{підрозділ}} у документах; якщо null - Name.
         public string? DocumentName { get; set; }
 
         public int? ParentId { get; set; }

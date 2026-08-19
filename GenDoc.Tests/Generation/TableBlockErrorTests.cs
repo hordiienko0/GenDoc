@@ -123,7 +123,7 @@ public class TableBlockErrorTests : IDisposable
         Assert.False(result.Success);
         Assert.Contains("Проба", result.ErrorMessage);
         Assert.Contains("список", result.ErrorMessage);
-        // Не просто "таблиц" — це стрічка спільна з повідомленням про
+        // Не просто "таблиц" - це стрічка спільна з повідомленням про
         // "перетин рівнів" (crossing branch), і збіг з нею тест не помітив би.
         // "не закрито в ній же" є лише в повідомленні цієї, in-table гілки.
         Assert.Contains("не закрито в ній же", result.ErrorMessage);
@@ -133,7 +133,7 @@ public class TableBlockErrorTests : IDisposable
     // закриваючий рядки), уся загорнута в елемент керування вмістом Word,
     // невидима для структурного обходу (BlockChildren бере лише Paragraph і
     // Table серед прямих дітей контейнера). До GuardResidualMarkers це
-    // мовчки тихо стиралось підміткою — Success=True, порожня таблиця.
+    // мовчки тихо стиралось підміткою - Success=True, порожня таблиця.
     [Fact]
     public void MarkerTableInsideSdtBlock_FailsWithMessageNamingTemplate()
     {
@@ -151,10 +151,10 @@ public class TableBlockErrorTests : IDisposable
     }
 
     // Огляд перед злиттям гілки: маркерні рядки таблиці, вкладеної в комірку
-    // іншої (звичайної) таблиці. Зовнішній рядок — не маркер (його текст —
+    // іншої (звичайної) таблиці. Зовнішній рядок - не маркер (його текст -
     // зчеплення текстів усіх вкладених маркерів), тож структурний обхід
     // трактує його як звичайний вміст і раніше стирав маркери всередині як
-    // незаповнені теги — так само тихо, як і у випадку з w:sdt.
+    // незаповнені теги - так само тихо, як і у випадку з w:sdt.
     [Fact]
     public void MarkerRowsInTableNestedInsideACell_FailWithMessageNamingTemplate()
     {
@@ -173,10 +173,10 @@ public class TableBlockErrorTests : IDisposable
     }
 
     // Другий огляд перед злиттям гілки: маркер, що ділить абзац з іншим
-    // текстом («Список: {{#список}}», «кінець {{/список}}»), — так само не
+    // текстом («Список: {{#список}}», «кінець {{/список}}»), - так само не
     // «елемент-маркер», яким уміє оперувати ProcessSiblings (той бачить лише
     // абзац, чий ЦІЛИЙ текст дорівнює маркеру). Перше виправлення робило
-    // preserveMarkers безумовним і GuardResidualMarkers — лише
+    // preserveMarkers безумовним і GuardResidualMarkers - лише
     // весь-абзац-разом, тож такий текст лишався буквально в тексті й
     // друкувався в Success=True документі. GuardResidualMarkers тепер шукає
     // маркер будь-де в тексті абзаца (BlockStructure.EmbeddedMarkerRegex).

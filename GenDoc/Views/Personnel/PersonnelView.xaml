@@ -34,7 +34,7 @@
         </Style>
 
         <!-- Вкладка «Дані» картки особи: перегляд/редагування перемикаються через IsEditing,
-             без дублювання логіки збереження — просто дві альтернативні візуалізації одного значення. -->
+             без дублювання логіки збереження - просто дві альтернативні візуалізації одного значення. -->
         <Style x:Key="CardReadValueStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="12.5"/>
             <Setter Property="TextWrapping" Value="Wrap"/>
@@ -194,7 +194,7 @@
                         </Style>
                     </TextBlock.Style>
                 </TextBlock>
-                <!-- «0 / 33» саме по собі читається як помилка. Розшифровка —
+                <!-- «0 / 33» саме по собі читається як помилка. Розшифровка -
                      у підказці: роздувати гілку підписом не можна, а лишати
                      два числа без пояснення теж. -->
                 <TextBlock Grid.Column="2" Text="{Binding CountLabel}" FontSize="10.5"
@@ -377,16 +377,16 @@
                                 </DataGridTemplateColumn>
 
                                 <!-- Частки підібрані під РЕАЛЬНИЙ вміст: у ПІБ тут коротка
-                                     форма («БЕНІШ С.С.»), а звання й посади — довгі
+                                     форма («БЕНІШ С.С.»), а звання й посади - довгі
                                      («молодший лейтенант», «Начальник служби…»), і саме вони
                                      обрізалися на пів слова, доки ПІБ тримав зайву ширину. -->
                                 <!-- Ширини детерміновані, а не поділені частками. Частки тут
                                      перетягували ковдру: варто було додати місця посаді, як
                                      обрізалося прізвище, і навпаки.
-                                     ПІБ у цьому списку — коротка форма («ЗАДНІПРЯНЕЦЬ С.С.»),
+                                     ПІБ у цьому списку - коротка форма («ЗАДНІПРЯНЕЦЬ С.С.»),
                                      звання після скорочення теж має відомий максимум
                                      («мол. лейтенант»), тож обидві фіксовані. Єдине справді
-                                     змінне поле — посада, вона одна й забирає решту.
+                                     змінне поле - посада, вона одна й забирає решту.
                                      MinWidth не ставимо: він виштовхує таблицю за край вікна
                                      й вмикає горизонтальну прокрутку, а в головному списку
                                      вона гірша за багатокрапку з підказкою. -->
@@ -398,7 +398,7 @@
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
-                                <!-- Скорочене звання, ПОВНЕ — у підказці. Так колонка
+                                <!-- Скорочене звання, ПОВНЕ - у підказці. Так колонка
                                      перестала обрізатись і віддала ширину прізвищу. -->
                                 <!-- Фіксована, а не частка: після скорочення перелік звань
                                      замкнений і найдовше з них («мол. лейтенант») має відому
@@ -419,7 +419,7 @@
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Grid>
-                                                <!-- Категорія відсутня — лишається прочерк без бейджа -->
+                                                <!-- Категорія відсутня - лишається прочерк без бейджа -->
                                                 <TextBlock Text="{Binding FitnessDisplay}" VerticalAlignment="Center"
                                                            Visibility="{Binding HasFitness, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}"/>
                                                 <Border Padding="7,2" HorizontalAlignment="Left" VerticalAlignment="Center"
@@ -585,7 +585,7 @@
                             <TextBlock Text="Підрозділ" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,10,0,4"/>
                             <TextBlock Text="{Binding UnitDisplay}" FontSize="12.5" TextWrapping="Wrap"
                                        Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="Зміна підрозділу — через «Перемістити до…» у списку"
+                            <TextBlock Text="Зміна підрозділу - через «Перемістити до…» у списку"
                                        FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,2,0,0"/>
 
                             <TextBlock Text="Особовий номер" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,10,0,4"/>

@@ -274,16 +274,16 @@ namespace GenDoc.Services
             db.SaveChanges();
         }
 
-        // Рядок-шаблон — той, що описує ОДНУ людину: саме він клонується на кожного
+        // Рядок-шаблон - той, що описує ОДНУ людину: саме він клонується на кожного
         // з ростеру. Тому рахуємо лише теги, які підставляються з даних людини.
         //
         // Раніше правилом було «перший рядок, де більше одного різного тегу», і на
         // Допуску (Додаток 5) це вибирало ШАПКУ: у її заголовку в одній клітинці
-        // стоять два теги — {{номери_вправ}} і {{номер_вч}}. Наслідок — заголовок
+        // стоять два теги - {{номери_вправ}} і {{номер_вч}}. Наслідок - заголовок
         // клонувався на кожного слухача (35 копій «ВІДОМІСТЬ результатів…»), а
         // справжній рядок даних лишався порожнім.
         //
-        // Немає жодного {{тегу}} — не placeholder-шаблон.
+        // Немає жодного {{тегу}} - не placeholder-шаблон.
         internal static int? FindTemplateRow(IXLRange usedRange)
         {
             var tagsByRow = new SortedDictionary<int, HashSet<string>>();
@@ -307,7 +307,7 @@ namespace GenDoc.Services
 
             if (tagsByRow.Count == 0) return null;
 
-            // Найбільше пер-людинних тегів; за рівності — верхній рядок.
+            // Найбільше пер-людинних тегів; за рівності - верхній рядок.
             var byRecipientTags = tagsByRow
                 .Select(kv => (Row: kv.Key, Count: kv.Value.Count(IsRecipientTag)))
                 .Where(x => x.Count > 0)
@@ -317,7 +317,7 @@ namespace GenDoc.Services
 
             if (byRecipientTags.Count > 0) return byRecipientTags[0].Row;
 
-            // Жодного тега з даних людини — поводимось як раніше.
+            // Жодного тега з даних людини - поводимось як раніше.
             var multiTagRow = tagsByRow.FirstOrDefault(kv => kv.Value.Count > 1);
             if (multiTagRow.Value is not null) return multiTagRow.Key;
 
@@ -327,7 +327,7 @@ namespace GenDoc.Services
         private static bool IsRecipientTag(string tagWithBraces)
             => PlaceholderTagMaps.Classify(tagWithBraces).SourceType == MappingSourceType.Recipient;
 
-        // internal: тим самим сканером конструктор описує книгу, яку щойно зібрав —
+        // internal: тим самим сканером конструктор описує книгу, яку щойно зібрав -
         // так мапінг зібраної відомості за побудовою збігається з мапінгом такої ж
         // відомості, завантаженої файлом.
         internal static void BuildPlaceholderMappings(ExportTemplate template, IXLRange usedRange, int templateRowIndex)
@@ -458,7 +458,7 @@ namespace GenDoc.Services
             if (normalized.Contains("посада")) return ExportFieldKey.Position;
             if (normalized.Contains("автомобіль")) return ExportFieldKey.Vehicle;
 
-            // Після «висновок влк» — щоб «Висновок ВЛК» не перехопився як придатність.
+            // Після «висновок влк» - щоб «Висновок ВЛК» не перехопився як придатність.
             if (normalized.Contains("зброї") || normalized.Contains("зброя")) return ExportFieldKey.WeaponFull;
             if (normalized.Contains("придатн")) return ExportFieldKey.FitnessCategory;
 

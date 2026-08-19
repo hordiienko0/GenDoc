@@ -2,7 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace GenDoc.ViewModels.Generation;
 
-// Рядок чекбокс-списку для вибору підмножини складу під час генерації —
+// Рядок чекбокс-списку для вибору підмножини складу під час генерації -
 // той самий патерн, що й RecipientRowViewModel.IsSelected у розділі «Особовий склад».
 public partial class RecipientCheckRowViewModel : ObservableObject
 {

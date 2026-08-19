@@ -7,7 +7,7 @@ using GenDoc.Services.Templates;
 namespace GenDoc.Tests.Templates;
 
 /// <summary>Таблиця ширша за типові три колонки. Обмеження на кількість колонок
-/// у моделі немає й не мусить з'явитися — вузьким місцем була тільки розкладка
+/// у моделі немає й не мусить з'явитися - вузьким місцем була тільки розкладка
 /// на екрані (UniformGrid ділив ширину панелі між усіма колонками).</summary>
 public class TemplateWideTableTests
 {
@@ -29,7 +29,7 @@ public class TemplateWideTableTests
         var layout = TemplateSheetLayout.Compute(Document(TemplateBuilderMode.Excel).Blocks);
 
         Assert.Equal(Wide, layout.ColumnCount);
-        // Восьма колонка — це літера H; підпис розкладки має довести саме до неї.
+        // Восьма колонка - це літера H; підпис розкладки має довести саме до неї.
         Assert.Equal("H", TemplateSheetLayout.ColumnLetter(Wide));
     }
 
@@ -63,7 +63,7 @@ public class TemplateWideTableTests
         Assert.Equal($"Колонка {Wide}", header.Elements<TableCell>().Last().InnerText);
     }
 
-    // Маркерний рядок {{#особи}} — це ЦІЛИЙ рядок таблиці, тож він мусить мати
+    // Маркерний рядок {{#особи}} - це ЦІЛИЙ рядок таблиці, тож він мусить мати
     // стільки ж комірок, скільки й решта, інакше рушій не впізнає блок.
     [Fact]
     public void Marker_row_spans_the_whole_width_of_a_wide_table()

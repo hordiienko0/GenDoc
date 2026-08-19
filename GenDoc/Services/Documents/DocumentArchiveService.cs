@@ -12,19 +12,19 @@ namespace GenDoc.Services.Documents
     {
         private const int DefaultMaxDocumentSizeKb = 5120;
 
-        // Легасі-записи (HasContent = false) не мають збережених байтів файлу —
+        // Легасі-записи (HasContent = false) не мають збережених байтів файлу -
         // лише метадані. Одне спільне повідомлення для всіх точок, де це виявляється.
         private const string NoContentMessage =
-            "Файл цього документа не збережено в архіві — доступні лише його дані. " +
+            "Файл цього документа не збережено в архіві - доступні лише його дані. " +
             "Сформуйте документ наново або завантажте файл вручну.";
 
         // Рядок-батько (GeneratedDocument / GeneratedGroupDocument) міг зникнути між
         // тим, як список відкрили, і тим, як користувач клікнув по рядку (видалення
         // в іншому сеансі). FirstAsync у цьому випадку падав з InvalidOperationException
-        // ("Sequence contains no elements"), і той текст ішов прямо в MessageBox —
+        // ("Sequence contains no elements"), і той текст ішов прямо в MessageBox -
         // те саме "сире" повідомлення, яке цей набір фіксів мав прибрати.
         private const string RecordGoneMessage =
-            "Цей документ уже відсутній в архіві — можливо, його видалили в іншому сеансі. " +
+            "Цей документ уже відсутній в архіві - можливо, його видалили в іншому сеансі. " +
             "Оновіть список і спробуйте ще раз.";
 
         private readonly IDbContextFactory<AppDbContext> _dbFactory;
@@ -55,11 +55,11 @@ namespace GenDoc.Services.Documents
 
         private static IQueryable<GeneratedDocument> ApplyFilter(AppDbContext db, ArchiveFilter filter)
         {
-            // IgnoreQueryFilters — бо документ переживає людину: коли людину прибрали
+            // IgnoreQueryFilters - бо документ переживає людину: коли людину прибрали
             // в кошик, глобальний фільтр м'якого видалення вимикав її рядок, а зв'язок
             // GeneratedDocument→Recipient обов'язковий (RecipientId не nullable), тож EF
             // будував INNER JOIN і документ зникав зі списку. Лічильник при цьому нічого
-            // не з'єднував і рахував його далі — звідси «351 документів» над порожньою
+            // не з'єднував і рахував його далі - звідси «351 документів» над порожньою
             // таблицею. Власне м'яке видалення документа задаємо явно, щоб і список, і
             // лічильник бачили однакову вибірку.
             var query = db.GeneratedDocuments
@@ -83,7 +83,7 @@ namespace GenDoc.Services.Documents
             return query;
         }
 
-        /// <summary>Гілка дерева — префікс збереженого відносного шляху.
+        /// <summary>Гілка дерева - префікс збереженого відносного шляху.
         /// Роздільник у кінці обов'язковий: без нього «Набір №1» захопив би
         /// ще й «Набір №15».</summary>
         private static IQueryable<GeneratedDocument> ApplyFolder(
@@ -91,7 +91,7 @@ namespace GenDoc.Services.Documents
         {
             if (string.IsNullOrWhiteSpace(folderPath)) return query;
 
-            // Записи до переходу на папки шляху не мають — у них саме лише ім'я
+            // Записи до переходу на папки шляху не мають - у них саме лише ім'я
             // файлу. Дерево збирає їх в окремому вузлі, і фільтр мусить уміти
             // те саме, інакше вони стали б недосяжні назавжди.
             if (folderPath == ArchiveFolderTree.UnsortedFolder)
@@ -130,18 +130,18 @@ namespace GenDoc.Services.Documents
                     g.Id,
                     g.RecipientId,
                     g.TemplateId,
-                    // Дані людини й шаблону — підзапитом за ключем, а не через навігацію:
+                    // Дані людини й шаблону - підзапитом за ключем, а не через навігацію:
                     // обов'язкові зв'язки EF з'єднує через INNER JOIN, і рядок-сирота
                     // (людина в кошику або взагалі відсутня) забирає документ зі списку.
                     // Той самий прийом уже застосовано нижче для номера набору.
                     db.Recipients.IgnoreQueryFilters()
-                        .Where(r => r.Id == g.RecipientId).Select(r => r.LastName).FirstOrDefault() ?? "—",
+                        .Where(r => r.Id == g.RecipientId).Select(r => r.LastName).FirstOrDefault() ?? "-",
                     db.Recipients.IgnoreQueryFilters()
                         .Where(r => r.Id == g.RecipientId).Select(r => r.FirstName).FirstOrDefault(),
                     db.Recipients.IgnoreQueryFilters()
                         .Where(r => r.Id == g.RecipientId).Select(r => r.MiddleName).FirstOrDefault(),
                     db.Templates.IgnoreQueryFilters()
-                        .Where(t => t.Id == g.TemplateId).Select(t => t.Name).FirstOrDefault() ?? "—",
+                        .Where(t => t.Id == g.TemplateId).Select(t => t.Name).FirstOrDefault() ?? "-",
                     db.Templates.IgnoreQueryFilters()
                         .Any(t => t.Id == g.TemplateId && t.DeletedAt == null),
                     g.Version,
@@ -152,7 +152,7 @@ namespace GenDoc.Services.Documents
                     g.OrgPathSnapshot,
                     g.GeneratedAt,
                     db.Users.IgnoreQueryFilters()
-                        .Where(u => u.Id == g.GeneratedByUserId).Select(u => u.FullName).FirstOrDefault() ?? "—",
+                        .Where(u => u.Id == g.GeneratedByUserId).Select(u => u.FullName).FirstOrDefault() ?? "-",
                     g.Attachments.Count(a => a.DeletedAt == null),
                     g.HasContent,
                     g.SourceType,
@@ -301,7 +301,7 @@ namespace GenDoc.Services.Documents
         private static async Task<string> GetExportNameTemplateAsync(AppDbContext db)
         {
             var template = await db.AppSettings.Select(s => s.ExportFileNameTemplate).FirstOrDefaultAsync();
-            return string.IsNullOrWhiteSpace(template) ? "{ПІБ} — {Шаблон}" : template;
+            return string.IsNullOrWhiteSpace(template) ? "{ПІБ} - {Шаблон}" : template;
         }
 
         private static string BuildExportFileName(string template, GeneratedDocument doc)
@@ -340,17 +340,17 @@ namespace GenDoc.Services.Documents
 
             var template = await db.Templates.FirstOrDefaultAsync(t => t.Id == doc.TemplateId);
             if (template is null || doc.Recipient is null)
-                return new ArchiveOpResult(false, "Шаблон видалено — перегенерація неможлива");
+                return new ArchiveOpResult(false, "Шаблон видалено - перегенерація неможлива");
 
-            // Груповий шаблон формує один документ для всього складу одразу — у нього
+            // Груповий шаблон формує один документ для всього складу одразу - у нього
             // нема поняття "документ цієї людини", тож перегенерація архівного запису
             // для окремого одержувача для нього безглузда. Без цієї перевірки
             // GenerateOne отримав би такий шаблон і, знайшовши в ньому маркер
-            // повторюваного блоку, відмовив би — але з повідомленням про маркер, а не
+            // повторюваного блоку, відмовив би - але з повідомленням про маркер, а не
             // про справжню причину (шаблон обрано не туди).
             if (template.Kind == TemplateKind.Group)
                 return new ArchiveOpResult(false,
-                    $"Шаблон «{template.Name}» — груповий: він формує один документ для всього складу, "
+                    $"Шаблон «{template.Name}» - груповий: він формує один документ для всього складу, "
                     + "а не для однієї людини. Перегенерувати з нього документ для окремого одержувача не можна.");
 
             var mappings = await db.TemplateFieldMappings.Where(m => m.TemplateId == template.Id).ToListAsync();
@@ -382,7 +382,7 @@ namespace GenDoc.Services.Documents
             }
         }
 
-        // Нова версія пари (Recipient, Template): стара актуальна гаситься, нова — IsCurrent.
+        // Нова версія пари (Recipient, Template): стара актуальна гаситься, нова - IsCurrent.
         private async Task AddVersionAsync(
             AppDbContext db, GeneratedDocument previous, byte[] bytes, string fileName,
             DocumentSourceType sourceType, string? sourceHash = null)
@@ -472,14 +472,14 @@ namespace GenDoc.Services.Documents
                 .Select(g => new ArchiveRowDto(
                     g.Id, g.RecipientId, g.TemplateId,
                     g.Recipient!.LastName, g.Recipient.FirstName, g.Recipient.MiddleName,
-                    g.Template != null ? g.Template.Name : "—",
+                    g.Template != null ? g.Template.Name : "-",
                     g.Template != null && g.Template.DeletedAt == null,
                     g.Version, g.IntakeId,
                     g.IntakeId != null
                         ? db.Intakes.Where(i => i.Id == g.IntakeId).Select(i => (int?)i.Number).FirstOrDefault()
                         : null,
                     g.OrgPathSnapshot, g.GeneratedAt,
-                    g.GeneratedByUser != null ? g.GeneratedByUser.FullName : "—",
+                    g.GeneratedByUser != null ? g.GeneratedByUser.FullName : "-",
                     g.Attachments.Count(a => a.DeletedAt == null),
                     g.HasContent, g.SourceType, g.FileName, g.SizeBytes))
                 .FirstOrDefaultAsync();
@@ -518,7 +518,7 @@ namespace GenDoc.Services.Documents
                 .OrderByDescending(g => g.Version)
                 .Select(g => new DocumentVersionDto(
                     g.Id, g.Version, g.GeneratedAt,
-                    g.GeneratedByUser != null ? g.GeneratedByUser.FullName : "—",
+                    g.GeneratedByUser != null ? g.GeneratedByUser.FullName : "-",
                     g.SizeBytes, g.SourceType, g.IsCurrent, g.HasContent, g.FileName))
                 .ToListAsync();
         }
@@ -578,7 +578,7 @@ namespace GenDoc.Services.Documents
 
                 if (doc.IsCurrent)
                 {
-                    // Попередня жива версія стає актуальною — anti-дубль генерації
+                    // Попередня жива версія стає актуальною - anti-дубль генерації
                     // бачить пару зайнятою; якщо живих версій нема, пара вільна.
                     doc.IsCurrent = false;
                     var previous = await db.GeneratedDocuments
@@ -604,8 +604,8 @@ namespace GenDoc.Services.Documents
                 .OrderByDescending(g => g.DeletedAt)
                 .Select(g => new DeletedDocumentInfo(
                     g.Id,
-                    g.Recipient != null ? g.Recipient.LastName + " " + g.Recipient.FirstName : "—",
-                    g.Template != null ? g.Template.Name : "—",
+                    g.Recipient != null ? g.Recipient.LastName + " " + g.Recipient.FirstName : "-",
+                    g.Template != null ? g.Template.Name : "-",
                     g.Version,
                     g.DeletedAt!.Value,
                     g.DeletedBy))
@@ -653,7 +653,7 @@ namespace GenDoc.Services.Documents
                 .Select(r => new
                 {
                     r.Id, r.RunAt,
-                    PackageName = r.GenerationPackage != null ? r.GenerationPackage.Name : "—",
+                    PackageName = r.GenerationPackage != null ? r.GenerationPackage.Name : "-",
                     r.IntakeId, r.BranchName, r.GeneratedCount, r.SkippedCount, r.ErrorCount
                 })
                 .ToListAsync();
@@ -676,14 +676,14 @@ namespace GenDoc.Services.Documents
                 .Where(g => g.RunId == runId)
                 .OrderBy(g => g.Recipient!.LastName)
                 .Select(g => new RunItemDto(
-                    g.Recipient != null ? g.Recipient.LastName + " " + g.Recipient.FirstName : "—",
-                    g.Template != null ? g.Template.Name : "—",
+                    g.Recipient != null ? g.Recipient.LastName + " " + g.Recipient.FirstName : "-",
+                    g.Template != null ? g.Template.Name : "-",
                     "згенеровано", false, g.SizeBytes, g.Id, g.HasContent, g.FileName))
                 .ToListAsync();
 
-            // Помилки не персистяться порядково — відновлюємо з Summary запуску.
+            // Помилки не персистяться порядково - відновлюємо з Summary запуску.
             // Нові запуски пишуть туди JSON-масив RunIssue; запуски, зроблені до
-            // переходу на JSON, лишили в цій колонці звичайний текст — для них
+            // переходу на JSON, лишили в цій колонці звичайний текст - для них
             // працює запасний парсер рядків «ПІБ / Шаблон: помилка».
             var summary = await db.GenerationPackageRuns
                 .Where(r => r.Id == runId).Select(r => r.Summary).FirstOrDefaultAsync();
@@ -693,7 +693,7 @@ namespace GenDoc.Services.Documents
                 foreach (var issue in issues)
                 {
                     items.Add(new RunItemDto(
-                        issue.Person.Length > 0 ? issue.Person : "—",
+                        issue.Person.Length > 0 ? issue.Person : "-",
                         issue.TemplateName,
                         issue.IsError ? $"помилка: {issue.Message}" : issue.Message,
                         issue.IsError, 0, null, false, string.Empty));
@@ -708,7 +708,7 @@ namespace GenDoc.Services.Documents
                     var head = parts[0].Split('/', 2);
                     items.Add(new RunItemDto(
                         head[0].Trim(),
-                        head.Length > 1 ? head[1].Trim() : "—",
+                        head.Length > 1 ? head[1].Trim() : "-",
                         parts.Length > 1 ? $"помилка: {parts[1].Trim()}" : "помилка",
                         true, 0, null, false, string.Empty));
                 }
@@ -721,7 +721,7 @@ namespace GenDoc.Services.Documents
 
         // Серія версій групового документа визначається ПАРОЮ ключів, бо один
         // з них завжди null: XLSX-відомість тримається на ExportTemplateId,
-        // груповий DOCX — на TemplateId. Порівняння лише за ExportTemplateId
+        // груповий DOCX - на TemplateId. Порівняння лише за ExportTemplateId
         // означало `IS NULL` і зачіпало всі групові DOCX усіх шаблонів одразу.
         private static IQueryable<GeneratedGroupDocument> SameGroupSeries(
             IQueryable<GeneratedGroupDocument> source, int? exportTemplateId, int? templateId, int? intakeId)
@@ -756,14 +756,14 @@ namespace GenDoc.Services.Documents
                     g.TemplateId,
                     g.ExportTemplate != null
                         ? g.ExportTemplate.Name
-                        : g.Template != null ? g.Template.Name : "—",
+                        : g.Template != null ? g.Template.Name : "-",
                     g.ExportTemplate != null
                         ? g.ExportTemplate.DeletedAt == null
                         : g.Template != null && g.Template.DeletedAt == null,
                     g.Version,
                     g.RecipientCount,
                     g.GeneratedAt,
-                    g.GeneratedByUser != null ? g.GeneratedByUser.FullName : "—",
+                    g.GeneratedByUser != null ? g.GeneratedByUser.FullName : "-",
                     g.HasContent,
                     g.FileName,
                     g.SizeBytes))
@@ -864,14 +864,14 @@ namespace GenDoc.Services.Documents
         {
             using var db = _dbFactory.CreateDbContext();
             // Обидві групові фази зараз пишуть IntakeId = null, тож intakeId: null тут
-            // збігається з реальними даними — але важливо, що це той самий SameGroupSeries,
+            // збігається з реальними даними - але важливо, що це той самий SameGroupSeries,
             // яким керуються DeleteGroupAsync/MakeGroupCurrentAsync/RestoreGroupAsync,
             // а не окреме, здатне розійтися визначення "та сама серія".
             return await SameGroupSeries(db.GeneratedGroupDocuments, exportTemplateId, docxTemplateId, intakeId: null)
                 .OrderByDescending(g => g.Version)
                 .Select(g => new GroupVersionDto(
                     g.Id, g.Version, g.GeneratedAt,
-                    g.GeneratedByUser != null ? g.GeneratedByUser.FullName : "—",
+                    g.GeneratedByUser != null ? g.GeneratedByUser.FullName : "-",
                     g.SizeBytes, g.IsCurrent, g.HasContent, g.FileName, g.RecipientCount))
                 .ToListAsync();
         }
@@ -904,7 +904,7 @@ namespace GenDoc.Services.Documents
                     g.Id,
                     g.ExportTemplate != null
                         ? g.ExportTemplate.Name
-                        : g.Template != null ? g.Template.Name : "—",
+                        : g.Template != null ? g.Template.Name : "-",
                     g.Version,
                     g.RecipientCount,
                     g.DeletedAt!.Value,

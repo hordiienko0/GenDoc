@@ -29,7 +29,7 @@
         xmlns:staffVm="clr-namespace:GenDoc.ViewModels.Staff"
         xmlns:staffView="clr-namespace:GenDoc.Views.Staff"
         Style="{StaticResource {x:Type Window}}"
-        Title="GenDoc — Облік особового складу" Height="720" Width="1180"
+        Title="GenDoc - Облік особового складу" Height="720" Width="1180"
         MinWidth="960" MinHeight="600"
         Background="{StaticResource BackgroundBrush}"
         WindowStyle="None" ResizeMode="CanResize"
@@ -110,7 +110,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <!-- Кнопка закріплення/згортання меню — на темному тлі панелі -->
+        <!-- Кнопка закріплення/згортання меню - на темному тлі панелі -->
         <Style x:Key="SidebarToggleButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{StaticResource MenuTextBrush}"/>
@@ -200,8 +200,8 @@
 
         <Grid Background="{StaticResource BackgroundBrush}">
             <Grid.ColumnDefinitions>
-                <!-- Скільки місця меню ЗАБИРАЄ: закріплене — повну ширину,
-                     згорнуте — лише смужку іконок. -->
+                <!-- Скільки місця меню ЗАБИРАЄ: закріплене - повну ширину,
+                     згорнуте - лише смужку іконок. -->
                 <ColumnDefinition Width="{Binding SidebarColumnWidth}"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>

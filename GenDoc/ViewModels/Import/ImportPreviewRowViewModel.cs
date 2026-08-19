@@ -6,10 +6,10 @@ namespace GenDoc.ViewModels.Import;
 /// <summary>
 /// Рядок попереднього перегляду на кроці 4. Обгортка потрібна лише через
 /// колонку «ДІЯ»: прапорець мусить оновлюватись і тоді, коли його ставить
-/// не користувач, а перемикач «перенести всі» — тобто потрібне сповіщення,
+/// не користувач, а перемикач «перенести всі» - тобто потрібне сповіщення,
 /// якого простий ImportRowPreview не дає.
 ///
-/// Решта полів — наскрізні, щоб розмітка лишилась тією самою.
+/// Решта полів - наскрізні, щоб розмітка лишилась тією самою.
 /// </summary>
 public partial class ImportPreviewRowViewModel : ObservableObject
 {
@@ -36,7 +36,7 @@ public partial class ImportPreviewRowViewModel : ObservableObject
 
     partial void OnMoveChanged(bool value) => _model.Move = value && CanMove;
 
-    /// <summary>Оновити прапорець із моделі — після того, як його змінили
+    /// <summary>Оновити прапорець із моделі - після того, як його змінили
     /// гуртом (перемикач «перенести всі»), а не в цьому рядку.</summary>
     public void SyncFromModel() => Move = _model.Move;
 }

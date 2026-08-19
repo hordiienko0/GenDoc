@@ -13,7 +13,7 @@ public partial class ArchiveView : UserControl
         InitializeComponent();
     }
 
-    /// <summary>Тягнемо вправо — панель папок ширшає: роздільник стоїть на її
+    /// <summary>Тягнемо вправо - панель папок ширшає: роздільник стоїть на її
     /// правому краю, тому знак прямий. Ширину тримає в'ю-модель, а не
     /// ColumnDefinition, інакше прив'язка розірвалася б першим же перетягуванням.</summary>
     private void FolderResizeThumb_DragDelta(object sender, System.Windows.Controls.Primitives.DragDeltaEventArgs e)
@@ -32,7 +32,7 @@ public partial class ArchiveView : UserControl
             await vm.InitializeAsync();
     }
 
-    // Клік по рядку — одиночний вибір чекбоксом; Ctrl+клік — додає; клік по чекбоксу не чіпаємо.
+    // Клік по рядку - одиночний вибір чекбоксом; Ctrl+клік - додає; клік по чекбоксу не чіпаємо.
     private void DocsGrid_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (FindAncestor<CheckBox>(e.OriginalSource as DependencyObject) is not null) return;

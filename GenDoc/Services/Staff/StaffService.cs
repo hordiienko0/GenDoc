@@ -39,14 +39,14 @@ namespace GenDoc.Services.Staff
 
             var staffIds = staff.Select(s => s.Id).ToList();
 
-            // Один груповий запит на кількість документів для всіх — не в циклі.
+            // Один груповий запит на кількість документів для всіх - не в циклі.
             var docCounts = await db.GeneratedDocuments
                 .Where(g => g.IsCurrent && staffIds.Contains(g.RecipientId))
                 .GroupBy(g => g.RecipientId)
                 .Select(g => new { RecipientId = g.Key, Count = g.Count() })
                 .ToDictionaryAsync(x => x.RecipientId, x => x.Count);
 
-            // Активний на сьогодні період (якщо є) для кожної людини — теж один запит.
+            // Активний на сьогодні період (якщо є) для кожної людини - теж один запит.
             var activeEvents = await db.StaffEvents
                 .Where(e => staffIds.Contains(e.RecipientId) && e.DateStart <= today && e.DateEnd >= today)
                 .ToListAsync();

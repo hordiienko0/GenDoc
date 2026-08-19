@@ -4,7 +4,7 @@ using GenDoc.Services.Documents;
 
 namespace GenDoc.ViewModels.Archive
 {
-    // Групова XLSX-відомість — на весь список людей, без RecipientId. Показується
+    // Групова XLSX-відомість - на весь список людей, без RecipientId. Показується
     // окремо від персональних документів, з кількістю осіб на бейджі замість ПІБ.
     public partial class GroupDocumentRowViewModel : ObservableObject
     {
@@ -27,7 +27,7 @@ namespace GenDoc.ViewModels.Archive
         public string PeopleText => $"{Dto.RecipientCount} осіб";
         public string DateText => Dto.GeneratedAt.ToString("dd.MM.yyyy", Uk);
         public string Author => Dto.Author;
-        public string SizeText => Dto.SizeBytes > 0 ? $"{Dto.SizeBytes / 1024.0:0.#} КБ" : "—";
+        public string SizeText => Dto.SizeBytes > 0 ? $"{Dto.SizeBytes / 1024.0:0.#} КБ" : "-";
 
         [ObservableProperty]
         private bool isChecked;

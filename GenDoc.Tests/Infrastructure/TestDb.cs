@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 namespace GenDoc.Tests.Infrastructure;
 
 // Незашифрована in-memory база для тестів сервісів. З'єднання мусить лишатись
-// відкритим весь час життя TestDb — SQLite знищує in-memory базу, щойно
+// відкритим весь час життя TestDb - SQLite знищує in-memory базу, щойно
 // закривається останнє з'єднання до неї.
 public sealed class TestDb : IDisposable
 {
@@ -35,7 +35,7 @@ public sealed class TestDb : IDisposable
         public AppDbContext CreateDbContext() => new TestAppDbContext(_connection);
     }
 
-    // Перевизначає OnConfiguring і НЕ викликає base — так гілка з паролем
+    // Перевизначає OnConfiguring і НЕ викликає base - так гілка з паролем
     // і DbPaths.DatabasePath не виконується взагалі.
     private sealed class TestAppDbContext : AppDbContext
     {

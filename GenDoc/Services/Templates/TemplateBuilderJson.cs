@@ -18,7 +18,7 @@ namespace GenDoc.Services.Templates
         public static string Serialize(TemplateBuilderDocument document)
             => JsonSerializer.Serialize(document, Options);
 
-        /// <summary>null — якщо JSON порожній або зіпсований: шаблон тоді просто
+        /// <summary>null - якщо JSON порожній або зіпсований: шаблон тоді просто
         /// вважається завантаженим файлом, а не падає разом з екраном.</summary>
         public static TemplateBuilderDocument? Deserialize(string? json)
         {

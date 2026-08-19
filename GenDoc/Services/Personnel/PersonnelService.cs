@@ -198,7 +198,7 @@ namespace GenDoc.Services.Personnel
 
         private static string FormatRoom(Room? room)
         {
-            if (room is null || string.IsNullOrWhiteSpace(room.Number)) return "—";
+            if (room is null || string.IsNullOrWhiteSpace(room.Number)) return "-";
             var building = room.Building?.Trim();
             if (string.IsNullOrEmpty(building)) return room.Number;
             return $"{room.Number} ({building[^1..].ToUpperInvariant()})";

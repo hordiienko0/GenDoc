@@ -7,19 +7,19 @@ namespace GenDoc.Services.Templates
     public enum PreviewRunKind
     {
         Text,
-        /// <summary>Значення підставлене з бази — акцентна заливка за легендою макета.</summary>
+        /// <summary>Значення підставлене з бази - акцентна заливка за легендою макета.</summary>
         DbValue,
-        /// <summary>Тег, який оператор заповнить на генерації — застережлива заливка.</summary>
+        /// <summary>Тег, який оператор заповнить на генерації - застережлива заливка.</summary>
         ManualValue
     }
 
     public record PreviewRun(string Text, PreviewRunKind Kind);
 
     /// <summary>Або рядок тексту, або таблиця: у відомості прев'ю мусить показати
-    /// сітку, у документі — суцільний текст, а порядок блоків спільний.</summary>
+    /// сітку, у документі - суцільний текст, а порядок блоків спільний.</summary>
     public abstract record PreviewElement;
 
-    /// <summary>Style — той самий розв'язаний стиль, який поклав би writer;
+    /// <summary>Style - той самий розв'язаний стиль, який поклав би writer;
     /// окремого enum вирівнювання прев'ю більше не тримає, інакше він розійшовся
     /// б із моделлю.</summary>
     public record PreviewLine(IReadOnlyList<PreviewRun> Runs, ResolvedBlockStyle Style) : PreviewElement;
@@ -29,7 +29,7 @@ namespace GenDoc.Services.Templates
         IReadOnlyList<IReadOnlyList<PreviewRun>> Cells,
         ResolvedBlockStyle Style) : PreviewElement;
 
-    /// <summary>Рядок аркуша у попередньому перегляді відомості. IsMerged — смуга
+    /// <summary>Рядок аркуша у попередньому перегляді відомості. IsMerged - смуга
     /// на всю ширину (заголовок, абзац, підпис): у книзі це об'єднані клітинки,
     /// тож і на екрані вона одна.</summary>
     public record SheetPreviewRow(
@@ -49,7 +49,7 @@ namespace GenDoc.Services.Templates
     /// <summary>
     /// Прев'ю рендериться з тієї самої моделі блоків, що й .docx, а не з готових байтів:
     /// інакше воно неминуче відставало б від документа. Розкладка рядків тут мусить
-    /// повторювати TemplateBlockDocxWriter — це його дзеркало на екрані.
+    /// повторювати TemplateBlockDocxWriter - це його дзеркало на екрані.
     /// </summary>
     public static class TemplateBlockPreview
     {
@@ -124,14 +124,14 @@ namespace GenDoc.Services.Templates
             return new SheetPreview(letters, rows);
         }
 
-        /// <summary>Смуги на всю ширину — заголовок, гриф, абзац, підписи.</summary>
+        /// <summary>Смуги на всю ширину - заголовок, гриф, абзац, підписи.</summary>
         private static IEnumerable<PreviewLine> BannerLines(
             TemplateBlock block,
             IReadOnlyDictionary<string, string> values,
             IReadOnlyDictionary<int, SignatoryInfo>? signatories)
             => Render(block, values, signatories).OfType<PreviewLine>();
 
-        /// <summary>Усі теги документа — з них будується перелік мапінгів для підстановки.</summary>
+        /// <summary>Усі теги документа - з них будується перелік мапінгів для підстановки.</summary>
         public static IReadOnlyList<string> CollectTags(TemplateBuilderDocument document)
         {
             var tags = new List<string>();
@@ -169,7 +169,7 @@ namespace GenDoc.Services.Templates
             IReadOnlyDictionary<int, SignatoryInfo>? signatories)
         {
             // Вирівнювання і жирність беруться з того самого розв'язувача, що
-            // годує writer'ів — прев'ю не має власної копії правил.
+            // годує writer'ів - прев'ю не має власної копії правил.
             var style = BlockStyleDefaults.Resolve(block.Kind, block.Style);
 
             switch (block.Kind)
@@ -220,7 +220,7 @@ namespace GenDoc.Services.Templates
             var runs = new List<PreviewRun>();
             runs.AddRange(Substitute($"{line.Caption}: ", values));
 
-            // Порожні місця під ручний підпис — рівно те, що зробить і writer,
+            // Порожні місця під ручний підпис - рівно те, що зробить і writer,
             // коли підписанта не обрано.
             if (!string.IsNullOrWhiteSpace(person?.Rank))
                 runs.Add(new PreviewRun(person!.Rank, PreviewRunKind.DbValue));
@@ -260,7 +260,7 @@ namespace GenDoc.Services.Templates
             if (sourceType == MappingSourceType.Manual)
                 return new PreviewRun(ManualPlaceholder, PreviewRunKind.ManualValue);
 
-            // Поле є в базі, але в тестової особи порожнє — показуємо сам тег, а не
+            // Поле є в базі, але в тестової особи порожнє - показуємо сам тег, а не
             // порожнечу: інакше слово просто зникає, і причину не видно.
             var value = values.TryGetValue(tag, out var resolved) && !string.IsNullOrWhiteSpace(resolved)
                 ? resolved

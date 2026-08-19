@@ -33,7 +33,7 @@ namespace GenDoc.ViewModels.Personnel
         private readonly Services.Generation.IManualTagFormBuilder _manualTagFormBuilder;
 
         /// <summary>Ключ, під яким запам'ятовуються минулі значення саме для
-        /// цього місця — щоб вони не змішувалися з іншими екранами.</summary>
+        /// цього місця - щоб вони не змішувалися з іншими екранами.</summary>
         private const string ManualTagContextKey = "person-card-regenerate";
         private string _snapshot = string.Empty;
         private bool _documentsLoaded;
@@ -76,7 +76,7 @@ namespace GenDoc.ViewModels.Personnel
             HeaderName = Id == 0 ? "Нова особа" : BuildShortName(model.LastName, model.FirstName, model.MiddleName);
             HeaderSub = string.Join(" · ", new[] { model.Rank, model.Position }.Where(p => !string.IsNullOrWhiteSpace(p)));
 
-            // Нова особа — картка одразу відкривається в режимі редагування,
+            // Нова особа - картка одразу відкривається в режимі редагування,
             // бо переглядати ще нічого.
             isEditing = IsNew;
 
@@ -181,7 +181,7 @@ namespace GenDoc.ViewModels.Personnel
 
         private async Task<string> BuildDocumentsFooterNoteAsync(int packageId)
         {
-            var packageName = _generationService.GetPackages().FirstOrDefault(p => p.Id == packageId).Name ?? "—";
+            var packageName = _generationService.GetPackages().FirstOrDefault(p => p.Id == packageId).Name ?? "-";
 
             if (IntakeId is int intakeId)
             {
@@ -241,7 +241,7 @@ namespace GenDoc.ViewModels.Personnel
             await RefreshDocumentsAsync();
         }
 
-        // Повертає null, якщо оператор скасував діалог ручних міток — виклик генерації тоді пропускається.
+        // Повертає null, якщо оператор скасував діалог ручних міток - виклик генерації тоді пропускається.
         private async Task<Dictionary<string, string>?> CollectManualValuesAsync(IReadOnlyList<int> templateIds)
         {
             var manualTags = await _archiveService.GetManualTagsAsync(templateIds);
@@ -332,8 +332,8 @@ namespace GenDoc.ViewModels.Personnel
         [RelayCommand]
         private void Edit() => IsEditing = true;
 
-        // У режимі редагування — відкат незбережених змін без закриття картки.
-        // Поза режимом редагування (не має статись, кнопка ховається) — закрити картку.
+        // У режимі редагування - відкат незбережених змін без закриття картки.
+        // Поза режимом редагування (не має статись, кнопка ховається) - закрити картку.
         [RelayCommand]
         private void Cancel()
         {

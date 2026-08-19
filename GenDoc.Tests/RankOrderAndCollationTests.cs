@@ -6,7 +6,7 @@ namespace GenDoc.Tests;
 public class RankOrderAndCollationTests
 {
     // Українська абетка: Ґ/Є/І/Ї/Й на своїх місцях. StringComparer.Ordinal (побайтове
-    // порівняння UTF-16 код-пойнтів) розкидає ці літери по інших місцях — лишаємо
+    // порівняння UTF-16 код-пойнтів) розкидає ці літери по інших місцях - лишаємо
     // обидва твердження, щоб регресія одразу впала в очі, якщо хтось поверне Ordinal.
     [Fact]
     public void UkrainianCollation_OrdersUkrainianAlphabetCorrectly()
@@ -49,7 +49,7 @@ public class RankOrderAndCollationTests
     [Theory]
     [InlineData("")]
     [InlineData(null)]
-    [InlineData("—")]
+    [InlineData("-")]
     [InlineData("курсант")]
     public void RankOrder_UnrecognizedRank_SortsLastNotAsSoldier(string? rank)
     {
@@ -66,8 +66,8 @@ public class RankOrderAndCollationTests
             Make("Бондаренко", "Петро", "лейтенант"),
             Make("Іваненко", "Сергій", "майор"),
             Make("Авраменко", "Олег", "майор"),
-            Make("Дехто", "Хтось", "—"), // невідоме звання — останнє
-            Make("Авраменко", "Андрій", "—"),
+            Make("Дехто", "Хтось", "-"), // невідоме звання - останнє
+            Make("Авраменко", "Андрій", "-"),
         };
 
         var ordered = RosterOrdering.Apply(recipients).ToList();
@@ -78,7 +78,7 @@ public class RankOrderAndCollationTests
             "Іваненко Сергій",  // майор
             "Бондаренко Петро", // лейтенант
             "Юрченко Іван",     // лейтенант
-            "Авраменко Андрій", // невідоме — за алфавітом
+            "Авраменко Андрій", // невідоме - за алфавітом
             "Дехто Хтось",
         };
 

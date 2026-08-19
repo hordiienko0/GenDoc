@@ -6,11 +6,11 @@ using Microsoft.EntityFrameworkCore;
 namespace GenDoc.Tests.Archive;
 
 // Групові документи бувають двох ґатунків: XLSX-відомість (ExportTemplateId
-// заповнено, TemplateId — null) і груповий DOCX (навпаки). Ланцюг версій
+// заповнено, TemplateId - null) і груповий DOCX (навпаки). Ланцюг версій
 // мусить розрізняти їх обидва.
 public class GroupDocumentArchiveTests
 {
-    // Заводить UserProfile з Id=1: GeneratedGroupDocument.GeneratedByUserId —
+    // Заводить UserProfile з Id=1: GeneratedGroupDocument.GeneratedByUserId -
     // обов'язковий FK, а FakeCurrentUser лише підмінює контекст виконання,
     // у БД нічого не пише (як і в DocumentVersionChainTests).
     private static void SeedUser(TestDb db)
@@ -130,7 +130,7 @@ public class GroupDocumentArchiveTests
 
     // ── Червоні: груповий DOCX (дефект A1) ──────────────────────────
 
-    // ExportTemplateId у групового DOCX — NULL, і умова `g.ExportTemplateId ==
+    // ExportTemplateId у групового DOCX - NULL, і умова `g.ExportTemplateId ==
     // doc.ExportTemplateId` перекладається в `IS NULL`, тобто зачіпає всі
     // групові DOCX усіх шаблонів одразу.
     [Fact]
@@ -144,7 +144,7 @@ public class GroupDocumentArchiveTests
         var aV2 = AddGroupDocument(db, null, rapportA, version: 2, isCurrent: true);
         // bV1 навмисно має вищу версію (3), а не 1: інакше aV1 і bV1 дають нічию за
         // Version, і OrderByDescending(Version).FirstOrDefault() без тайбрейка випадково
-        // повертає aV1 навіть у зіпсованому (кросс-шаблонному) наборі кандидатів — тест
+        // повертає aV1 навіть у зіпсованому (кросс-шаблонному) наборі кандидатів - тест
         // проходив би і на багу, і на фіксі. З version:3 зіпсований запит натомість
         // детерміновано обирає bV1, aV1 лишається непідвищеним, і тест валиться до фіксу.
         var bV1 = AddGroupDocument(db, null, rapportB, version: 3, isCurrent: true);
@@ -175,7 +175,7 @@ public class GroupDocumentArchiveTests
         Assert.True(ctx.GeneratedGroupDocuments.First(g => g.Id == bV1).IsCurrent);
     }
 
-    // Дефект A2: DOCX-групи віддаються з ExportTemplateId ?? 0 і назвою «—».
+    // Дефект A2: DOCX-групи віддаються з ExportTemplateId ?? 0 і назвою «-».
     [Fact]
     public async Task QueryGroupAsync_ReturnsDocxGroupsWithTheirTemplateName()
     {
@@ -193,10 +193,10 @@ public class GroupDocumentArchiveTests
 
     // Знахідка рев'ю Task 12: id XLSX- і DOCX-шаблонів нумеруються в окремих
     // таблицях з незалежною послідовністю, тож можуть числом випадково збігтися.
-    // У свіжій тестовій БД перший запис у кожній з таблиць отримує Id=1 — цього
+    // У свіжій тестовій БД перший запис у кожній з таблиць отримує Id=1 - цього
     // досить, щоб детерміновано відтворити колізію, не підганяючи id вручну.
     // Якщо фільтр перевіряє лише ExportTemplateId (як було до фіксу), вибір
-    // DOCX-шаблону в списку поверне чужу XLSX-відомість з тим самим номером —
+    // DOCX-шаблону в списку поверне чужу XLSX-відомість з тим самим номером -
     // рівно та вада, яку мав усунути цей таск.
     [Fact]
     public async Task QueryGroupAsync_FilterDistinguishesTemplateKindEvenWhenIdsCollide()

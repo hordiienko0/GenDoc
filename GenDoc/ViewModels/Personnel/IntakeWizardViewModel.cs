@@ -37,7 +37,7 @@ namespace GenDoc.ViewModels.Personnel
         [NotifyCanExecuteChangedFor(nameof(CreateCommand))]
         private DateTime? dateEnd = DateTime.Today.AddMonths(1);
 
-        // Структура фіксована — «Всі» → «Придатні», «Обмежено придатні» — тому
+        // Структура фіксована - «Всі» → «Придатні», «Обмежено придатні» - тому
         // текст статичний, а не рахується з чекбоксів.
         public string SummaryText => "Буде створено 3 папки: Всі → Придатні, Обмежено придатні";
 

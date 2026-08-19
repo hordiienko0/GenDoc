@@ -44,7 +44,7 @@ public static class ImportTargetFieldNames
 {
     public static readonly IReadOnlyDictionary<ImportTargetField, string> DisplayNames = new Dictionary<ImportTargetField, string>
     {
-        [ImportTargetField.NotImported] = "— не імпортувати —",
+        [ImportTargetField.NotImported] = "- не імпортувати -",
         [ImportTargetField.FullName] = "ПІБ",
         [ImportTargetField.LastName] = "Прізвище",
         [ImportTargetField.FirstName] = "Ім'я",
@@ -117,7 +117,7 @@ public class ImportRowPreview
     /// <summary>Картка, з якою зіткнувся рядок, якщо вона вже є в базі.
     /// Заповнена рівно для дублів, які МОЖНА перенести: «дублюється у файлі»
     /// такої картки не має, тож там колонка «ДІЯ» лишається порожньою.
-    /// Розрізняти дублі за текстом примітки не можна — тексти змінюються.</summary>
+    /// Розрізняти дублі за текстом примітки не можна - тексти змінюються.</summary>
     public int? ExistingRecipientId { get; set; }
 
     /// <summary>Оператор позначив рядок до перенесення (колонка «ДІЯ»).
@@ -128,7 +128,7 @@ public class ImportRowPreview
 /// <summary>Звідки береться набір, у який лягають імпортовані люди.</summary>
 public enum ImportTargetKind
 {
-    /// <summary>Набір виводиться з колонки «Підрозділ» у файлі — так імпорт
+    /// <summary>Набір виводиться з колонки «Підрозділ» у файлі - так імпорт
     /// поводився до появи майстра, і так він поводиться, якщо ціль не задана.</summary>
     FromFile,
 
@@ -137,11 +137,11 @@ public enum ImportTargetKind
     /// куди її класти.</summary>
     Intake,
 
-    /// <summary>Постійний склад — поза наборами.</summary>
+    /// <summary>Постійний склад - поза наборами.</summary>
     PermanentStaff
 }
 
-/// <summary>Куди імпортувати. OrgNodeId — гілка всередині набору; null означає
+/// <summary>Куди імпортувати. OrgNodeId - гілка всередині набору; null означає
 /// корінь набору.</summary>
 public record ImportTarget(
     ImportTargetKind Kind = ImportTargetKind.FromFile,
@@ -159,7 +159,7 @@ public class ImportParseResult
     public int TotalRows { get; set; }
 }
 
-/// <summary>Moved — люди, чиї картки вже були в базі й яких оператор позначив
+/// <summary>Moved - люди, чиї картки вже були в базі й яких оператор позначив
 /// до перенесення. Це не Imported (нових рядків не з'явилось) і не Skipped
 /// (рядок таки щось змінив), тож окремий лічильник.</summary>
 public record ImportSummary(int Imported, int Skipped, int Errors, int Moved = 0)

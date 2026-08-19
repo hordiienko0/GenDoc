@@ -47,7 +47,7 @@ namespace GenDoc.Services.Generation
 
         // Аудиторія розділяє видимість: шаблон постійного складу не має
         // з'являтися у звичайній генерації й пакетах, і навпаки. Замовчування
-        // Intake — усі наявні виклики лишаються при старому наборі шаблонів.
+        // Intake - усі наявні виклики лишаються при старому наборі шаблонів.
         public List<(int Id, string Name)> GetAllTemplates(
             Models.Enums.TemplateAudience audience = Models.Enums.TemplateAudience.Intake)
         {
@@ -270,7 +270,7 @@ namespace GenDoc.Services.Generation
         }
 
         /// <summary>Чи просить бодай одна відомість пакета підпис курсового
-        /// офіцера. Дропліст на екрані генерації показується лише за цим —
+        /// офіцера. Дропліст на екрані генерації показується лише за цим -
         /// пакету, якому підпис не потрібен, зайве поле ні до чого.</summary>
         public bool PackageNeedsCourseOfficer(int packageId)
         {
@@ -287,7 +287,7 @@ namespace GenDoc.Services.Generation
 
         /// <summary>
         /// Останній запуск разом із назвою пакета. З'єднання ВНУТРІШНЄ навмисно:
-        /// пакет могли видалити після запуску, і запис прогону лишається сиротою —
+        /// пакет могли видалити після запуску, і запис прогону лишається сиротою -
         /// показувати його не можна, бо кнопка «відкрити пакет» вела б у нікуди.
         /// </summary>
         public LastRunInfo? GetLastRun()
@@ -369,7 +369,7 @@ namespace GenDoc.Services.Generation
             var xlsx = RunXlsxPhase(db, exportLinks, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress, courseOfficerId);
             var docxGroup = RunDocxGroupPhase(db, groupDocxTemplates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress);
 
-            // Раніше писали лише лічильники docx-фази — помилки XLSX і групового
+            // Раніше писали лише лічильники docx-фази - помилки XLSX і групового
             // DOCX ставали невидимими на екрані «Запуски». Тепер підсумовуємо всі три.
             run.GeneratedCount = docx.Generated + xlsx.Generated + docxGroup.Generated;
             run.SkippedCount = docx.Skipped + xlsx.Skipped + docxGroup.Skipped;
@@ -381,9 +381,9 @@ namespace GenDoc.Services.Generation
             run.Summary = RunIssue.Serialize(issues);
 
             _auditLogService.LogGenerate(db, "GenerationPackage", packageId,
-                $"{package.Name}: docx — згенеровано {docx.Generated}, пропущено {docx.Skipped}, помилок {docx.Errors}; " +
-                $"xlsx — згенеровано {xlsx.Generated}, пропущено {xlsx.Skipped}, помилок {xlsx.Errors}; " +
-                $"груповий docx — згенеровано {docxGroup.Generated}, пропущено {docxGroup.Skipped}, помилок {docxGroup.Errors}");
+                $"{package.Name}: docx - згенеровано {docx.Generated}, пропущено {docx.Skipped}, помилок {docx.Errors}; " +
+                $"xlsx - згенеровано {xlsx.Generated}, пропущено {xlsx.Skipped}, помилок {xlsx.Errors}; " +
+                $"груповий docx - згенеровано {docxGroup.Generated}, пропущено {docxGroup.Skipped}, помилок {docxGroup.Errors}");
 
             db.SaveChanges();
 
@@ -395,7 +395,7 @@ namespace GenDoc.Services.Generation
 
         // Особовий склад для запуску: весь або лише позначені, завжди звужений
         // фільтром придатності, "лише постійний склад" (IntakeId == null), категоріями
-        // звань і/або конкретними званнями — усе через AND.
+        // звань і/або конкретними званнями - усе через AND.
         private static List<Recipient> LoadRosterRecipients(AppDbContext db, RosterSelection selection)
         {
             IQueryable<Recipient> query = db.Recipients.Include(r => r.Unit).Include(r => r.Room).Include(r => r.OrgNode).Include(r => r.Weapons);
@@ -425,7 +425,7 @@ namespace GenDoc.Services.Generation
 
         private sealed record DocxPhaseResult(int Generated, int Skipped, int Errors, List<RunIssue> Issues);
 
-        // Phase A — по одному документу на людину. Чистий перенос попередньої логіки RunPackage,
+        // Phase A - по одному документу на людину. Чистий перенос попередньої логіки RunPackage,
         // без змін поведінки: anti-дубль за (RecipientId, TemplateId), версійність, SourceHash.
         private DocxPhaseResult RunDocxPhase(
             AppDbContext db,
@@ -445,7 +445,7 @@ namespace GenDoc.Services.Generation
                 t => db.TemplateFieldMappings.Where(m => m.TemplateId == t.Id).ToList());
 
             // Anti-дубль: лише актуальні живі документи (видалені відсікає query filter).
-            // Тримаємо саме ім'я файлу, а не просто факт наявності запису — пропустити
+            // Тримаємо саме ім'я файлу, а не просто факт наявності запису - пропустити
             // можна тільки тоді, коли файл реально лежить у цільовій теці (див. ExistsInOutputFolder).
             var existingFileNames = db.GeneratedDocuments
                 .Where(g => g.IsCurrent)
@@ -565,7 +565,7 @@ namespace GenDoc.Services.Generation
 
         private sealed record XlsxPhaseResult(int Generated, int Skipped, int Errors, List<RunIssue> Issues);
 
-        // Phase B — один документ на весь список людей (форма-відомість). Немає єдиного
+        // Phase B - один документ на весь список людей (форма-відомість). Немає єдиного
         // Recipient, тому anti-дубль тримається на RosterHash складу, а не на парі (Recipient, Template).
         private XlsxPhaseResult RunXlsxPhase(
             AppDbContext db,
@@ -595,7 +595,7 @@ namespace GenDoc.Services.Generation
 
                 progress.Report($"Групова відомість «{template.Name}»…");
 
-                // Старшинство звання, потім прізвище/ім'я за українською абеткою —
+                // Старшинство звання, потім прізвище/ім'я за українською абеткою -
                 // так само, як у джерельному паперовому звіті.
                 var roster = RosterOrdering.Apply(
                         allRecipients.Where(r => FitnessCategoryHelper.Matches(link.FitnessFilter, r.FitnessCategory)))
@@ -605,7 +605,7 @@ namespace GenDoc.Services.Generation
                 {
                     skipped++;
                     issues.Add(new RunIssue(RunIssue.PhaseXlsx, string.Empty, template.Name,
-                        "пропущено — немає людей за фільтром придатності", IsError: false));
+                        "пропущено - немає людей за фільтром придатності", IsError: false));
                     continue;
                 }
 
@@ -637,7 +637,7 @@ namespace GenDoc.Services.Generation
 
                     // Відомість, що просить підпис курсового офіцера, без нього не
                     // має сенсу: раніше тег тихо падав у unfilledTags, документ
-                    // виходив із порожнім місцем підпису — і цього ніхто не бачив,
+                    // виходив із порожнім місцем підпису - і цього ніхто не бачив,
                     // доки папір не йшов далі. Краще зупинити цю одну відомість і
                     // сказати вголос; решта пакета генерується як звичайно.
                     if (mappings.Any(m => m.FieldKey == nameof(ExportFieldKey.CourseOfficerSignature))
@@ -645,7 +645,7 @@ namespace GenDoc.Services.Generation
                     {
                         errors++;
                         issues.Add(new RunIssue(RunIssue.PhaseXlsx, string.Empty, template.Name,
-                            "немає курсового офіцера серед постійного складу — відомість не сформовано"));
+                            "немає курсового офіцера серед постійного складу - відомість не сформовано"));
                         continue;
                     }
 
@@ -697,7 +697,7 @@ namespace GenDoc.Services.Generation
 
                     if (result.UnfilledTags.Count > 0)
                         issues.Add(new RunIssue(RunIssue.PhaseXlsx, string.Empty, template.Name,
-                            $"не заповнено теги — {string.Join(", ", result.UnfilledTags)}", IsError: false));
+                            $"не заповнено теги - {string.Join(", ", result.UnfilledTags)}", IsError: false));
                 }
                 catch (Exception ex)
                 {
@@ -728,9 +728,9 @@ namespace GenDoc.Services.Generation
 
         private sealed record DocxGroupPhaseResult(int Generated, int Skipped, int Errors, List<RunIssue> Issues);
 
-        // Phase C — груповий DOCX (Template.Kind == Group): один документ на весь
+        // Phase C - груповий DOCX (Template.Kind == Group): один документ на весь
         // список, з повторюваним блоком. Анти-дубль так само на RosterHash, як і в
-        // Phase B (xlsx), але прив'язка — TemplateId, а не ExportTemplateId.
+        // Phase B (xlsx), але прив'язка - TemplateId, а не ExportTemplateId.
         private DocxGroupPhaseResult RunDocxGroupPhase(
             AppDbContext db,
             List<Template> groupTemplates,
@@ -749,7 +749,7 @@ namespace GenDoc.Services.Generation
             var errors = 0;
             var issues = new List<RunIssue>();
 
-            // Старшинство звання, потім прізвище/ім'я за українською абеткою —
+            // Старшинство звання, потім прізвище/ім'я за українською абеткою -
             // так само, як у джерельному паперовому звіті.
             var roster = RosterOrdering.Apply(allRecipients).ToList();
 
@@ -763,7 +763,7 @@ namespace GenDoc.Services.Generation
                 {
                     skipped++;
                     issues.Add(new RunIssue(RunIssue.PhaseDocxGroup, string.Empty, template.Name,
-                        "пропущено — немає людей за обраним складом", IsError: false));
+                        "пропущено - немає людей за обраним складом", IsError: false));
                     continue;
                 }
 
@@ -839,7 +839,7 @@ namespace GenDoc.Services.Generation
 
                     if (result.UnfilledTags.Count > 0)
                         issues.Add(new RunIssue(RunIssue.PhaseDocxGroup, string.Empty, template.Name,
-                            $"не заповнено теги — {string.Join(", ", result.UnfilledTags)}", IsError: false));
+                            $"не заповнено теги - {string.Join(", ", result.UnfilledTags)}", IsError: false));
                 }
                 catch (Exception ex)
                 {
@@ -935,7 +935,7 @@ namespace GenDoc.Services.Generation
             _ => string.Empty
         };
 
-        // Перша одиниця зброї людини (за Id — порядок додавання), або null, якщо нема.
+        // Перша одиниця зброї людини (за Id - порядок додавання), або null, якщо нема.
         private static Weapon? FirstWeapon(Recipient r) => r.Weapons.OrderBy(w => w.Id).FirstOrDefault();
 
         private static string FormatFullNameAccusative(Recipient r)
@@ -979,16 +979,16 @@ namespace GenDoc.Services.Generation
             return string.IsNullOrWhiteSpace(room.Building) ? room.Number : $"{room.Building} {room.Number}";
         }
 
-        // Наявність запису в архіві БД сама по собі — НЕ привід пропустити генерацію:
+        // Наявність запису в архіві БД сама по собі - НЕ привід пропустити генерацію:
         // користувач міг обрати іншу теку, перенести або видалити файли. Якщо в
-        // цільовій теці файлу нема — документ треба сформувати знову, інакше запуск
+        // цільовій теці файлу нема - документ треба сформувати знову, інакше запуск
         // мовчки завершується з «усе пропущено» і порожньою текою.
         internal static bool ExistsInOutputFolder(string outputFolder, string? fileName)
             => !string.IsNullOrWhiteSpace(fileName)
                && File.Exists(Path.Combine(outputFolder, fileName));
 
         /// <summary>Позначка прогону для цього запуску. Час у ній з'являється
-        /// лише тоді, коли папка з сьогоднішньою датою вже десь є — тобто це
+        /// лише тоді, коли папка з сьогоднішньою датою вже десь є - тобто це
         /// другий прогін за день і без часу він затер би перший.</summary>
         private static string ResolveRunStamp(string outputFolder)
         {
@@ -1010,7 +1010,7 @@ namespace GenDoc.Services.Generation
                 .AsEnumerable()
                 .ToDictionary(i => i.Id, i => i.DisplayNumber);
 
-        /// <summary>Набори людей у відомості — саме з них виводиться її папка.</summary>
+        /// <summary>Набори людей у відомості - саме з них виводиться її папка.</summary>
         private static IEnumerable<string?> IntakeNamesOf(
             IEnumerable<Recipient> roster, Dictionary<int, string> intakeNames)
             => roster.Select(r => r.IntakeId is int id && intakeNames.TryGetValue(id, out var name)
@@ -1028,8 +1028,8 @@ namespace GenDoc.Services.Generation
 
         // Персональний документ: «Набір №15\Акт приймання\ПРІЗВИЩЕ Ім'я.docx».
         // Повертає ВІДНОСНИЙ ШЛЯХ, а не саме лише ім'я: розкладку по папках
-        // рахує DocumentFolderLayout — одне місце і для диска, і для дерева в
-        // архіві. Без дати — документ прив'язаний до людини, а не до дня.
+        // рахує DocumentFolderLayout - одне місце і для диска, і для дерева в
+        // архіві. Без дати - документ прив'язаний до людини, а не до дня.
         private static string BuildFileName(
             Recipient recipient, string templateName, string? intakeName, string runStamp,
             HashSet<string> usedFileNames)
@@ -1042,7 +1042,7 @@ namespace GenDoc.Services.Generation
         }
 
         // Групова відомість: «Набір №15\Залік Додаток 8\2026-08-06.xlsx».
-        // Набір виводиться зі складу відомості — сам груповий документ наборові
+        // Набір виводиться зі складу відомості - сам груповий документ наборові
         // не належить (IntakeId == null у запитах нижче).
         private static string BuildGroupFileName(
             string templateName, IEnumerable<string?> memberIntakeNames, string runStamp,

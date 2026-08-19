@@ -21,12 +21,12 @@ namespace GenDoc.Services
             value = TemplatePrefixRegex.Replace(value, string.Empty);
             value = WhitespaceRegex.Replace(value, " ").Trim();
 
-            // Назва з самого лише слова «Шаблон» після зачистки стала б порожньою —
+            // Назва з самого лише слова «Шаблон» після зачистки стала б порожньою -
             // краще лишити вихідний текст, ніж безіменний документ.
             return value.Length == 0 ? (name ?? string.Empty).Trim() : value;
         }
 
-        // Дата для імені файлу — крапками, без підкреслень: «06.08.2026».
+        // Дата для імені файлу - крапками, без підкреслень: «06.08.2026».
         public static string FormatDate(DateTime date)
             => date.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
     }

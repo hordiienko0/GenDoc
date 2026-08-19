@@ -98,7 +98,7 @@
             </Grid.ColumnDefinitions>
 
             <Grid Grid.Column="0">
-                <TextBlock Text="Кімнат ще немає — додайте першу" Foreground="{StaticResource TextSecondaryBrush}"
+                <TextBlock Text="Кімнат ще немає - додайте першу" Foreground="{StaticResource TextSecondaryBrush}"
                            HorizontalAlignment="Center" VerticalAlignment="Center" Padding="48"
                            Visibility="{Binding ShowEmptyNoRooms, Converter={StaticResource BoolToVisibility}}"/>
 

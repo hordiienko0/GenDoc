@@ -7,17 +7,17 @@ using GenDoc.Services.Templates;
 
 namespace GenDoc.ViewModels.Templates.Builder;
 
-/// <summary>Пункт списку гарнітур. Value == null — «типовий»: writer тоді не пише
+/// <summary>Пункт списку гарнітур. Value == null - «типовий»: writer тоді не пише
 /// шрифт узагалі й документ бере його зі своїх типових.</summary>
 public record FontOption(string? Value, string Label);
 
 public record FontSizeOption(double? Value, string Label);
 
-/// <summary>Готовий колір із палітри. Ручного HEX немає навмисно — оператор
+/// <summary>Готовий колір із палітри. Ручного HEX немає навмисно - оператор
 /// обирає зі списку.</summary>
 public record ColorOption(string? Value, string Label, Brush Swatch);
 
-/// <summary>Рядок блоку «Підписи». Посада береться зі списку постійного складу —
+/// <summary>Рядок блоку «Підписи». Посада береться зі списку постійного складу -
 /// у документ підуть звання і ПІБ на момент збирання .docx.</summary>
 public partial class SignatureLineViewModel : ObservableObject
 {
@@ -54,7 +54,7 @@ public partial class TableColumnViewModel : ObservableObject
     [ObservableProperty]
     private string cell;
 
-    /// <summary>Літера колонки в Excel (A, B, C…) — щоб оператор бачив клітинку
+    /// <summary>Літера колонки в Excel (A, B, C…) - щоб оператор бачив клітинку
     /// так само, як побачить її у відкритій книзі. Проставляє в'ю-модель за
     /// спільною розкладкою.</summary>
     [ObservableProperty]
@@ -98,7 +98,7 @@ public partial class BuilderBlockViewModel : ObservableObject
 
     public ObservableCollection<TableColumnViewModel> Columns { get; }
 
-    /// <summary>У документі Word повторення — вибір оператора (маркери {{#особи}}
+    /// <summary>У документі Word повторення - вибір оператора (маркери {{#особи}}
     /// роблять документ груповим). У відомості рядок-шаблон повторюється завжди,
     /// тож там прапорця немає.</summary>
     [ObservableProperty]
@@ -106,14 +106,14 @@ public partial class BuilderBlockViewModel : ObservableObject
 
     public bool IsRepeatToggleVisible => IsTable && Mode == TemplateBuilderMode.Word;
 
-    /// <summary>У відомості повторення не вимикається, тому замість прапорця —
+    /// <summary>У відомості повторення не вимикається, тому замість прапорця -
     /// пояснення, що рядок і так клонується на кожну особу.</summary>
     public bool IsRepeatHintVisible => IsTable && Mode == TemplateBuilderMode.Excel;
 
     /// <summary>Аркуш книги, на якому лежить блок (лише для відомості).</summary>
     public int SheetIndex { get; set; }
 
-    /// <summary>«рядок 3» / «рядки 4–6» — які клітинки аркуша займе цей блок.
+    /// <summary>«рядок 3» / «рядки 4–6» - які клітинки аркуша займе цей блок.
     /// Рахується спільною розкладкою TemplateSheetLayout, тією самою, за якою
     /// writer кладе дані.</summary>
     [ObservableProperty]
@@ -125,13 +125,13 @@ public partial class BuilderBlockViewModel : ObservableObject
 
     public string KindTitle => Titles.TryGetValue(Kind, out var title) ? title : Kind.ToString();
 
-    /// <summary>«Абзац · редагується» з макета — підпис картки під час правки.</summary>
+    /// <summary>«Абзац · редагується» з макета - підпис картки під час правки.</summary>
     public string HeaderTitle => IsEditing ? $"{KindTitle} · редагується" : KindTitle;
 
     public bool IsTextBlock => Kind is TemplateBlockKind.Header or TemplateBlockKind.Title
         or TemplateBlockKind.DateAndCity or TemplateBlockKind.Paragraph;
 
-    /// <summary>Гриф і абзац — багаторядкові; заголовок і рядок дати — ні.</summary>
+    /// <summary>Гриф і абзац - багаторядкові; заголовок і рядок дати - ні.</summary>
     public bool IsMultiline => Kind is TemplateBlockKind.Header or TemplateBlockKind.Paragraph;
 
     public bool IsSignatures => Kind == TemplateBlockKind.Signatures;
@@ -168,7 +168,7 @@ public partial class BuilderBlockViewModel : ObservableObject
 
     public string CollapseTooltip => IsCollapsed ? "Розгорнути блок" : "Згорнути блок";
 
-    /// <summary>Що видно у згорнутій картці — інакше згорнуті блоки не
+    /// <summary>Що видно у згорнутій картці - інакше згорнуті блоки не
     /// відрізнити один від одного.</summary>
     public string CollapsedSummary
     {
@@ -195,7 +195,7 @@ public partial class BuilderBlockViewModel : ObservableObject
     // У моделі лежить BlockStyle із nullable полями («успадкувати типове»), а
     // назовні віддаються вже розв'язані значення: перемикачі в поповері мусять
     // показувати те, що справді потрапить у документ. Щойно оператор чіпає
-    // перемикач, значення стає явним — інакше зняти жирність із заголовка, який
+    // перемикач, значення стає явним - інакше зняти жирність із заголовка, який
     // жирний за замовчуванням, було б неможливо.
 
     public static IReadOnlyList<FontOption> FontOptions { get; } = new[]
@@ -242,7 +242,7 @@ public partial class BuilderBlockViewModel : ObservableObject
         set => Apply(value ?? new BlockStyle());
     }
 
-    /// <summary>Стиль після накладання типових для типу блока — те, що покаже
+    /// <summary>Стиль після накладання типових для типу блока - те, що покаже
     /// прев'ю і покладе writer.</summary>
     public ResolvedBlockStyle ResolvedStyle => BlockStyleDefaults.Resolve(Kind, style);
 
@@ -258,7 +258,7 @@ public partial class BuilderBlockViewModel : ObservableObject
     /// <summary>Для таблиці жирність і вирівнювання стосуються рядка даних:
     /// шапка структурно лишається жирною і центрованою в книзі.</summary>
     public string StyleScopeHint => IsTable
-        ? "Жирність і вирівнювання стосуються рядка даних — шапка таблиці лишається жирною."
+        ? "Жирність і вирівнювання стосуються рядка даних - шапка таблиці лишається жирною."
         : string.Empty;
 
     public bool IsStyleScopeHintVisible => IsTable;
@@ -294,7 +294,7 @@ public partial class BuilderBlockViewModel : ObservableObject
     }
 
     // Чотири прапорці замість enum'а: RadioButton'и в поповері прив'язуються
-    // до них напряму, без конвертера. Скидання в false ігнорується — вимкнути
+    // до них напряму, без конвертера. Скидання в false ігнорується - вимкнути
     // вирівнювання не можна, можна лише обрати інше.
     public bool IsAlignLeft
     {
@@ -328,7 +328,7 @@ public partial class BuilderBlockViewModel : ObservableObject
     private void ToggleCollapsed() => IsCollapsed = !IsCollapsed;
 
     /// <summary>Властивості, від яких сам документ не змінюється: підсвітка картки,
-    /// підписи розкладки і дзеркальні властивості поповера. Останні важливі —
+    /// підписи розкладки і дзеркальні властивості поповера. Останні важливі -
     /// одна зміна стилю сповіщає про десяток похідних, і без цього переліку
     /// прев'ю перебудовувалося б десять разів поспіль замість одного (сам стиль
     /// приїжджає окремим сповіщенням ResolvedStyle).</summary>
@@ -336,7 +336,7 @@ public partial class BuilderBlockViewModel : ObservableObject
     {
         nameof(IsEditing), nameof(HeaderTitle), nameof(LayoutCaption), nameof(IsStyleOpen),
         nameof(DisplayStyle),
-        // Згортання — суто вигляд картки, документ від нього не змінюється.
+        // Згортання - суто вигляд картки, документ від нього не змінюється.
         nameof(IsCollapsed), nameof(IsExpanded), nameof(CollapseIcon),
         nameof(CollapseTooltip), nameof(CollapsedSummary),
         nameof(SelectedFont), nameof(SelectedFontSize), nameof(SelectedColor),
@@ -399,7 +399,7 @@ public partial class BuilderBlockViewModel : ObservableObject
             block.Table?.RepeatPerPerson ?? true, mode)
         {
             SheetIndex = block.SheetIndex,
-            // У старому BuilderJson поля Style немає — тоді лишається порожній
+            // У старому BuilderJson поля Style немає - тоді лишається порожній
             // стиль, тобто сьогоднішнє типове оформлення.
             Style = block.Style ?? new BlockStyle()
         };
@@ -424,7 +424,7 @@ public partial class BuilderBlockViewModel : ObservableObject
             ? new[] { new SignatureLineViewModel(string.Empty, null, signatoryOptions) }
             : null;
 
-        // Заготовка відомості: нумерація, звання, ПІБ — колонки, з яких на практиці
+        // Заготовка відомості: нумерація, звання, ПІБ - колонки, з яких на практиці
         // починається будь-яка з наявних відомостей.
         var columns = kind == TemplateBlockKind.Table
             ? new[]

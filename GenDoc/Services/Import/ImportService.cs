@@ -13,7 +13,7 @@ public class ImportService : IImportService
     private static readonly string[] DateFormats = { "dd.MM.yyyy", "d.M.yyyy" };
 
     // Кімнати, яких ще нема в базі, під час імпорту створюються "наосліп" (лише
-    // за корпусом/номером з файлу) — реальну місткість тоді ніхто не вказує,
+    // за корпусом/номером з файлу) - реальну місткість тоді ніхто не вказує,
     // тож ставимо стандартну на 6 місць замість 1.
     private const int DefaultImportedRoomCapacity = 6;
 
@@ -143,7 +143,7 @@ public class ImportService : IImportService
             var (status, _, existingRecipientId) = EvaluateRow(row.Fields, row.IncompleteFullName, row.CourseArrivalDateInvalid,
                 existingServiceNumbers, seenInFile, intakeId, existingNameKeys, seenNameKeysInFile);
 
-            // Позначений дубль — єдиний випадок, коли імпорт пише в НАЯВНУ картку,
+            // Позначений дубль - єдиний випадок, коли імпорт пише в НАЯВНУ картку,
             // а не вставляє нову. Без позначки поведінка стара: пропустити.
             var moveThisRow = status == ImportRowStatus.Duplicate
                 && existingRecipientId is not null
@@ -179,7 +179,7 @@ public class ImportService : IImportService
                 var orgNode = ResolveOrgNode(db, orgNodeCache, row.Fields.UnitName);
                 var room = ResolveRoom(db, roomCache, row.Fields.Building, row.Fields.RoomNumber);
 
-                // Постійний склад — людина не належить жодному набору, навіть якщо
+                // Постійний склад - людина не належить жодному набору, навіть якщо
                 // підрозділ з файлу технічно прив'язаний до набору. Обраний набір
                 // перебиває той, що виводиться з файлу: на кроці «Набір і гілка»
                 // оператор сказав прямо, куди кладемо.
@@ -192,11 +192,11 @@ public class ImportService : IImportService
 
                 var fitnessCategory = ParseFitnessCategory(row.Fields.FitnessRaw);
 
-                // Якщо людина потрапляє в набір — розкласти її по «Придатні»/
+                // Якщо людина потрапляє в набір - розкласти її по «Придатні»/
                 // «Обмежено придатні»/«Всі» замість того вузла, куди її поставило
                 // саме лише зіставлення підрозділу. Старі набори без цих трьох
-                // папок — лишаємо як є, без падіння.
-                // Обрана гілка — база для людини; підрозділ із файлу її не
+                // папок - лишаємо як є, без падіння.
+                // Обрана гілка - база для людини; підрозділ із файлу її не
                 // перебиває, інакше вибір оператора не мав би сенсу.
                 var resolvedOrgNodeId = target.Kind == ImportTargetKind.Intake
                     ? target.OrgNodeId ?? orgNode?.Id
@@ -245,7 +245,7 @@ public class ImportService : IImportService
                     Vehicle = NullIfEmpty(row.Fields.Vehicle)
                 };
 
-                // Зброя — через навігаційну колекцію, до єдиного SaveChanges: рядок
+                // Зброя - через навігаційну колекцію, до єдиного SaveChanges: рядок
                 // зберігається "все або нічого". Два окремі SaveChanges лишали людину
                 // в базі без її зброї, якщо друга вставка падала.
                 foreach (var (name, serialNumber, rawText) in ParseWeaponUnits(row.Fields.WeaponRaw))
@@ -266,7 +266,7 @@ public class ImportService : IImportService
             catch (Exception ex)
             {
                 // Невдалий SaveChanges лишає сутності в ChangeTracker у стані Added,
-                // і тоді КОЖЕН наступний SaveChanges падає на них знову — один битий
+                // і тоді КОЖЕН наступний SaveChanges падає на них знову - один битий
                 // рядок валив увесь подальший імпорт. Від'єднуємо незбережене.
                 // Кеші unitCache/orgNodeCache/roomCache від цього не страждають:
                 // Resolve* роблять SaveChanges одразу, тож їхні сутності вже Unchanged.
@@ -290,7 +290,7 @@ public class ImportService : IImportService
     }
 
     // Невдалий SaveChanges лишає сутності в ChangeTracker у стані Added, і тоді
-    // КОЖЕН наступний SaveChanges падає на них знову — один битий рядок валив
+    // КОЖЕН наступний SaveChanges падає на них знову - один битий рядок валив
     // увесь подальший імпорт. Кеші unitCache/orgNodeCache/roomCache від цього не
     // страждають: Resolve* роблять SaveChanges одразу, тож їхні сутності вже Unchanged.
     private static void DetachPending(AppDbContext db)
@@ -306,7 +306,7 @@ public class ImportService : IImportService
     /// Переносить наявну людину в цільовий набір і оновлює її картку з файлу.
     ///
     /// Правило одне й наскрізне: ПОРОЖНЄ ЗНАЧЕННЯ НІЧОГО НЕ ЗАТИРАЄ. Вивантажки
-    /// бувають скорочені — три колонки замість тридцяти, — і запис порожнеч
+    /// бувають скорочені - три колонки замість тридцяти, - і запис порожнеч
     /// витер би зброю, адреси й усю анкету, зібрану раніше. Тому оновлюється
     /// лише те, що у файлі справді є.
     ///
@@ -320,7 +320,7 @@ public class ImportService : IImportService
         Dictionary<int, Dictionary<string, int>> intakeFolderCache, string filePath)
     {
         var person = db.Recipients.FirstOrDefault(r => r.Id == recipientId)
-            ?? throw new InvalidOperationException("Картку не знайдено — можливо, її видалили в іншій сесії.");
+            ?? throw new InvalidOperationException("Картку не знайдено - можливо, її видалили в іншій сесії.");
 
         var previousIntakeId = person.IntakeId;
 
@@ -347,7 +347,7 @@ public class ImportService : IImportService
             if (folderId is int fid) resolvedOrgNodeId = fid;
         }
 
-        // Набір і гілка — власне переїзд, вони задані ціллю, а не файлом, тож
+        // Набір і гілка - власне переїзд, вони задані ціллю, а не файлом, тож
         // ставляться беззастережно. Постійний склад навмисно лишає null.
         person.IntakeId = resolvedIntakeId;
         if (resolvedOrgNodeId is int nodeId) person.OrgNodeId = nodeId;
@@ -461,7 +461,7 @@ public class ImportService : IImportService
         if (normalized.Contains("посада")) return ImportTargetField.Position;
         if (normalized.Contains("автомобіль")) return ImportTargetField.Vehicle;
 
-        // "висновок" вище за "придатн" навмисно — інакше "Висновок ВЛК" міг би
+        // "висновок" вище за "придатн" навмисно - інакше "Висновок ВЛК" міг би
         // перехопитися тут, якщо колись міститиме слово "придатний" у заголовку.
         if (normalized.Contains("зброї") || normalized.Contains("зброя")) return ImportTargetField.Weapon;
         if (normalized.Contains("придатн")) return ImportTargetField.Fitness;
@@ -592,22 +592,22 @@ public class ImportService : IImportService
         if (serviceNumber.Length > 0)
         {
             if (existingServiceNumbers.TryGetValue(serviceNumber, out var byNumber))
-                return (ImportRowStatus.Duplicate, "Вже є в базі — рядок пропущено", byNumber);
+                return (ImportRowStatus.Duplicate, "Вже є в базі - рядок пропущено", byNumber);
 
             if (!seenInFile.Add(serviceNumber))
-                return (ImportRowStatus.Duplicate, "Дублюється в файлі — рядок пропущено", null);
+                return (ImportRowStatus.Duplicate, "Дублюється в файлі - рядок пропущено", null);
         }
         else
         {
-            // Без особового номера єдиний спосіб відсіяти дубль — ПІБ + дата
+            // Без особового номера єдиний спосіб відсіяти дубль - ПІБ + дата
             // народження в межах того самого набору (в іншому наборі однакове
-            // ПІБ — це не обов'язково та сама людина).
+            // ПІБ - це не обов'язково та сама людина).
             var nameKey = BuildNameKey(intakeId, fields.LastName, fields.FirstName, fields.MiddleName, fields.DateOfBirth);
             if (existingNameKeys.TryGetValue(nameKey, out var byName))
-                return (ImportRowStatus.Duplicate, "Схожий запис (ПІБ і дата народження) вже є в наборі — рядок пропущено", byName);
+                return (ImportRowStatus.Duplicate, "Схожий запис (ПІБ і дата народження) вже є в наборі - рядок пропущено", byName);
 
             if (!seenNameKeysInFile.Add(nameKey))
-                return (ImportRowStatus.Duplicate, "Дублюється в файлі — рядок пропущено", null);
+                return (ImportRowStatus.Duplicate, "Дублюється в файлі - рядок пропущено", null);
 
             nameCheckedInstead = true;
         }
@@ -616,13 +616,13 @@ public class ImportService : IImportService
             return (ImportRowStatus.Warning, "Неповне ПІБ", null);
 
         if (courseArrivalDateInvalid)
-            return (ImportRowStatus.Warning, "Некоректна дата прибуття — поле пропущено", null);
+            return (ImportRowStatus.Warning, "Некоректна дата прибуття - поле пропущено", null);
 
         if (string.IsNullOrWhiteSpace(fields.RoomNumber))
-            return (ImportRowStatus.Warning, "Немає поля «Кімната» — додасться без розміщення", null);
+            return (ImportRowStatus.Warning, "Немає поля «Кімната» - додасться без розміщення", null);
 
         if (nameCheckedInstead)
-            return (ImportRowStatus.Warning, "Без особового номера — дубль перевірено за ПІБ і датою народження", null);
+            return (ImportRowStatus.Warning, "Без особового номера - дубль перевірено за ПІБ і датою народження", null);
 
         return (ImportRowStatus.Ok, string.Empty, null);
     }
@@ -668,9 +668,9 @@ public class ImportService : IImportService
         return null;
     }
 
-    // «Придатні»/«Обмежено придатні»/«Всі» — фіксовані назви папок усередині
+    // «Придатні»/«Обмежено придатні»/«Всі» - фіксовані назви папок усередині
     // набору (Intakes.IntakeFolderNames). Старі набори, створені до цієї
-    // структури, їх не мають — тоді повертає null, і виклик лишає людину
+    // структури, їх не мають - тоді повертає null, і виклик лишає людину
     // там, куди її поставило зіставлення підрозділу.
     private static int? ResolveIntakeFitnessFolderId(
         AppDbContext db, Dictionary<int, Dictionary<string, int>> cache, int intakeId, string? fitnessCategory)
@@ -702,7 +702,7 @@ public class ImportService : IImportService
 
     // Розбиває сирий рядок «Найменування, серія та номер особистої зброї» на
     // окремі одиниці за появою нового найменування (АК/АКС/АКМ/АКМС/ПМ...).
-    // Якщо рядок не починається з розпізнаваного найменування — розбір
+    // Якщо рядок не починається з розпізнаваного найменування - розбір
     // непевний, повертаємо один запис із усім рядком у Name, без втрат.
     internal static List<(string Name, string SerialNumber, string RawText)> ParseWeaponUnits(string? raw)
     {
@@ -775,7 +775,7 @@ public class ImportService : IImportService
         {
             var key = BuildNameKey(r.IntakeId, r.LastName, r.FirstName, r.MiddleName, r.DateOfBirth);
             // Перший виграє: якщо в базі вже лежать два однакові ПІБ, вибирати
-            // між ними імпорт не має права — це рішення людини, а не збігу.
+            // між ними імпорт не має права - це рішення людини, а не збігу.
             if (!keys.ContainsKey(key)) keys[key] = r.Id;
         }
 
@@ -821,7 +821,7 @@ public class ImportService : IImportService
     }
 
     // Прив'язка до дерева підрозділів: вузол з назвою підрозділу шукається серед
-    // живих, за відсутності — створюється під коренем. Порожній підрозділ → корінь.
+    // живих, за відсутності - створюється під коренем. Порожній підрозділ → корінь.
     private static OrgNode? ResolveOrgNode(AppDbContext db, Dictionary<string, OrgNode> cache, string name)
     {
         var root = db.OrgNodes.OrderBy(n => n.Depth).ThenBy(n => n.Id).FirstOrDefault(n => n.ParentId == null);

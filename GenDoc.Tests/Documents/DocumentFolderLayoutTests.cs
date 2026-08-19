@@ -21,7 +21,7 @@ public class DocumentFolderLayoutTests
         Assert.Equal("КОВАЛЬЧУК В.Б.", placement.FileName);
     }
 
-    // Груповий документ — на весь список, а не на людину, тож рівень «особа»
+    // Груповий документ - на весь список, а не на людину, тож рівень «особа»
     // заміняє позначка прогону, і вона ж стає іменем файлу.
     [Fact]
     public void Group_document_uses_the_run_stamp_as_its_file_name()
@@ -44,7 +44,7 @@ public class DocumentFolderLayoutTests
         Assert.Equal("2026-08-14", stamp);
     }
 
-    // Другий прогін за той самий день без часу затер би перший — саме від цього
+    // Другий прогін за той самий день без часу затер би перший - саме від цього
     // рівень дати й мав захистити.
     [Fact]
     public void Second_run_of_the_same_day_gets_the_time_too()
@@ -95,7 +95,7 @@ public class DocumentFolderLayoutTests
         Assert.Equal(DocumentFolderLayout.SharedFolder, placement.Folders[0]);
     }
 
-    // Один із людей поза набором — це вже не «весь набір», отже теж «Спільні».
+    // Один із людей поза набором - це вже не «весь набір», отже теж «Спільні».
     [Fact]
     public void One_member_outside_the_intake_makes_the_group_shared()
     {
@@ -128,7 +128,7 @@ public class DocumentFolderLayoutTests
     }
 
     // Windows мовчки відкидає крапку й пробіл у кінці імені, тож «Акт.» і «Акт»
-    // стали б однією текою — прибираємо їх самі, щоб це було видно в коді.
+    // стали б однією текою - прибираємо їх самі, щоб це було видно в коді.
     [Fact]
     public void Trailing_dots_and_spaces_are_removed_from_folders()
     {

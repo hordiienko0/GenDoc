@@ -21,7 +21,7 @@ public class DatabaseSchemaInitializerTests
 
         DatabaseSchemaInitializer.MigrateGeneratedGroupDocumentsForDocxSupport((DbConnection)connection);
 
-        // Колонка TemplateId з'явилась, стара колонка ExportTemplateId — тепер nullable.
+        // Колонка TemplateId з'явилась, стара колонка ExportTemplateId - тепер nullable.
         var columns = DatabaseSchemaInitializer.GetExistingColumns((DbConnection)connection, "GeneratedGroupDocuments");
         Assert.Contains("TemplateId", columns);
         Assert.Contains("ExportTemplateId", columns);
@@ -136,7 +136,7 @@ public class DatabaseSchemaInitializerTests
             Assert.True(reader.IsDBNull(2));
         }
 
-        // Вставка з RawText — те, що робить імпорт зброї.
+        // Вставка з RawText - те, що робить імпорт зброї.
         using (var cmd = connection.CreateCommand())
         {
             cmd.CommandText = """
@@ -147,7 +147,7 @@ public class DatabaseSchemaInitializerTests
         }
     }
 
-    // Чиста база: таблиці створюються з нуля вже повними, повторний виклик — no-op.
+    // Чиста база: таблиці створюються з нуля вже повними, повторний виклик - no-op.
     [Fact]
     public void EnsureWeaponVehicleTables_FreshDatabase_CreatesTablesAndIsIdempotent()
     {
@@ -170,8 +170,8 @@ public class DatabaseSchemaInitializerTests
     }
 
     // v21: конструктору потрібне джерело блоків поруч із байтами .docx. Колонка
-    // додається до наявної таблиці з даними, тож мусить бути nullable — інакше
-    // Поділ шаблонів на набори й постійний склад. Найважливіше тут — що наявні
+    // додається до наявної таблиці з даними, тож мусить бути nullable - інакше
+    // Поділ шаблонів на набори й постійний склад. Найважливіше тут - що наявні
     // шаблони дістають Audience = 0 (набори), тобто лишаються там, де були:
     // мовчазне переселення половини шаблонів у постійний склад помітили б не
     // одразу. NOT NULL без DEFAULT SQLite узагалі не дав би додати.
@@ -252,7 +252,7 @@ public class DatabaseSchemaInitializerTests
         var columns = DatabaseSchemaInitializer.GetExistingColumns((DbConnection)connection, "Templates");
         Assert.Contains("BuilderJson", columns);
 
-        // Шаблон, завантажений файлом, лишається з порожнім джерелом — саме за цим
+        // Шаблон, завантажений файлом, лишається з порожнім джерелом - саме за цим
         // конструктор і відрізняє «своє» від чужого .docx.
         using (var cmd = connection.CreateCommand())
         {
@@ -273,7 +273,7 @@ public class DatabaseSchemaInitializerTests
         }
     }
 
-    // v22 — парна до v21, але для відомостей: ExportTemplates уже жила в базі до
+    // v22 - парна до v21, але для відомостей: ExportTemplates уже жила в базі до
     // конструктора, тож колонка додається до наявної таблиці з даними.
     [Fact]
     public void ExportTemplateColumnsV22_AddsBuilderJsonToExistingExportTemplates()
@@ -335,7 +335,7 @@ public class DatabaseSchemaInitializerTests
 
         using (var cmd = connection.CreateCommand())
         {
-            // Схема v11 — точна копія CREATE TABLE до цієї міграції.
+            // Схема v11 - точна копія CREATE TABLE до цієї міграції.
             cmd.CommandText = """
                 CREATE TABLE "GeneratedGroupDocuments" (
                     "Id" INTEGER NOT NULL CONSTRAINT "PK_GeneratedGroupDocuments" PRIMARY KEY AUTOINCREMENT,

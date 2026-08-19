@@ -5,7 +5,7 @@ using GenDoc.Models.Enums;
 namespace GenDoc.ViewModels.Templates
 {
     /// <summary>
-    /// Дві групи переліку шаблонів Word — для наборів і для постійного складу.
+    /// Дві групи переліку шаблонів Word - для наборів і для постійного складу.
     ///
     /// Це ВИДИ над однією й тією самою колекцією, а не дві окремі копії:
     /// елементи лишаються тими самими об'єктами, тож вибір рядка, завантажений
@@ -28,7 +28,7 @@ namespace GenDoc.ViewModels.Templates
         };
 
         /// <summary>Невідомий аудиторії елемент лишається в наборах: замовчування
-        /// схеми — Intake, і губити рядок через нерозпізнаний тип не можна.</summary>
+        /// схеми - Intake, і губити рядок через нерозпізнаний тип не можна.</summary>
         private static TemplateAudience AudienceOf(object? item) =>
             item is DocxTemplateListItemViewModel t ? t.Audience : TemplateAudience.Intake;
     }

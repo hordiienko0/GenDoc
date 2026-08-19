@@ -21,7 +21,7 @@ namespace GenDoc.Models
         public DateOnly? DateClosed { get; set; }
         public string? ClosedBy { get; set; }
 
-        // Статус виставлено вручну (закриття/повторне відкриття) — автоперехід за датами його не чіпає.
+        // Статус виставлено вручну (закриття/повторне відкриття) - автоперехід за датами його не чіпає.
         public bool StatusIsPinned { get; set; }
 
         public int? DefaultPackageId { get; set; }

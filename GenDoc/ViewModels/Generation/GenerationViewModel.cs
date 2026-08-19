@@ -220,7 +220,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     {
         if (e.PropertyName != nameof(RankCategoryChipViewModel.IsChecked) || _suppressRankSync) return;
         var chip = (RankCategoryChipViewModel)sender!;
-        if (chip.IsChecked is not bool value) return; // програмний перехід у невизначений стан — не каскадувати
+        if (chip.IsChecked is not bool value) return; // програмний перехід у невизначений стан - не каскадувати
 
         _suppressRankSync = true;
         try
@@ -263,7 +263,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         }
     }
 
-    // Звужує чекбокс-список одержувачів до обраних звань (порожній вибір — без
+    // Звужує чекбокс-список одержувачів до обраних звань (порожній вибір - без
     // обмеження); відфільтровані ховаються і знімаються з позначення, щоб оператор
     // ніколи не згенерував звіт на когось, кого не бачить у списку.
     private void ApplyRecipientRankFilter()
@@ -293,7 +293,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
 
     // Останній запуск на порожньому боці екрана. Кнопки «повторити» свідомо
     // немає: тека виводу в прогоні не зберігається, а повторна генерація
-    // переписує документи — такого в один клік бути не повинно.
+    // переписує документи - такого в один клік бути не повинно.
     [ObservableProperty] private string lastRunPackageName = string.Empty;
     [ObservableProperty] private string lastRunSummary = string.Empty;
     [ObservableProperty] private bool hasLastRun;
@@ -461,7 +461,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         var courseOfficerId = ManualTagForm?.CourseOfficer?.Selected?.RecipientId;
         var progress = new Progress<string>(message => ProgressText = message);
 
-        // Фільтр звань — орthogonal до вибору "весь склад / позначені": звужує
+        // Фільтр звань - орthogonal до вибору "весь склад / позначені": звужує
         // обидва варіанти однаково, звідси й порожні RankCategories (леф-рівень
         // Ranks уже покриває будь-яку комбінацію обраних категорій/окремих звань).
         var checkedRanks = RankOptions.Where(o => o.IsChecked).Select(o => o.Rank).ToList();
@@ -486,11 +486,11 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         IsBusy = false;
         ProgressText = string.Empty;
 
-        var summary = $"DOCX — згенеровано: {result.Generated}, пропущено: {result.Skipped}, помилок: {result.Errors}";
+        var summary = $"DOCX - згенеровано: {result.Generated}, пропущено: {result.Skipped}, помилок: {result.Errors}";
         if (result.GroupGenerated + result.GroupSkipped + result.GroupErrors > 0)
-            summary += $"\nXLSX (відомості) — згенеровано: {result.GroupGenerated}, пропущено: {result.GroupSkipped}, помилок: {result.GroupErrors}";
+            summary += $"\nXLSX (відомості) - згенеровано: {result.GroupGenerated}, пропущено: {result.GroupSkipped}, помилок: {result.GroupErrors}";
         if (result.DocxGroupGenerated + result.DocxGroupSkipped + result.DocxGroupErrors > 0)
-            summary += $"\nГруповий DOCX — згенеровано: {result.DocxGroupGenerated}, пропущено: {result.DocxGroupSkipped}, помилок: {result.DocxGroupErrors}";
+            summary += $"\nГруповий DOCX - згенеровано: {result.DocxGroupGenerated}, пропущено: {result.DocxGroupSkipped}, помилок: {result.DocxGroupErrors}";
 
         MessageBox.Show(summary, "Генерація завершена", MessageBoxButton.OK, MessageBoxImage.Information);
 
@@ -503,7 +503,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         }
     }
 
-    // Тег "{{дата}}" зарезервований під це поле — підставляється в кожен документ
+    // Тег "{{дата}}" зарезервований під це поле - підставляється в кожен документ
     // пакета незалежно від шаблону; якщо шаблон явно мапить {{дата}} вручну,
     // це поле є єдиним джерелом значення (перекриває будь-який попередній запис).
     // Ключ має бути тим самим brace-wrapped рядком, що й PlaceholderTag усюди

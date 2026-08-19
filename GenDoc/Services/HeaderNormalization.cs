@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 
 namespace GenDoc.Services;
 
-// Спільна нормалізація заголовка колонки — використовується і автомапінгом
+// Спільна нормалізація заголовка колонки - використовується і автомапінгом
 // імпорту (ImportService), і автомапінгом при завантаженні шаблону експорту
 // (ExportTemplateService), щоб правила зіставлення не розходилися.
 public static class HeaderNormalization

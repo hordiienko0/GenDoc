@@ -14,7 +14,7 @@ namespace GenDoc.ViewModels.Import;
 /// <summary>Набір у списку кроку «Набір і гілка».</summary>
 public record IntakeOption(int Id, int RootOrgNodeId, string Display);
 
-/// <summary>Гілка всередині набору. Дерево подається пласким списком із Depth —
+/// <summary>Гілка всередині набору. Дерево подається пласким списком із Depth -
 /// рівнів тут одиниці, а пласким списком його простіше і малювати, і вибирати.</summary>
 public partial class BranchOptionViewModel : ObservableObject
 {
@@ -31,7 +31,7 @@ public partial class BranchOptionViewModel : ObservableObject
     public int Depth { get; }
     public int PeopleCount { get; }
 
-    /// <summary>Відступ за рівнем — те саме дерево, що в макеті.</summary>
+    /// <summary>Відступ за рівнем - те саме дерево, що в макеті.</summary>
     public Thickness Indent => new(12 + Depth * 18, 0, 0, 0);
 
     [ObservableProperty]
@@ -121,14 +121,14 @@ public partial class ImportViewModel : ObservableObject
 
     private string LabelOf(int step) => step == CurrentStep ? "active" : string.Empty;
 
-    /// <summary>«Рядків: 50 · готово 44 · конфліктів 2 · помилок 4» — рядок із
+    /// <summary>«Рядків: 50 · готово 44 · конфліктів 2 · помилок 4» - рядок із
     /// макета над таблицею перевірки.</summary>
     public string RowStatsText =>
         $"Рядків: {TotalRows} · готово {ReadyCount} · потребують уваги {IssueCount}";
 
     public bool CanGoBack => CurrentStep > 1;
 
-    /// <summary>Далі не пускаємо без файлу, а з кроку «Набір і гілка» — без
+    /// <summary>Далі не пускаємо без файлу, а з кроку «Набір і гілка» - без
     /// обраного набору: інакше крок нічого не вирішує.</summary>
     public bool CanGoNext => CurrentStep switch
     {
@@ -166,7 +166,7 @@ public partial class ImportViewModel : ObservableObject
     private bool targetNewIntake;
 
     /// <summary>Постійний склад у макеті не намальовано, але це наявна
-    /// можливість застосунку — вона лишається третім вибором, а не зникає.</summary>
+    /// можливість застосунку - вона лишається третім вибором, а не зникає.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanGoNext))]
     [NotifyPropertyChangedFor(nameof(IsIntakeChoiceVisible))]
@@ -187,7 +187,7 @@ public partial class ImportViewModel : ObservableObject
 
     [ObservableProperty]
     private string newIntakeHint =
-        "Новий набір створюється в розділі «Набори» — тут його ще немає в списку.";
+        "Новий набір створюється в розділі «Набори» - тут його ще немає в списку.";
 
     partial void OnSelectedIntakeChanged(IntakeOption? value) => LoadBranchesCommand.Execute(null);
 
@@ -219,7 +219,7 @@ public partial class ImportViewModel : ObservableObject
     }
 
     /// <summary>Гілки обраного набору. Піддерево беремо по materialized path
-    /// кореня — так само, як це робить дерево підрозділів.</summary>
+    /// кореня - так само, як це робить дерево підрозділів.</summary>
     [RelayCommand]
     private async Task LoadBranchesAsync()
     {
@@ -254,7 +254,7 @@ public partial class ImportViewModel : ObservableObject
     private ObservableCollection<ImportPreviewRowViewModel> preview = new();
 
     // Повний перелік перевірених рядків. Preview показує лише перші вісім, а
-    // перенесення мусить діяти на всі — інакше дубль, що не потрапив у видиму
+    // перенесення мусить діяти на всі - інакше дубль, що не потрапив у видиму
     // вісімку, лишався б недосяжним, і функція працювала б через раз.
     private List<ImportRowPreview> _validatedRows = new();
 
@@ -268,7 +268,7 @@ public partial class ImportViewModel : ObservableObject
     private string moveAllText = string.Empty;
 
     /// <summary>Перемикач «перенести всі дублі». Діє на ВЕСЬ файл, не лише на
-    /// видимі рядки — тому поруч завжди стоїть точна кількість.</summary>
+    /// видимі рядки - тому поруч завжди стоїть точна кількість.</summary>
     [ObservableProperty]
     private bool moveAllDuplicates;
 
@@ -295,7 +295,7 @@ public partial class ImportViewModel : ObservableObject
     private bool hasSkippedRows;
 
     /// <summary>Ціль імпорту з кроку «Набір і гілка». «Створити новий набір» поки
-    /// що не створює його тут — набір заводиться в розділі «Набори», тож цей
+    /// що не створює його тут - набір заводиться в розділі «Набори», тож цей
     /// вибір лишає ціль виведеною з файлу, а не мовчки кладе людей не туди.</summary>
     private ImportTarget BuildTarget()
     {
@@ -394,7 +394,7 @@ public partial class ImportViewModel : ObservableObject
         IssueCount = rows.Count(r => r.Status is ImportRowStatus.Error or ImportRowStatus.Duplicate);
 
         // Зміна мапінгу колонок перебудовує перевірку з нуля, тож позначки
-        // перенесення скидаються разом із рядками — вони більше не про ті дані.
+        // перенесення скидаються разом із рядками - вони більше не про ті дані.
         _validatedRows = rows;
         MoveAllDuplicates = false;
 
@@ -413,7 +413,7 @@ public partial class ImportViewModel : ObservableObject
 
         UpdateImportButton();
         HasSkippedRows = IssueCount > 0;
-        SkippedNoteText = IssueCount > 0 ? $"{IssueCount} рядків буде пропущено — причини вказані вище" : string.Empty;
+        SkippedNoteText = IssueCount > 0 ? $"{IssueCount} рядків буде пропущено - причини вказані вище" : string.Empty;
     }
 
     private void OnPreviewRowChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

@@ -3,7 +3,7 @@ using GenDoc.Models.Enums;
 namespace GenDoc.Services.Templates
 {
     // Спільний словник {{тег}} → (джерело, поле) для DOCX (TemplateService) і XLSX
-    // (ExportTemplateService) пайплайнів — щоб той самий тег класифікувався однаково
+    // (ExportTemplateService) пайплайнів - щоб той самий тег класифікувався однаково
     // в обох.
     public static class PlaceholderTagMaps
     {
@@ -38,7 +38,7 @@ namespace GenDoc.Services.Templates
 
             // Теги, що реально трапляються у відомостях вогневої підготовки
             // (Роздавально-здавальна, Допуск Додаток 5, Залік Додаток 8). Без них
-            // тег падав у Manual — тобто колонка лишалась порожньою або її щоразу
+            // тег падав у Manual - тобто колонка лишалась порожньою або її щоразу
             // доводилось заповнювати руками.
             ["№"] = "RowNumber",
             ["піб_ініціали"] = "ShortName",
@@ -51,7 +51,7 @@ namespace GenDoc.Services.Templates
 
             // XLSX-only: обидва обробляються окремо у XlsxGenerationService за
             // назвою поля (загальна оцінка рахується по сусідніх колонках рядка,
-            // підпис курсового офіцера — дані поза поточним ростером).
+            // підпис курсового офіцера - дані поза поточним ростером).
             ["курсовий_офіцер"] = "CourseOfficerSignature",
             ["оцінка"] = "GradeRandom34",
             ["оцінка_1"] = "GradeRandom34",

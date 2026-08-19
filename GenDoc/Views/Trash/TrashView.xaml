@@ -53,7 +53,7 @@
                                                 <Run Text=" · "/>
                                                 <Run Text="{Binding DeletedByDisplay, Mode=OneWay}"/>
                                             </TextBlock>
-                                            <TextBlock Text="батьківська папка видалена — оберіть нову при відновленні"
+                                            <TextBlock Text="батьківська папка видалена - оберіть нову при відновленні"
                                                        FontSize="11" Margin="0,3,0,0"
                                                        Foreground="{StaticResource WarnTextBrush}"
                                                        Visibility="{Binding ParentDead, Converter={StaticResource BoolToVisibility}}"/>

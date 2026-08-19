@@ -30,7 +30,7 @@ public partial class PersonnelView : UserControl
         }
     }
 
-    // Клік по рядку відкриває картку; клік по чекбоксу — ні.
+    // Клік по рядку відкриває картку; клік по чекбоксу - ні.
     private void PeopleGrid_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (FindAncestor<CheckBox>(e.OriginalSource as DependencyObject) is not null) return;

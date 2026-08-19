@@ -39,7 +39,7 @@ public class TemplateUploadFailureTests : IDisposable
         Assert.Contains("не є документом Word", result.ErrorMessage);
     }
 
-    // Відсутній файл — це НЕ «не документ Word»; повідомлення має називати причину.
+    // Відсутній файл - це НЕ «не документ Word»; повідомлення має називати причину.
     [Fact]
     public void Upload_MissingFile_ReportsThatFileWasNotFound()
     {

@@ -24,7 +24,7 @@
 
         <!-- Вкладка режиму. Активність приходить у Tag (IsWordMode/IsExcelMode).
              Саме DataTrigger, а не Trigger: Tag оголошений як object, тож звичайний
-             Trigger порівнював би bool із рядком "True" і не спрацьовував ніколи —
+             Trigger порівнював би bool із рядком "True" і не спрацьовував ніколи -
              DataTrigger приводить значення до типу того, що прийшло з прив'язки. -->
         <Style x:Key="ModeTabStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
             <Setter Property="Padding" Value="20,7"/>
@@ -47,12 +47,12 @@
         </Style>
 
         <!-- Рядок сторінки в попередньому перегляді. Гарнітура, кегль, колір,
-             жирність і вирівнювання приходять із розв'язаного стилю блока —
+             жирність і вирівнювання приходять із розв'язаного стилю блока -
              того самого, що покладе writer. -->
         <DataTemplate DataType="{x:Type builderVm:PreviewLineViewModel}">
             <!-- MaxWidth обов'язковий: сторінка прокручується вбік заради широких
                  таблиць, а при горизонтальній прокрутці вміст міряється
-                 нескінченною шириною, і TextWrapping сам собою не спрацював би —
+                 нескінченною шириною, і TextWrapping сам собою не спрацював би -
                  абзац витягнувся б в один рядок, а рядок «лллл…» без пробілів
                  роздув би сторінку. Ширину рахує в'ю-модель від ширини панелі. -->
             <!-- Саме Width, а не MaxWidth: інакше блок звузився б до тексту, і
@@ -71,11 +71,11 @@
 
         <!-- Сітка відомості: шапка + один рядок даних (він і клонується на кожного).
              Комірки бачать лише свій вміст, тож стиль дістається з DataContext'у
-             ItemsControl'а — там лежить PreviewTableViewModel. -->
+             ItemsControl'а - там лежить PreviewTableViewModel. -->
         <DataTemplate DataType="{x:Type builderVm:PreviewTableViewModel}">
-            <!-- Ширина — рівно сторінка, і це не косметика: writer ставить таблиці
+            <!-- Ширина - рівно сторінка, і це не косметика: writer ставить таблиці
                  TableWidth=5000 Pct, тобто 100% ширини сторінки. У Word таблиця НІКОЛИ
-                 не буває ширшою за аркуш — зайві колонки просто вужчають. Тому тут
+                 не буває ширшою за аркуш - зайві колонки просто вужчають. Тому тут
                  UniformGrid ділить ширину порівну й жодних Min/Max на клітинках: інакше
                  перегляд показував би те, чого документ не робить. Прокрутка вбік
                  доречна лише у відомості Excel, де аркуш справді ширший за екран. -->
@@ -159,7 +159,7 @@
             </Setter>
         </Style>
 
-        <!-- Вирівнювання — RadioButton'и: зняти вирівнювання не можна, можна лише
+        <!-- Вирівнювання - RadioButton'и: зняти вирівнювання не можна, можна лише
              обрати інше. Без GroupName вони групуються своїм контейнером, тож
              поповери різних блоків не заважають один одному. -->
         <Style x:Key="StyleRadioStyle" TargetType="RadioButton" BasedOn="{StaticResource {x:Type RadioButton}}">
@@ -320,7 +320,7 @@
                         <TextBlock Text="ДОКУМЕНТ" Style="{StaticResource PanelCaptionStyle}"/>
                     </Border>
 
-                    <!-- Вкладки аркушів книги — лише для відомості -->
+                    <!-- Вкладки аркушів книги - лише для відомості -->
                     <Border DockPanel.Dock="Top" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1"
                             Padding="10,7" Background="{StaticResource RowAltBrush}"
                             Visibility="{Binding IsExcelMode, Converter={StaticResource BoolToVisibility}}">
@@ -588,7 +588,7 @@
 
                                                 <!-- Текстові блоки: гриф, заголовок, дата і місто, абзац.
                                                      Оформлення приходить зі стилю блока (раніше було зашите
-                                                     тригерами по Kind — тепер ті самі значення дає
+                                                     тригерами по Kind - тепер ті самі значення дає
                                                      BlockStyleDefaults, і оператор може їх перебити).
                                                      Тригери по Kind лишилися тільки на висоту: це розкладка
                                                      картки, а не оформлення документа. -->
@@ -653,8 +653,8 @@
                                                             CommandParameter="{Binding}"/>
                                                 </StackPanel>
 
-                                                <!-- Таблиця відомості: заголовок колонки — у шапку,
-                                                     клітинка — у рядок-шаблон, що клонується на кожну людину -->
+                                                <!-- Таблиця відомості: заголовок колонки - у шапку,
+                                                     клітинка - у рядок-шаблон, що клонується на кожну людину -->
                                                 <StackPanel Margin="13,11"
                                                             Visibility="{Binding IsTable, Converter={StaticResource BoolToVisibility}}">
                                                     <Grid Margin="0,0,0,6">
@@ -711,7 +711,7 @@
                                                             Command="{Binding DataContext.AddColumnCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                             CommandParameter="{Binding}"/>
 
-                                                    <!-- У Word повторення — вибір: з ним документ стає груповим
+                                                    <!-- У Word повторення - вибір: з ним документ стає груповим
                                                          (маркери {{#особи}}), без нього таблиця лишається статичною. -->
                                                     <CheckBox Content="Повторювати рядок для кожної особи" Margin="0,8,0,0"
                                                               IsChecked="{Binding RepeatPerPerson, Mode=TwoWay}"
@@ -729,12 +729,12 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
 
-                            <!-- Пунктирна картка з макета. Додає абзац — найчастіший
+                            <!-- Пунктирна картка з макета. Додає абзац - найчастіший
                                  блок; решта типів лишається в палітрі ліворуч. -->
                             <Button Style="{StaticResource GhostButtonStyle}" Padding="16" Margin="0,0,0,10"
                                     BorderThickness="1" BorderBrush="{StaticResource BorderLineBrush}"
                                     Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5"
-                                    ToolTip="Додати абзац; інші типи блоків — у палітрі ліворуч"
+                                    ToolTip="Додати абзац; інші типи блоків - у палітрі ліворуч"
                                     Command="{Binding AddBlockCommand}"
                                     CommandParameter="{Binding ParagraphPaletteItem}">
                                 <TextBlock Text="+ Додати блок"/>
@@ -756,7 +756,7 @@
                 <DockPanel>
 
                     <!-- Роздільник: тягнеться вліво, розширюючи перегляд за рахунок
-                         переліку блоків — той самий прийом, що в панелі мапінгу. -->
+                         переліку блоків - той самий прийом, що в панелі мапінгу. -->
                     <Thumb DockPanel.Dock="Left" Width="6" Cursor="SizeWE"
                            DragDelta="PreviewResizeThumb_DragDelta">
                         <Thumb.Template>
@@ -791,7 +791,7 @@
                                    Foreground="{StaticResource AccentBrush}" TextWrapping="Wrap"/>
                     </Border>
 
-                    <!-- Легенда заливок — та сама, що в макеті -->
+                    <!-- Легенда заливок - та сама, що в макеті -->
                     <Border DockPanel.Dock="Bottom" Background="{StaticResource RowAltBrush}"
                             BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,0,0" Padding="13,9">
                         <StackPanel Orientation="Horizontal">
@@ -804,7 +804,7 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Word: сторінка документа. Прокрутки вбік немає й не треба —
+                    <!-- Word: сторінка документа. Прокрутки вбік немає й не треба -
                          ніщо на аркуші не буває ширшим за аркуш: таблиця займає рівно
                          100% ширини (як і в .docx), а рядки тексту переносяться по
                          явній PreviewTextWidth. -->
@@ -813,7 +813,7 @@
                                   Visibility="{Binding IsWordMode, Converter={StaticResource BoolToVisibility}}">
                         <!-- MinWidth, а не Width: вузький документ заповнює панель, а
                              широка таблиця робить аркуш ширшим і вмикає прокрутник.
-                             Ширину рахує в'ю-модель — колонка панелі явна, тож це
+                             Ширину рахує в'ю-модель - колонка панелі явна, тож це
                              арифметика, а не прив'язка до ViewportWidth. -->
                         <Border Background="White" Margin="14" Padding="24,26"
                                 HorizontalAlignment="Left"
@@ -827,13 +827,13 @@
                         </Border>
                     </ScrollViewer>
 
-                    <!-- Excel: сітка аркуша з літерами колонок і номерами рядків —
+                    <!-- Excel: сітка аркуша з літерами колонок і номерами рядків -
                          щоб клітинку на екрані можна було звірити з відкритою книгою. -->
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                                   Background="{StaticResource BackgroundBrush}"
                                   Visibility="{Binding IsExcelMode, Converter={StaticResource BoolToVisibility}}">
                         <!-- Ширину задає сам вміст (клітинки обмежені MaxWidth), а колонка
-                             панелі — Auto. Прив'язувати MinWidth до ViewportWidth не можна:
+                             панелі - Auto. Прив'язувати MinWidth до ViewportWidth не можна:
                              ширина панелі теж рахується з вмісту, і виходив зворотний
                              зв'язок, який роздував панель на весь екран. -->
                         <Border Background="White" Margin="10" BorderBrush="{StaticResource BorderLineBrush}"
@@ -851,7 +851,7 @@
                                         </ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <!-- Ті самі Min/Max, що й у клітинок нижче — інакше літери
+                                                <!-- Ті самі Min/Max, що й у клітинок нижче - інакше літери
                                                      колонок роз'їдуться з тим, що під ними. -->
                                                 <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,1,1"
                                                         Padding="4,3" MinWidth="86" MaxWidth="130">
@@ -867,7 +867,7 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <DockPanel>
-                                                <!-- Номер рядка — той самий, що буде в Excel -->
+                                                <!-- Номер рядка - той самий, що буде в Excel -->
                                                 <Border DockPanel.Dock="Left" Width="32" Padding="4,3"
                                                         Background="{StaticResource RowAltBrush}"
                                                         BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,1,1">
@@ -938,7 +938,7 @@
                      збереження стоять у власних Auto-колонках: у попередній
                      розкладці фіксована назва з'їдала ширину, і повідомлення
                      обрізалось до однієї літери. -->
-                <!-- Прапорець, повідомлення й кнопки — однією групою праворуч, а поле
+                <!-- Прапорець, повідомлення й кнопки - однією групою праворуч, а поле
                      назви тягнеться на решту. Коли статус жив у власній колонці,
                      сусіди з'їдали її ширину, і від «Шаблон збережено» лишалась
                      одна літера. -->
@@ -962,19 +962,19 @@
                               Visibility="{Binding IsExcelMode, Converter={StaticResource BoolToVisibility}}"/>
 
                     <!-- MaxWidth і обрізання: повідомлення буває довгим, а воно стоїть
-                         однією групою з кнопками — без стелі воно виштовхувало
-                         «Зберегти шаблон» за край вікна. Повний текст — у підказці. -->
+                         однією групою з кнопками - без стелі воно виштовхувало
+                         «Зберегти шаблон» за край вікна. Повний текст - у підказці. -->
                     <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center"
                                Margin="14,0" FontSize="12" Foreground="{StaticResource SuccessBrush}"
                                MaxWidth="260" TextTrimming="CharacterEllipsis"
                                ToolTip="{Binding StatusMessage}"/>
                     <!-- «Як буде насправді»: панель перегляду не вміє полів сторінки
                          й перенесення на наступну сторінку, тож справжню розмітку
-                         показує сам Word. Це перегляд — правки у файлі назад не
+                         показує сам Word. Це перегляд - правки у файлі назад не
                          повертаються. -->
                     <Button Content="{Binding OpenExternallyButtonText}" Style="{StaticResource SecondaryButtonStyle}"
                             Margin="0,0,8,0" Padding="14,8"
-                            ToolTip="Відкрити зібраний файл у Word — правки у ньому назад у шаблон не повертаються"
+                            ToolTip="Відкрити зібраний файл у Word - правки у ньому назад у шаблон не повертаються"
                             Command="{Binding OpenExternallyCommand}"/>
 
                     <Button Content="{Binding ExportButtonText}" Style="{StaticResource SecondaryButtonStyle}"

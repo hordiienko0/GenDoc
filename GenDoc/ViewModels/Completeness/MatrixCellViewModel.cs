@@ -8,7 +8,7 @@ namespace GenDoc.ViewModels.Completeness
 {
     public enum MatrixCellState { Present, PresentStale, MissingRequired, MissingOptional, NotApplicable }
 
-    // Клітинка сама несе команди — динамічні шаблони колонок не бачать
+    // Клітинка сама несе команди - динамічні шаблони колонок не бачать
     // DataContext екрана; ElementName у згенерованому в коді XAML не працює.
     public partial class MatrixCellViewModel : ObservableObject
     {
@@ -29,7 +29,7 @@ namespace GenDoc.ViewModels.Completeness
         public int TemplateId { get; }
         public string FitnessCategory { get; }
 
-        // Обов'язковість резолвиться при побудові рядка і не залежить від наявності документа —
+        // Обов'язковість резолвиться при побудові рядка і не залежить від наявності документа -
         // «n з m» рахує лише Required, незалежно від State.
         public TemplateRequirement Requirement { get; }
 
@@ -65,13 +65,13 @@ namespace GenDoc.ViewModels.Completeness
         public string ToolTipText => State switch
         {
             MatrixCellState.Present when !HasContent => "файл не збережено",
-            MatrixCellState.PresentStale => "Дані людини змінилися після генерації — перегенеруйте",
-            MatrixCellState.MissingOptional => "Опційний для цієї категорії — не згенеровано",
+            MatrixCellState.PresentStale => "Дані людини змінилися після генерації - перегенеруйте",
+            MatrixCellState.MissingOptional => "Опційний для цієї категорії - не згенеровано",
             MatrixCellState.NotApplicable => $"Не потрібен для категорії \"{FitnessCategory}\"",
             _ => string.Empty
         };
 
-        // Кольори читаються з App.Resources за ключем (жодного хардкоду hex) — обчислюються тут,
+        // Кольори читаються з App.Resources за ключем (жодного хардкоду hex) - обчислюються тут,
         // а не в XAML-шаблоні клітинки, бо StaticResource усередині XamlReader.Parse-фрагмента
         // не гарантовано резолвиться (немає контексту резолюції ресурсів на момент парсингу).
         public Brush Background => State switch
@@ -95,8 +95,8 @@ namespace GenDoc.ViewModels.Completeness
         {
             MatrixCellState.Present => "✓",
             MatrixCellState.PresentStale => "!",
-            MatrixCellState.MissingRequired => "—",
-            MatrixCellState.MissingOptional => "(—)",
+            MatrixCellState.MissingRequired => "-",
+            MatrixCellState.MissingOptional => "(-)",
             _ => string.Empty
         };
 
@@ -131,7 +131,7 @@ namespace GenDoc.ViewModels.Completeness
         [RelayCommand(CanExecute = nameof(CanSaveAs))]
         private Task SaveAsAsync() => _coordinator.SaveAsAsync(this);
 
-        // Викликається рівно раз при побудові рядка (не в getter — віртуалізація смикає getter-и багаторазово).
+        // Викликається рівно раз при побудові рядка (не в getter - віртуалізація смикає getter-и багаторазово).
         public void Initialize(Services.Completeness.MatrixDocDto? doc)
         {
             if (Requirement == TemplateRequirement.NotApplicable)
@@ -189,7 +189,7 @@ namespace GenDoc.ViewModels.Completeness
         }
     }
 
-    // Реалізується CompletenessViewModel — клітинка делегує дії координатору.
+    // Реалізується CompletenessViewModel - клітинка делегує дії координатору.
     public interface ICellActionCoordinator
     {
         Task OpenAsync(MatrixCellViewModel cell);

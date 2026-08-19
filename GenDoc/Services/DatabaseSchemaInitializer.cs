@@ -128,7 +128,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     };
 
     // Перелічені ВСІ колонки, не лише найновіші: таблиця могла з'явитись у проміжному
-    // білді в недоформованому вигляді, і тоді CREATE TABLE її вже не перестворить —
+    // білді в недоформованому вигляді, і тоді CREATE TABLE її вже не перестворить -
     // вирівнюємо через ALTER. NOT NULL обов'язково з DEFAULT: SQLite інакше не дає
     // ADD COLUMN до непорожньої таблиці.
     private static readonly (string Name, string Type)[] WeaponColumnsV18 =
@@ -152,7 +152,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     };
 
     // Конструктор шаблонів: джерело блоків поруч із готовими байтами .docx.
-    // NULL — шаблон завантажений файлом, конструктор його не відкриває.
+    // NULL - шаблон завантажений файлом, конструктор його не відкриває.
     internal static readonly (string Name, string Type)[] TemplateColumnsV21 =
     {
         ("BuilderJson", "TEXT")
@@ -164,7 +164,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         ("BuilderJson", "TEXT")
     };
 
-    // Для кого шаблон: 0 — набори, 1 — постійний склад. NOT NULL із DEFAULT 0,
+    // Для кого шаблон: 0 - набори, 1 - постійний склад. NOT NULL із DEFAULT 0,
     // бо SQLite інакше не дасть ADD COLUMN, а нуль і є старою поведінкою.
     internal static readonly (string Name, string Type)[] TemplateColumnsV23 =
     {
@@ -195,9 +195,9 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         using var db = _dbFactory.CreateDbContext();
         db.Database.EnsureCreated();
 
-        // EnsureCreated() — no-op для вже існуючого файлу БД: таблиці, додані в модель
+        // EnsureCreated() - no-op для вже існуючого файлу БД: таблиці, додані в модель
         // ПІСЛЯ першого створення бази (напр. ExportTemplates), самі не з'являться.
-        // Тому створюємо їх явно, якщо відсутні — незалежно від SchemaVersion.
+        // Тому створюємо їх явно, якщо відсутні - незалежно від SchemaVersion.
         EnsureExportTemplateTables(db);
 
         if (!db.SchemaVersions.Any())
@@ -546,14 +546,14 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         AddMissingColumns(db, "ExportTemplates", ExportTemplateColumnsV22);
         AddMissingColumns(db, "Templates", TemplateColumnsV23);
 
-        // Ідемпотентно (IF NOT EXISTS) — самовідновлюється незалежно від SchemaVersion,
+        // Ідемпотентно (IF NOT EXISTS) - самовідновлюється незалежно від SchemaVersion,
         // так само як EnsureExportTemplateTables. Обгорнуто в try/catch: якщо в
         // існуючих даних вже є дублікати (Building, Number), унікальний індекс
         // не повинен зривати запуск застосунку.
         EnsureRoomUniqueIndex(db);
 
         // Самовідновлення: якщо міграція v3 вже позначена виконаною раніше (до
-        // цього виправлення), рядок міг лишитись з HrOfficerFullName = NULL —
+        // цього виправлення), рядок міг лишитись з HrOfficerFullName = NULL -
         // не-nullable властивість моделі, EF падає при читанні. На цьому етапі
         // колонка вже гарантовано існує (щойно мігровано або створено з нуля).
         db.Database.ExecuteSqlRaw("UPDATE OrganizationSettings SET HrOfficerFullName = '' WHERE HrOfficerFullName IS NULL;");
@@ -617,7 +617,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         }
     }
 
-    // Перевантаження напряму на з'єднанні — парне до GetExistingColumns(DbConnection, ...),
+    // Перевантаження напряму на з'єднанні - парне до GetExistingColumns(DbConnection, ...),
     // потрібне там, де AppDbContext ще нема (юніт-тести).
     internal static void AddMissingColumns(
         System.Data.Common.DbConnection connection, string tableName, (string Name, string Type)[] columns)
@@ -649,7 +649,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         }
     }
 
-    // Перевантаження напряму на з'єднанні — потрібне там, де AppDbContext ще нема
+    // Перевантаження напряму на з'єднанні - потрібне там, де AppDbContext ще нема
     // (юніт-тести) або де з'єднання вже підняте окремо (перебудова таблиці).
     internal static HashSet<string> GetExistingColumns(System.Data.Common.DbConnection connection, string tableName)
     {
@@ -841,7 +841,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         }
         catch
         {
-            // Найімовірніша причина — наявні дублікати (Building, Number) у старих даних.
+            // Найімовірніша причина - наявні дублікати (Building, Number) у старих даних.
             // Не зриваємо запуск застосунку через це; унікальність далі перевіряється
             // на рівні RoomService при створенні/редагуванні кімнати.
         }
@@ -998,15 +998,15 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     }
 
     // GeneratedGroupDocuments (до v12) мала ExportTemplateId INTEGER NOT NULL і без
-    // TemplateId — лише XLSX-відомості. Груповий DOCX вимагає, щоб рівно одне з двох
+    // TemplateId - лише XLSX-відомості. Груповий DOCX вимагає, щоб рівно одне з двох
     // полів було заповнене, тобто ExportTemplateId має стати nullable. SQLite не вміє
     // ALTER COLUMN, тому перебудовуємо таблицю за офіційно рекомендованою процедурою
-    // (create-copy-drop-rename), з вимкненими на час операції foreign keys — інакше
+    // (create-copy-drop-rename), з вимкненими на час операції foreign keys - інакше
     // DROP TABLE з увімкненим PRAGMA foreign_keys каскадно видалить вміст із
     // GeneratedGroupDocumentContents (ON DELETE CASCADE спрацьовує і на DROP TABLE).
-    // Наявність колонки TemplateId — ознака того, що таблиця вже в кінцевому вигляді
+    // Наявність колонки TemplateId - ознака того, що таблиця вже в кінцевому вигляді
     // (і для щойно створених БД, де EnsureGroupDocumentTables одразу створює її
-    // правильно, і для вже мігрованих) — тоді нічого не робимо.
+    // правильно, і для вже мігрованих) - тоді нічого не робимо.
     private static void MigrateGeneratedGroupDocumentsForDocxSupport(AppDbContext db)
     {
         var connection = db.Database.GetDbConnection();
@@ -1024,7 +1024,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     }
 
     // Винесено окремо від AppDbContext-обгортки, щоб можна було перевірити юніт-тестом
-    // на звичайному (незашифрованому) SQLite-з'єднанні — сам SQL не залежить від SQLCipher.
+    // на звичайному (незашифрованому) SQLite-з'єднанні - сам SQL не залежить від SQLCipher.
     internal static void MigrateGeneratedGroupDocumentsForDocxSupport(System.Data.Common.DbConnection connection)
     {
         if (!TableExists(connection, "GeneratedGroupDocuments")) return;
@@ -1146,7 +1146,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 
     // Разово: назви, що прийшли з імен файлів («Шаблон_Залік_Додаток_8»), стають
     // людськими («Залік Додаток 8»). Саме разово, у гілці міграції, а не в
-    // ідемпотентному хвості — інакше застосунок щоразу перезатирав би назву,
+    // ідемпотентному хвості - інакше застосунок щоразу перезатирав би назву,
     // яку користувач свідомо перейменував назад.
     private static void NormalizeTemplateNames(AppDbContext db)
     {
@@ -1182,7 +1182,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     }
 
     // Винесено окремо від AppDbContext-обгортки заради юніт-тесту на звичайному
-    // (незашифрованому) SQLite — так само як MigrateGeneratedGroupDocumentsForDocxSupport.
+    // (незашифрованому) SQLite - так само як MigrateGeneratedGroupDocumentsForDocxSupport.
     //
     // CREATE TABLE спрацьовує лише коли таблиці нема, тому самого його НЕ досить:
     // база, у якій Weapons створив проміжний білд без RawText, інакше лишалась би
@@ -1192,7 +1192,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     {
         if (!TableExists(connection, "Weapons"))
         {
-            // Одна людина може мати кілька одиниць зброї (автомат + пістолет) —
+            // Одна людина може мати кілька одиниць зброї (автомат + пістолет) -
             // тому власник тут (RecipientId), а не навпаки.
             using var command = connection.CreateCommand();
             command.CommandText = """
@@ -1234,7 +1234,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
             command.ExecuteNonQuery();
         }
 
-        // Головне у цьому методі — див. коментар вище: таблиця могла лишитись від
+        // Головне у цьому методі - див. коментар вище: таблиця могла лишитись від
         // проміжного білда без частини колонок.
         AddMissingColumns(connection, "Weapons", WeaponColumnsV18);
         AddMissingColumns(connection, "Vehicles", VehicleColumnsV18);

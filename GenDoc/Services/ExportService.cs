@@ -10,7 +10,7 @@ namespace GenDoc.Services
 {
     // Генерик-обгортка над ClosedXML: ViewModel описує лише колонки (заголовок +
     // селектор значення з T), сервіс нічого не знає про конкретні моделі (Recipient,
-    // AuditLogEntry, Room тощо) — тому один і той самий метод обслуговує будь-який
+    // AuditLogEntry, Room тощо) - тому один і той самий метод обслуговує будь-який
     // майбутній список без дублювання коду запису xlsx.
     public sealed class ExportService : IExportService
     {
@@ -125,7 +125,7 @@ namespace GenDoc.Services
                         && string.IsNullOrEmpty(courseOfficerSignature))
                     {
                         return new ExportResult(false, 0, null,
-                            "Немає жодного курсового офіцера серед постійного складу — " +
+                            "Немає жодного курсового офіцера серед постійного складу - " +
                             "відомість не сформовано. Позначте курсового офіцера в розділі «Постійний склад».");
                     }
 
@@ -162,7 +162,7 @@ namespace GenDoc.Services
             switch (value)
             {
                 case null:
-                    cell.Value = "—";
+                    cell.Value = "-";
                     break;
                 case DateTime dateTime:
                     cell.Value = dateTime;

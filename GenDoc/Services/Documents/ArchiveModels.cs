@@ -2,7 +2,7 @@ using GenDoc.Models.Enums;
 
 namespace GenDoc.Services.Documents
 {
-    /// <summary>FolderPath — обрана гілка дерева. Це префікс збереженого
+    /// <summary>FolderPath - обрана гілка дерева. Це префікс збереженого
     /// відносного шляху, а не окреме поле: дерево й список читають ОДИН рядок,
     /// тому розійтися не можуть.</summary>
     public record ArchiveFilter(
@@ -77,7 +77,7 @@ namespace GenDoc.Services.Documents
     public record GroupArchiveFilter(int? ExportTemplateId, int? DocxTemplateId, int? Year, int Skip, int Take);
 
     // Ідентифікатори шаблонів XLSX і DOCX живуть у різних таблицях з незалежною
-    // нумерацією, тож саме число нічого не каже про вид документа — вид має
+    // нумерацією, тож саме число нічого не каже про вид документа - вид має
     // їхати разом з ним, інакше фільтр знайде чужу відомість.
     public record GroupTemplateOption(int? ExportTemplateId, int? DocxTemplateId, string Name);
 

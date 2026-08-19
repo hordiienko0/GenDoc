@@ -24,7 +24,7 @@ namespace GenDoc.ViewModels.Staff
         [ObservableProperty] private bool isChecked;
     }
 
-    // Kind == null — генерація «в догонку» (без дат, без StaffEvent, лише шаблони PerRecipient).
+    // Kind == null - генерація «в догонку» (без дат, без StaffEvent, лише шаблони PerRecipient).
     public partial class StaffDocDialogViewModel : DialogViewModelBase
     {
         private readonly IGenerationService _generationService;

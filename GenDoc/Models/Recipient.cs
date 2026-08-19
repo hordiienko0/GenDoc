@@ -23,13 +23,13 @@ namespace GenDoc.Models
         public int? RoomId { get; set; }
         public Room? Room { get; set; }
 
-        // Одна людина може мати кілька одиниць зброї (автомат + пістолет) —
-        // тому зв'язок один-до-багатьох, власник — Weapon.RecipientId.
+        // Одна людина може мати кілька одиниць зброї (автомат + пістолет) -
+        // тому зв'язок один-до-багатьох, власник - Weapon.RecipientId.
         public ICollection<Weapon> Weapons { get; set; } = new List<Weapon>();
 
-        // Окрема структурована модель авто (марка + номер) — на відміну від
+        // Окрема структурована модель авто (марка + номер) - на відміну від
         // вільнотекстового поля Vehicle нижче (анкетні дані, лишене для сумісності).
-        // Поки не заповнюється імпортом і не використовується — консолідація потім.
+        // Поки не заповнюється імпортом і не використовується - консолідація потім.
         public int? AssignedVehicleId { get; set; }
         public Vehicle? AssignedVehicle { get; set; }
 
@@ -41,7 +41,7 @@ namespace GenDoc.Models
         // придатний · обмежено придатний · непридатний
         public string? FitnessCategory { get; set; }
 
-        // Анкетні дані (прикомандировані) — Б.1
+        // Анкетні дані (прикомандировані) - Б.1
         public string? Nationality { get; set; }
         public string? Vos { get; set; }
         public DateOnly? CourseArrivalDate { get; set; }
@@ -63,11 +63,11 @@ namespace GenDoc.Models
         public string? OriginUnit { get; set; }
         public string? Vehicle { get; set; }
 
-        // Постійний склад: курсовий офіцер (не звання/посада — окрема ознака,
+        // Постійний склад: курсовий офіцер (не звання/посада - окрема ознака,
         // впливає на фільтр списку й доступна для мапінгу плейсхолдерів шаблонів).
         public bool IsCourseOfficer { get; set; }
 
-        // Стать — для узгодження форм (прибув/прибула, таким/такою) і відмінювання,
+        // Стать - для узгодження форм (прибув/прибула, таким/такою) і відмінювання,
         // коли по батькові відсутнє або не дає однозначної відповіді.
         public Gender? Gender { get; set; }
 
@@ -76,7 +76,7 @@ namespace GenDoc.Models
         public string? RankAccusative { get; set; }
         public string? FullNameAccusative { get; set; }
 
-        // Дата посвідчення про відрядження — джерело для {{дата_посвідчення}} (UkrainianDate.Long).
+        // Дата посвідчення про відрядження - джерело для {{дата_посвідчення}} (UkrainianDate.Long).
         public DateOnly? TravelCertificateDate { get; set; }
 
         public DateTime? DeletedAt { get; set; }

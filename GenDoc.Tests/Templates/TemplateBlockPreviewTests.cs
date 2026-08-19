@@ -3,7 +3,7 @@ using GenDoc.Services.Templates;
 
 namespace GenDoc.Tests.Templates;
 
-// Прев'ю — дзеркало TemplateBlockDocxWriter на екрані. Тут перевіряємо саме те, що
+// Прев'ю - дзеркало TemplateBlockDocxWriter на екрані. Тут перевіряємо саме те, що
 // бачить оператор: звідки взялося кожне значення (легенда «з бази» / «вручну»).
 public class TemplateBlockPreviewTests
 {
@@ -81,8 +81,8 @@ public class TemplateBlockPreviewTests
 
         var lines = Lines(document, NoValues);
 
-        // Гриф — праворуч і окремим рядком на кожен перенос, заголовок — по центру
-        // й напівжирний, абзац — за шириною: рівно як пише writer.
+        // Гриф - праворуч і окремим рядком на кожен перенос, заголовок - по центру
+        // й напівжирний, абзац - за шириною: рівно як пише writer.
         Assert.Equal(4, lines.Count);
         Assert.Equal(BlockAlignment.Right, lines[0].Style.Alignment);
         Assert.Equal("Начальник курсу", lines[1].Runs.Single().Text);
@@ -112,7 +112,7 @@ public class TemplateBlockPreviewTests
         Assert.Contains(runs, r => r.Text.Contains("____"));
     }
 
-    // Excel-режим: прев'ю показує сітку з одним рядком даних — рівно тим рядком,
+    // Excel-режим: прев'ю показує сітку з одним рядком даних - рівно тим рядком,
     // який на генерації клонується по одному на людину.
     [Fact]
     public void Table_becomes_a_grid_with_one_substituted_row()
@@ -133,7 +133,7 @@ public class TemplateBlockPreviewTests
         Assert.Equal("солдат", Assert.Single(table.Cells[0]).Text);
         Assert.Equal(PreviewRunKind.DbValue, table.Cells[0][0].Kind);
 
-        // Ручний тег у колонці лишається плашкою — так само, як у тексті документа.
+        // Ручний тег у колонці лишається плашкою - так само, як у тексті документа.
         Assert.Equal(PreviewRunKind.ManualValue, Assert.Single(table.Cells[1]).Kind);
     }
 

@@ -5,7 +5,7 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Archive;
 
-// Вибір гілки в дереві — це ЩЕ ОДИН фільтр над тим самим списком, а не заміна
+// Вибір гілки в дереві - це ЩЕ ОДИН фільтр над тим самим списком, а не заміна
 // списку. Тому решта фільтрів, колонки, версії й підвантаження лишаються як є,
 // а гілка додає до запиту префікс збереженого шляху.
 public class ArchiveFolderFilterTests
@@ -70,7 +70,7 @@ public class ArchiveFolderFilterTests
         Assert.All(rows, r => Assert.StartsWith(@"Набір №15\", r.FileName, StringComparison.Ordinal));
     }
 
-    // Глибша гілка звужує сильніше — і не чіпає однойменну гілку в іншому наборі.
+    // Глибша гілка звужує сильніше - і не чіпає однойменну гілку в іншому наборі.
     [Fact]
     public async Task QueryAsync_WithNestedFolder_DoesNotLeakTheSameNameFromAnotherIntake()
     {
@@ -83,7 +83,7 @@ public class ArchiveFolderFilterTests
         Assert.Equal(1, row.Id);
     }
 
-    // «Без розкладки» — записи до переходу на папки, у них шляху немає взагалі.
+    // «Без розкладки» - записи до переходу на папки, у них шляху немає взагалі.
     // Вони мусять бути досяжні, а не випадати зі списку назавжди.
     [Fact]
     public async Task QueryAsync_UnsortedFolder_ReturnsRecordsThatHaveNoPath()
@@ -99,7 +99,7 @@ public class ArchiveFolderFilterTests
     }
 
     // Дерево будується з УСІХ документів, що проходять решту фільтрів, але без
-    // урахування самої обраної гілки — інакше клік по гілці обрізав би дерево
+    // урахування самої обраної гілки - інакше клік по гілці обрізав би дерево
     // до неї самої, і повернутися вгору стало б нікуди.
     [Fact]
     public async Task GetFolderTreeAsync_IgnoresTheSelectedBranchSoTheTreeStaysWhole()

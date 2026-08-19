@@ -5,13 +5,13 @@ namespace GenDoc.Services
 {
     public enum RankCategory { Officers, Sergeants, Soldiers, Unknown }
 
-    // Єдине джерело істини для старшинства звань — ніде більше в коді не повинно
+    // Єдине джерело істини для старшинства звань - ніде більше в коді не повинно
     // бути рядкових порівнянь звань чи магічних номерів "старший за X".
     public static class RankOrder
     {
         private static readonly CultureInfo Uk = CultureInfo.GetCultureInfo("uk-UA");
 
-        // Менше число — старше звання. Флотські відповідники зведені до тих самих
+        // Менше число - старше звання. Флотські відповідники зведені до тих самих
         // щаблів, що й сухопутні (капітан 1 рангу ~ полковник тощо).
         private static readonly Dictionary<string, int> Seniorities = new(StringComparer.Ordinal)
         {
@@ -48,7 +48,7 @@ namespace GenDoc.Services
             ["матрос"] = 20,
         };
 
-        // Найдовші рядки — перші, щоб "п/п-к" не "з'їлося" підрядком коротшого "п-к".
+        // Найдовші рядки - перші, щоб "п/п-к" не "з'їлося" підрядком коротшого "п-к".
         private static readonly (string From, string To)[] Abbreviations = new (string, string)[]
         {
             ("ст. лейтенант", "старший лейтенант"),
@@ -62,7 +62,7 @@ namespace GenDoc.Services
             ("к-н", "капітан"),
         }.OrderByDescending(a => a.Item1.Length).ToArray();
 
-        // Кваліфікатори служби, що не впливають на старшинство — прибираються повністю.
+        // Кваліфікатори служби, що не впливають на старшинство - прибираються повністю.
         private static readonly string[] Qualifiers =
         {
             "медичної служби", "юстиції", "запасу", "у відставці", "військової служби правопорядку"
@@ -86,7 +86,7 @@ namespace GenDoc.Services
             return Regex.Replace(text, @"\s+", " ").Trim();
         }
 
-        // Невідоме звання — int.MaxValue: сортується останнім, за алфавітом серед себе,
+        // Невідоме звання - int.MaxValue: сортується останнім, за алфавітом серед себе,
         // а не мовчки згортається в "солдат".
         public static int Seniority(string? rank)
         {

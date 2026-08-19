@@ -177,8 +177,8 @@ namespace GenDoc.Services.OrgTree
                 n.DeletedBy = user;
             }
 
-            // Якщо видалена папка — корінь набору (RootOrgNodeId), сам запис Intake
-            // теж іде в кошик разом з нею — інакше набір лишиться «висіти» без папки.
+            // Якщо видалена папка - корінь набору (RootOrgNodeId), сам запис Intake
+            // теж іде в кошик разом з нею - інакше набір лишиться «висіти» без папки.
             var intake = await db.Intakes.FirstOrDefaultAsync(i => i.RootOrgNodeId == node.Id);
             if (intake is not null)
             {

@@ -18,7 +18,7 @@ public class RunPackageReportingTests : IDisposable
 
     private static readonly IProgress<string> NoProgress = new Progress<string>(_ => { });
 
-    // Пакет з однією XLSX-відомістю зі свідомо пошкодженим вмістом — тобто
+    // Пакет з однією XLSX-відомістю зі свідомо пошкодженим вмістом - тобто
     // XLSX-фаза дасть рівно одну помилку.
     private static int SeedPackageWithFailingXlsx(TestDb db)
     {
@@ -66,7 +66,7 @@ public class RunPackageReportingTests : IDisposable
     // Той самий пакет, але додатково зі зламаним ГРУПОВИМ DOCX-шаблоном
     // (Template.Kind = Group). Навіщо: у пакеті з самою лише XLSX-відомістю
     // фаза групового DOCX узагалі не запускається (нема жодного Template
-    // з Kind = Group), тож docxGroup.Generated/Skipped/Errors лишаються 0 —
+    // з Kind = Group), тож docxGroup.Generated/Skipped/Errors лишаються 0 -
     // і "фікс", який підсумовує тільки docx + xlsx (забувши третю фазу),
     // усе одно пройшов би тест. Зламаний груповий DOCX-шаблон гарантує
     // docxGroup.Errors == 1, тож пропуск третьої фази стає видимим
@@ -107,8 +107,8 @@ public class RunPackageReportingTests : IDisposable
             packageId, _folder, new Dictionary<string, string>(),
             regenerateExisting: false, RosterSelection.Everyone, NoProgress);
 
-        // Три фази дають: docx — 0 (нема жодного PerRecipient-шаблону в пакеті),
-        // xlsx — 1 помилка (зламана відомість), груповий docx — 1 помилка
+        // Три фази дають: docx - 0 (нема жодного PerRecipient-шаблону в пакеті),
+        // xlsx - 1 помилка (зламана відомість), груповий docx - 1 помилка
         // (зламаний груповий шаблон). Це і є "внесок" кожної фази в підсумок.
         Assert.Equal(0, result.Errors);
         Assert.Equal(1, result.GroupErrors);
@@ -129,7 +129,7 @@ public class RunPackageReportingTests : IDisposable
     }
 
     // Дефект B2: рядок «ГРУПА: Назва: текст» розбирається як ПІБ = «ГРУПА»,
-    // шаблон = «—», а текст обрізається на першій двокрапці.
+    // шаблон = «-», а текст обрізається на першій двокрапці.
     [Fact]
     public async Task GetRunItemsAsync_ReportsGroupPhaseErrorWithTemplateNameIntact()
     {
@@ -151,9 +151,9 @@ public class RunPackageReportingTests : IDisposable
         Assert.DoesNotContain("ГРУПА", errorItem.Person, StringComparison.Ordinal);
     }
 
-    // Зворотна сумісність: у робочих базах уже є запуски, чий Summary — звичайний
+    // Зворотна сумісність: у робочих базах уже є запуски, чий Summary - звичайний
     // текст у старому форматі (до переходу на JSON). RunIssue.TryDeserialize має
-    // відхилити такий рядок (він не починається з '['), а GetRunItemsAsync —
+    // відхилити такий рядок (він не починається з '['), а GetRunItemsAsync -
     // впасти на запасний текстовий парсер, а не мовчки загубити історію помилок.
     [Fact]
     public async Task GetRunItemsAsync_FallsBackToLegacyTextFormat_ForRunsPredatingJsonSummary()
@@ -194,7 +194,7 @@ public class RunPackageReportingTests : IDisposable
     }
 
     // Знахідка фінального рев'ю (Finding 1): пропуск через порожній склад і
-    // незаповнені теги — не помилки, run.ErrorCount за них не росте, тож і
+    // незаповнені теги - не помилки, run.ErrorCount за них не росте, тож і
     // рядок у переліку не має бути позначений як "помилка:". Разом з тим
     // справжній збій (result.Success == false) лишається помилкою.
     [Fact]
@@ -212,7 +212,7 @@ public class RunPackageReportingTests : IDisposable
             var summary = RunIssue.Serialize(new List<RunIssue>
             {
                 new(RunIssue.PhaseXlsx, string.Empty, "Відомість-порожня",
-                    "пропущено — немає людей за фільтром придатності", IsError: false),
+                    "пропущено - немає людей за фільтром придатності", IsError: false),
                 new(RunIssue.PhaseXlsx, string.Empty, "Відомість-зламана",
                     "файл шаблону пошкоджено", IsError: true)
             });
@@ -236,7 +236,7 @@ public class RunPackageReportingTests : IDisposable
 
         var infoItem = Assert.Single(items.Where(i => i.TemplateName == "Відомість-порожня"));
         Assert.False(infoItem.IsError);
-        Assert.Equal("пропущено — немає людей за фільтром придатності", infoItem.Status);
+        Assert.Equal("пропущено - немає людей за фільтром придатності", infoItem.Status);
         Assert.DoesNotContain("помилка", infoItem.Status, StringComparison.Ordinal);
 
         var errorItem = Assert.Single(items.Where(i => i.TemplateName == "Відомість-зламана"));

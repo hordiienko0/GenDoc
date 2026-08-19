@@ -20,7 +20,7 @@ namespace GenDoc.ViewModels.Trash
         public DeletedFolderInfo Info { get; }
         public string Name => Info.Name;
         public string DeletedAtDisplay => Info.DeletedAt.ToString("dd.MM.yyyy HH:mm");
-        public string DeletedByDisplay => Info.DeletedBy ?? "—";
+        public string DeletedByDisplay => Info.DeletedBy ?? "-";
         public bool ParentDead => !Info.ParentAlive;
     }
 
@@ -32,9 +32,9 @@ namespace GenDoc.ViewModels.Trash
         }
 
         public DeletedDocumentInfo Info { get; }
-        public string Title => $"{Info.Person} — {Info.TemplateName} (в.{Info.Version})";
+        public string Title => $"{Info.Person} - {Info.TemplateName} (в.{Info.Version})";
         public string DeletedAtDisplay => Info.DeletedAt.ToString("dd.MM.yyyy HH:mm");
-        public string DeletedByDisplay => Info.DeletedBy ?? "—";
+        public string DeletedByDisplay => Info.DeletedBy ?? "-";
     }
 
     public partial class DeletedGroupDocumentRowViewModel : ObservableObject
@@ -45,9 +45,9 @@ namespace GenDoc.ViewModels.Trash
         }
 
         public DeletedGroupDocumentInfo Info { get; }
-        public string Title => $"{Info.TemplateName} — {Info.RecipientCount} осіб (в.{Info.Version})";
+        public string Title => $"{Info.TemplateName} - {Info.RecipientCount} осіб (в.{Info.Version})";
         public string DeletedAtDisplay => Info.DeletedAt.ToString("dd.MM.yyyy HH:mm");
-        public string DeletedByDisplay => Info.DeletedBy ?? "—";
+        public string DeletedByDisplay => Info.DeletedBy ?? "-";
     }
 
     public partial class TrashViewModel : ObservableObject

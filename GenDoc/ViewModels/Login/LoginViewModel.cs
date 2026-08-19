@@ -38,7 +38,7 @@ public partial class LoginViewModel : ObservableObject
     private string newProfileFullName = string.Empty;
 
     // PasswordBox навмисно не биндиться напряму (WPF не дає Password як DependencyProperty
-    // з міркувань безпеки) — code-behind вікна пише сюди значення при PasswordChanged.
+    // з міркувань безпеки) - code-behind вікна пише сюди значення при PasswordChanged.
     public string? DatabasePassword { private get; set; }
     public string? ProfilePassword { private get; set; }
     public string? NewProfilePassword { private get; set; }

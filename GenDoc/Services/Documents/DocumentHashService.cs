@@ -8,12 +8,12 @@ namespace GenDoc.Services.Documents
 {
     public interface IDocumentHashService
     {
-        // Хеш значень усіх нерукописних міток шаблону для людини —
+        // Хеш значень усіх нерукописних міток шаблону для людини -
         // порівнюється з GeneratedDocument.SourceHash для стану «застарів».
         string ComputeSourceHash(
             List<TemplateFieldMapping> mappings, Recipient recipient, OrganizationSettings? orgSettings);
 
-        // Анти-дубль групового документа: хеш впорядкованого складу відомості —
+        // Анти-дубль групового документа: хеш впорядкованого складу відомості -
         // (RecipientId, SourceHash) кожної людини у списку + Id шаблону.
         string ComputeRosterHash(int exportTemplateId, IReadOnlyList<(int RecipientId, string SourceHash)> roster);
     }

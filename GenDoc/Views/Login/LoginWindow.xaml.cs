@@ -20,7 +20,7 @@ public partial class LoginWindow : Window
         get
         {
             var version = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-            return version is null ? "Версія —" : $"Версія {version.Major}.{version.Minor}.{version.Build}";
+            return version is null ? "Версія -" : $"Версія {version.Major}.{version.Minor}.{version.Build}";
         }
     }
 

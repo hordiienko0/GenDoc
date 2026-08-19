@@ -12,7 +12,7 @@
 
         <TextBlock Text="Назва для документів" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,12,0,4"/>
         <TextBox Text="{Binding DocumentName, UpdateSourceTrigger=PropertyChanged}"/>
-        <TextBlock Text="Як підставляється в {{підрозділ}}; якщо порожньо — використовується назва"
+        <TextBlock Text="Як підставляється в {{підрозділ}}; якщо порожньо - використовується назва"
                    FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">

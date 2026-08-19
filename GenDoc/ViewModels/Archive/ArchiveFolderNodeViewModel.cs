@@ -5,7 +5,7 @@ using GenDoc.Services.Documents;
 namespace GenDoc.ViewModels.Archive
 {
     /// <summary>
-    /// Гілка дерева «Архіву». Дерево — це НАВІГАТОР, а не заміна списку:
+    /// Гілка дерева «Архіву». Дерево - це НАВІГАТОР, а не заміна списку:
     /// вибір гілки лише додає до запиту префікс шляху, а фільтри, колонки,
     /// версії й підвантаження праворуч лишаються недоторканими.
     /// </summary>
@@ -22,7 +22,7 @@ namespace GenDoc.ViewModels.Archive
 
             isSelected = selectedPath is not null && selectedPath == Path;
 
-            // Гілка, всередині якої лежить обране, мусить бути розгорнута — інакше
+            // Гілка, всередині якої лежить обране, мусить бути розгорнута - інакше
             // після перезавантаження дерева вибір «зникав» би під згорнутим вузлом.
             isExpanded = selectedPath is not null
                 && (selectedPath.StartsWith(Path + "\\", StringComparison.Ordinal) || isSelected);
@@ -36,7 +36,7 @@ namespace GenDoc.ViewModels.Archive
         [ObservableProperty] private bool isSelected;
         [ObservableProperty] private bool isExpanded;
 
-        /// <summary>Проходить усе піддерево — щоб зняти позначку зі старого
+        /// <summary>Проходить усе піддерево - щоб зняти позначку зі старого
         /// вибору, не перебудовуючи дерево цілком.</summary>
         public IEnumerable<ArchiveFolderNodeViewModel> SelfAndDescendants()
         {

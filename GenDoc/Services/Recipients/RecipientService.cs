@@ -31,7 +31,7 @@ namespace GenDoc.Services.Recipients
                 r.LastName + " " + r.FirstName + (r.MiddleName != null ? " " + r.MiddleName : ""),
                 r.Rank,
                 r.Position,
-                r.Unit != null ? r.Unit.Name : "—",
+                r.Unit != null ? r.Unit.Name : "-",
                 FormatRoom(r.Room))).ToList();
         }
 
@@ -45,10 +45,10 @@ namespace GenDoc.Services.Recipients
             db.SaveChanges();
         }
 
-        // Матеріалізуємо сутності одразу (ToList) — подальший пошук за словами
+        // Матеріалізуємо сутності одразу (ToList) - подальший пошук за словами
         // і форматування кімнати виконуються в пам'яті на C#, EF Core/SQLite
         // не повинен транслювати динамічне розбиття рядка на слова в SQL.
-        // Спільна точка для UI-списку (Search) і експорту (SearchEntities) — обидва
+        // Спільна точка для UI-списку (Search) і експорту (SearchEntities) - обидва
         // повинні бачити однакову вибірку з урахуванням активного пошуку/сортування.
         private List<Recipient> QueryEntities(string? searchText, RecipientSortColumn sortColumn, bool sortDescending)
         {
@@ -76,8 +76,8 @@ namespace GenDoc.Services.Recipients
                 RecipientSortColumn.Rank => sortDescending ? entities.OrderByDescending(r => r.Rank) : entities.OrderBy(r => r.Rank),
                 RecipientSortColumn.Position => sortDescending ? entities.OrderByDescending(r => r.Position) : entities.OrderBy(r => r.Position),
                 RecipientSortColumn.UnitName => sortDescending
-                    ? entities.OrderByDescending(r => r.Unit != null ? r.Unit.Name : "—")
-                    : entities.OrderBy(r => r.Unit != null ? r.Unit.Name : "—"),
+                    ? entities.OrderByDescending(r => r.Unit != null ? r.Unit.Name : "-")
+                    : entities.OrderBy(r => r.Unit != null ? r.Unit.Name : "-"),
                 RecipientSortColumn.Room => sortDescending
                     ? entities.OrderByDescending(r => FormatRoom(r.Room))
                     : entities.OrderBy(r => FormatRoom(r.Room)),
@@ -116,7 +116,7 @@ namespace GenDoc.Services.Recipients
 
         private static string FormatRoom(Room? room)
         {
-            if (room is null || string.IsNullOrWhiteSpace(room.Number)) return "—";
+            if (room is null || string.IsNullOrWhiteSpace(room.Number)) return "-";
 
             var building = room.Building?.Trim();
             if (string.IsNullOrEmpty(building)) return room.Number;

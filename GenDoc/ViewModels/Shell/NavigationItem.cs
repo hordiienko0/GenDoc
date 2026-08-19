@@ -15,7 +15,7 @@ public partial class NavigationItem : ObservableObject
     public Func<object> ContentFactory { get; }
     public NavigationBadgeKind BadgeKind { get; }
 
-    /// <summary>Гліф Segoe MDL2 Assets — у згорнутій панелі меню лишаються самі
+    /// <summary>Гліф Segoe MDL2 Assets - у згорнутій панелі меню лишаються самі
     /// іконки, тож кожен розділ мусить мати свою.</summary>
     public string Icon { get; }
 

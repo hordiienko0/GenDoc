@@ -419,7 +419,7 @@
 
                 <Expander Header="Уточнення відмінків" IsExpanded="False" Margin="0,10,0,0">
                     <StackPanel Margin="0,10,0,0">
-                        <TextBlock Text="Використовуються для {{звання_зв}}, {{піб_зв}}, {{прибув}}, {{таким}} у шаблонах. Якщо поле порожнє — форма обчислюється автоматично."
+                        <TextBlock Text="Використовуються для {{звання_зв}}, {{піб_зв}}, {{прибув}}, {{таким}} у шаблонах. Якщо поле порожнє - форма обчислюється автоматично."
                                    Style="{StaticResource FieldLabelStyle}" TextWrapping="Wrap" Margin="0,0,0,10"/>
 
                         <Grid Style="{StaticResource QuestionnaireRowStyle}">

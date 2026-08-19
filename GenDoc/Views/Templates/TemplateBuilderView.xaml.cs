@@ -6,7 +6,7 @@ namespace GenDoc.Views.Templates
 {
     public partial class TemplateBuilderView : UserControl
     {
-        // Куди вставляти мітку з палітри. Позиція курсора — стан самого TextBox,
+        // Куди вставляти мітку з палітри. Позиція курсора - стан самого TextBox,
         // тому це залишається у в'юсі, а не в'ю-моделі.
         private TextBox? _caretTarget;
 
@@ -15,14 +15,14 @@ namespace GenDoc.Views.Templates
             InitializeComponent();
         }
 
-        /// <summary>Тягнемо вліво — панель перегляду ширшає. Знак від'ємний, бо
+        /// <summary>Тягнемо вліво - панель перегляду ширшає. Знак від'ємний, бо
         /// роздільник стоїть на її лівому краю.</summary>
         private void PreviewResizeThumb_DragDelta(object sender, System.Windows.Controls.Primitives.DragDeltaEventArgs e)
         {
             if (DataContext is not TemplateBuilderViewModel viewModel) return;
 
             // Ширина панелі завжди явна (PreviewPanelWidth), тому підхоплювати
-            // «ту, що на екрані», більше не потрібно — просто зсув.
+            // «ту, що на екрані», більше не потрібно - просто зсув.
             viewModel.PreviewWidth = Math.Clamp(
                 viewModel.PreviewWidth - e.HorizontalChange,
                 TemplateBuilderViewModel.PreviewMinWidth,
@@ -35,7 +35,7 @@ namespace GenDoc.Views.Templates
 
             _caretTarget = textBox;
 
-            // Клік у поле робить блок «редагованим» — акцентна рамка з макета.
+            // Клік у поле робить блок «редагованим» - акцентна рамка з макета.
             if (DataContext is TemplateBuilderViewModel viewModel
                 && FindBlock(textBox) is { } block)
             {
@@ -50,7 +50,7 @@ namespace GenDoc.Views.Templates
             if (_caretTarget is null)
             {
                 if (DataContext is TemplateBuilderViewModel viewModel)
-                    viewModel.StatusMessage = "Спершу поставте курсор у текст блока — мітка вставиться в цю позицію.";
+                    viewModel.StatusMessage = "Спершу поставте курсор у текст блока - мітка вставиться в цю позицію.";
                 return;
             }
 

@@ -10,7 +10,7 @@ namespace GenDoc.Converters
         {
             var boolValue = value is bool b && b;
 
-            // ConverterParameter="Invert" — щоб не заводити дзеркальні властивості у в'ю-моделях
+            // ConverterParameter="Invert" - щоб не заводити дзеркальні властивості у в'ю-моделях
             if (parameter is string s && string.Equals(s, "Invert", StringComparison.OrdinalIgnoreCase))
             {
                 boolValue = !boolValue;

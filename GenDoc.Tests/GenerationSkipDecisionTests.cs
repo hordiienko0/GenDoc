@@ -27,7 +27,7 @@ public class GenerationSkipDecisionTests : IDisposable
         Assert.True(GenerationService.ExistsInOutputFolder(_folder, "Залік Додаток 8 06.08.2026.xlsx"));
     }
 
-    // Ключовий випадок: в архіві запис є, у теці файлу нема — генерувати треба.
+    // Ключовий випадок: в архіві запис є, у теці файлу нема - генерувати треба.
     [Fact]
     public void ExistsInOutputFolder_ArchivedButMissingFromFolder_IsFalse()
         => Assert.False(GenerationService.ExistsInOutputFolder(_folder, "Залік Додаток 8 06.08.2026.xlsx"));
@@ -40,7 +40,7 @@ public class GenerationSkipDecisionTests : IDisposable
         Assert.False(GenerationService.ExistsInOutputFolder(_folder, "   "));
     }
 
-    // Інша тека — той самий сенс: файлу тут нема, отже не пропускаємо.
+    // Інша тека - той самий сенс: файлу тут нема, отже не пропускаємо.
     [Fact]
     public void ExistsInOutputFolder_FileInDifferentFolder_IsFalse()
     {

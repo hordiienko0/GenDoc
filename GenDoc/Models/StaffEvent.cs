@@ -2,7 +2,7 @@ using GenDoc.Models.Enums;
 
 namespace GenDoc.Models
 {
-    // Період відрядження/відпустки постійного складу — визначає поточний "Стан" людини.
+    // Період відрядження/відпустки постійного складу - визначає поточний "Стан" людини.
     public class StaffEvent
     {
         public int Id { get; set; }

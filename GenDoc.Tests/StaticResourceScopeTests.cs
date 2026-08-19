@@ -7,7 +7,7 @@ namespace GenDoc.Tests;
 /// глобально (App.xaml та злиті в нього словники).
 ///
 /// Навіщо тест: посилання на ЧУЖИЙ локальний ресурс компілюється без жодного
-/// попередження, а падає аж у рантаймі — XamlParseException «Cannot find
+/// попередження, а падає аж у рантаймі - XamlParseException «Cannot find
 /// resource named …» валить застосунок при відкритті розділу. Саме так сталося
 /// з TableHeaderTextStyle: він оголошений усередині ImportView.xaml, а
 /// ArchiveView.xaml на нього послався. Усі 434 тести були зелені, застосунок
@@ -40,7 +40,7 @@ public class StaticResourceScopeTests
         var root = RepoRoot();
         var appDir = Path.Combine(root, "GenDoc");
 
-        // Глобальна область — App.xaml і все, що злите в нього.
+        // Глобальна область - App.xaml і все, що злите в нього.
         var globalFiles = new List<string> { Path.Combine(appDir, "App.xaml") };
         globalFiles.AddRange(Directory.GetFiles(Path.Combine(appDir, "Themes"), "*.xaml"));
 
@@ -73,7 +73,7 @@ public class StaticResourceScopeTests
 
         Assert.True(
             offenders.Count == 0,
-            "Посилання на ресурс поза областю видимості — застосунок упаде при відкритті розділу:\n"
+            "Посилання на ресурс поза областю видимості - застосунок упаде при відкритті розділу:\n"
             + string.Join("\n", offenders.Distinct()));
     }
 }

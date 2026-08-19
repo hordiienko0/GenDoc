@@ -6,7 +6,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace GenDoc.Services.Intakes
 {
-    // Фіксовані назви папок усередині кожного набору — на них орієнтується і
+    // Фіксовані назви папок усередині кожного набору - на них орієнтується і
     // створення набору (IntakeService.CreateAsync), і розкладання людей за
     // придатністю при імпорті (ImportService).
     public static class IntakeFolderNames
@@ -150,7 +150,7 @@ namespace GenDoc.Services.Intakes
 
                 intake.RootOrgNodeId = rootNode.Id;
                 _auditLogService.Log(db, "Створено набір", "Intake", intake.Id, null, intake.DisplayNumber,
-                    $"3 папки (Всі, Придатні, Обмежено придатні), {request.DateStart:dd.MM.yyyy} — {request.DateEnd:dd.MM.yyyy}");
+                    $"3 папки (Всі, Придатні, Обмежено придатні), {request.DateStart:dd.MM.yyyy} - {request.DateEnd:dd.MM.yyyy}");
                 await db.SaveChangesAsync();
             }
 
@@ -185,7 +185,7 @@ namespace GenDoc.Services.Intakes
 
             var intakes = await db.Intakes.AsNoTracking().OrderByDescending(i => i.Number).ToListAsync();
 
-            // Один груповий запит на всі набори — інакше N наборів = N запитів на екрані.
+            // Один груповий запит на всі набори - інакше N наборів = N запитів на екрані.
             var peopleCounts = await db.Recipients
                 .Where(r => r.IntakeId != null)
                 .GroupBy(r => r.IntakeId!.Value)

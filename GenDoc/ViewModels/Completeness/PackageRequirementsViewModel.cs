@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 namespace GenDoc.ViewModels.Completeness
 {
     // Пункт випадайки «додати шаблон». Саме тип, а не (int Id, string Name):
-    // WPF не вміє DisplayMemberPath="Name" по ValueTuple — імена полів кортежу
+    // WPF не вміє DisplayMemberPath="Name" по ValueTuple - імена полів кортежу
     // існують лише на етапі компіляції, у рантаймі це Item1/Item2, та й ті поля,
     // а не властивості. Біндинг мовчки віддавав порожні рядки.
     public record TemplateChoice(int Id, string Name);
@@ -40,7 +40,7 @@ namespace GenDoc.ViewModels.Completeness
     {
         public RequirementTemplateRowViewModel(MatrixTemplateInfo info, bool hasDocuments)
         {
-            // MatrixTemplateInfo.LinkId — не-nullable int, тож щойно доданий шаблон
+            // MatrixTemplateInfo.LinkId - не-nullable int, тож щойно доданий шаблон
             // приходить із сентинелом 0 (див. AddTemplateAsync). Тут він мусить стати
             // null, інакше збереження візьме гілку «оновити наявний зв'язок» і піде
             // шукати зв'язок з Id = 0, якого не існує.
@@ -114,7 +114,7 @@ namespace GenDoc.ViewModels.Completeness
 
             using var db = _dbFactory.CreateDbContext();
             PackageName = await db.GenerationPackages.Where(p => p.Id == packageId)
-                .Select(p => p.Name).FirstOrDefaultAsync() ?? "—";
+                .Select(p => p.Name).FirstOrDefaultAsync() ?? "-";
 
             var links = await _completenessService.GetPackageLinksAsync(packageId);
             var withDocs = await _completenessService.GetTemplateIdsWithDocumentsAsync(
@@ -318,8 +318,8 @@ namespace GenDoc.ViewModels.Completeness
             var optionalRegular = Rows.Count(r => r.Regular == TemplateRequirement.Optional);
             var optionalLimited = Rows.Count(r => r.Limited == TemplateRequirement.Optional);
 
-            PreviewText = $"Для набору №{_previewIntakeId}: обов'язкових — {requiredRegular} (звич.) / {requiredLimited} (обмеж.), " +
-                          $"опційних — {optionalRegular} / {optionalLimited}";
+            PreviewText = $"Для набору №{_previewIntakeId}: обов'язкових - {requiredRegular} (звич.) / {requiredLimited} (обмеж.), " +
+                          $"опційних - {optionalRegular} / {optionalLimited}";
         }
 
         private void Validate()
@@ -327,7 +327,7 @@ namespace GenDoc.ViewModels.Completeness
             if (Rows.Count == 0)
             {
                 // Пакет без docx-шаблонів (лише групові XLSX-відомості) не бере участі
-                // в матриці комплектності — вимоги нема до чого застосовувати.
+                // в матриці комплектності - вимоги нема до чого застосовувати.
                 ValidationError = Rows.Count == 0 && ExportRows.Count == 0
                     ? "Пакет повинен мати хоча б один шаблон"
                     : null;

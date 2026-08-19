@@ -7,7 +7,7 @@ namespace GenDoc.Tests.Archive;
 
 // Документ живе довше за людину: людину можна прибрати в кошик (м'яке видалення),
 // а її документи лишаються в архіві. Лічильник унизу екрана рахує їх завжди, бо
-// не чіпає таблицю Recipients, — тож список зобов'язаний показувати те саме.
+// не чіпає таблицю Recipients, - тож список зобов'язаний показувати те саме.
 public class ArchiveSoftDeletedPersonTests
 {
     private static readonly ArchiveFilter NoFilter = new(null, null, null, null, null, 0, 200);

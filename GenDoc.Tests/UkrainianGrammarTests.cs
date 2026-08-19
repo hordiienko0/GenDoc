@@ -12,7 +12,7 @@ public class UkrainianGrammarTests
     [InlineData("Андрійович", Gender.Male)]
     [InlineData("Олександрівна", Gender.Female)]
     [InlineData("Іванівна", Gender.Female)]
-    [InlineData("Andriyivna", Gender.Male)] // не українська форма — падає на дефолт/override нижче
+    [InlineData("Andriyivna", Gender.Male)] // не українська форма - падає на дефолт/override нижче
     public void Detect_FromPatronymicSuffix(string middleName, Gender expected)
     {
         var recipient = new Recipient { LastName = "Тест", FirstName = "Тест", MiddleName = middleName };
@@ -79,7 +79,7 @@ public class UkrainianGrammarTests
         Assert.Equal("такою", UkrainianGrammar.SuchPronoun(Gender.Female));
     }
 
-    // 32 прізвища з джерела групового рапорту (Шаблон_Рапорт_котлове_ГРУПОВИЙ) —
+    // 32 прізвища з джерела групового рапорту (Шаблон_Рапорт_котлове_ГРУПОВИЙ) -
     // ті самі, що йдуть у RosterOrdering; перевіряємо, що жодне не падає в
     // виняток і що типові закінчення відмінюються за правилом, а не залишаються
     // незмінними без потреби.

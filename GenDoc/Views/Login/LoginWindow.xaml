@@ -8,7 +8,7 @@
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=login:LoginViewModel, IsDesignTimeCreatable=False}"
         Style="{StaticResource {x:Type Window}}"
-        Title="Вхід — GenDoc" Height="660" Width="440"
+        Title="Вхід - GenDoc" Height="660" Width="440"
         Background="{StaticResource BackgroundBrush}"
         WindowStyle="None" ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen"
@@ -25,7 +25,7 @@
             <Border DockPanel.Dock="Top" Height="30" Background="{StaticResource NavyDeepBrush}"
                     MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <Grid>
-                    <TextBlock Text="GenDoc — Облік особового складу" Margin="14,0,0,0"
+                    <TextBlock Text="GenDoc - Облік особового складу" Margin="14,0,0,0"
                                FontSize="12" Foreground="White" VerticalAlignment="Center"/>
                     <Button x:Name="CloseButton" Content="&#xE711;" Click="CloseButton_Click"
                             FontFamily="Segoe MDL2 Assets" Width="42" HorizontalAlignment="Right"
@@ -78,7 +78,7 @@
                             <TextBlock Text="ХНУПС ім. Івана Кожедуба" HorizontalAlignment="Center"
                                        Margin="0,14,0,0" FontSize="15" FontWeight="Bold"
                                        Foreground="{StaticResource TextPrimaryBrush}"/>
-                            <TextBlock Text="GenDoc — облік особового складу" HorizontalAlignment="Center"
+                            <TextBlock Text="GenDoc - облік особового складу" HorizontalAlignment="Center"
                                        Margin="0,4,0,0" FontSize="12"
                                        Foreground="{StaticResource TextSecondaryBrush}"/>
                         </StackPanel>
@@ -90,7 +90,7 @@
                             <TextBlock Text="Пароль бази даних" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" Margin="0 0 0 6"/>
                             <PasswordBox x:Name="DatabasePasswordBox"
                                          PasswordChanged="DatabasePasswordBox_PasswordChanged"/>
-                            <!-- Кнопка на всю ширину картки — як у макеті -->
+                            <!-- Кнопка на всю ширину картки - як у макеті -->
                             <Button Content="Розблокувати" Command="{Binding UnlockDatabaseCommand}"
                                     Margin="0 18 0 0" Padding="0,11" HorizontalAlignment="Stretch"/>
                         </StackPanel>
@@ -150,7 +150,7 @@
                                    TextWrapping="Wrap" Margin="24,12,24,0"/>
 
                         <!-- Підвал картки: версія збірки й режим бази. Версію
-                             читаємо зі складання, а не пишемо рядком — інакше
+                             читаємо зі складання, а не пишемо рядком - інакше
                              вона розійдеться з реальною при першому ж релізі. -->
                         <Border Grid.Row="4" Background="{StaticResource RowAltBrush}" Margin="0,22,0,0"
                                 BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,0,0"

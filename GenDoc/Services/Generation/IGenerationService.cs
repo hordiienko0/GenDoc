@@ -10,13 +10,13 @@ namespace GenDoc.Services.Generation
 
     /// <summary>Що показати на порожньому боці екрана генерації. Теки виводу
     /// тут навмисно немає: у прогоні вона не зберігається, та й повторний
-    /// запуск переписує документи — такого в один клік бути не повинно.</summary>
+    /// запуск переписує документи - такого в один клік бути не повинно.</summary>
     public record LastRunInfo(
         int PackageId, string PackageName, DateTime RunAt,
         int GeneratedCount, int SkippedCount, int ErrorCount);
 
-    // AllRecipients=true — весь особовий склад (RecipientIds ігнорується);
-    // AllRecipients=false — лише RecipientIds. FitnessFilter, PermanentStaffOnly,
+    // AllRecipients=true - весь особовий склад (RecipientIds ігнорується);
+    // AllRecipients=false - лише RecipientIds. FitnessFilter, PermanentStaffOnly,
     // RankCategories і Ranks застосовуються завжди, поверх будь-якого з двох варіантів,
     // усі фільтри комбінуються через AND. Порожні RankCategories/Ranks = без обмеження.
     public sealed record RosterSelection(
@@ -34,7 +34,7 @@ namespace GenDoc.Services.Generation
     public interface IGenerationService
     {
         List<(int Id, string Name, string? Description, int TemplateCount)> GetPackages();
-        /// <summary>Аудиторія розділяє видимість шаблонів; замовчування Intake —
+        /// <summary>Аудиторія розділяє видимість шаблонів; замовчування Intake -
         /// звичайна генерація й пакети постійного складу не бачать.</summary>
         List<(int Id, string Name)> GetAllTemplates(
             Models.Enums.TemplateAudience audience = Models.Enums.TemplateAudience.Intake);
@@ -57,7 +57,7 @@ namespace GenDoc.Services.Generation
         List<string> GetManualTags(int packageId);
         bool PackageNeedsCourseOfficer(int packageId);
 
-        /// <summary>Останній запуск — щоб порожній бік екрана показував, що
+        /// <summary>Останній запуск - щоб порожній бік екрана показував, що
         /// саме запускали минулого разу, а не самий лише напис «оберіть пакет».
         /// null, якщо запусків не було або пакет уже видалили.</summary>
         LastRunInfo? GetLastRun();

@@ -26,7 +26,7 @@ namespace GenDoc.ViewModels.Archive
         public string VersionText => $"в.{Dto.Version}";
         public string DateText => Dto.CreatedAt.ToString("dd.MM.yyyy HH:mm", Uk);
         public string Author => Dto.Author;
-        public string SizeText => Dto.SizeBytes > 0 ? $"{Dto.SizeBytes / 1024.0:0.#} КБ" : "—";
+        public string SizeText => Dto.SizeBytes > 0 ? $"{Dto.SizeBytes / 1024.0:0.#} КБ" : "-";
         public string SourceText => Dto.SourceType switch
         {
             DocumentSourceType.ManualUpload => "завантажено вручну",
@@ -50,7 +50,7 @@ namespace GenDoc.ViewModels.Archive
         public AttachmentDto Dto { get; }
         public string FileName => Dto.FileName;
         public string DateText => Dto.UploadedAt.ToString("dd.MM.yyyy HH:mm", Uk);
-        public string NoteText => string.IsNullOrWhiteSpace(Dto.Note) ? "—" : Dto.Note!;
+        public string NoteText => string.IsNullOrWhiteSpace(Dto.Note) ? "-" : Dto.Note!;
     }
 
     public partial class VersionHistoryViewModel : DialogViewModelBase
@@ -69,7 +69,7 @@ namespace GenDoc.ViewModels.Archive
             _recipientId = recipientId;
             _templateId = templateId;
             _documentId = documentId;
-            HeaderText = $"{personName} — {templateName}";
+            HeaderText = $"{personName} - {templateName}";
         }
 
         public string HeaderText { get; }

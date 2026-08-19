@@ -10,7 +10,7 @@ namespace GenDoc.Tests.Generation;
 //
 // Раніше тег просто падав у unfilledTags: документ виходив, місце підпису в
 // ньому лишалось порожнім, а нотатка губилась серед решти. Порожній підпис у
-// відомості ніхто не помічає, доки папір не піде далі — тому тепер це зупинка
+// відомості ніхто не помічає, доки папір не піде далі - тому тепер це зупинка
 // з явною помилкою, а не тиха генерація.
 public class CourseOfficerMissingGuardTests : IDisposable
 {
@@ -25,7 +25,7 @@ public class CourseOfficerMissingGuardTests : IDisposable
 
     // Найпростіша ДІЙСНА книга: шапка, рядок-шаблон із {{піб}} і клітинка
     // підпису під таблицею. Файл справжній, тож без сторожа відомість
-    // згенерувалася б успішно — саме це й робить тест показовим.
+    // згенерувалася б успішно - саме це й робить тест показовим.
     private static byte[] BuildSheetWithSignature()
     {
         using var workbook = new XLWorkbook();
@@ -71,7 +71,7 @@ public class CourseOfficerMissingGuardTests : IDisposable
             FieldKey = nameof(ExportFieldKey.FullNameFormatted),
             PlaceholderTag = "{{піб}}", SourceType = MappingSourceType.Recipient
         });
-        // ColumnIndex = 0 — ознака «тег поза таблицею» (XlsxGenerationService
+        // ColumnIndex = 0 - ознака «тег поза таблицею» (XlsxGenerationService
         // ділить мапінги саме за цим). Підпис стоїть під відомістю, не в колонці,
         // тож із ненульовим індексом він не підставився б узагалі.
         template.ColumnMappings.Add(new ExportTemplateColumnMapping
@@ -135,7 +135,7 @@ public class CourseOfficerMissingGuardTests : IDisposable
     }
 
     // Суть дроплиста: підписує ОБРАНИЙ, а не той, кого база віддала першим.
-    // Ковальчук стоїть раніше за Id, тож старий авто-вибір узяв би саме його —
+    // Ковальчук стоїть раніше за Id, тож старий авто-вибір узяв би саме його -
     // тест проходить лише тоді, коли вибір оператора справді доїжджає до аркуша.
     [Fact]
     public void RunPackage_WithChosenCourseOfficer_SignsWithThatPerson()
@@ -177,7 +177,7 @@ public class CourseOfficerMissingGuardTests : IDisposable
     }
 
     // Екран генерації показує дропліст лише тим пакетам, яким підпис справді
-    // потрібен — інакше зайве поле висіло б над кожним запуском.
+    // потрібен - інакше зайве поле висіло б над кожним запуском.
     [Fact]
     public void PackageNeedsCourseOfficer_TrueOnlyWhenSomeTemplateAsksForTheSignature()
     {

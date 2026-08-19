@@ -82,7 +82,7 @@ namespace GenDoc.Services.Audit
             }
             else
             {
-                changeDisplay = e.NewValue ?? e.OldValue ?? "—";
+                changeDisplay = e.NewValue ?? e.OldValue ?? "-";
             }
 
             return new AuditLogListItem(

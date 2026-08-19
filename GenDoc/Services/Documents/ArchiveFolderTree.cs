@@ -2,7 +2,7 @@ using System.Globalization;
 
 namespace GenDoc.Services.Documents
 {
-    /// <summary>Вузол дерева «Архіву». Path — повний шлях від кореня, саме за
+    /// <summary>Вузол дерева «Архіву». Path - повний шлях від кореня, саме за
     /// ним список фільтрується; без нього дві однойменні гілки в різних наборах
     /// показували б документи одна одної.</summary>
     public sealed record ArchiveFolderNode(
@@ -14,10 +14,10 @@ namespace GenDoc.Services.Documents
     /// <summary>
     /// Дерево папок «Архіву», зібране РОЗБОРОМ збережених відносних шляхів.
     ///
-    /// Шлях у полі FileName — уже результат <see cref="DocumentFolderLayout"/>:
+    /// Шлях у полі FileName - уже результат <see cref="DocumentFolderLayout"/>:
     /// рівно те, що записали на диск. Читаючи його, екран фізично не може
     /// розійтися з тим, що лежить у папках. Другий, незалежний розрахунок із
-    /// полів документа з часом розійшовся б — у цьому проєкті так уже двічі
+    /// полів документа з часом розійшовся б - у цьому проєкті так уже двічі
     /// ставалося (мапи тегів; розкладка аркуша, звідки й узявся
     /// TemplateSheetLayout).
     ///
@@ -33,7 +33,7 @@ namespace GenDoc.Services.Documents
         private static readonly char[] Separators = { '\\', '/' };
 
         // Кирилиця й SQLite NOCASE не дружать, тож упорядковуємо в пам'яті
-        // українським порівнянням — інакше «Ї» опинялося б після латиниці.
+        // українським порівнянням - інакше «Ї» опинялося б після латиниці.
         private static readonly CompareInfo Ukrainian = CultureInfo.GetCultureInfo("uk-UA").CompareInfo;
 
         public static IReadOnlyList<ArchiveFolderNode> Build(IEnumerable<string?> relativePaths)
@@ -49,7 +49,7 @@ namespace GenDoc.Services.Documents
             return root.ToNodes();
         }
 
-        /// <summary>Гілки шляху БЕЗ імені файлу. Останній сегмент — це файл, а
+        /// <summary>Гілки шляху БЕЗ імені файлу. Останній сегмент - це файл, а
         /// не папка; шлях без роздільника означає запис, зроблений до переходу
         /// на папки.</summary>
         private static IReadOnlyList<string> FoldersOf(string? relativePath)

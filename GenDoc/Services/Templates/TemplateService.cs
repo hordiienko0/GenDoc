@@ -14,7 +14,7 @@ namespace GenDoc.Services.Templates
     {
         private static readonly Regex PlaceholderRegex = new(@"\{\{[^{}]+\}\}", RegexOptions.Compiled);
 
-        // Обчислювані тегі рушія блоків — не поля, тому в мапінг не потрапляють.
+        // Обчислювані тегі рушія блоків - не поля, тому в мапінг не потрапляють.
         private static readonly HashSet<string> ReservedBlockTags = new(StringComparer.Ordinal)
         {
             "{{роздільник}}", "{{номер}}", "{{кількість_осіб}}"
@@ -53,7 +53,7 @@ namespace GenDoc.Services.Templates
             }
             catch (IOException ex)
             {
-                // Найчастіше — файл відкритий у Word.
+                // Найчастіше - файл відкритий у Word.
                 return new UploadResult(false, $"Не вдалося прочитати файл: {ex.Message}");
             }
             catch (UnauthorizedAccessException)
@@ -69,10 +69,10 @@ namespace GenDoc.Services.Templates
             }
             catch (Exception ex)
             {
-                // Тільки тут «не документ Word» — це справді достовірний висновок:
+                // Тільки тут «не документ Word» - це справді достовірний висновок:
                 // читання файлу вже пройшло успішно, отже проблема саме у форматі вмісту.
                 return new UploadResult(false,
-                    "Файл не є документом Word (.docx). Якщо це текстова чернетка — відкрийте її у Word "
+                    "Файл не є документом Word (.docx). Якщо це текстова чернетка - відкрийте її у Word "
                     + $"і збережіть як .docx. Технічна причина: {ex.Message}");
             }
 
@@ -209,7 +209,7 @@ namespace GenDoc.Services.Templates
         internal sealed record ScanResult(List<(string Tag, bool IsInsideBlock)> Tags, bool HasBlock);
 
         // Обхід повторює той самий порядок, що й рушій (BlockStructure): блокові
-        // діти контейнера, а всередину таблиці по маркерні рядки — лише поки не
+        // діти контейнера, а всередину таблиці по маркерні рядки - лише поки не
         // відкрито блок рівня документа.
         internal static ScanResult ScanPlaceholders(WordprocessingDocument doc)
         {
@@ -233,7 +233,7 @@ namespace GenDoc.Services.Templates
 
                         // Маркер збігається зі звичайним регексом плейсхолдера.
                         // Сюди він доходить лише з елемента всередині вже
-                        // відкритого блоку — генерація такий шаблон відхилить,
+                        // відкритого блоку - генерація такий шаблон відхилить,
                         // але в мапінг «{{#…}}» потрапляти не має.
                         if (BlockStructure.IsMarkerTag(match.Value)) continue;
 
@@ -288,7 +288,7 @@ namespace GenDoc.Services.Templates
                 ScanSiblings(BlockStructure.BlockChildren(container).ToList(), insideTable: false);
 
                 // Дзеркало підмітання рушія (ProcessContainer): дістає теги на
-                // будь-якій глибині, куди структурний обхід вище не заходить —
+                // будь-якій глибині, куди структурний обхід вище не заходить -
                 // елемент керування вмістом Word, таблиця, вкладена в комірку.
                 // Безпечно за побудовою: CollectTags лише "підвищує" тег до
                 // insideBlock=true й ніколи не знижує, тож уже зібрані теги
@@ -296,7 +296,7 @@ namespace GenDoc.Services.Templates
                 // може) додаються як insideBlock=false. IsMarkerTag усередині
                 // CollectTags так само захищає від потрапляння маркера в мапінг.
                 // Перевірки на "маркер, що недосяжний" тут немає навмисно:
-                // сканер працює при завантаженні й не має блокувати його —
+                // сканер працює при завантаженні й не має блокувати його -
                 // відмова за таким шаблоном лишається задачею генерації.
                 foreach (var paragraph in container.Descendants<Paragraph>())
                     CollectTags(paragraph, insideBlock: false);

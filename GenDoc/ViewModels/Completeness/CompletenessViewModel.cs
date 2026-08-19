@@ -32,7 +32,7 @@ namespace GenDoc.ViewModels.Completeness
         private readonly Services.Generation.IManualTagFormBuilder _manualTagFormBuilder;
 
         /// <summary>Ключ, під яким запам'ятовуються минулі значення саме для
-        /// цього місця — щоб вони не змішувалися з іншими екранами.</summary>
+        /// цього місця - щоб вони не змішувалися з іншими екранами.</summary>
         private const string ManualTagContextKey = "completeness-regenerate";
         private readonly IServiceProvider _serviceProvider;
         private readonly DispatcherTimer _searchDebounceTimer;
@@ -66,7 +66,7 @@ namespace GenDoc.ViewModels.Completeness
 
         public ObservableCollection<MatrixRowViewModel> Rows { get; } = new();
 
-        // Порядок колонок — джерело правди для генератора DataGrid-колонок у view.
+        // Порядок колонок - джерело правди для генератора DataGrid-колонок у view.
         public List<MatrixTemplateInfo> Columns { get; private set; } = new();
 
         public event Action? ColumnsChanged;
@@ -356,7 +356,7 @@ namespace GenDoc.ViewModels.Completeness
                 var confirm = MessageBox.Show(
                     $"Набір «{SelectedIntake?.Label}» · пакет «{SelectedPackage?.Label}» · буде згенеровано:\n" +
                     $"обов'язкових: {missingRequired.Count}\n" +
-                    $"Також згенерувати опційні ({missingOptional.Count})? Так — з опційними, Ні — лише обов'язкові.",
+                    $"Також згенерувати опційні ({missingOptional.Count})? Так - з опційними, Ні - лише обов'язкові.",
                     "Генерація відсутніх документів", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
                 if (confirm == MessageBoxResult.Cancel) return;
                 includeOptional = confirm == MessageBoxResult.Yes;
@@ -537,7 +537,7 @@ namespace GenDoc.ViewModels.Completeness
 
             var vm = new VersionHistoryViewModel(
                 _archiveService, cell.RecipientId, cell.TemplateId, docId,
-                row?.FullName ?? "—", template?.Name ?? "—");
+                row?.FullName ?? "-", template?.Name ?? "-");
             await vm.InitializeAsync();
             _dialogService.ShowDialog(vm, Application.Current.MainWindow);
 
@@ -552,7 +552,7 @@ namespace GenDoc.ViewModels.Completeness
             var template = Columns.FirstOrDefault(t => t.TemplateId == cell.TemplateId);
             var dialog = new SaveFileDialog
             {
-                FileName = $"{row?.FullName} — {template?.Name}.docx"
+                FileName = $"{row?.FullName} - {template?.Name}.docx"
             };
             if (dialog.ShowDialog() != true) return;
 

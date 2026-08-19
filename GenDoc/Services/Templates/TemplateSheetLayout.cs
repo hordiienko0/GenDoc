@@ -6,7 +6,7 @@ namespace GenDoc.Services.Templates
     public record SheetBlockPlacement(int BlockIndex, int FirstRow, int LastRow);
 
     /// <summary>Розкладка аркуша: скільки колонок, які рядки зайняв кожен блок,
-    /// де шапка таблиці й де рядок-шаблон (0 — таблиці на аркуші немає).</summary>
+    /// де шапка таблиці й де рядок-шаблон (0 - таблиці на аркуші немає).</summary>
     public record SheetLayout(
         IReadOnlyList<SheetBlockPlacement> Placements,
         int ColumnCount,
@@ -17,7 +17,7 @@ namespace GenDoc.Services.Templates
     /// <summary>
     /// Одна розкладка на двох споживачів: за нею TemplateBlockXlsxWriter кладе
     /// клітинки, і за нею ж конструктор підписує, який блок які рядки займе.
-    /// Тримати це в одному місці обов'язково — інакше підпис на екрані й реальна
+    /// Тримати це в одному місці обов'язково - інакше підпис на екрані й реальна
     /// книга розійдуться рівно так, як колись розійшлись мапи тегів.
     /// </summary>
     public static class TemplateSheetLayout
@@ -54,7 +54,7 @@ namespace GenDoc.Services.Templates
                         break;
 
                     case TemplateBlockKind.Table when block.Table is not null:
-                        // Шапка колонок і під нею рядок-шаблон — рівно два рядки.
+                        // Шапка колонок і під нею рядок-шаблон - рівно два рядки.
                         headerRowIndex = row;
                         templateRowIndex = row + 1;
                         row += 2;
@@ -84,7 +84,7 @@ namespace GenDoc.Services.Templates
             return letters;
         }
 
-        /// <summary>Діапазон на кшталт «A1:C4» — те, що оператор побачить у Excel.</summary>
+        /// <summary>Діапазон на кшталт «A1:C4» - те, що оператор побачить у Excel.</summary>
         public static string Range(SheetLayout layout)
             => layout.LastRow < 1
                 ? string.Empty

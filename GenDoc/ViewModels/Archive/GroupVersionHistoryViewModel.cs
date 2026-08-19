@@ -23,7 +23,7 @@ namespace GenDoc.ViewModels.Archive
         public string VersionText => $"в.{Dto.Version}";
         public string DateText => Dto.CreatedAt.ToString("dd.MM.yyyy HH:mm", Uk);
         public string Author => Dto.Author;
-        public string SizeText => Dto.SizeBytes > 0 ? $"{Dto.SizeBytes / 1024.0:0.#} КБ" : "—";
+        public string SizeText => Dto.SizeBytes > 0 ? $"{Dto.SizeBytes / 1024.0:0.#} КБ" : "-";
         public string PeopleText => $"{Dto.RecipientCount} осіб";
         public bool IsCurrent => Dto.IsCurrent;
         public bool CanOpen => Dto.HasContent;
@@ -37,7 +37,7 @@ namespace GenDoc.ViewModels.Archive
         private readonly int? _docxTemplateId;
 
         // Групова серія ключується парою (ExportTemplateId, DocxTemplateId): XLSX-відомість
-        // задає лише перше, груповий DOCX — лише друге; другий — завжди null для XLSX.
+        // задає лише перше, груповий DOCX - лише друге; другий - завжди null для XLSX.
         public GroupVersionHistoryViewModel(
             IDocumentArchiveService archiveService, int? exportTemplateId, int? docxTemplateId, string templateName)
         {

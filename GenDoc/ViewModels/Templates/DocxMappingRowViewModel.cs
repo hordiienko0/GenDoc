@@ -16,7 +16,7 @@ public partial class DocxMappingRowViewModel : ObservableObject
         new(MappingSourceType.Manual, "Вручну при генерації")
     };
 
-    // Поля-дати з TemplateFieldCatalog.RecipientFields — узгоджено з
+    // Поля-дати з TemplateFieldCatalog.RecipientFields - узгоджено з
     // GenerationService.GetRecipientFieldValue, де саме ці три ключі дато-форматуються.
     private static readonly HashSet<string> DateFieldNames = new(StringComparer.Ordinal)
     {

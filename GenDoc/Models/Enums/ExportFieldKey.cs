@@ -87,7 +87,7 @@ namespace GenDoc.Models.Enums
             [ExportFieldKey.GradeRandom34] = "Оцінка (3 або 4, стабільна)",
             [ExportFieldKey.GradeOverall34] = "Загальна оцінка (середнє по рядку)",
             [ExportFieldKey.CourseOfficerSignature] = "Підпис курсового офіцера",
-            [ExportFieldKey.Empty] = "— не заповнювати —"
+            [ExportFieldKey.Empty] = "- не заповнювати -"
         };
     }
 }

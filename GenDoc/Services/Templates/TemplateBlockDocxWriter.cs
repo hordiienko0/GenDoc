@@ -64,7 +64,7 @@ namespace GenDoc.Services.Templates
             IReadOnlyDictionary<int, SignatoryInfo>? signatories)
         {
             // Вирівнювання й жирність тепер приходять зі стилю блока; типові
-            // значення в BlockStyleDefaults — це рівно те, що раніше стояло тут
+            // значення в BlockStyleDefaults - це рівно те, що раніше стояло тут
             // константами (гриф праворуч, заголовок центр і bold, абзац по ширині).
             var style = BlockStyleDefaults.Resolve(block.Kind, block.Style);
 
@@ -95,7 +95,7 @@ namespace GenDoc.Services.Templates
                     break;
 
                 case TemplateBlockKind.Table:
-                    // Таблиця будується окремо (BuildTable) — вона не абзац.
+                    // Таблиця будується окремо (BuildTable) - вона не абзац.
                     break;
             }
         }
@@ -108,7 +108,7 @@ namespace GenDoc.Services.Templates
             if (line.RecipientId is int id && signatories is not null)
                 signatories.TryGetValue(id, out person);
 
-            // Підписанта не обрано або його вже нема в постійному складі — лишаємо
+            // Підписанта не обрано або його вже нема в постійному складі - лишаємо
             // порожні місця під ручний підпис, а не викидаємо рядок.
             var rank = person?.Rank ?? string.Empty;
             var name = person?.ShortName ?? string.Empty;
@@ -121,7 +121,7 @@ namespace GenDoc.Services.Templates
 
         /// <summary>
         /// Таблиця на всю ширину сторінки. Якщо рядок повторюється на кожну особу,
-        /// його обгортають маркерні рядки {{#особи}}/{{/особи}} — саме той синтаксис,
+        /// його обгортають маркерні рядки {{#особи}}/{{/особи}} - саме той синтаксис,
         /// який розгортає наявний рушій (BlockStructure: маркером є ЦІЛИЙ рядок
         /// таблиці, тож маркер кладемо в першу комірку, а решту лишаємо порожніми).
         /// Маркерні рядки зникають при генерації разом із розгортанням блоку.
@@ -133,7 +133,7 @@ namespace GenDoc.Services.Templates
                     new TableWidth { Width = "5000", Type = TableWidthUnitValues.Pct },
                     Borders()));
 
-            // Шапка в документі лишається ліворуч (у книзі — по центру), тож
+            // Шапка в документі лишається ліворуч (у книзі - по центру), тож
             // вирівнювання їй передає writer, а не розв'язувач.
             var headerStyle = BlockStyleDefaults.ForTableHeader(style, BlockAlignment.Left);
 
@@ -194,7 +194,7 @@ namespace GenDoc.Services.Templates
         {
             var runProperties = new RunProperties();
 
-            // Незадані гарнітура/розмір/колір не пишуться взагалі — Word тоді
+            // Незадані гарнітура/розмір/колір не пишуться взагалі - Word тоді
             // бере своє з docDefaults, як і до появи форматування. Bold/Italic
             // так само з'являються лише коли ввімкнені.
             if (style.FontFamily is { Length: > 0 } font)
@@ -215,7 +215,7 @@ namespace GenDoc.Services.Templates
                 runProperties.AppendChild(new Color { Val = color });
 
             var run = new Run(runProperties);
-            // Space="preserve" — інакше Word з'їдає провідні й кінцеві пробіли,
+            // Space="preserve" - інакше Word з'їдає провідні й кінцеві пробіли,
             // а в підписах вони тримають розмітку рядка.
             run.AppendChild(new Text(text) { Space = SpaceProcessingModeValues.Preserve });
 

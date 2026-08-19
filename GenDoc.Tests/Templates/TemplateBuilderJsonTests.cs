@@ -95,8 +95,8 @@ public class TemplateBuilderJsonTests
     [InlineData("{зіпсований json")]
     public void Broken_or_missing_source_gives_null_instead_of_throwing(string? json)
     {
-        // Порожній BuilderJson — звичайний випадок: шаблон завантажений файлом.
-        // Зіпсований — аварійний, але й він не має валити екран шаблонів.
+        // Порожній BuilderJson - звичайний випадок: шаблон завантажений файлом.
+        // Зіпсований - аварійний, але й він не має валити екран шаблонів.
         Assert.Null(TemplateBuilderJson.Deserialize(json));
     }
 }

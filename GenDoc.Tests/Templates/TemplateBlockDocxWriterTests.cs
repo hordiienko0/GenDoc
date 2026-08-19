@@ -95,7 +95,7 @@ public class TemplateBlockDocxWriterTests
             Assert.Single(ParagraphsOf(TemplateBlockDocxWriter.Write(doc, signatories))));
     }
 
-    // Підписанта могли не обрати або він міг зникнути з постійного складу — рядок
+    // Підписанта могли не обрати або він міг зникнути з постійного складу - рядок
     // мусить лишитися під ручний підпис, а не пропасти з документа.
     [Fact]
     public void Signature_without_a_known_person_still_leaves_a_line()
@@ -138,7 +138,7 @@ public class TemplateBlockDocxWriterTests
         }, repeatPerPerson))
     });
 
-    // Повторюваний рядок — це маркерні рядки {{#особи}}/{{/особи}} навколо рядка
+    // Повторюваний рядок - це маркерні рядки {{#особи}}/{{/особи}} навколо рядка
     // з тегами. Саме такий синтаксис розгортає наявний рушій, тож конструктор
     // не заводить власного способу повторення.
     [Fact]
@@ -153,7 +153,7 @@ public class TemplateBlockDocxWriterTests
         Assert.Equal("{{/особи}}", rows[3][0]);
 
         // Маркер має займати ВЕСЬ рядок (BlockStructure зчіплює текст усіх комірок),
-        // тому решта комірок маркерного рядка — порожні.
+        // тому решта комірок маркерного рядка - порожні.
         Assert.Equal(2, rows[1].Count);
         Assert.Equal(string.Empty, rows[1][1]);
     }
@@ -168,7 +168,7 @@ public class TemplateBlockDocxWriterTests
     }
 
     // Найважливіше про таблицю: зібраний .docx має читатись наявним сканером так
-    // само, як завантажений файлом — інакше шаблон мовчки лишиться PerRecipient
+    // само, як завантажений файлом - інакше шаблон мовчки лишиться PerRecipient
     // і на генерації дасть документ на одну людину замість списку.
     [Fact]
     public void Scanner_sees_a_repeating_block_and_marks_tags_inside_it()
@@ -185,7 +185,7 @@ public class TemplateBlockDocxWriterTests
         // це обчислюваний тег рушія (номер копії), а не поле з бази.
         Assert.Equal(new[] { "{{піб}}" }, scan.Tags.Select(t => t.Tag));
 
-        // Самі маркери — не поля, у мапінг вони потрапляти не мають.
+        // Самі маркери - не поля, у мапінг вони потрапляти не мають.
         Assert.DoesNotContain(scan.Tags, t => t.Tag.Contains('#') || t.Tag.Contains('/'));
     }
 

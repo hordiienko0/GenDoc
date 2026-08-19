@@ -15,13 +15,13 @@ public class ArchiveExportAndFilterTests : IDisposable
         if (Directory.Exists(_outputFolder)) Directory.Delete(_outputFolder, recursive: true);
     }
 
-    // Дві людини з однаковим ПІБ у різних гілках дерева — перевіряє і підтеки
+    // Дві людини з однаковим ПІБ у різних гілках дерева - перевіряє і підтеки
     // з OrgPathSnapshot, і розв'язання колізії імен файлів.
     private static List<int> SeedTwoDocumentsWithSameName(TestDb db, string? orgPathA, string? orgPathB)
     {
         using var ctx = db.Factory.CreateDbContext();
 
-        // GeneratedDocument.GeneratedByUserId — обов'язковий FK на UserProfile.
+        // GeneratedDocument.GeneratedByUserId - обов'язковий FK на UserProfile.
         // Користувача з Id=1 тут не існує, поки не заведемо його самі
         // (FakeCurrentUser лише підмінює контекст виконання, у БД нічого не пише).
         var user = new UserProfile
@@ -192,7 +192,7 @@ public class ArchiveExportAndFilterTests : IDisposable
         var result = await TestServices.Archive(db).RegenerateAsync(docId, new Dictionary<string, string>());
 
         Assert.False(result.Success);
-        Assert.Equal("Шаблон видалено — перегенерація неможлива", result.ErrorMessage);
+        Assert.Equal("Шаблон видалено - перегенерація неможлива", result.ErrorMessage);
     }
 
     [Fact]

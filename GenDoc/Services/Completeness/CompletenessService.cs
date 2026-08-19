@@ -86,7 +86,7 @@ namespace GenDoc.Services.Completeness
             // (b) зв'язки пакета з вимогами
             var templates = await GetPackageLinksInternalAsync(db, packageId);
 
-            // (c) всі актуальні документи набору по шаблонах пакета — один запит
+            // (c) всі актуальні документи набору по шаблонах пакета - один запит
             var templateIds = templates.Select(t => t.TemplateId).ToList();
             var docs = await db.GeneratedDocuments
                 .Where(g => g.IntakeId == intakeId && g.IsCurrent && templateIds.Contains(g.TemplateId))
@@ -157,14 +157,14 @@ namespace GenDoc.Services.Completeness
             if (recipient is null || template is null)
                 return new ArchiveOpResult(false, "Людину або шаблон не знайдено");
 
-            // Груповий шаблон формує один документ для всього складу одразу — матриця
+            // Груповий шаблон формує один документ для всього складу одразу - матриця
             // комплектності показує клітинку "людина × шаблон", але для групового
             // шаблону такої клітинки по суті нема, і добудувати з нього документ саме
             // для цієї людини не можна. Перевірка тут ловить це раніше і чіткіше, ніж
             // якби GenerateOne довелось відмовляти через маркер блоку в тексті.
             if (template.Kind == TemplateKind.Group)
                 return new ArchiveOpResult(false,
-                    $"Шаблон «{template.Name}» — груповий: він формує один документ для всього складу, "
+                    $"Шаблон «{template.Name}» - груповий: він формує один документ для всього складу, "
                     + "а не для однієї людини. Сформувати з нього відсутній документ із матриці для "
                     + "одного одержувача не можна.");
 
@@ -199,7 +199,7 @@ namespace GenDoc.Services.Completeness
                     GeneratedAt = DateTime.Now,
                     GeneratedByUserId = _currentUserContext.CurrentUserId ?? 0,
                     FileName = SecureTempFileService.SanitizeFileName(
-                        $"{recipient.LastName} {recipient.FirstName} — {template.Name}.docx"),
+                        $"{recipient.LastName} {recipient.FirstName} - {template.Name}.docx"),
                     SizeBytes = bytes.LongLength,
                     ContentHash = Convert.ToHexString(SHA256.HashData(bytes)),
                     SourceHash = _documentHashService.ComputeSourceHash(mappings, recipient, orgSettings),
@@ -252,7 +252,7 @@ namespace GenDoc.Services.Completeness
                 .Select(pt => pt.TemplateId).ToListAsync();
 
             var nameTemplate = await db.AppSettings.Select(s => s.ExportFileNameTemplate).FirstOrDefaultAsync();
-            if (string.IsNullOrWhiteSpace(nameTemplate)) nameTemplate = "{ПІБ} — {Шаблон}";
+            if (string.IsNullOrWhiteSpace(nameTemplate)) nameTemplate = "{ПІБ} - {Шаблон}";
 
             var warnings = new List<string>();
             var peopleExported = 0;
@@ -462,7 +462,7 @@ namespace GenDoc.Services.Completeness
                 foreach (var row in rows)
                 {
                     // FirstOrDefault, а не First: рядок може посилатись на зв'язок,
-                    // якого вже нема (видалили в паралельному сеансі) — тоді просто
+                    // якого вже нема (видалили в паралельному сеансі) - тоді просто
                     // створюємо його заново, а не валимо весь діалог винятком.
                     var link = row.LinkId is int linkId ? existing.FirstOrDefault(l => l.Id == linkId) : null;
 

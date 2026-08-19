@@ -17,7 +17,7 @@ public class DocumentVersionChainTests
     {
         using var ctx = db.Factory.CreateDbContext();
 
-        // GeneratedDocument.GeneratedByUserId — обов'язковий FK на UserProfile.
+        // GeneratedDocument.GeneratedByUserId - обов'язковий FK на UserProfile.
         // Користувача з Id=1 тут не існує, поки не заведемо його самі
         // (FakeCurrentUser лише підмінює контекст виконання, у БД нічого не пише).
         var user = new UserProfile
@@ -203,7 +203,7 @@ public class DocumentVersionChainTests
     }
 
     // Легасі-запис без збереженого вмісту не має падати з внутрішнім
-    // «Sequence contains no elements» — користувач мусить побачити пояснення.
+    // «Sequence contains no elements» - користувач мусить побачити пояснення.
     [Fact]
     public async Task OpenAsync_DocumentWithoutStoredContent_ReturnsFailureInsteadOfThrowing()
     {
@@ -251,7 +251,7 @@ public class DocumentVersionChainTests
 
     // Фінальне рев'ю, Finding 6: рядок GeneratedDocument міг зникнути між тим, як
     // список відкрили, і кліком по ньому (видалення в іншому сеансі). FirstAsync
-    // на батьківському рядку падав з "Sequence contains no elements" — той самий
+    // на батьківському рядку падав з "Sequence contains no elements" - той самий
     // сирий текст, який ця гілка мала прибрати з користувацьких повідомлень.
     [Fact]
     public async Task OpenAsync_StaleDocumentId_ReturnsFailureInsteadOfThrowing()

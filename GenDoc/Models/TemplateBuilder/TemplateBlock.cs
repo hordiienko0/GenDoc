@@ -11,7 +11,7 @@ namespace GenDoc.Models.TemplateBuilder
     }
 
     /// <summary>Один рядок підпису. Посадова особа береться з постійного складу
-    /// (Recipient.IntakeId == null), а не вписується руками — тому тут ідентифікатор,
+    /// (Recipient.IntakeId == null), а не вписується руками - тому тут ідентифікатор,
     /// а не текст.</summary>
     public record SignatureLine(string Caption, int? RecipientId);
 
@@ -22,7 +22,7 @@ namespace GenDoc.Models.TemplateBuilder
     public enum BlockAlignment { Left, Center, Right, Justify }
 
     /// <summary>Оформлення блока. Кожне поле nullable і означає «успадкувати
-    /// типове для цього типу блока» — див. BlockStyleDefaults. Не косметика, а
+    /// типове для цього типу блока» - див. BlockStyleDefaults. Не косметика, а
     /// сумісність: у збереженому раніше BuilderJson цього об'єкта немає взагалі,
     /// тож старий шаблон мусить розв'язатися в точно ту саму поведінку, що й до
     /// появи форматування.</summary>
@@ -31,7 +31,7 @@ namespace GenDoc.Models.TemplateBuilder
         double? FontSize = null,
         bool? Bold = null,
         bool? Italic = null,
-        // RRGGBB без «#» — так його беруть і OpenXML, і ClosedXML.
+        // RRGGBB без «#» - так його беруть і OpenXML, і ClosedXML.
         string? Color = null,
         BlockAlignment? Alignment = null)
     {
@@ -41,25 +41,25 @@ namespace GenDoc.Models.TemplateBuilder
             && Italic is null && Color is null && Alignment is null;
     }
 
-    /// <summary>Блок конструктора. Заповнені лише поля, доречні для свого Kind —
+    /// <summary>Блок конструктора. Заповнені лише поля, доречні для свого Kind -
     /// решта null, щоб серіалізація не тягла порожнечу.</summary>
     public record TemplateBlock(
         TemplateBlockKind Kind,
         string? Text = null,
         TableSpec? Table = null,
         IReadOnlyList<SignatureLine>? Signatures = null,
-        // Номер аркуша книги (лише для відомості); 0 — перший. У Word-документі
-        // аркушів немає, і в збереженому раніше JSON поля теж немає — обидва
+        // Номер аркуша книги (лише для відомості); 0 - перший. У Word-документі
+        // аркушів немає, і в збереженому раніше JSON поля теж немає - обидва
         // випадки дають 0, тобто «єдиний аркуш».
         int SheetIndex = 0,
         // Хвостовим, щоб позиційні виклики в наявному коді й тестах лишилися цілі.
         BlockStyle? Style = null);
 
-    /// <summary>Word — документ на людину (Template + .docx); Excel — відомість на
+    /// <summary>Word - документ на людину (Template + .docx); Excel - відомість на
     /// весь список (ExportTemplate + .xlsx із рядком-шаблоном).</summary>
     public enum TemplateBuilderMode { Word, Excel }
 
-    /// <summary>Те, що лягає в BuilderJson. Version — щоб потім не гадати,
+    /// <summary>Те, що лягає в BuilderJson. Version - щоб потім не гадати,
     /// яким кодом це писалося. Mode і RepeatSheetPerDate додані другим кроком
     /// (Excel-режим): у збереженого раніше JSON їх немає, і замовчування Word/false
     /// саме й описує ті шаблони.</summary>
@@ -68,7 +68,7 @@ namespace GenDoc.Models.TemplateBuilder
         int Version = TemplateBuilderDocument.CurrentVersion,
         TemplateBuilderMode Mode = TemplateBuilderMode.Word,
         bool RepeatSheetPerDate = false,
-        // Назви аркушів книги; порожньо — один аркуш із типовою назвою.
+        // Назви аркушів книги; порожньо - один аркуш із типовою назвою.
         IReadOnlyList<string>? SheetNames = null)
     {
         public const int CurrentVersion = 1;

@@ -9,7 +9,7 @@ namespace GenDoc.Tests;
 
 // Наскрізний прогін СПРАВЖНЬОГО файлу з теки «шаблони» через справжній генератор.
 // Саме цей шаблон видавав «ахінею»: заголовок «ВІДОМІСТЬ результатів контрольного
-// заняття…» повторювався на кожного слухача, а рядок даних лишався порожнім —
+// заняття…» повторювався на кожного слухача, а рядок даних лишався порожнім -
 // бо рядком-шаблоном обиралась шапка (два теги в одній клітинці заголовка).
 public class DopuskTemplateEndToEndTests
 {
@@ -67,7 +67,7 @@ public class DopuskTemplateEndToEndTests
             }
         }
 
-        // Рядок даних — сьомий, а не шапка (третій).
+        // Рядок даних - сьомий, а не шапка (третій).
         Assert.Equal(7, templateRowIndex);
 
         var roster = new[]
@@ -88,7 +88,7 @@ public class DopuskTemplateEndToEndTests
         var sheet = produced.Worksheets.First();
         var cells = sheet.RangeUsed()!.CellsUsed().Select(c => c.GetString()).ToList();
 
-        // Заголовок рівно один раз — раніше він дублювався на кожного зі списку.
+        // Заголовок рівно один раз - раніше він дублювався на кожного зі списку.
         var headerCount = cells.Count(t => t.Contains("результатів контрольного заняття"));
         Assert.Equal(1, headerCount);
 

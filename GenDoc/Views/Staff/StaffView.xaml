@@ -56,7 +56,7 @@
         <!-- Шапка -->
         <StackPanel Grid.Row="0" Margin="0,0,0,14">
             <TextBlock Text="Постійний склад" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-            <TextBlock Text="Офіцери, прапорщики та цивільний персонал — документи поза наборами" FontSize="12"
+            <TextBlock Text="Офіцери, прапорщики та цивільний персонал - документи поза наборами" FontSize="12"
                        Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
         </StackPanel>
 
@@ -113,10 +113,10 @@
                               Visibility="{Binding HasRows, Converter={StaticResource BoolToVisibility}}">
                         <DataGrid.RowStyle>
                             <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
-                                <!-- ContextMenu живе у власному піддереві — ані RelativeSource AncestorType, ані
+                                <!-- ContextMenu живе у власному піддереві - ані RelativeSource AncestorType, ані
                                      ElementName з кореня UserControl його не дістають, коли меню задане через
                                      Setter (не інлайном у видимому дереві). Tag рядка несе ViewModel;
-                                     PlacementTarget у прив'язках MenuItem — сам рядок. -->
+                                     PlacementTarget у прив'язках MenuItem - сам рядок. -->
                                 <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=DataGrid}}"/>
                                 <Setter Property="ContextMenu">
                                     <Setter.Value>
@@ -144,7 +144,7 @@
                                  частка більша, ніж в інших списках; підказка на кожній
                                  колонці гарантує, що обрізане читається повністю. -->
                             <!-- Тут ПІБ ПОВНИЙ («Пономаренко Сергій Олександрович»), тому
-                                 змінних полів два — ПІБ і посада, і частки між ними
+                                 змінних полів два - ПІБ і посада, і частки між ними
                                  доречні. Звання фіксоване з тієї ж причини, що й у
                                  «Особовому складі». -->
                             <DataGridTextColumn Header="ПІБ" Binding="{Binding FullName}" Width="2.1*"
@@ -160,7 +160,7 @@
                                                  ElementStyle="{StaticResource TruncatedCellStyle}"/>
 
                             <!-- «КО» у 40 px не вміщалось навіть як заголовок і читалось
-                                 «К…» — з обрізаної літери зрозуміти, що це ознака курсового
+                                 «К…» - з обрізаної літери зрозуміти, що це ознака курсового
                                  офіцера, неможливо. Повний підпис і підказка. -->
                             <DataGridTemplateColumn Header="Курсовий офіцер" Width="128">
                                 <DataGridTemplateColumn.CellTemplate>
@@ -195,7 +195,7 @@
 
             <!-- Швидке оформлення. Вилазить лише коли когось обрано: усі дії всередині
                  однаково вимагають вибору (CanExecute = HasSelection), тож порожня
-                 плашка просто з'їдала ширину списку. Колонка Auto — згортається в нуль. -->
+                 плашка просто з'їдала ширину списку. Колонка Auto - згортається в нуль. -->
             <Border Grid.Column="1" Width="296" Background="{StaticResource PanelBrush}"
                     BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,1,1" Margin="-1,0,0,0"
                     Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">

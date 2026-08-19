@@ -92,9 +92,9 @@
             </StackPanel>
             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="✓ є" FontSize="11" Foreground="{StaticResource SuccessBrush}" Margin="0,0,10,0"/>
-                <TextBlock Text="— немає" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,10,0"/>
+                <TextBlock Text="- немає" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,10,0"/>
                 <TextBlock Text="! застарів" FontSize="11" Foreground="{StaticResource WarningBrush}" Margin="0,0,10,0"/>
-                <TextBlock Text="(—) опційний відсутній" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                <TextBlock Text="(-) опційний відсутній" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
             </StackPanel>
         </Grid>
 
@@ -125,7 +125,7 @@
                 <Border Grid.Row="0" Background="{StaticResource SuccessSoftBrush}" BorderBrush="{StaticResource SuccessBrush}"
                         BorderThickness="0,0,0,1" Padding="12,8"
                         Visibility="{Binding IsFullyComplete, Converter={StaticResource BoolToVisibility}}">
-                    <TextBlock Text="Пакет повний — усі обов'язкові документи згенеровано" FontSize="12.5"
+                    <TextBlock Text="Пакет повний - усі обов'язкові документи згенеровано" FontSize="12.5"
                                Foreground="{StaticResource TextPrimaryBrush}"/>
                 </Border>
 

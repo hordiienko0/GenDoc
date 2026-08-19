@@ -27,7 +27,7 @@ public class DocumentGenerationServiceTests
         Assert.Empty(unfilled);
     }
 
-    // Заміна не повинна зсувати w:tab — таб має лишитись між двома замінами на своєму місці.
+    // Заміна не повинна зсувати w:tab - таб має лишитись між двома замінами на своєму місці.
     [Fact]
     public void ReplaceInParagraph_PlaceholderAdjacentToTab_KeepsTabInPlace()
     {
@@ -80,7 +80,7 @@ public class DocumentGenerationServiceTests
     }
 
     // Наскрізний прогін через GenerateOne: плейсхолдер у тілі документа, в комірці таблиці,
-    // у колонтитулах — усі мають замінитись.
+    // у колонтитулах - усі мають замінитись.
     [Fact]
     public void GenerateOne_ReplacesPlaceholdersInBodyTableAndHeaderFooter()
     {
@@ -118,7 +118,7 @@ public class DocumentGenerationServiceTests
         }
     }
 
-    // Шаблон без жодного плейсхолдера — текст не повинен змінитись взагалі.
+    // Шаблон без жодного плейсхолдера - текст не повинен змінитись взагалі.
     [Fact]
     public void GenerateOne_NoPlaceholders_LeavesTextUnchanged()
     {
@@ -154,7 +154,7 @@ public class DocumentGenerationServiceTests
     }
 
     // Груповий DOCX: повторюваний блок {{#список}}…{{/список}} клонується по одному
-    // на кожного одержувача, {{роздільник}} — ";" для всіх, крім останнього.
+    // на кожного одержувача, {{роздільник}} - ";" для всіх, крім останнього.
     [Fact]
     public void GenerateGroup_ClonesBlockPerRecipient_WithSeparatorAndTabPreserved()
     {
@@ -191,7 +191,7 @@ public class DocumentGenerationServiceTests
             Assert.Equal("майорІВАНЕНКО Іван;", ConcatText(paragraphs[1]));
 
             Assert.Equal("капітанПЕТРЕНКО Петро;", ConcatText(paragraphs[2]));
-            Assert.Equal("лейтенантСИДОРЕНКО Сидір.", ConcatText(paragraphs[3])); // останній — крапка
+            Assert.Equal("лейтенантСИДОРЕНКО Сидір.", ConcatText(paragraphs[3])); // останній - крапка
 
             Assert.Equal("Кількість: 3", ConcatText(paragraphs[4]));
         }
@@ -201,7 +201,7 @@ public class DocumentGenerationServiceTests
         }
     }
 
-    // Три позначені одержувачі (підмножина) — стільки рядків і з'являється, у тому
+    // Три позначені одержувачі (підмножина) - стільки рядків і з'являється, у тому
     // порядку, у якому передані, незалежно від загального розміру складу.
     [Fact]
     public void GenerateGroup_SubsetOfThree_ProducesExactlyThreeInGivenOrder()
@@ -239,7 +239,7 @@ public class DocumentGenerationServiceTests
         }
     }
 
-    // Незакритий блок — явна помилка генерації, а не тихий частковий документ.
+    // Незакритий блок - явна помилка генерації, а не тихий частковий документ.
     [Fact]
     public void GenerateGroup_UnclosedBlock_ReturnsFailure()
     {
@@ -268,7 +268,7 @@ public class DocumentGenerationServiceTests
         Assert.False(File.Exists(outputPath));
     }
 
-    // Вкладені блоки не підтримуються — явна помилка.
+    // Вкладені блоки не підтримуються - явна помилка.
     [Fact]
     public void GenerateGroup_NestedBlocks_ReturnsFailure()
     {
@@ -301,12 +301,12 @@ public class DocumentGenerationServiceTests
 
     // ПЕРЕГЛЯНУТО для гілки generate-one-marker-guard: раніше цей тест закріплював,
     // що GenerateOne МОВЧКИ стирає маркер блоку («Список: {{#список}}», «кінець
-    // {{/список}}») як звичайний незаповнений тег — саме та поведінка, яку ця
+    // {{/список}}») як звичайний незаповнений тег - саме та поведінка, яку ця
     // гілка прибирає. Тепер GenerateOne натомість відмовляє: документ, у якому є
     // маркер блоку, не мусить генеруватись без списку і без попередження. Маркер
-    // тут — усередині тексту абзацу, тож його ловить саме неприв'язаний
+    // тут - усередині тексту абзацу, тож його ловить саме неприв'язаний
     // BlockStructure.EmbeddedMarkerRegex (той самий детектор, що й на груповому
-    // шляху в GuardResidualMarkers), а не анкоровані OpenRegex/CloseRegex — вони
+    // шляху в GuardResidualMarkers), а не анкоровані OpenRegex/CloseRegex - вони
     // вимагають, щоб маркер займав абзац цілком, і тут би нічого не знайшли.
     [Fact]
     public void GenerateOne_MarkerEmbeddedInParagraphText_RefusesGeneration()
@@ -348,9 +348,9 @@ public class DocumentGenerationServiceTests
 
     // Маркер, що займає цілий абзац сам по собі (типовий вигляд шаблону,
     // насправді призначеного для GenerateGroup, який помилково потрапив у
-    // GenerateOne — саме той сценарій, від якого захищають перевірки Kind у
+    // GenerateOne - саме той сценарій, від якого захищають перевірки Kind у
     // DocumentArchiveService.RegenerateAsync і CompletenessService.GenerateForPairAsync;
-    // цей тест — резервний вартовий самого рушія на випадок, якщо перевірка Kind
+    // цей тест - резервний вартовий самого рушія на випадок, якщо перевірка Kind
     // не спрацювала).
     [Fact]
     public void GenerateOne_StandaloneBlockMarker_RefusesGeneration()
@@ -390,7 +390,7 @@ public class DocumentGenerationServiceTests
         }
     }
 
-    // Вартовий не мусить спрацьовувати на звичайному шаблоні без блоків —
+    // Вартовий не мусить спрацьовувати на звичайному шаблоні без блоків -
     // інакше він зламав би основний, найчастіший шлях GenerateOne.
     [Fact]
     public void GenerateOne_TemplateWithoutMarkers_StillSucceeds()

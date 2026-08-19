@@ -36,7 +36,7 @@ namespace GenDoc.Services.Documents
         Task<List<RunDto>> GetRunsAsync(int? intakeId, int? year);
         Task<List<RunItemDto>> GetRunItemsAsync(int runId);
 
-        // Групові документи (XLSX-відомості на весь список людей) — окрема
+        // Групові документи (XLSX-відомості на весь список людей) - окрема
         // персональна модель, без RecipientId.
         Task<List<GroupDocumentRowDto>> QueryGroupAsync(GroupArchiveFilter filter);
         Task<List<GroupTemplateOption>> GetGroupTemplateOptionsAsync();

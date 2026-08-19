@@ -93,7 +93,7 @@ namespace GenDoc.ViewModels.Personnel
             return dialog;
         }
 
-        // Переміщення людей: будь-який вузол; перехід між наборами — попередження.
+        // Переміщення людей: будь-який вузол; перехід між наборами - попередження.
         public static NodePickerDialogViewModel ForRecipients(
             OrgTreeViewModel tree, IReadOnlyCollection<int?> sourceIntakeIds, int count)
         {
@@ -113,7 +113,7 @@ namespace GenDoc.ViewModels.Personnel
         public static NodePickerDialogViewModel ForRestoreParent(OrgTreeViewModel tree)
         {
             var dialog = new NodePickerDialogViewModel(
-                "Батьківська папка видалена — оберіть нову для відновлення", null);
+                "Батьківська папка видалена - оберіть нову для відновлення", null);
             dialog.Build(tree, _ => true);
             return dialog;
         }

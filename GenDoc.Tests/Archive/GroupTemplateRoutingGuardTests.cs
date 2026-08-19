@@ -7,13 +7,13 @@ namespace GenDoc.Tests.Archive;
 
 // Template.Kind == Group, потрапивши в один із двох одноосібних шляхів генерації
 // (перегенерація з архіву, добудова відсутнього документа з матриці комплектності),
-// раніше мовчки віддавався в GenerateOne — і той стирав маркер повторюваного блоку,
+// раніше мовчки віддавався в GenerateOne - і той стирав маркер повторюваного блоку,
 // видаючи документ без списку людей і без жодного попередження. Обидва тести тут
-// перевіряють, що новий шар — перевірка Kind ПЕРЕД зверненням до GenerateOne — ловить
+// перевіряють, що новий шар - перевірка Kind ПЕРЕД зверненням до GenerateOne - ловить
 // це раніше і повертає користувачу зрозуміле пояснення замість спроби згенерувати.
 public class GroupTemplateRoutingGuardTests
 {
-    // GeneratedDocument.GeneratedByUserId — обов'язковий FK на UserProfile.
+    // GeneratedDocument.GeneratedByUserId - обов'язковий FK на UserProfile.
     // Той самий трюк, що в DocumentVersionChainTests/GroupDocumentArchiveTests:
     // заводимо UserProfile без явного Id і даємо SQLite призначити 1.
     private static void SeedUser(TestDb db)
@@ -70,7 +70,7 @@ public class GroupTemplateRoutingGuardTests
         Assert.NotNull(result.ErrorMessage);
         Assert.Contains("Список слухачів", result.ErrorMessage);
 
-        // Жодної нової версії документа не додано — відмова сталась ДО генерації,
+        // Жодної нової версії документа не додано - відмова сталась ДО генерації,
         // лишився рівно один запис (той, що засіяли вище).
         using var check = db.Factory.CreateDbContext();
         Assert.Single(check.GeneratedDocuments.IgnoreQueryFilters());
@@ -110,7 +110,7 @@ public class GroupTemplateRoutingGuardTests
         Assert.NotNull(result.ErrorMessage);
         Assert.Contains("Відомість видачі", result.ErrorMessage);
 
-        // Жодного документа не з'явилось у БД — відмова сталась ДО генерації.
+        // Жодного документа не з'явилось у БД - відмова сталась ДО генерації.
         using var check = db.Factory.CreateDbContext();
         Assert.Empty(check.GeneratedDocuments.Where(g => g.RecipientId == recipientId && g.TemplateId == templateId));
     }

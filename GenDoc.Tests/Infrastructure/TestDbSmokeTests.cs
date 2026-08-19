@@ -49,7 +49,7 @@ public class TestDbSmokeTests
     }
 
     // TestServices мусить складати сервіси з правильним порядком аргументів
-    // конструктора — якщо сигнатура зміниться, це впаде на компіляції.
+    // конструктора - якщо сигнатура зміниться, це впаде на компіляції.
     [Fact]
     public void TestServices_BuildArchiveAndGenerationServices()
     {
@@ -60,7 +60,7 @@ public class TestDbSmokeTests
     }
 
     // XlsxTemplateScan мусить відтворювати вибір рядка-шаблону так само,
-    // як ExportTemplateService при завантаженні — рядок даних Допуску є 7-м.
+    // як ExportTemplateService при завантаженні - рядок даних Допуску є 7-м.
     [Fact]
     public void XlsxTemplateScan_ForGeneration_FindsDopuskTemplateRow()
     {

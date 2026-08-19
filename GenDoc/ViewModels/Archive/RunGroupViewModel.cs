@@ -49,6 +49,6 @@ namespace GenDoc.ViewModels.Archive
         public string Status => Dto.Status;
         public bool IsError => Dto.IsError;
         public bool CanOpen => Dto.DocumentId is not null && Dto.HasContent;
-        public string SizeText => Dto.SizeBytes > 0 ? $"{Dto.SizeBytes / 1024.0:0.#} КБ" : "—";
+        public string SizeText => Dto.SizeBytes > 0 ? $"{Dto.SizeBytes / 1024.0:0.#} КБ" : "-";
     }
 }

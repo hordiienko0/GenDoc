@@ -6,7 +6,7 @@ using GenDoc.Services.Templates;
 
 namespace GenDoc.Tests.Templates;
 
-/// <summary>Оформлення блока в обох writer'ах. Головне тут — не те, що заданий
+/// <summary>Оформлення блока в обох writer'ах. Головне тут - не те, що заданий
 /// шрифт доїжджає до файлу, а те, що НЕзаданий не доїжджає: у базі лежать
 /// шаблони, зібрані до появи форматування, і вони мусять збиратися так само.</summary>
 public class TemplateBlockStyleWriterTests
@@ -58,7 +58,7 @@ public class TemplateBlockStyleWriterTests
     }
 
     // Регресія на сумісність: шаблон, збережений до появи форматування, не має
-    // раптом отримати явні шрифти — інакше всі наявні документи перемалюються.
+    // раптом отримати явні шрифти - інакше всі наявні документи перемалюються.
     [Fact]
     public void Docx_writes_nothing_extra_when_no_style_is_set()
     {
@@ -89,7 +89,7 @@ public class TemplateBlockStyleWriterTests
         Assert.Equal(expected, FirstJustification(docx)!.Val!.InnerText);
     }
 
-    // Заголовок жирний за замовчуванням — саме тому важливо, що явний false
+    // Заголовок жирний за замовчуванням - саме тому важливо, що явний false
     // доїжджає до файлу, а не тоне в типовому значенні.
     [Fact]
     public void Docx_lets_the_operator_unbold_a_title()
@@ -124,7 +124,7 @@ public class TemplateBlockStyleWriterTests
     }
 
     // У книзі «нічого не задано» не може означати «нічого не писати»: Excel тоді
-    // виведе Calibri. Типове має лишитися тим самим, що й було, — Times New Roman 11.
+    // виведе Calibri. Типове має лишитися тим самим, що й було, - Times New Roman 11.
     [Fact]
     public void Xlsx_keeps_its_own_default_font_when_none_is_set()
     {
@@ -155,13 +155,13 @@ public class TemplateBlockStyleWriterTests
         Assert.Equal(XLAlignmentHorizontalValues.Center, header.Style.Alignment.Horizontal);
         Assert.Equal("Arial", header.Style.Font.FontName);
 
-        // Рядок-шаблон — навпаки, слухається блока.
+        // Рядок-шаблон - навпаки, слухається блока.
         var template = sheet.Cell(2, 1);
         Assert.False(template.Style.Font.Bold);
         Assert.Equal("Arial", template.Style.Font.FontName);
     }
 
-    // Смуга в книзі — об'єднані клітинки, «по ширині» в них виглядає зламано,
+    // Смуга в книзі - об'єднані клітинки, «по ширині» в них виглядає зламано,
     // тож Justify лягає ліворуч. Так writer поводився й до появи форматування.
     [Fact]
     public void Xlsx_maps_justify_to_left()
@@ -175,7 +175,7 @@ public class TemplateBlockStyleWriterTests
         Assert.Equal(XLAlignmentHorizontalValues.Left, cell.Style.Alignment.Horizontal);
     }
 
-    // Прев'ю — дзеркало writer'ів, і дзеркалить воно саме розв'язаний стиль.
+    // Прев'ю - дзеркало writer'ів, і дзеркалить воно саме розв'язаний стиль.
     [Fact]
     public void Preview_line_carries_the_same_resolved_style()
     {

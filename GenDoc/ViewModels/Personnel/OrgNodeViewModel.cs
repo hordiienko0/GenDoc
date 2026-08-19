@@ -54,7 +54,7 @@ namespace GenDoc.ViewModels.Personnel
 
         /// <summary>Два числа поспіль нічого не пояснюють: «0 / 33» на корені
         /// читалося як помилка, хоча означає «тут нікого, у вкладених 33».
-        /// Розшифровка — у підказці, щоб не роздувати саму гілку.</summary>
+        /// Розшифровка - у підказці, щоб не роздувати саму гілку.</summary>
         public string CountTooltip =>
             $"У самому підрозділі: {OwnCount}\nРазом із вкладеними: {TotalCount}";
 
@@ -67,11 +67,11 @@ namespace GenDoc.ViewModels.Personnel
         [NotifyPropertyChangedFor(nameof(StatusGlyph))]
         private IntakeStatus? intakeStatus;
 
-        // Гілка завершеного набору — приглушене відображення.
+        // Гілка завершеного набору - приглушене відображення.
         [ObservableProperty]
         private bool isCompletedBranch;
 
-        // Гілка активного набору — SemiBold.
+        // Гілка активного набору - SemiBold.
         [ObservableProperty]
         private bool isActiveIntakeBranch;
 

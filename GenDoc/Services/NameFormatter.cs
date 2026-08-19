@@ -1,6 +1,6 @@
 namespace GenDoc.Services;
 
-// Єдина точка форматування ПІБ — щоб не дублювати логіку "ініціал лише якщо
+// Єдина точка форматування ПІБ - щоб не дублювати логіку "ініціал лише якщо
 // поле непорожнє і починається літерою" у кожній ViewModel/сервісі.
 public static class NameFormatter
 {
@@ -20,7 +20,7 @@ public static class NameFormatter
         return string.Join(' ', parts);
     }
 
-    // «Ім'я ПРІЗВИЩЕ» — формат підпису (не FullNameFormatted: без по батькові,
+    // «Ім'я ПРІЗВИЩЕ» - формат підпису (не FullNameFormatted: без по батькові,
     // прізвище другим, а не першим).
     public static string SignatureName(string lastName, string firstName)
         => $"{firstName} {lastName.ToUpper(new System.Globalization.CultureInfo("uk-UA"))}";

@@ -29,7 +29,7 @@ public partial class RoomCardViewModel : ObservableObject
 
     public int Id { get; private set; }
 
-    // Збережені (committed) значення — використовуються для показу в режимі перегляду.
+    // Збережені (committed) значення - використовуються для показу в режимі перегляду.
     [ObservableProperty]
     private string building = string.Empty;
 
@@ -45,7 +45,7 @@ public partial class RoomCardViewModel : ObservableObject
     [ObservableProperty]
     private string? note;
 
-    // Буфери вводу для inline-редагування — не чіпають committed-значення, поки не Commit().
+    // Буфери вводу для inline-редагування - не чіпають committed-значення, поки не Commit().
     [ObservableProperty]
     private string buildingInput = string.Empty;
 
@@ -103,7 +103,7 @@ public partial class RoomCardViewModel : ObservableObject
         IsEditing = false;
     }
 
-    // Викликається після поселення/виселення в панелі деталей — оновлює лічильники
+    // Викликається після поселення/виселення в панелі деталей - оновлює лічильники
     // й бейджі картки без повного перезавантаження екрана з бази.
     public void SetOccupants(List<RoomOccupantSummary> occupants)
     {

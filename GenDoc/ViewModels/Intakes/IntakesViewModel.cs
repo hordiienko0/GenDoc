@@ -42,7 +42,7 @@ namespace GenDoc.ViewModels.Intakes
             _serviceProvider = serviceProvider;
             _activeIntakeState = activeIntakeState;
             _tree = tree;
-            _ = currentUserContext; // резервується для майбутнього — Закрити/Відкрити пишуть автора через IAuditLogService
+            _ = currentUserContext; // резервується для майбутнього - Закрити/Відкрити пишуть автора через IAuditLogService
 
             StatusOptions = new ObservableCollection<IntakeStatusFilterOption>
             {
