@@ -397,6 +397,51 @@ namespace GenDoc.Services.Generation
                 run.Id, issues);
         }
 
+        public RunResult GenerateTemplatesForRecipients(
+            IReadOnlyList<int> templateIds,
+            IReadOnlyList<int> recipientIds,
+            string outputFolder,
+            Dictionary<string, string> manualValues,
+            IProgress<string> progress)
+        {
+            using var db = _dbFactory.CreateDbContext();
+
+            var templates = db.Templates
+                .Where(t => templateIds.Contains(t.Id) && t.Kind == TemplateKind.PerRecipient)
+                .ToList();
+            var recipients = LoadRosterRecipients(db, new RosterSelection(
+                false, recipientIds, FitnessFilter.All, false, Array.Empty<RankCategory>(), Array.Empty<string>()));
+            var orgSettings = db.OrganizationSettings.FirstOrDefault();
+
+            var run = new GenerationPackageRun
+            {
+                GenerationPackageId = null,
+                RunAt = DateTime.Now,
+                RunByUserId = _currentUserContext.CurrentUserId ?? 0,
+                IntakeId = RunIntakeResolver.Resolve(recipients.Select(r => r.IntakeId))
+            };
+            db.GenerationPackageRuns.Add(run);
+            db.SaveChanges();
+
+            Directory.CreateDirectory(outputFolder);
+            var usedFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var runStamp = ResolveRunStamp(outputFolder);
+
+            var docx = RunDocxPhase(db, templates, recipients, orgSettings, run, manualValues, outputFolder,
+                usedFileNames, runStamp, regenerateExisting: true, progress);
+
+            run.GeneratedCount = docx.Generated;
+            run.SkippedCount = docx.Skipped;
+            run.ErrorCount = docx.Errors;
+            run.Summary = RunIssue.Serialize(docx.Issues);
+
+            _auditLogService.LogGenerate(db, "GenerationPackageRun", run.Id,
+                $"Вибірково: шаблонів {templates.Count}, осіб {recipients.Count}; згенеровано {docx.Generated}, помилок {docx.Errors}");
+            db.SaveChanges();
+
+            return new RunResult(docx.Generated, docx.Skipped, docx.Errors, 0, 0, 0, 0, 0, 0, run.Id, docx.Issues);
+        }
+
         // Особовий склад для запуску: весь або лише позначені, завжди звужений
         // фільтром придатності, "лише постійний склад" (IntakeId == null), категоріями
         // звань і/або конкретними званнями - усе через AND.

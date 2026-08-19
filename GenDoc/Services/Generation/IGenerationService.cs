@@ -75,5 +75,16 @@ namespace GenDoc.Services.Generation
             RosterSelection rosterSelection,
             IProgress<string> progress,
             int? courseOfficerId = null);
+
+        /// <summary>Вибіркова генерація: обрані шаблони × обрані особи, поза пакетом.
+        /// Той самий конвеєр, що й RunPackage (розкладка, версії, архів, RunIssue);
+        /// запуск пишеться з GenerationPackageId = null і підписується «Вибірково».
+        /// Наявні документи завжди перегенеровуються (оператор попросив явно).</summary>
+        RunResult GenerateTemplatesForRecipients(
+            IReadOnlyList<int> templateIds,
+            IReadOnlyList<int> recipientIds,
+            string outputFolder,
+            Dictionary<string, string> manualValues,
+            IProgress<string> progress);
     }
 }
