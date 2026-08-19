@@ -15,7 +15,7 @@ namespace GenDoc.ViewModels.Archive
     public record FilterOption(int? Id, string Label);
 
     // Singleton: фільтри й сторінка живуть між перемиканнями розділів.
-    public partial class ArchiveViewModel : ObservableObject
+    public partial class ArchiveViewModel : ObservableObject, Services.Navigation.INavigationTarget
     {
         private const int PageSize = 200;
         private static readonly CompareInfo UkCompare = CultureInfo.GetCultureInfo("uk-UA").CompareInfo;
@@ -713,6 +713,23 @@ namespace GenDoc.ViewModels.Archive
         }
 
         // ── Таб «Запуски» ────────────────────────────────────────────────
+
+        // 2.4: «Показати в архіві» з картки підсумку - вкладка «Запуски», потрібний запуск розгорнуто.
+        public async Task ApplyNavigationPayloadAsync(object payload)
+        {
+            if (payload is not Services.Navigation.ArchiveRunNavigationPayload nav) return;
+            SelectedTabIndex = 1;
+            await ReloadRunsAsync();
+            var run = Runs.FirstOrDefault(r => r.Id == nav.RunId);
+            if (run is null)
+            {
+                // Запуск не проходить фільтр набору - показати всі й пошукати знову.
+                SelectedIntake = IntakeOptions.FirstOrDefault(o => o.Id is null);
+                await ReloadRunsAsync();
+                run = Runs.FirstOrDefault(r => r.Id == nav.RunId);
+            }
+            if (run is not null && !run.IsExpanded) await ToggleRunAsync(run);
+        }
 
         private async Task ReloadRunsAsync()
         {

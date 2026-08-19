@@ -36,6 +36,7 @@ namespace GenDoc.ViewModels.Personnel
 
         // Передається далі в картку особи: там теж є перегенерація з ручними мітками.
         private readonly Services.Generation.IManualTagFormBuilder _manualTagFormBuilder;
+        private readonly IOutputFolderService _outputFolderService;
         private readonly DispatcherTimer _searchDebounceTimer;
 
         private List<PersonRowViewModel> _allRows = new();
@@ -50,9 +51,11 @@ namespace GenDoc.ViewModels.Personnel
             IGenerationService generationService,
             IIntakeService intakeService,
             IDialogService dialogService,
-            Services.Generation.IManualTagFormBuilder manualTagFormBuilder)
+            Services.Generation.IManualTagFormBuilder manualTagFormBuilder,
+            IOutputFolderService outputFolderService)
         {
             _manualTagFormBuilder = manualTagFormBuilder;
+            _outputFolderService = outputFolderService;
             Tree = tree;
             _personnelService = personnelService;
             _completenessService = completenessService;
@@ -286,6 +289,18 @@ namespace GenDoc.ViewModels.Personnel
             RefreshCheckedState();
         }
 
+        // 2.2: документ на обраних людей прямо зі списку - без походу в «Генерацію».
+        [RelayCommand]
+        private void GenerateForChecked()
+        {
+            var people = Rows.Where(r => r.IsChecked).Select(r => (r.Id, r.ShortName)).ToList();
+            if (people.Count == 0) return;
+            var dialog = new GenerateDocumentsDialogViewModel(
+                _generationService, _completenessService, _archiveService, _manualTagFormBuilder,
+                _dialogService, _outputFolderService, people);
+            _dialogService.ShowDialog(dialog, Application.Current.MainWindow);
+        }
+
         [RelayCommand]
         private async Task MoveCheckedAsync()
         {
@@ -357,7 +372,7 @@ namespace GenDoc.ViewModels.Personnel
 
             var card = new PersonCardViewModel(
                 _personnelService, _completenessService, _archiveService, _generationService, _intakeService,
-                _dialogService, _manualTagFormBuilder, model, unitDisplay);
+                _dialogService, _manualTagFormBuilder, _outputFolderService, model, unitDisplay);
             card.Saved += OnCardSaved;
             card.CloseRequested += () => Card = null;
             Card = card;

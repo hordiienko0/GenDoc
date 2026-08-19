@@ -1,0 +1,72 @@
+<Window x:Class="GenDoc.Views.Personnel.GenerateDocumentsDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Style="{StaticResource {x:Type Window}}"
+        Title="Згенерувати документ" Width="560" Height="620"
+        Background="{StaticResource PanelBrush}"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResize" MinWidth="480" MinHeight="420">
+    <DockPanel Margin="20">
+        <!-- Крок 1: вибір шаблонів -->
+        <StackPanel DockPanel.Dock="Top" Visibility="{Binding IsChoosing, Converter={StaticResource BoolToVisibility}}">
+            <TextBlock Text="{Binding RecipientsSummary, StringFormat='Для: {0}'}" FontSize="13" FontWeight="SemiBold"
+                       Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock Text="Оберіть один або кілька шаблонів. Ручні поля запитаються наступним кроком, документи ляжуть у типову теку."
+                       FontSize="11.5" TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,10"/>
+        </StackPanel>
+
+        <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <TextBlock Text="{Binding ProgressText}" VerticalAlignment="Center" Margin="0,0,12,0" FontSize="12"
+                       Foreground="{StaticResource NavyBrush}"/>
+            <Button Content="Скасувати" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelCommand}"
+                    Visibility="{Binding IsChoosing, Converter={StaticResource BoolToVisibility}}"/>
+            <Button Content="{Binding GenerateButtonText}" Margin="8,0,0,0" MinWidth="130" Command="{Binding GenerateCommand}"
+                    Visibility="{Binding IsChoosing, Converter={StaticResource BoolToVisibility}}"/>
+            <Button Content="Готово" MinWidth="110" Command="{Binding DoneCommand}"
+                    Visibility="{Binding HasResult, Converter={StaticResource BoolToVisibility}}"/>
+        </StackPanel>
+
+        <Grid>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Visibility="{Binding IsChoosing, Converter={StaticResource BoolToVisibility}}">
+                <ItemsControl ItemsSource="{Binding Templates}">
+                    <ItemsControl.GroupStyle>
+                        <GroupStyle>
+                            <GroupStyle.HeaderTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding Name}" FontSize="10.5" FontWeight="Bold" Margin="0,10,0,4"
+                                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </DataTemplate>
+                            </GroupStyle.HeaderTemplate>
+                        </GroupStyle>
+                    </ItemsControl.GroupStyle>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Content="{Binding Name}" Padding="8,5" Margin="0,2"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- Крок 2: підсумок (2.4) -->
+            <StackPanel Visibility="{Binding HasResult, Converter={StaticResource BoolToVisibility}}">
+                <StackPanel DataContext="{Binding Result}">
+                    <TextBlock Text="{Binding SummaryText}" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                    <ItemsControl ItemsSource="{Binding Issues}" Margin="0,10,0,0"
+                                  Visibility="{Binding HasIssues, Converter={StaticResource BoolToVisibility}}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock FontSize="12" TextWrapping="Wrap" Margin="0,2" Foreground="{StaticResource WarnTextBrush}">
+                                    <Run Text="{Binding Person, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding TemplateName, Mode=OneWay}"/><Run Text=" - "/><Run Text="{Binding Message, Mode=OneWay}"/>
+                                </TextBlock>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
+                    <Button Content="Відкрити теку" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding Result.OpenFolderCommand}"/>
+                    <Button Content="Показати в архіві" Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0"
+                            Command="{Binding ShowInArchiveAndCloseCommand}" IsEnabled="{Binding Result.CanShowInArchive}"/>
+                </StackPanel>
+            </StackPanel>
+        </Grid>
+    </DockPanel>
+</Window>

@@ -31,6 +31,7 @@ namespace GenDoc.ViewModels.Personnel
         private readonly IIntakeService _intakeService;
         private readonly IDialogService _dialogService;
         private readonly Services.Generation.IManualTagFormBuilder _manualTagFormBuilder;
+        private readonly IOutputFolderService _outputFolderService;
 
         /// <summary>Ключ, під яким запам'ятовуються минулі значення саме для
         /// цього місця - щоб вони не змішувалися з іншими екранами.</summary>
@@ -49,9 +50,11 @@ namespace GenDoc.ViewModels.Personnel
             IDocumentArchiveService archiveService, IGenerationService generationService,
             IIntakeService intakeService, IDialogService dialogService,
             Services.Generation.IManualTagFormBuilder manualTagFormBuilder,
+            IOutputFolderService outputFolderService,
             PersonEditModel model, string unitDisplay)
         {
             _manualTagFormBuilder = manualTagFormBuilder;
+            _outputFolderService = outputFolderService;
             _personnelService = personnelService;
             _completenessService = completenessService;
             _archiveService = archiveService;
@@ -209,6 +212,19 @@ namespace GenDoc.ViewModels.Personnel
             if (!result.Success)
                 MessageBox.Show(result.ErrorMessage, "Відкриття документа",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+
+        // 2.2: будь-який персональний шаблон, не лише типовий пакет.
+        [RelayCommand]
+        private async Task GenerateAnyDocumentAsync()
+        {
+            if (IsNew) return;
+            var dialog = new GenerateDocumentsDialogViewModel(
+                _generationService, _completenessService, _archiveService, _manualTagFormBuilder,
+                _dialogService, _outputFolderService,
+                new[] { (Id, HeaderName) });
+            _dialogService.ShowDialog(dialog, Application.Current.MainWindow);
+            await RefreshDocumentsAsync();
         }
 
         [RelayCommand]

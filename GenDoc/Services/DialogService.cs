@@ -29,6 +29,7 @@ public class DialogService : IDialogService
         [typeof(PackageRequirementsViewModel)] = typeof(PackageRequirementsWindow),
         [typeof(CloseIntakeDialogViewModel)] = typeof(CloseIntakeDialog),
         [typeof(StaffDocDialogViewModel)] = typeof(StaffDocDialog),
+        [typeof(GenerateDocumentsDialogViewModel)] = typeof(GenerateDocumentsDialog),
     };
 
     public bool? ShowDialog<TViewModel>(TViewModel viewModel, Window? owner = null)
