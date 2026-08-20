@@ -930,6 +930,7 @@ namespace GenDoc.ViewModels.Archive
         [NotifyPropertyChangedFor(nameof(CanHistoryGroup))]
         [NotifyPropertyChangedFor(nameof(CanDeleteGroup))]
         [NotifyPropertyChangedFor(nameof(CanPrintGroup))]
+        [NotifyPropertyChangedFor(nameof(CanShowGroupParticipants))]
         private int groupCheckedCount;
 
         private bool _suppressGroupHeaderCheck;
@@ -1014,6 +1015,20 @@ namespace GenDoc.ViewModels.Archive
                     return;
                 }
             }
+        }
+
+        public bool CanShowGroupParticipants => GroupCheckedCount == 1;
+
+        // «Учасники» (v25): склад цієї версії групового документа.
+        [RelayCommand]
+        private async Task ShowGroupParticipantsAsync()
+        {
+            var row = CheckedGroupRows.FirstOrDefault();
+            if (row is null) return;
+            var participants = await _archiveService.GetGroupParticipantsAsync(row.Id);
+            var vm = new GroupParticipantsViewModel(
+                $"{row.Dto.TemplateName} · в.{row.Dto.Version}", participants);
+            _dialogService.ShowDialog(vm, Application.Current.MainWindow);
         }
 
         [RelayCommand]

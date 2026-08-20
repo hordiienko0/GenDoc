@@ -120,3 +120,44 @@ public class GroupTemplatesOutsideMatrixTests
         Assert.False(forOut.IsParticipant);
     }
 }
+
+// «Учасники» в «Архів → Групові»: склад конкретної версії, включно з м'яко видаленими.
+public class GroupParticipantsQueryTests
+{
+    [Fact]
+    public async Task GetGroupParticipants_ReturnsRosterEvenForSoftDeletedPeople()
+    {
+        using var db = new TestDb();
+        int docId, deletedId;
+        using (var ctx = db.Factory.CreateDbContext())
+        {
+            ctx.Users.Add(new UserProfile { FullName = "Тест", PasswordHash = "x", CreatedAt = DateTime.Now });
+            var alive = TemplateFixtures.Person(1, "ШЕВЧЕНКО", "Тарас");
+            var deleted = TemplateFixtures.Person(2, "ФРАНКО", "Іван");
+            ctx.Recipients.AddRange(alive, deleted);
+            var group = new Template { Name = "Рапорт ГРУПОВИЙ", OriginalFileName = "b.docx", Content = new byte[] { 1 }, UploadedAt = DateTime.Now, Kind = TemplateKind.Group };
+            ctx.Templates.Add(group);
+            ctx.SaveChanges();
+
+            var doc = new GeneratedGroupDocument
+            {
+                TemplateId = group.Id, GeneratedAt = DateTime.Now, GeneratedByUserId = 1,
+                FileName = "group.docx", Version = 1, IsCurrent = true, HasContent = true, RecipientCount = 2
+            };
+            doc.Recipients.Add(new GeneratedGroupDocumentRecipient { RecipientId = alive.Id });
+            doc.Recipients.Add(new GeneratedGroupDocumentRecipient { RecipientId = deleted.Id });
+            ctx.GeneratedGroupDocuments.Add(doc);
+            ctx.SaveChanges();
+
+            deleted.DeletedAt = DateTime.Now;
+            ctx.SaveChanges();
+            docId = doc.Id;
+            deletedId = deleted.Id;
+        }
+
+        var participants = await TestServices.Archive(db).GetGroupParticipantsAsync(docId);
+
+        Assert.Equal(2, participants.Count);
+        Assert.Contains(participants, p => p.RecipientId == deletedId);
+    }
+}

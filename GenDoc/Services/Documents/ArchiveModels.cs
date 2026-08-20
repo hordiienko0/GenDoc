@@ -68,6 +68,9 @@ namespace GenDoc.Services.Documents
         int SkippedCount,
         int ErrorCount);
 
+    // Учасник групового документа (v25) - для діалогу «Учасники» в «Архів → Групові».
+    public record GroupParticipantDto(int RecipientId, string Rank, string FullName, string UnitName);
+
     public record RunItemDto(string Person, string TemplateName, string Status, bool IsError, long SizeBytes, int? DocumentId, bool HasContent, string FileName);
 
     public record DeletedDocumentInfo(int Id, string Person, string TemplateName, int Version, DateTime DeletedAt, string? DeletedBy);

@@ -833,6 +833,33 @@ namespace GenDoc.Services.Documents
             return new ArchiveOpResult(true, null);
         }
 
+        public async Task<List<GroupParticipantDto>> GetGroupParticipantsAsync(int groupDocumentId)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            // IgnoreQueryFilters: людину могли м'яко видалити після генерації -
+            // зі складу наказу вона від цього не зникає.
+            var rows = await db.GeneratedGroupDocumentRecipients
+                .IgnoreQueryFilters()
+                .Where(p => p.GeneratedGroupDocumentId == groupDocumentId)
+                .Select(p => new
+                {
+                    p.RecipientId,
+                    Rank = p.Recipient != null ? p.Recipient.Rank : "-",
+                    LastName = p.Recipient != null ? p.Recipient.LastName : "-",
+                    FirstName = p.Recipient != null ? p.Recipient.FirstName : null,
+                    MiddleName = p.Recipient != null ? p.Recipient.MiddleName : null,
+                    UnitName = p.Recipient != null && p.Recipient.Unit != null ? p.Recipient.Unit.Name : "-"
+                })
+                .ToListAsync();
+
+            return rows
+                .Select(r => new GroupParticipantDto(
+                    r.RecipientId, r.Rank,
+                    NameFormatter.FullName(r.LastName, r.FirstName, r.MiddleName), r.UnitName))
+                .OrderBy(r => r.FullName, UkrainianCollation.Surname)
+                .ToList();
+        }
+
         public async Task<ArchiveOpResult> PrintGroupAsync(int groupDocumentId)
         {
             using var db = _dbFactory.CreateDbContext();

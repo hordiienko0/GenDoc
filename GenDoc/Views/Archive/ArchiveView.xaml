@@ -646,6 +646,9 @@
                 <Button Content="Показати в теці" Style="{StaticResource ArchiveActionButtonStyle}"
                         IsEnabled="{Binding CanShowGroupInFolder}" ToolTip="{Binding ShowGroupInFolderTooltip}"
                         Command="{Binding ShowGroupInFolderCommand}"/>
+                <Button Content="Учасники" Style="{StaticResource ArchiveActionButtonStyle}"
+                        IsEnabled="{Binding CanShowGroupParticipants}" ToolTip="Склад цієї версії - хто входить у документ"
+                        Command="{Binding ShowGroupParticipantsCommand}"/>
                 <Button Content="Зберегти як…" Style="{StaticResource ArchiveActionButtonStyle}"
                         IsEnabled="{Binding CanSaveGroupAs}" ToolTip="Оберіть відомості"
                         Command="{Binding SaveGroupAsCommand}"/>

@@ -197,7 +197,7 @@ namespace GenDoc.ViewModels.Personnel
                 DocumentsEmptyNote = statuses.Count == 0 ? "У пакеті немає шаблонів." : null;
                 DocumentsFooterNote = await BuildDocumentsFooterNoteAsync(packageId.Value);
 
-                var groupDocs = await _completenessService.GetPackageGroupDocumentsAsync(packageId.Value, IntakeId);
+                var groupDocs = await _completenessService.GetPackageGroupDocumentsAsync(packageId.Value, IntakeId, Id);
                 GroupDocumentRows.Clear();
                 foreach (var g in groupDocs) GroupDocumentRows.Add(new GroupDocumentRowViewModel(g));
                 HasGroupDocuments = GroupDocumentRows.Count > 0;

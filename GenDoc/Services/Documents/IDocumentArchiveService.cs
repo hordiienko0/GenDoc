@@ -43,6 +43,10 @@ namespace GenDoc.Services.Documents
         Task<List<GroupTemplateOption>> GetGroupTemplateOptionsAsync();
         Task<ArchiveOpResult> OpenGroupAsync(int groupDocumentId);
         Task<ArchiveOpResult> PrintGroupAsync(int groupDocumentId);
+
+        /// <summary>Склад цієї версії групового документа (v25); порожньо -
+        /// документ згенеровано до запису складу.</summary>
+        Task<List<GroupParticipantDto>> GetGroupParticipantsAsync(int groupDocumentId);
         Task<ArchiveOpResult> SaveGroupAsAsync(int groupDocumentId, string targetPath);
         Task DeleteGroupAsync(IReadOnlyList<int> groupDocumentIds);
         Task<List<GroupVersionDto>> GetGroupVersionsAsync(int? exportTemplateId, int? docxTemplateId);
