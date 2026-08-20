@@ -6,7 +6,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 24;
+    private const int CurrentSchemaVersion = 25;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -518,6 +518,19 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                 });
                 currentVersion = 24;
             }
+
+            if (currentVersion < 25)
+            {
+                EnsureGroupDocumentRecipientsTable(db);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 25,
+                    AppliedAt = DateTime.Now,
+                    Description = "Учасники групового документа: склад на момент генерації"
+                });
+                currentVersion = 25;
+            }
         }
 
         // Ідемпотентно, як EnsureExportTemplateTables: таблиці, додані в модель після
@@ -547,6 +560,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         AddMissingColumns(db, "OrganizationSettings", OrganizationSettingsColumnsV10);
 
         EnsureGroupDocumentTables(db);
+        EnsureGroupDocumentRecipientsTable(db);
 
         AddMissingColumns(db, "Templates", TemplateColumnsV12);
         AddMissingColumns(db, "TemplateFieldMappings", TemplateFieldMappingColumnsV12);
@@ -927,6 +941,49 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         finally
         {
             if (wasClosed) connection.Close();
+        }
+    }
+
+    private static void EnsureGroupDocumentRecipientsTable(AppDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        var wasClosed = connection.State != System.Data.ConnectionState.Open;
+        if (wasClosed) connection.Open();
+        try { EnsureGroupDocumentRecipientsTable(connection); }
+        finally { if (wasClosed) connection.Close(); }
+    }
+
+    // v25: склад групового документа на момент генерації. Документи, згенеровані до
+    // цієї таблиці, складу не мають - бекфіл неможливий (RosterHash людей не відновлює).
+    internal static void EnsureGroupDocumentRecipientsTable(System.Data.Common.DbConnection connection)
+    {
+        if (TableExists(connection, "GeneratedGroupDocumentRecipients")) return;
+
+        using (var command = connection.CreateCommand())
+        {
+            command.CommandText = """
+                CREATE TABLE "GeneratedGroupDocumentRecipients" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_GeneratedGroupDocumentRecipients" PRIMARY KEY AUTOINCREMENT,
+                    "GeneratedGroupDocumentId" INTEGER NOT NULL,
+                    "RecipientId" INTEGER NOT NULL,
+                    CONSTRAINT "FK_GeneratedGroupDocumentRecipients_GeneratedGroupDocuments_GeneratedGroupDocumentId"
+                        FOREIGN KEY ("GeneratedGroupDocumentId") REFERENCES "GeneratedGroupDocuments" ("Id") ON DELETE CASCADE,
+                    CONSTRAINT "FK_GeneratedGroupDocumentRecipients_Recipients_RecipientId"
+                        FOREIGN KEY ("RecipientId") REFERENCES "Recipients" ("Id") ON DELETE CASCADE
+                );
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        using (var index = connection.CreateCommand())
+        {
+            index.CommandText = """
+                CREATE INDEX "IX_GeneratedGroupDocumentRecipients_GeneratedGroupDocumentId"
+                    ON "GeneratedGroupDocumentRecipients" ("GeneratedGroupDocumentId");
+                CREATE INDEX "IX_GeneratedGroupDocumentRecipients_RecipientId"
+                    ON "GeneratedGroupDocumentRecipients" ("RecipientId");
+                """;
+            index.ExecuteNonQuery();
         }
     }
 

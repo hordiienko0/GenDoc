@@ -771,7 +771,7 @@ namespace GenDoc.Services.Generation
 
                     if (current is not null) current.IsCurrent = false;
 
-                    db.GeneratedGroupDocuments.Add(new GeneratedGroupDocument
+                    var groupDoc = new GeneratedGroupDocument
                     {
                         ExportTemplateId = template.Id,
                         RunId = run.Id,
@@ -787,7 +787,11 @@ namespace GenDoc.Services.Generation
                         IsCurrent = true,
                         HasContent = true,
                         Content = new GeneratedGroupDocumentContent { Content = result.Content }
-                    });
+                    };
+                    // Склад на момент генерації (v25) - «Комплектність» посилається саме сюди.
+                    foreach (var person in roster)
+                        groupDoc.Recipients.Add(new GeneratedGroupDocumentRecipient { RecipientId = person.Id });
+                    db.GeneratedGroupDocuments.Add(groupDoc);
 
                     generated++;
 
@@ -912,7 +916,7 @@ namespace GenDoc.Services.Generation
 
                     if (current is not null) current.IsCurrent = false;
 
-                    db.GeneratedGroupDocuments.Add(new GeneratedGroupDocument
+                    var groupDoc = new GeneratedGroupDocument
                     {
                         TemplateId = template.Id,
                         ExportTemplateId = null,
@@ -929,7 +933,11 @@ namespace GenDoc.Services.Generation
                         IsCurrent = true,
                         HasContent = true,
                         Content = new GeneratedGroupDocumentContent { Content = bytes }
-                    });
+                    };
+                    // Склад на момент генерації (v25) - «Комплектність» посилається саме сюди.
+                    foreach (var person in roster)
+                        groupDoc.Recipients.Add(new GeneratedGroupDocumentRecipient { RecipientId = person.Id });
+                    db.GeneratedGroupDocuments.Add(groupDoc);
 
                     generated++;
 

@@ -42,6 +42,7 @@ namespace GenDoc.Data
         public DbSet<GenerationPackageExportTemplate> GenerationPackageExportTemplates => Set<GenerationPackageExportTemplate>();
         public DbSet<GeneratedGroupDocument> GeneratedGroupDocuments => Set<GeneratedGroupDocument>();
         public DbSet<GeneratedGroupDocumentContent> GeneratedGroupDocumentContents => Set<GeneratedGroupDocumentContent>();
+        public DbSet<GeneratedGroupDocumentRecipient> GeneratedGroupDocumentRecipients => Set<GeneratedGroupDocumentRecipient>();
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -104,6 +105,21 @@ namespace GenDoc.Data
                 b.HasOne(g => g.Content)
                     .WithOne(c => c.GeneratedGroupDocument)
                     .HasForeignKey<GeneratedGroupDocumentContent>(c => c.GeneratedGroupDocumentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+                // Учасники групового документа (v25): склад на момент генерації.
+                b.HasMany(g => g.Recipients)
+                    .WithOne(r => r.GeneratedGroupDocument)
+                    .HasForeignKey(r => r.GeneratedGroupDocumentId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<GeneratedGroupDocumentRecipient>(b =>
+            {
+                b.HasIndex(r => r.GeneratedGroupDocumentId);
+                b.HasIndex(r => r.RecipientId);
+                b.HasOne(r => r.Recipient)
+                    .WithMany()
+                    .HasForeignKey(r => r.RecipientId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
 

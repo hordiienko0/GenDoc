@@ -133,5 +133,8 @@ public class GenerateTemplatesForRecipientsTests : IDisposable
 
         using var check = db.Factory.CreateDbContext();
         Assert.Equal(1, check.GeneratedGroupDocuments.Count(g => g.RunId == result.RunId));
+        // v25: склад відомості записано - рівно ті двоє, кого обрали.
+        var participants = check.GeneratedGroupDocumentRecipients.Select(p => p.RecipientId).OrderBy(i => i).ToList();
+        Assert.Equal(peopleIds.Take(2).OrderBy(i => i), participants);
     }
 }

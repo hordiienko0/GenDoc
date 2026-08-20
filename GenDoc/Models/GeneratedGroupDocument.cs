@@ -42,5 +42,8 @@ namespace GenDoc.Models
         public string? DeletedBy { get; set; }
 
         public GeneratedGroupDocumentContent? Content { get; set; }
+
+        // Склад на момент генерації; порожньо в документів, згенерованих до v25.
+        public ICollection<GeneratedGroupDocumentRecipient> Recipients { get; set; } = new List<GeneratedGroupDocumentRecipient>();
     }
 }
