@@ -83,11 +83,12 @@ namespace GenDoc.Services.Completeness
                 .ToListAsync();
             people = people.OrderBy(r => r.LastName).ThenBy(r => r.FirstName).ToList();
 
-            // (b) зв'язки пакета з вимогами
-            var templates = await GetPackageLinksInternalAsync(db, packageId, includeGroup: false);
+            // (b) зв'язки пакета з вимогами. Групові шаблони - теж колонки (v25):
+            // клітинка каже, чи людина в складі чинного групового документа.
+            var templates = await GetPackageLinksInternalAsync(db, packageId, includeGroup: true);
 
             // (c) всі актуальні документи набору по шаблонах пакета - один запит
-            var templateIds = templates.Select(t => t.TemplateId).ToList();
+            var templateIds = templates.Where(t => !t.IsGroup).Select(t => t.TemplateId).ToList();
             var docs = await db.GeneratedDocuments
                 .Where(g => g.IntakeId == intakeId && g.IsCurrent && templateIds.Contains(g.TemplateId))
                 .Select(g => new { g.Id, g.RecipientId, g.TemplateId, g.Version, g.HasContent, g.SourceHash, g.SourceType })
@@ -115,6 +116,44 @@ namespace GenDoc.Services.Completeness
 
                 dict[(doc.RecipientId, doc.TemplateId)] =
                     new MatrixDocDto(doc.Id, doc.RecipientId, doc.TemplateId, doc.Version, doc.HasContent, stale, doc.SourceType);
+            }
+
+            // (d) групові колонки: участь людини в чинному груповому документі (v25).
+            // Документ без записаного складу (до v25) дає всім «склад не записано».
+            var groupTemplates = templates.Where(t => t.IsGroup).ToList();
+            if (groupTemplates.Count > 0)
+            {
+                var groupIds = groupTemplates.Select(t => t.TemplateId).ToList();
+                var groupDocs = await db.GeneratedGroupDocuments
+                    .Where(g => g.TemplateId != null && groupIds.Contains(g.TemplateId.Value) && g.IsCurrent
+                                && (g.IntakeId == intakeId || g.IntakeId == null))
+                    .Select(g => new
+                    {
+                        g.TemplateId, g.IntakeId, g.Id, g.Version, g.HasContent, g.RecipientCount,
+                        ParticipantIds = g.Recipients.Select(r => r.RecipientId).ToList()
+                    })
+                    .ToListAsync();
+
+                foreach (var template in groupTemplates)
+                {
+                    // Свій документ набору має пріоритет над «спільним» (IntakeId = null).
+                    var doc = groupDocs.Where(d => d.TemplateId == template.TemplateId)
+                        .OrderByDescending(d => d.IntakeId == intakeId)
+                        .FirstOrDefault();
+                    if (doc is null) continue;
+
+                    var rosterUnknown = doc.RecipientCount > 0 && doc.ParticipantIds.Count == 0;
+                    var participants = rosterUnknown ? null : doc.ParticipantIds.ToHashSet();
+
+                    foreach (var person in people)
+                    {
+                        if (rosterUnknown || participants!.Contains(person.Id))
+                            dict[(person.Id, template.TemplateId)] = new MatrixDocDto(
+                                doc.Id, person.Id, template.TemplateId, doc.Version, doc.HasContent,
+                                IsStale: false, DocumentSourceType.Generated,
+                                IsGroup: true, RosterUnknown: rosterUnknown);
+                    }
+                }
             }
 
             return new MatrixData(people, templates, dict, detectStale);
@@ -426,7 +465,7 @@ namespace GenDoc.Services.Completeness
                 .ToListAsync();
         }
 
-        public async Task<List<PackageGroupDocumentStatus>> GetPackageGroupDocumentsAsync(int packageId, int? intakeId)
+        public async Task<List<PackageGroupDocumentStatus>> GetPackageGroupDocumentsAsync(int packageId, int? intakeId, int? recipientId = null)
         {
             using var db = _dbFactory.CreateDbContext();
             var groupTemplates = (await GetPackageLinksInternalAsync(db, packageId, includeGroup: true))
@@ -439,7 +478,12 @@ namespace GenDoc.Services.Completeness
             var docs = await db.GeneratedGroupDocuments
                 .Where(g => g.TemplateId != null && ids.Contains(g.TemplateId.Value) && g.IsCurrent
                             && (g.IntakeId == intakeId || g.IntakeId == null))
-                .Select(g => new { g.TemplateId, g.IntakeId, g.Id, g.Version })
+                .Select(g => new
+                {
+                    g.TemplateId, g.IntakeId, g.Id, g.Version, g.RecipientCount,
+                    ParticipantCount = g.Recipients.Count,
+                    IsParticipant = recipientId != null && g.Recipients.Any(r => r.RecipientId == recipientId)
+                })
                 .ToListAsync();
 
             return groupTemplates.Select(t =>
@@ -447,7 +491,10 @@ namespace GenDoc.Services.Completeness
                 var doc = docs.Where(d => d.TemplateId == t.TemplateId)
                     .OrderByDescending(d => d.IntakeId == intakeId)
                     .FirstOrDefault();
-                return new PackageGroupDocumentStatus(t.TemplateId, t.Name, doc?.Id, doc?.Version ?? 0);
+                return new PackageGroupDocumentStatus(
+                    t.TemplateId, t.Name, doc?.Id, doc?.Version ?? 0,
+                    IsParticipant: doc?.IsParticipant ?? false,
+                    RosterUnknown: doc is not null && doc.RecipientCount > 0 && doc.ParticipantCount == 0);
             }).ToList();
         }
 

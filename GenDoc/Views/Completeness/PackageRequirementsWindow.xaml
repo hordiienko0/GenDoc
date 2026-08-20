@@ -28,14 +28,6 @@
             </Setter>
         </Style>
 
-        <!-- Перемикачі вимог показуються лише персональним шаблонам -->
-        <Style x:Key="PersonalOnlyPanelStyle" TargetType="UniformGrid">
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsGroup}" Value="True">
-                    <Setter Property="Visibility" Value="Collapsed"/>
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
     </Window.Resources>
 
     <DockPanel>
@@ -114,15 +106,10 @@
                                     </Grid.ColumnDefinitions>
 
                                     <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="12.5" VerticalAlignment="Center"
-                                               Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}"/>
+                                               Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"><TextBlock.ToolTip><TextBlock><Run Text="{Binding Name, Mode=OneWay}"/><Run Text=" (груповий - формується на весь склад у «Генерації»)"><Run.Style><Style TargetType="Run"><Style.Triggers><DataTrigger Binding="{Binding IsGroup}" Value="False"><Setter Property="Text" Value=""/></DataTrigger></Style.Triggers></Style></Run.Style></Run></TextBlock></TextBlock.ToolTip></TextBlock>
 
-                                    <!-- Груповий шаблон (1.4/1.5): один документ на весь склад, обов'язковість на особу не застосовна -->
-                                    <TextBlock Grid.Column="1" Grid.ColumnSpan="2" FontSize="11" VerticalAlignment="Center" TextWrapping="Wrap"
-                                               Foreground="{StaticResource TextSecondaryBrush}" Margin="8,0"
-                                               Text="груповий - формується на весь склад, обов'язковість на особу не застосовна"
-                                               Visibility="{Binding IsGroup, Converter={StaticResource BoolToVisibility}}"/>
 
-                                    <UniformGrid Grid.Column="1" Columns="3" VerticalAlignment="Center" Style="{StaticResource PersonalOnlyPanelStyle}">
+                                    <UniformGrid Grid.Column="1" Columns="3" VerticalAlignment="Center">
                                         <Button Content="Обов'язк."
                                                 Command="{Binding DataContext.SetRegularCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                 CommandParameter="{Binding}">
@@ -167,7 +154,7 @@
                                         </Button>
                                     </UniformGrid>
 
-                                    <UniformGrid Grid.Column="2" Columns="3" VerticalAlignment="Center" Style="{StaticResource PersonalOnlyPanelStyle}">
+                                    <UniformGrid Grid.Column="2" Columns="3" VerticalAlignment="Center">
                                         <Button Content="Обов'язк."
                                                 Command="{Binding DataContext.SetLimitedRequiredCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                 CommandParameter="{Binding}">

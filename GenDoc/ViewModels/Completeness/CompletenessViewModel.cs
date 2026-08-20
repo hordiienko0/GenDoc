@@ -266,7 +266,7 @@ namespace GenDoc.ViewModels.Completeness
                     foreach (var template in _matrixData.Templates)
                     {
                         var requirement = ICompletenessService.Resolve(template, row.FitnessCategory);
-                        var cell = new MatrixCellViewModel(this, person.Id, template.TemplateId, row.FitnessCategory, requirement);
+                        var cell = new MatrixCellViewModel(this, person.Id, template.TemplateId, row.FitnessCategory, requirement, template.IsGroup);
                         _matrixData.Docs.TryGetValue((person.Id, template.TemplateId), out var doc);
                         cell.Initialize(doc);
                         row.Cells.Add(cell);
@@ -304,7 +304,8 @@ namespace GenDoc.ViewModels.Completeness
 
         private void RecomputeAggregates()
         {
-            MissingRequiredCount = Rows.Sum(r => r.Cells.Count(c => c.IsMissingRequired));
+            // Кнопка «Згенерувати все, чого бракує» - лише персональні: групові формує «Генерація».
+            MissingRequiredCount = Rows.Sum(r => r.Cells.Count(c => c.IsMissingRequired && !c.IsGroupColumn));
             MissingOptionalCount = Rows.Sum(r => r.Cells.Count(c => c.IsMissingOptional));
             StaleCount = Rows.Sum(r => r.Cells.Count(c => c.IsStale));
 
@@ -346,6 +347,7 @@ namespace GenDoc.ViewModels.Completeness
             {
                 foreach (var cell in row.Cells)
                 {
+                    if (cell.IsGroupColumn) continue; // групові не генеруються поіменно
                     if (cell.IsMissingRequired) missingRequired.Add((cell.RecipientId, cell.TemplateId));
                     else if (cell.IsMissingOptional) missingOptional.Add((cell.RecipientId, cell.TemplateId));
                 }
@@ -480,7 +482,10 @@ namespace GenDoc.ViewModels.Completeness
             if (cell.DocumentId is not int docId) return;
             try
             {
-                var result = await _archiveService.OpenAsync(docId);
+                // Групова клітинка посилається на GeneratedGroupDocument - інша таблиця, інший Open.
+                var result = cell.IsGroupColumn
+                    ? await _archiveService.OpenGroupAsync(docId)
+                    : await _archiveService.OpenAsync(docId);
                 if (!result.Success)
                     MessageBox.Show(result.ErrorMessage, "Відкриття документа",
                         MessageBoxButton.OK, MessageBoxImage.Warning);

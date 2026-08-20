@@ -6,7 +6,7 @@ using GenDoc.Models.Enums;
 
 namespace GenDoc.ViewModels.Completeness
 {
-    public enum MatrixCellState { Present, PresentStale, MissingRequired, MissingOptional, NotApplicable }
+    public enum MatrixCellState { Present, PresentStale, MissingRequired, MissingOptional, NotApplicable, RosterUnknown }
 
     // Клітинка сама несе команди - динамічні шаблони колонок не бачать
     // DataContext екрана; ElementName у згенерованому в коді XAML не працює.
@@ -16,8 +16,9 @@ namespace GenDoc.ViewModels.Completeness
 
         public MatrixCellViewModel(
             ICellActionCoordinator coordinator, int recipientId, int templateId, string fitnessCategory,
-            TemplateRequirement requirement)
+            TemplateRequirement requirement, bool isGroupColumn = false)
         {
+            IsGroupColumn = isGroupColumn;
             _coordinator = coordinator;
             RecipientId = recipientId;
             TemplateId = templateId;
@@ -28,6 +29,9 @@ namespace GenDoc.ViewModels.Completeness
         public int RecipientId { get; }
         public int TemplateId { get; }
         public string FitnessCategory { get; }
+
+        // Групова колонка (v25): DocumentId - це GeneratedGroupDocument, дії обмежені «Відкрити».
+        public bool IsGroupColumn { get; }
 
         // Обов'язковість резолвиться при побудові рядка і не залежить від наявності документа -
         // «n з m» рахує лише Required, незалежно від State.
@@ -59,6 +63,7 @@ namespace GenDoc.ViewModels.Completeness
         public bool IsMissingRequired => State == MatrixCellState.MissingRequired;
         public bool IsMissingOptional => State == MatrixCellState.MissingOptional;
         public bool IsNotApplicable => State == MatrixCellState.NotApplicable;
+        public bool IsRosterUnknown => State == MatrixCellState.RosterUnknown;
 
         public string VersionText => Version > 1 ? $"в.{Version}" : string.Empty;
 
@@ -68,6 +73,7 @@ namespace GenDoc.ViewModels.Completeness
             MatrixCellState.PresentStale => "Дані людини змінилися після генерації - перегенеруйте",
             MatrixCellState.MissingOptional => "Опційний для цієї категорії - не згенеровано",
             MatrixCellState.NotApplicable => $"Не потрібен для категорії \"{FitnessCategory}\"",
+            MatrixCellState.RosterUnknown => "Склад не записано (згенеровано до оновлення) - перегенеруйте відомість, щоб бачити учасників",
             _ => string.Empty
         };
 
@@ -97,6 +103,7 @@ namespace GenDoc.ViewModels.Completeness
             MatrixCellState.PresentStale => "!",
             MatrixCellState.MissingRequired => "-",
             MatrixCellState.MissingOptional => "(-)",
+            MatrixCellState.RosterUnknown => "?",
             _ => string.Empty
         };
 
@@ -104,17 +111,18 @@ namespace GenDoc.ViewModels.Completeness
         public Brush DashedBorderBrush => ShowDashedBorder ? Res("WarningBrush") : Brushes.Transparent;
 
         public Visibility VersionVisibility => string.IsNullOrEmpty(VersionText) ? Visibility.Collapsed : Visibility.Visible;
-        public Visibility PresentMenuVisibility => IsPresent ? Visibility.Visible : Visibility.Collapsed;
+        public Visibility PresentMenuVisibility => IsPresent || IsRosterUnknown ? Visibility.Visible : Visibility.Collapsed;
         public Visibility GenerateMenuVisibility => CanGenerate ? Visibility.Visible : Visibility.Collapsed;
 
         private static Brush Res(string key)
             => Application.Current.Resources[key] as Brush ?? Brushes.Transparent;
 
-        public bool CanOpen => IsPresent && HasContent;
-        public bool CanSaveAs => IsPresent && HasContent;
-        public bool CanRegenerate => IsPresent && SourceType == DocumentSourceType.Generated;
-        public bool CanHistory => IsPresent;
-        public bool CanGenerate => IsMissingRequired || IsMissingOptional;
+        public bool CanOpen => (IsPresent || IsRosterUnknown) && HasContent;
+        // Групові: лише «Відкрити» - генерація, історія і збереження живуть в «Архів → Групові» та «Генерації».
+        public bool CanSaveAs => IsPresent && HasContent && !IsGroupColumn;
+        public bool CanRegenerate => IsPresent && SourceType == DocumentSourceType.Generated && !IsGroupColumn;
+        public bool CanHistory => IsPresent && !IsGroupColumn;
+        public bool CanGenerate => (IsMissingRequired || IsMissingOptional) && !IsGroupColumn;
 
         [RelayCommand(CanExecute = nameof(CanOpen))]
         private Task OpenAsync() => _coordinator.OpenAsync(this);
@@ -144,7 +152,9 @@ namespace GenDoc.ViewModels.Completeness
             }
             else if (doc is not null)
             {
-                State = doc.IsStale ? MatrixCellState.PresentStale : MatrixCellState.Present;
+                State = doc.RosterUnknown
+                    ? MatrixCellState.RosterUnknown
+                    : doc.IsStale ? MatrixCellState.PresentStale : MatrixCellState.Present;
                 DocumentId = doc.Id;
                 Version = doc.Version;
                 HasContent = doc.HasContent;

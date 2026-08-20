@@ -50,9 +50,10 @@ namespace GenDoc.ViewModels.Completeness
             SortOrder = info.SortOrder;
             HasDocuments = hasDocuments;
             IsGroup = info.IsGroup;
-            // Груповий шаблон формує один документ на весь склад - обов'язковість на особу до нього не застосовна.
-            regular = info.IsGroup ? TemplateRequirement.NotApplicable : info.RequirementRegular;
-            limited = info.IsGroup ? TemplateRequirement.NotApplicable : info.RequirementLimited;
+            // v25: обов'язковість групового знову має сенс - клітинка матриці каже,
+            // чи людина в складі чинного групового документа.
+            regular = info.RequirementRegular;
+            limited = info.RequirementLimited;
         }
 
         public int? LinkId { get; }
@@ -321,11 +322,10 @@ namespace GenDoc.ViewModels.Completeness
                 return;
             }
 
-            var personal = Rows.Where(r => !r.IsGroup).ToList();
-            var requiredRegular = personal.Count(r => r.Regular == TemplateRequirement.Required);
-            var requiredLimited = personal.Count(r => r.Limited == TemplateRequirement.Required);
-            var optionalRegular = personal.Count(r => r.Regular == TemplateRequirement.Optional);
-            var optionalLimited = personal.Count(r => r.Limited == TemplateRequirement.Optional);
+            var requiredRegular = Rows.Count(r => r.Regular == TemplateRequirement.Required);
+            var requiredLimited = Rows.Count(r => r.Limited == TemplateRequirement.Required);
+            var optionalRegular = Rows.Count(r => r.Regular == TemplateRequirement.Optional);
+            var optionalLimited = Rows.Count(r => r.Limited == TemplateRequirement.Optional);
 
             PreviewText = BuildPreviewText(_previewIntakeId.Value, requiredRegular, optionalRegular, requiredLimited, optionalLimited);
         }
@@ -340,20 +340,18 @@ namespace GenDoc.ViewModels.Completeness
 
         private void Validate()
         {
-            // Групові рядки (1.4/1.5) вимог на особу не мають - у перевірці не беруть участі.
-            var personal = Rows.Where(r => !r.IsGroup).ToList();
-            if (personal.Count == 0)
+            if (Rows.Count == 0)
             {
-                // Пакет без персональних docx-шаблонів (лише групові відомості) не бере участі
+                // Пакет без docx-шаблонів (лише Excel-відомості) не бере участі
                 // в матриці комплектності - вимоги нема до чого застосовувати.
-                ValidationError = Rows.Count == 0 && ExportRows.Count == 0
+                ValidationError = ExportRows.Count == 0
                     ? "Пакет повинен мати хоча б один шаблон"
                     : null;
                 return;
             }
 
-            var hasAnyRegular = personal.Any(r => r.Regular != TemplateRequirement.NotApplicable);
-            var hasAnyLimited = personal.Any(r => r.Limited != TemplateRequirement.NotApplicable);
+            var hasAnyRegular = Rows.Any(r => r.Regular != TemplateRequirement.NotApplicable);
+            var hasAnyLimited = Rows.Any(r => r.Limited != TemplateRequirement.NotApplicable);
 
             ValidationError = !hasAnyRegular || !hasAnyLimited
                 ? "Пакет повинен мати хоча б один шаблон, застосовний до кожної категорії"

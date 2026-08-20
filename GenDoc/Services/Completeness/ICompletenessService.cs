@@ -10,12 +10,17 @@ namespace GenDoc.Services.Completeness
         bool IsGroup = false);
 
     // Групові відомості пакета (один документ на весь склад) - показуються в підвалі
-    // картки особи, а не серед її персональних документів.
-    public record PackageGroupDocumentStatus(int TemplateId, string TemplateName, int? GroupDocumentId, int Version);
+    // картки особи, а не серед її персональних документів. IsParticipant/RosterUnknown
+    // мають сенс, коли передано recipientId (участь конкретної людини, v25).
+    public record PackageGroupDocumentStatus(
+        int TemplateId, string TemplateName, int? GroupDocumentId, int Version,
+        bool IsParticipant = false, bool RosterUnknown = false);
 
+    // IsGroup - Id вказує на GeneratedGroupDocument (участь людини в групповому наказі),
+    // RosterUnknown - документ згенеровано до v25, складу не записано.
     public record MatrixDocDto(
         int Id, int RecipientId, int TemplateId, int Version, bool HasContent, bool IsStale,
-        DocumentSourceType SourceType);
+        DocumentSourceType SourceType, bool IsGroup = false, bool RosterUnknown = false);
 
     public record MatrixData(
         List<Recipient> People,
@@ -43,7 +48,7 @@ namespace GenDoc.Services.Completeness
         Task<int?> GetDefaultPackageIdAsync();
 
         Task<List<RecipientDocStatus>> GetRecipientStatusAsync(int recipientId, int packageId);
-        Task<List<PackageGroupDocumentStatus>> GetPackageGroupDocumentsAsync(int packageId, int? intakeId);
+        Task<List<PackageGroupDocumentStatus>> GetPackageGroupDocumentsAsync(int packageId, int? intakeId, int? recipientId = null);
         Task<(int Generated, int Skipped, List<string> Errors)> GenerateMissingForRecipientAsync(
             int recipientId, int packageId, Dictionary<string, string> manualValues);
 

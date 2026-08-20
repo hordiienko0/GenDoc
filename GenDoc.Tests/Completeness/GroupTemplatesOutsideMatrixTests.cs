@@ -4,23 +4,28 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Completeness;
 
-// Вада 1.4: груповий шаблон (один документ на весь склад) показувався в картці особи
-// як персональний «Немає · Згенерувати» і давав порожню колонку в матриці.
+// Групові шаблони в комплектності. Історія: 19.08 (вада 1.4) групові прибрали з
+// матриці, бо клітинка була беззмістовна («один документ на всіх» у рядку однієї
+// людини). 20.08 (v25) вони повернулись - тепер клітинка каже, чи людина В СКЛАДІ
+// чинного групового документа, з посиланням на нього.
 public class GroupTemplatesOutsideMatrixTests
 {
-    private static (int PackageId, int IntakeId, int PersonId, int GroupTemplateId) Seed(TestDb db)
+    private static (int PackageId, int IntakeId, int PersonInId, int PersonOutId, int GroupTemplateId, int GroupDocId)
+        Seed(TestDb db, bool withParticipants = true)
     {
         using var ctx = db.Factory.CreateDbContext();
         ctx.Users.Add(new UserProfile { FullName = "Тест", PasswordHash = "x", CreatedAt = DateTime.Now });
         var intake = new Intake { Number = 1, DisplayNumber = "Набір №1" };
         ctx.Intakes.Add(intake);
-        var person = TemplateFixtures.Person(1, "ШЕВЧЕНКО", "Тарас");
-        ctx.Recipients.Add(person);
+        var personIn = TemplateFixtures.Person(1, "ШЕВЧЕНКО", "Тарас");
+        var personOut = TemplateFixtures.Person(2, "ФРАНКО", "Іван");
+        ctx.Recipients.AddRange(personIn, personOut);
         var personal = new Template { Name = "Рапорт ІНДИВІДУАЛЬНИЙ", OriginalFileName = "a.docx", Content = new byte[] { 1 }, UploadedAt = DateTime.Now, Kind = TemplateKind.PerRecipient };
         var group = new Template { Name = "Рапорт ГРУПОВИЙ", OriginalFileName = "b.docx", Content = new byte[] { 1 }, UploadedAt = DateTime.Now, Kind = TemplateKind.Group };
         ctx.Templates.AddRange(personal, group);
         ctx.SaveChanges();
-        person.IntakeId = intake.Id;
+        personIn.IntakeId = intake.Id;
+        personOut.IntakeId = intake.Id;
 
         var package = new GenerationPackage { Name = "П" };
         package.Templates.Add(new GenerationPackageTemplate { TemplateId = personal.Id, SortOrder = 0 });
@@ -28,34 +33,59 @@ public class GroupTemplatesOutsideMatrixTests
         ctx.GenerationPackages.Add(package);
         ctx.SaveChanges();
 
-        ctx.GeneratedGroupDocuments.Add(new GeneratedGroupDocument
+        var doc = new GeneratedGroupDocument
         {
             TemplateId = group.Id, IntakeId = intake.Id, GeneratedAt = DateTime.Now, GeneratedByUserId = 1,
-            FileName = "group.docx", Version = 8, IsCurrent = true, HasContent = true, RecipientCount = 3
-        });
+            FileName = "group.docx", Version = 8, IsCurrent = true, HasContent = true, RecipientCount = 1
+        };
+        if (withParticipants)
+            doc.Recipients.Add(new GeneratedGroupDocumentRecipient { RecipientId = personIn.Id });
+        ctx.GeneratedGroupDocuments.Add(doc);
         ctx.SaveChanges();
-        return (package.Id, intake.Id, person.Id, group.Id);
+        return (package.Id, intake.Id, personIn.Id, personOut.Id, group.Id, doc.Id);
     }
 
     [Fact]
-    public async Task Matrix_ExcludesGroupTemplates()
+    public async Task Matrix_GroupColumn_MarksParticipantsAndOnlyThem()
     {
         using var db = new TestDb();
-        var (packageId, intakeId, _, _) = Seed(db);
+        var (packageId, intakeId, personInId, personOutId, groupTemplateId, groupDocId) = Seed(db);
 
         var data = await TestServices.Completeness(db).BuildAsync(intakeId, packageId);
 
-        Assert.Single(data.Templates);
-        Assert.Equal("Рапорт ІНДИВІДУАЛЬНИЙ", data.Templates[0].Name);
+        Assert.Contains(data.Templates, t => t.TemplateId == groupTemplateId && t.IsGroup);
+
+        var cell = data.Docs[(personInId, groupTemplateId)];
+        Assert.True(cell.IsGroup);
+        Assert.False(cell.RosterUnknown);
+        Assert.Equal(groupDocId, cell.Id);
+        Assert.Equal(8, cell.Version);
+
+        Assert.False(data.Docs.ContainsKey((personOutId, groupTemplateId)));
     }
 
+    // Документ, згенерований до v25: складу немає (RecipientCount > 0, учасників 0) -
+    // усі отримують «склад не записано», а не хибне «немає».
     [Fact]
-    public async Task RecipientStatus_ExcludesGroupTemplates()
+    public async Task Matrix_LegacyGroupDoc_GivesRosterUnknownToEveryone()
     {
         using var db = new TestDb();
-        var (packageId, _, personId, _) = Seed(db);
+        var (packageId, intakeId, personInId, personOutId, groupTemplateId, _) = Seed(db, withParticipants: false);
 
-        var statuses = await TestServices.Completeness(db).GetRecipientStatusAsync(personId, packageId);
+        var data = await TestServices.Completeness(db).BuildAsync(intakeId, packageId);
+
+        Assert.True(data.Docs[(personInId, groupTemplateId)].RosterUnknown);
+        Assert.True(data.Docs[(personOutId, groupTemplateId)].RosterUnknown);
+    }
+
+    // Персональний список картки («Сформувати повний пакет») групових як і раніше не містить.
+    [Fact]
+    public async Task RecipientStatus_StillExcludesGroupTemplates()
+    {
+        using var db = new TestDb();
+        var (packageId, _, personInId, _, _, _) = Seed(db);
+
+        var statuses = await TestServices.Completeness(db).GetRecipientStatusAsync(personInId, packageId);
 
         Assert.Single(statuses);
         Assert.Equal("Рапорт ІНДИВІДУАЛЬНИЙ", statuses[0].TemplateName);
@@ -65,26 +95,28 @@ public class GroupTemplatesOutsideMatrixTests
     public async Task PackageLinks_KeepGroupTemplatesWithFlag()
     {
         using var db = new TestDb();
-        var (packageId, _, _, groupTemplateId) = Seed(db);
+        var (packageId, _, _, _, groupTemplateId, _) = Seed(db);
 
         var links = await TestServices.Completeness(db).GetPackageLinksAsync(packageId);
 
         Assert.Equal(2, links.Count);
         Assert.True(links.Single(l => l.TemplateId == groupTemplateId).IsGroup);
-        Assert.False(links.Single(l => l.TemplateId != groupTemplateId).IsGroup);
     }
 
+    // Підвал картки: участь конкретної людини.
     [Fact]
-    public async Task PackageGroupDocuments_ReturnCurrentVersionForIntake()
+    public async Task PackageGroupDocuments_ReportParticipationPerPerson()
     {
         using var db = new TestDb();
-        var (packageId, intakeId, _, groupTemplateId) = Seed(db);
+        var (packageId, intakeId, personInId, personOutId, groupTemplateId, groupDocId) = Seed(db);
 
-        var docs = await TestServices.Completeness(db).GetPackageGroupDocumentsAsync(packageId, intakeId);
+        var svc = TestServices.Completeness(db);
+        var forIn = Assert.Single(await svc.GetPackageGroupDocumentsAsync(packageId, intakeId, personInId));
+        var forOut = Assert.Single(await svc.GetPackageGroupDocumentsAsync(packageId, intakeId, personOutId));
 
-        var doc = Assert.Single(docs);
-        Assert.Equal(groupTemplateId, doc.TemplateId);
-        Assert.Equal(8, doc.Version);
-        Assert.NotNull(doc.GroupDocumentId);
+        Assert.Equal(groupDocId, forIn.GroupDocumentId);
+        Assert.True(forIn.IsParticipant);
+        Assert.False(forIn.RosterUnknown);
+        Assert.False(forOut.IsParticipant);
     }
 }
