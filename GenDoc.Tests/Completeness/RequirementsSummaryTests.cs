@@ -10,7 +10,7 @@ public class RequirementsSummaryTests
     public void BuildPreviewText_ReadsAsSentence()
     {
         var text = PackageRequirementsViewModel.BuildPreviewText(4, requiredRegular: 1, optionalRegular: 1, requiredLimited: 2, optionalLimited: 0);
-        Assert.Equal("Для набору №4: звичайні - 1 обов'язковий, 1 опційний · обмежено придатні - 2 обов'язкових, 0 опційних", text);
+        Assert.Equal("Для набору №4: придатні - 1 обов'язковий, 1 опційний · обмежено придатні - 2 обов'язкових, 0 опційних", text);
     }
 
     // v25: обов'язковість групового знову має сенс (участь людини в чинному документі),

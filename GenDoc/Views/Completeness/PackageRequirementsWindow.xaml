@@ -86,7 +86,7 @@
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="ШАБЛОН" FontSize="10.5" FontWeight="Bold"
                            Foreground="{StaticResource TextSecondaryBrush}"/>
-                <TextBlock Grid.Column="1" Text="ЗВИЧАЙНІ" FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center"
+                <TextBlock Grid.Column="1" Text="ПРИДАТНІ" FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center"
                            Foreground="{StaticResource TextSecondaryBrush}"/>
                 <TextBlock Grid.Column="2" Text="ОБМЕЖЕНО ПРИДАТНІ" FontSize="10.5" FontWeight="Bold" HorizontalAlignment="Center"
                            Foreground="{StaticResource TextSecondaryBrush}"/>
@@ -106,7 +106,7 @@
                                     </Grid.ColumnDefinitions>
 
                                     <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="12.5" VerticalAlignment="Center"
-                                               Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"><TextBlock.ToolTip><TextBlock><Run Text="{Binding Name, Mode=OneWay}"/><Run Text=" (груповий - формується на весь склад у «Генерації»)"><Run.Style><Style TargetType="Run"><Style.Triggers><DataTrigger Binding="{Binding IsGroup}" Value="False"><Setter Property="Text" Value=""/></DataTrigger></Style.Triggers></Style></Run.Style></Run></TextBlock></TextBlock.ToolTip></TextBlock>
+                                               Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"><TextBlock.ToolTip><TextBlock><Run Text="{Binding Name, Mode=OneWay}"/><Run><Run.Style><Style TargetType="Run"><Setter Property="Text" Value=" (груповий - формується на весь склад у «Генерації»)"/><Style.Triggers><DataTrigger Binding="{Binding IsGroup}" Value="False"><Setter Property="Text" Value=""/></DataTrigger></Style.Triggers></Style></Run.Style></Run></TextBlock></TextBlock.ToolTip></TextBlock>
 
 
                                     <UniformGrid Grid.Column="1" Columns="3" VerticalAlignment="Center">

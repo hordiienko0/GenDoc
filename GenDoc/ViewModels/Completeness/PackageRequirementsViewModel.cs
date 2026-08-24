@@ -331,7 +331,7 @@ namespace GenDoc.ViewModels.Completeness
         }
 
         internal static string BuildPreviewText(int intakeNumber, int requiredRegular, int optionalRegular, int requiredLimited, int optionalLimited)
-            => $"Для набору №{intakeNumber}: звичайні - {requiredRegular} {Plural(requiredRegular, "обов'язковий", "обов'язкових")}, " +
+            => $"Для набору №{intakeNumber}: придатні - {requiredRegular} {Plural(requiredRegular, "обов'язковий", "обов'язкових")}, " +
                $"{optionalRegular} {Plural(optionalRegular, "опційний", "опційних")} · " +
                $"обмежено придатні - {requiredLimited} {Plural(requiredLimited, "обов'язковий", "обов'язкових")}, " +
                $"{optionalLimited} {Plural(optionalLimited, "опційний", "опційних")}";
