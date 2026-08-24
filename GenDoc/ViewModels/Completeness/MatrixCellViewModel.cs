@@ -114,6 +114,11 @@ namespace GenDoc.ViewModels.Completeness
         public Visibility PresentMenuVisibility => IsPresent || IsRosterUnknown ? Visibility.Visible : Visibility.Collapsed;
         public Visibility GenerateMenuVisibility => CanGenerate ? Visibility.Visible : Visibility.Collapsed;
 
+        // Меню не відкривається взагалі, коли в ньому не було б жодного пункту:
+        // «Не потрібен» і групова клітинка без документа (людина не в складі -
+        // персональних дій нема, групові живуть у «Генерації» та «Архів → Групові»).
+        public bool HasMenu => !IsNotApplicable && !(IsGroupColumn && DocumentId is null);
+
         private static Brush Res(string key)
             => Application.Current.Resources[key] as Brush ?? Brushes.Transparent;
 
@@ -196,6 +201,7 @@ namespace GenDoc.ViewModels.Completeness
             OnPropertyChanged(nameof(VersionVisibility));
             OnPropertyChanged(nameof(PresentMenuVisibility));
             OnPropertyChanged(nameof(GenerateMenuVisibility));
+            OnPropertyChanged(nameof(HasMenu));
         }
     }
 

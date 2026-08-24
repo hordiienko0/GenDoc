@@ -15,29 +15,34 @@ public partial class CompletenessView : UserControl
                       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
             <Border x:Name="CellRoot" Tag="cell" MinHeight="34" Background="{{Binding Cells[{0}].Background}}"
                     ToolTip="{{Binding Cells[{0}].ToolTipText}}">
+                <!-- ContextMenu ЧЕРЕЗ Setter, не локальним значенням: локальне значення
+                     старше за тригер стилю, і "вимкнути меню" тригером було б неможливо
+                     (пастка 17.08). Тригер прибирає меню там, де жоден пункт не показався б. -->
                 <Border.Style>
                     <Style TargetType="Border">
+                        <Setter Property="ContextMenu">
+                            <Setter.Value>
+                                <ContextMenu>
+                                    <MenuItem Header="Відкрити" Command="{{Binding Cells[{0}].OpenCommand}}"
+                                              Visibility="{{Binding Cells[{0}].PresentMenuVisibility}}"/>
+                                    <MenuItem Header="Перегенерувати" Command="{{Binding Cells[{0}].RegenerateCommand}}"
+                                              Visibility="{{Binding Cells[{0}].PresentMenuVisibility}}"/>
+                                    <MenuItem Header="Історія версій" Command="{{Binding Cells[{0}].HistoryCommand}}"
+                                              Visibility="{{Binding Cells[{0}].PresentMenuVisibility}}"/>
+                                    <MenuItem Header="Зберегти як…" Command="{{Binding Cells[{0}].SaveAsCommand}}"
+                                              Visibility="{{Binding Cells[{0}].PresentMenuVisibility}}"/>
+                                    <MenuItem Header="Згенерувати" Command="{{Binding Cells[{0}].GenerateCommand}}"
+                                              Visibility="{{Binding Cells[{0}].GenerateMenuVisibility}}"/>
+                                </ContextMenu>
+                            </Setter.Value>
+                        </Setter>
                         <Style.Triggers>
-                            <DataTrigger Binding="{{Binding Cells[{0}].IsNotApplicable}}" Value="True">
+                            <DataTrigger Binding="{{Binding Cells[{0}].HasMenu}}" Value="False">
                                 <Setter Property="ContextMenu" Value="{{x:Null}}"/>
                             </DataTrigger>
                         </Style.Triggers>
                     </Style>
                 </Border.Style>
-                <Border.ContextMenu>
-                    <ContextMenu>
-                        <MenuItem Header="Відкрити" Command="{{Binding Cells[{0}].OpenCommand}}"
-                                  Visibility="{{Binding Cells[{0}].PresentMenuVisibility}}"/>
-                        <MenuItem Header="Перегенерувати" Command="{{Binding Cells[{0}].RegenerateCommand}}"
-                                  Visibility="{{Binding Cells[{0}].PresentMenuVisibility}}"/>
-                        <MenuItem Header="Історія версій" Command="{{Binding Cells[{0}].HistoryCommand}}"
-                                  Visibility="{{Binding Cells[{0}].PresentMenuVisibility}}"/>
-                        <MenuItem Header="Зберегти як…" Command="{{Binding Cells[{0}].SaveAsCommand}}"
-                                  Visibility="{{Binding Cells[{0}].PresentMenuVisibility}}"/>
-                        <MenuItem Header="Згенерувати" Command="{{Binding Cells[{0}].GenerateCommand}}"
-                                  Visibility="{{Binding Cells[{0}].GenerateMenuVisibility}}"/>
-                    </ContextMenu>
-                </Border.ContextMenu>
                 <Grid>
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
                         <TextBlock Text="{{Binding Cells[{0}].Glyph}}" FontSize="14" FontWeight="Bold"
