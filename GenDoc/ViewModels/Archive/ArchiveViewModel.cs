@@ -25,6 +25,8 @@ namespace GenDoc.ViewModels.Archive
         private readonly IDocumentArchiveService _archiveService;
         private readonly IDialogService _dialogService;
         private readonly ActiveIntakeState _activeIntakeState;
+        private readonly IUserSettingsService _userSettings;
+        private readonly ICurrentUserContext _currentUser;
         private readonly DispatcherTimer _searchDebounceTimer;
 
         private readonly List<ArchiveRowViewModel> _loadedRows = new();
@@ -44,13 +46,17 @@ namespace GenDoc.ViewModels.Archive
             IDialogService dialogService,
             ActiveIntakeState activeIntakeState,
             Services.Generation.IManualTagFormBuilder manualTagFormBuilder,
-            Services.Generation.IOutputFolderService outputFolderService)
+            Services.Generation.IOutputFolderService outputFolderService,
+            IUserSettingsService userSettings,
+            ICurrentUserContext currentUser)
         {
             _outputFolderService = outputFolderService;
             _archiveService = archiveService;
             _dialogService = dialogService;
             _activeIntakeState = activeIntakeState;
             _manualTagFormBuilder = manualTagFormBuilder;
+            _userSettings = userSettings;
+            _currentUser = currentUser;
 
             _searchDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
             _searchDebounceTimer.Tick += (_, _) =>
@@ -80,6 +86,22 @@ namespace GenDoc.ViewModels.Archive
         partial void OnSelectedPackageChanged(FilterOption? value) => OnFilterChanged();
         partial void OnSelectedAuthorChanged(FilterOption? value) => OnFilterChanged();
         partial void OnSelectedYearChanged(FilterOption? value) => OnFilterChanged();
+
+        // Варіант Б: перемикач «Всі / Мої» по автору - працює на всіх трьох вкладках,
+        // значення пам'ятається в UserSettings (пер-профільно).
+        [ObservableProperty] private bool mineOnly;
+
+        private bool _suppressMineOnlyReload;
+
+        partial void OnMineOnlyChanged(bool value)
+        {
+            if (_suppressMineOnlyReload) return;
+            _ = _userSettings.UpdateAsync(s => s.ArchiveMineOnly = value);
+
+            if (IsDocsTab) _ = ResetAndReloadAsync();
+            else if (IsRunsTab) _ = ReloadRunsAsync();
+            else if (IsGroupTab) _ = ReloadGroupAsync();
+        }
 
         [ObservableProperty]
         private string? searchText;
@@ -145,6 +167,11 @@ namespace GenDoc.ViewModels.Archive
             }
             _initialized = true;
 
+            _suppressMineOnlyReload = true;
+            var settings = await _userSettings.GetForCurrentUserAsync();
+            MineOnly = settings.ArchiveMineOnly;
+            _suppressMineOnlyReload = false;
+
             await ReloadFilterOptionsAsync();
             await ResetAndReloadAsync();
         }
@@ -201,7 +228,8 @@ namespace GenDoc.ViewModels.Archive
 
         private ArchiveFilter BuildFilter(int skip) => new(
             SelectedIntake?.Id, SelectedTemplate?.Id, SelectedPackage?.Id,
-            SelectedAuthor?.Id, SelectedYear?.Id, skip, PageSize, SelectedFolderPath);
+            MineOnly ? _currentUser.CurrentUserId : SelectedAuthor?.Id,
+            SelectedYear?.Id, skip, PageSize, SelectedFolderPath);
 
         /// <summary>Дерево папок ліворуч. Порожній рядок = «Усі документи».</summary>
         public ObservableCollection<ArchiveFolderNodeViewModel> FolderTree { get; } = new();
@@ -796,7 +824,8 @@ namespace GenDoc.ViewModels.Archive
 
         private async Task ReloadRunsAsync()
         {
-            var runs = await _archiveService.GetRunsAsync(SelectedIntake?.Id, SelectedYear?.Id);
+            var runs = await _archiveService.GetRunsAsync(
+                SelectedIntake?.Id, SelectedYear?.Id, MineOnly ? _currentUser.CurrentUserId : null);
             Runs.Clear();
             foreach (var run in runs)
                 Runs.Add(new RunGroupViewModel(run));
@@ -908,7 +937,8 @@ namespace GenDoc.ViewModels.Archive
             {
                 ClearGroupChecked();
                 var rows = await _archiveService.QueryGroupAsync(new GroupArchiveFilter(
-                    SelectedGroupTemplate?.ExportTemplateId, SelectedGroupTemplate?.DocxTemplateId, null, 0, PageSize));
+                    SelectedGroupTemplate?.ExportTemplateId, SelectedGroupTemplate?.DocxTemplateId, null, 0, PageSize,
+                    MineOnly ? _currentUser.CurrentUserId : null));
                 GroupRows.Clear();
                 foreach (var dto in rows)
                 {

@@ -640,7 +640,7 @@ namespace GenDoc.Services.Documents
             await db.SaveChangesAsync();
         }
 
-        public async Task<List<RunDto>> GetRunsAsync(int? intakeId, int? year)
+        public async Task<List<RunDto>> GetRunsAsync(int? intakeId, int? year, int? userId = null)
         {
             using var db = _dbFactory.CreateDbContext();
             var query = db.GenerationPackageRuns.AsNoTracking();
@@ -648,6 +648,7 @@ namespace GenDoc.Services.Documents
             // Запуски без набору (постійний склад) показуємо разом із набором - інакше їх не видно ніде.
             if (intakeId is int i) query = query.Where(r => r.IntakeId == i || r.IntakeId == null);
             if (year is int y) query = query.Where(r => r.RunAt.Year == y);
+            if (userId is int u) query = query.Where(r => r.RunByUserId == u);
 
             var runs = await query
                 .OrderByDescending(r => r.RunAt)
@@ -746,6 +747,8 @@ namespace GenDoc.Services.Documents
                 query = query.Where(g => g.TemplateId == docxTemplateId);
             if (filter.Year is int year)
                 query = query.Where(g => g.GeneratedAt.Year == year);
+            if (filter.UserId is int uid)
+                query = query.Where(g => g.GeneratedByUserId == uid);
 
             return await query
                 .OrderByDescending(g => g.GeneratedAt)

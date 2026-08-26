@@ -37,6 +37,36 @@
             <Setter Property="MinWidth" Value="120"/>
             <Setter Property="Margin" Value="0,0,7,0"/>
         </Style>
+
+        <!-- Сегмент перемикача «Всі / Мої». Локальний ресурс лише для цього
+             view - інші вікна мають власні (PackageRequirementsWindow тощо), і
+             посилатись на чужий локальний ресурс не можна. -->
+        <Style x:Key="ArchiveMineSegmentStyle" TargetType="RadioButton">
+            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="12,5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="FontWeight" Value="Bold"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
     </UserControl.Resources>
 
     <Grid Background="{StaticResource BackgroundBrush}">
@@ -55,7 +85,13 @@
 
         <Border Grid.Row="1" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1"
                 Margin="0,0,0,10">
-            <StackPanel Orientation="Horizontal">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Orientation="Horizontal">
                 <Button Content="Документи" Command="{Binding SetTabCommand}" CommandParameter="0">
                     <Button.Style>
                         <Style TargetType="Button" BasedOn="{StaticResource ArchiveTabStyle}">
@@ -95,7 +131,17 @@
                         </Style>
                     </Button.Style>
                 </Button>
-            </StackPanel>
+                </StackPanel>
+
+                <!-- Перемикач «Всі / Мої» по автору - спільний для всіх трьох
+                     вкладок, тож живе в шапці, а не всередині кожної. -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,4">
+                    <RadioButton Content="Всі" GroupName="ArchiveMine" Style="{StaticResource ArchiveMineSegmentStyle}"
+                                 IsChecked="{Binding MineOnly, Converter={StaticResource InverseBoolean}}"/>
+                    <RadioButton Content="Мої" GroupName="ArchiveMine" Style="{StaticResource ArchiveMineSegmentStyle}"
+                                 IsChecked="{Binding MineOnly}"/>
+                </StackPanel>
+            </Grid>
         </Border>
 
         <!-- ТАБ «ДОКУМЕНТИ» -->

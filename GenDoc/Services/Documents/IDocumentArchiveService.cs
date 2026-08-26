@@ -34,7 +34,7 @@ namespace GenDoc.Services.Documents
         Task<List<DeletedDocumentInfo>> GetDeletedDocumentsAsync();
         Task RestoreAsync(int documentId);
 
-        Task<List<RunDto>> GetRunsAsync(int? intakeId, int? year);
+        Task<List<RunDto>> GetRunsAsync(int? intakeId, int? year, int? userId = null);
         Task<List<RunItemDto>> GetRunItemsAsync(int runId);
 
         // Групові документи (XLSX-відомості на весь список людей) - окрема

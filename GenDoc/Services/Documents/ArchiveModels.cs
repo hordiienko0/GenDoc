@@ -77,7 +77,7 @@ namespace GenDoc.Services.Documents
 
     public record ArchiveOpResult(bool Success, string? ErrorMessage);
 
-    public record GroupArchiveFilter(int? ExportTemplateId, int? DocxTemplateId, int? Year, int Skip, int Take);
+    public record GroupArchiveFilter(int? ExportTemplateId, int? DocxTemplateId, int? Year, int Skip, int Take, int? UserId = null);
 
     // Ідентифікатори шаблонів XLSX і DOCX живуть у різних таблицях з незалежною
     // нумерацією, тож саме число нічого не каже про вид документа - вид має
