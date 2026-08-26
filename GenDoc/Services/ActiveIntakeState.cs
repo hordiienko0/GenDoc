@@ -8,10 +8,12 @@ namespace GenDoc.Services
     public class ActiveIntakeState
     {
         private readonly IIntakeService _intakeService;
+        private readonly IUserSettingsService _userSettings;
 
-        public ActiveIntakeState(IIntakeService intakeService)
+        public ActiveIntakeState(IIntakeService intakeService, IUserSettingsService userSettings)
         {
             _intakeService = intakeService;
+            _userSettings = userSettings;
         }
 
         public Intake? Current { get; private set; }
@@ -33,8 +35,15 @@ namespace GenDoc.Services
 
         public async Task RefreshAsync()
         {
-            Current = await _intakeService.GetActiveAsync();
+            var settings = await _userSettings.GetForCurrentUserAsync();
+            Intake? mine = settings.ActiveIntakeId is int id
+                ? await _intakeService.GetByIdAsync(id)   // null, якщо набір видалили
+                : null;
+            Current = Pick(mine, mine is null ? await _intakeService.GetActiveAsync() : null);
             WeakReferenceMessenger.Default.Send(new ActiveIntakeChangedMessage());
         }
+
+        // Чисте правило: свій набір, поки він існує; інакше глобальний активний.
+        internal static Intake? Pick(Intake? mine, Intake? globalActive) => mine ?? globalActive;
     }
 }

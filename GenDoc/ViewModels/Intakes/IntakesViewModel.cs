@@ -23,6 +23,7 @@ namespace GenDoc.ViewModels.Intakes
         private readonly IServiceProvider _serviceProvider;
         private readonly ActiveIntakeState _activeIntakeState;
         private readonly OrgTreeViewModel _tree;
+        private readonly IUserSettingsService _userSettings;
 
         private List<IntakeOverview> _all = new();
         private CancellationTokenSource? _summaryCts;
@@ -34,7 +35,8 @@ namespace GenDoc.ViewModels.Intakes
             IServiceProvider serviceProvider,
             ActiveIntakeState activeIntakeState,
             OrgTreeViewModel tree,
-            ICurrentUserContext currentUserContext)
+            ICurrentUserContext currentUserContext,
+            IUserSettingsService userSettings)
         {
             _intakeService = intakeService;
             _completenessService = completenessService;
@@ -42,6 +44,7 @@ namespace GenDoc.ViewModels.Intakes
             _serviceProvider = serviceProvider;
             _activeIntakeState = activeIntakeState;
             _tree = tree;
+            _userSettings = userSettings;
             _ = currentUserContext; // резервується для майбутнього - Закрити/Відкрити пишуть автора через IAuditLogService
 
             StatusOptions = new ObservableCollection<IntakeStatusFilterOption>
@@ -199,6 +202,14 @@ namespace GenDoc.ViewModels.Intakes
             WeakReferenceMessenger.Default.Send(new NavigateToSectionMessage(
                 MainViewModel.GenerationSectionTitle,
                 new IntakeNavigationPayload(card.Id, card.RootOrgNodeId, null)));
+        }
+
+        [RelayCommand]
+        private async Task MakeMineAsync(IntakeCardViewModel? card)
+        {
+            if (card is null) return;
+            await _userSettings.UpdateAsync(s => s.ActiveIntakeId = card.Id);
+            await _activeIntakeState.RefreshAsync();
         }
 
         [RelayCommand]
