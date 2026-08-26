@@ -43,6 +43,7 @@ namespace GenDoc.Data
         public DbSet<GeneratedGroupDocument> GeneratedGroupDocuments => Set<GeneratedGroupDocument>();
         public DbSet<GeneratedGroupDocumentContent> GeneratedGroupDocumentContents => Set<GeneratedGroupDocumentContent>();
         public DbSet<GeneratedGroupDocumentRecipient> GeneratedGroupDocumentRecipients => Set<GeneratedGroupDocumentRecipient>();
+        public DbSet<Models.UserSettings> UserSettings => Set<Models.UserSettings>();
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -125,6 +126,14 @@ namespace GenDoc.Data
 
             modelBuilder.Entity<GeneratedGroupDocumentContent>()
                 .HasKey(c => c.GeneratedGroupDocumentId);
+
+            // v26: пер-профільний стан користувача.
+            modelBuilder.Entity<Models.UserSettings>(e =>
+            {
+                e.HasIndex(s => s.UserProfileId).IsUnique();
+                e.HasOne(s => s.UserProfile).WithMany().HasForeignKey(s => s.UserProfileId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
 
             modelBuilder.Entity<GenerationPackageExportTemplate>()
                 .HasOne(t => t.GenerationPackage)

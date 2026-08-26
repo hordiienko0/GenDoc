@@ -69,6 +69,7 @@ namespace GenDoc
             services.AddDbContextFactory<AppDbContext>();
 
             services.AddTransient<IUserProfileService, UserProfileService>();
+            services.AddTransient<IUserSettingsService, UserSettingsService>();
             services.AddTransient<IDatabaseSchemaInitializer, DatabaseSchemaInitializer>();
             services.AddTransient<IAuditLogService, AuditLogService>();
             services.AddTransient<IRecipientService, RecipientService>();

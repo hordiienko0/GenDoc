@@ -325,6 +325,67 @@ public class DatabaseSchemaInitializerTests
         }
     }
 
+    // v26: пер-профільний стан користувача (мій набір, останній пакет, фільтр «Мої» в
+    // архіві, дані «з минулого разу»). Чиста база - таблиця створюється одразу повною.
+    [Fact]
+    public void EnsureUserSettingsTable_FreshDatabase_CreatesTableAndIsIdempotent()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        Exec(connection, """
+            CREATE TABLE "Users" ("Id" INTEGER NOT NULL CONSTRAINT "PK_Users" PRIMARY KEY AUTOINCREMENT, "FullName" TEXT NOT NULL);
+            INSERT INTO "Users" ("Id", "FullName") VALUES (1, 'Тест');
+            """);
+
+        DatabaseSchemaInitializer.EnsureUserSettingsTable((DbConnection)connection);
+        DatabaseSchemaInitializer.EnsureUserSettingsTable((DbConnection)connection); // повторно
+
+        var columns = DatabaseSchemaInitializer.GetExistingColumns((DbConnection)connection, "UserSettings");
+        Assert.Contains("UserProfileId", columns);
+        Assert.Contains("ActiveIntakeId", columns);
+        Assert.Contains("LastPackageId", columns);
+        Assert.Contains("ArchiveMineOnly", columns);
+        Assert.Contains("LastManualValuesJson", columns);
+        Assert.Contains("LastSignerByTemplateJson", columns);
+
+        Exec(connection, """INSERT INTO "UserSettings" ("UserProfileId") VALUES (1);""");
+        Assert.Equal(0L, Scalar(connection, """SELECT "ArchiveMineOnly" FROM "UserSettings" WHERE "UserProfileId" = 1"""));
+
+        // Унікальний індекс: другий рядок для того самого користувача заборонено.
+        Assert.Throws<SqliteException>(() =>
+            Exec(connection, """INSERT INTO "UserSettings" ("UserProfileId") VALUES (1);"""));
+    }
+
+    // Реальний ризик як з Weapons: якщо проміжний білд уже створив таблицю без частини
+    // колонок, CREATE TABLE її не дорощує - потрібен AddMissingColumns-хвіст.
+    [Fact]
+    public void EnsureUserSettingsTable_ExistingTableMissingColumns_AddsMissingColumns()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        Exec(connection, """
+            CREATE TABLE "Users" ("Id" INTEGER NOT NULL CONSTRAINT "PK_Users" PRIMARY KEY AUTOINCREMENT, "FullName" TEXT NOT NULL);
+            INSERT INTO "Users" ("Id", "FullName") VALUES (1, 'Тест');
+            CREATE TABLE "UserSettings" (
+                "Id" INTEGER NOT NULL CONSTRAINT "PK_UserSettings" PRIMARY KEY AUTOINCREMENT,
+                "UserProfileId" INTEGER NOT NULL
+            );
+            INSERT INTO "UserSettings" ("Id", "UserProfileId") VALUES (1, 1);
+            """);
+
+        DatabaseSchemaInitializer.EnsureUserSettingsTable((DbConnection)connection);
+
+        var columns = DatabaseSchemaInitializer.GetExistingColumns((DbConnection)connection, "UserSettings");
+        Assert.Contains("ArchiveMineOnly", columns);
+        Assert.Contains("LastManualValuesJson", columns);
+        Assert.Contains("LastSignerByTemplateJson", columns);
+        Assert.Contains("ActiveIntakeId", columns);
+        Assert.Contains("LastPackageId", columns);
+
+        // Наявний рядок не втрачено, ArchiveMineOnly дістав DEFAULT 0.
+        Assert.Equal(0L, Scalar(connection, """SELECT "ArchiveMineOnly" FROM "UserSettings" WHERE "Id" = 1"""));
+    }
+
     private static void CreateOldSchema(SqliteConnection connection)
     {
         using (var pragma = connection.CreateCommand())

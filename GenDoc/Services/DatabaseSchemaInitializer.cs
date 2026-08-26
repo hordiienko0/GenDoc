@@ -6,7 +6,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 25;
+    private const int CurrentSchemaVersion = 26;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -125,6 +125,16 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     private static readonly (string Name, string Type)[] RecipientColumnsV18 =
     {
         ("AssignedVehicleId", "INTEGER")
+    };
+
+    // Перелічені ВСІ колонки (не лише найновіші) - той самий захист від проміжного
+    // білда, що й у WeaponColumnsV18. NOT NULL - з DEFAULT.
+    private static readonly (string Name, string Type)[] UserSettingsColumnsV26 =
+    {
+        ("UserProfileId", "INTEGER NOT NULL DEFAULT 0"),
+        ("ActiveIntakeId", "INTEGER"), ("LastPackageId", "INTEGER"),
+        ("ArchiveMineOnly", "INTEGER NOT NULL DEFAULT 0"),
+        ("LastManualValuesJson", "TEXT"), ("LastSignerByTemplateJson", "TEXT")
     };
 
     // Перелічені ВСІ колонки, не лише найновіші: таблиця могла з'явитись у проміжному
@@ -531,6 +541,19 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                 });
                 currentVersion = 25;
             }
+
+            if (currentVersion < 26)
+            {
+                EnsureUserSettingsTable(db);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 26,
+                    AppliedAt = DateTime.Now,
+                    Description = "Пер-профільний стан користувача: мій набір, архів «Мої», дані з минулого разу"
+                });
+                currentVersion = 26;
+            }
         }
 
         // Ідемпотентно, як EnsureExportTemplateTables: таблиці, додані в модель після
@@ -561,6 +584,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 
         EnsureGroupDocumentTables(db);
         EnsureGroupDocumentRecipientsTable(db);
+        EnsureUserSettingsTable(db);
 
         AddMissingColumns(db, "Templates", TemplateColumnsV12);
         AddMissingColumns(db, "TemplateFieldMappings", TemplateFieldMappingColumnsV12);
@@ -985,6 +1009,49 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                 """;
             index.ExecuteNonQuery();
         }
+    }
+
+    private static void EnsureUserSettingsTable(AppDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        var wasClosed = connection.State != System.Data.ConnectionState.Open;
+        if (wasClosed) connection.Open();
+        try { EnsureUserSettingsTable(connection); }
+        finally { if (wasClosed) connection.Close(); }
+    }
+
+    // v26: пер-профільний стан користувача (мій набір, останній пакет, фільтр «Мої» в
+    // архіві, дані «з минулого разу»). Винесено на DbConnection заради юніт-тесту, як
+    // EnsureWeaponVehicleTables. CREATE TABLE спрацьовує лише коли таблиці нема, тому
+    // після нього - безумовний AddMissingColumns: якщо таблицю лишив недоформованою
+    // проміжний білд, її довирівнюють, а не лишають зламаною назавжди.
+    internal static void EnsureUserSettingsTable(System.Data.Common.DbConnection connection)
+    {
+        if (!TableExists(connection, "UserSettings"))
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                CREATE TABLE "UserSettings" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_UserSettings" PRIMARY KEY AUTOINCREMENT,
+                    "UserProfileId" INTEGER NOT NULL,
+                    "ActiveIntakeId" INTEGER NULL,
+                    "LastPackageId" INTEGER NULL,
+                    "ArchiveMineOnly" INTEGER NOT NULL DEFAULT 0,
+                    "LastManualValuesJson" TEXT NULL,
+                    "LastSignerByTemplateJson" TEXT NULL,
+                    CONSTRAINT "FK_UserSettings_Users_UserProfileId"
+                        FOREIGN KEY ("UserProfileId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+                );
+                """;
+            command.ExecuteNonQuery();
+
+            using var index = connection.CreateCommand();
+            index.CommandText =
+                """CREATE UNIQUE INDEX "IX_UserSettings_UserProfileId" ON "UserSettings" ("UserProfileId");""";
+            index.ExecuteNonQuery();
+        }
+
+        AddMissingColumns(connection, "UserSettings", UserSettingsColumnsV26);
     }
 
     private static void EnsureGroupDocumentTables(AppDbContext db)

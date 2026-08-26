@@ -38,7 +38,7 @@ public class GenerateTemplatesForRecipientsTests : IDisposable
         foreach (var p in people) p.IntakeId = intake.Id;
         foreach (var tag in new[] { "{{звання_зв}}", "{{піб_зв}}", "{{прибув}}", "{{таким}}" })
         {
-            var (sourceType, fieldName) = Services.Templates.PlaceholderTagMaps.Classify(tag);
+            var (sourceType, fieldName) = GenDoc.Services.Templates.PlaceholderTagMaps.Classify(tag);
             ctx.TemplateFieldMappings.Add(new TemplateFieldMapping
             { TemplateId = template.Id, PlaceholderTag = tag, SourceType = sourceType, FieldName = fieldName, IsInsideRepeatingBlock = false });
         }

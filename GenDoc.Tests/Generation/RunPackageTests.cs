@@ -62,7 +62,7 @@ public class RunPackageTests : IDisposable
                      "{{номер_посвідчення}}", "{{прод_атестат}}", "{{дата_посвідчення}}"
                  })
         {
-            var (sourceType, fieldName) = Services.Templates.PlaceholderTagMaps.Classify(tag);
+            var (sourceType, fieldName) = GenDoc.Services.Templates.PlaceholderTagMaps.Classify(tag);
             ctx.TemplateFieldMappings.Add(new TemplateFieldMapping
             {
                 TemplateId = template.Id,

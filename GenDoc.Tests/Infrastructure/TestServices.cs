@@ -39,4 +39,16 @@ public static class TestServices
         new DocumentHashService(),
         new NoOpWatermarkService(),
         new FakeIntakeAccessor());
+
+    private sealed class FixedUserContext : GenDoc.Services.ICurrentUserContext
+    {
+        public int? CurrentUserId { get; private set; }
+        public string? CurrentUserFullName { get; private set; }
+        public FixedUserContext(int? id) { CurrentUserId = id; CurrentUserFullName = id?.ToString(); }
+        public void SetCurrentUser(int userId, string fullName) { CurrentUserId = userId; CurrentUserFullName = fullName; }
+        public void Clear() { CurrentUserId = null; CurrentUserFullName = null; }
+    }
+
+    public static GenDoc.Services.UserSettingsService UserSettings(TestDb db, int? userId) =>
+        new(db.Factory, new FixedUserContext(userId));
 }
