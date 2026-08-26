@@ -25,6 +25,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     private readonly IRecipientService _recipientService;
     private readonly IManualTagFormBuilder _manualTagFormBuilder;
     private readonly IOutputFolderService _outputFolderService;
+    private readonly IUserSettingsService _userSettings;
 
     public GenerationViewModel(
         IGenerationService generationService,
@@ -33,7 +34,8 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         Services.Completeness.ICompletenessService completenessService,
         IRecipientService recipientService,
         IManualTagFormBuilder manualTagFormBuilder,
-        IOutputFolderService outputFolderService)
+        IOutputFolderService outputFolderService,
+        IUserSettingsService userSettings)
     {
         _generationService = generationService;
         _dialogService = dialogService;
@@ -42,6 +44,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         _recipientService = recipientService;
         _manualTagFormBuilder = manualTagFormBuilder;
         _outputFolderService = outputFolderService;
+        _userSettings = userSettings;
         RefreshPackages();
         RefreshRecipientOptions();
         _ = LoadDefaultOutputFolderAsync();
@@ -360,6 +363,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         foreach (var p in Packages) p.IsSelected = false;
         item.IsSelected = true;
         SelectedPackage = item;
+        await _userSettings.UpdateAsync(s => s.LastPackageId = item.Id);
 
         var summary = new List<PackageTemplateSummaryItemViewModel>();
         summary.AddRange(_generationService.GetPackageTemplates(item.Id)

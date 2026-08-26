@@ -12,17 +12,20 @@ namespace GenDoc.Services.Staff
         private readonly Completeness.ICompletenessService _completenessService;
         private readonly IAuditLogService _auditLogService;
         private readonly ICurrentUserContext _currentUserContext;
+        private readonly IUserSettingsService _userSettings;
 
         public StaffService(
             IDbContextFactory<AppDbContext> dbFactory,
             Completeness.ICompletenessService completenessService,
             IAuditLogService auditLogService,
-            ICurrentUserContext currentUserContext)
+            ICurrentUserContext currentUserContext,
+            IUserSettingsService userSettings)
         {
             _dbFactory = dbFactory;
             _completenessService = completenessService;
             _auditLogService = auditLogService;
             _currentUserContext = currentUserContext;
+            _userSettings = userSettings;
         }
 
         public async Task<IReadOnlyList<StaffRowOverview>> GetOverviewAsync()
@@ -119,7 +122,7 @@ namespace GenDoc.Services.Staff
             var kindLabel = kind == StaffEventKind.BusinessTrip ? "відрядження" : "відпустку";
             _auditLogService.Log(db, $"Оформлено {kindLabel}", "StaffEvent", 0, null, null,
                 $"{recipientIds.Count} осіб, {templateIds.Count} шаблонів, {dateStart:dd.MM.yyyy}–{dateEnd:dd.MM.yyyy}");
-            await SaveLastManualValuesAsync(db, manualValues);
+            await SaveLastManualValuesAsync(manualValues);
             await db.SaveChangesAsync();
 
             foreach (var recipientId in recipientIds)
@@ -139,7 +142,7 @@ namespace GenDoc.Services.Staff
 
             _auditLogService.Log(db, "Згенеровано документи (в догонку)", "Recipient", 0, null, null,
                 $"{recipientIds.Count} осіб, {templateIds.Count} шаблонів");
-            await SaveLastManualValuesAsync(db, manualValues);
+            await SaveLastManualValuesAsync(manualValues);
             await db.SaveChangesAsync();
 
             var generated = 0;
@@ -156,29 +159,33 @@ namespace GenDoc.Services.Staff
 
         public async Task<Dictionary<string, string>> GetLastManualValuesAsync()
         {
-            using var db = _dbFactory.CreateDbContext();
-            var json = await db.AppSettings.Select(s => s.LastManualValuesJson).FirstOrDefaultAsync();
+            var json = (await _userSettings.GetForCurrentUserAsync()).LastManualValuesJson;
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                using var db = _dbFactory.CreateDbContext();
+                json = await db.AppSettings.Select(s => s.LastManualValuesJson).FirstOrDefaultAsync();
+            }
             if (string.IsNullOrWhiteSpace(json)) return new Dictionary<string, string>();
             return JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new Dictionary<string, string>();
         }
 
-        private static async Task SaveLastManualValuesAsync(AppDbContext db, Dictionary<string, string> manualValues)
+        private async Task SaveLastManualValuesAsync(Dictionary<string, string> manualValues)
         {
             if (manualValues.Count == 0) return;
 
-            var settings = await db.AppSettings.FirstOrDefaultAsync();
-            if (settings is null) return;
-
-            var merged = string.IsNullOrWhiteSpace(settings.LastManualValuesJson)
-                ? new Dictionary<string, string>()
-                : JsonSerializer.Deserialize<Dictionary<string, string>>(settings.LastManualValuesJson) ?? new Dictionary<string, string>();
-
-            foreach (var (tag, value) in manualValues)
+            await _userSettings.UpdateAsync(settings =>
             {
-                if (!string.IsNullOrWhiteSpace(value)) merged[tag] = value;
-            }
+                var merged = string.IsNullOrWhiteSpace(settings.LastManualValuesJson)
+                    ? new Dictionary<string, string>()
+                    : JsonSerializer.Deserialize<Dictionary<string, string>>(settings.LastManualValuesJson) ?? new Dictionary<string, string>();
 
-            settings.LastManualValuesJson = JsonSerializer.Serialize(merged);
+                foreach (var (tag, value) in manualValues)
+                {
+                    if (!string.IsNullOrWhiteSpace(value)) merged[tag] = value;
+                }
+
+                settings.LastManualValuesJson = JsonSerializer.Serialize(merged);
+            });
         }
 
         public async Task DeleteManyAsync(IReadOnlyList<int> recipientIds)

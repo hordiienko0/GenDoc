@@ -9,8 +9,8 @@ namespace GenDoc.Tests.Generation;
 // база, а не оператор - тобто саме та поведінка, яку прибирали.
 public class CourseOfficerPreselectionTests
 {
-    private static ManualTagFormBuilder Build(TestDb db) => new(
-        db.Factory, TestServices.Staff(db), new FakeCurrentUser(), new FakeIntakeAccessor());
+    private static ManualTagFormBuilder Build(TestDb db) => TestServices.ManualTagForm(
+        db, TestServices.Staff(db), new FakeCurrentUser(), new FakeIntakeAccessor());
 
     [Fact]
     public async Task BuildAsync_SeveralCourseOfficersAndNoHistory_PreselectsFirst()

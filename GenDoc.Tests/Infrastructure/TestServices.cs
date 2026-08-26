@@ -25,20 +25,27 @@ public static class TestServices
         new FakeCurrentUser(),
         new DocumentHashService());
 
-    public static GenDoc.Services.Staff.StaffService Staff(TestDb db) => new(
+    public static GenDoc.Services.Staff.StaffService Staff(TestDb db, int? userId = null) => new(
         db.Factory,
-        Completeness(db),
+        Completeness(db, userId),
         new FakeAuditLog(),
-        new FakeCurrentUser());
+        new FakeCurrentUser(),
+        UserSettings(db, userId));
 
-    public static CompletenessService Completeness(TestDb db) => new(
+    public static CompletenessService Completeness(TestDb db, int? userId = null) => new(
         db.Factory,
         new FakeAuditLog(),
         new FakeCurrentUser(),
         new DocumentGenerationService(),
         new DocumentHashService(),
         new NoOpWatermarkService(),
-        new FakeIntakeAccessor());
+        new FakeIntakeAccessor(),
+        UserSettings(db, userId));
+
+    public static GenDoc.Services.Generation.ManualTagFormBuilder ManualTagForm(
+        TestDb db, GenDoc.Services.Staff.IStaffService staffService, GenDoc.Services.ICurrentUserContext currentUser,
+        GenDoc.Services.Completeness.IIntakeServiceAccessor intakeAccessor, int? userId = null) => new(
+        db.Factory, staffService, currentUser, intakeAccessor, UserSettings(db, userId));
 
     private sealed class FixedUserContext : GenDoc.Services.ICurrentUserContext
     {

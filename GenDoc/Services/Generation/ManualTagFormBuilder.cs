@@ -12,15 +12,18 @@ namespace GenDoc.Services.Generation
         private readonly Staff.IStaffService _staffService;
         private readonly ICurrentUserContext _currentUserContext;
         private readonly Completeness.IIntakeServiceAccessor _intakeAccessor;
+        private readonly IUserSettingsService _userSettings;
 
         public ManualTagFormBuilder(
             IDbContextFactory<AppDbContext> dbFactory, Staff.IStaffService staffService,
-            ICurrentUserContext currentUserContext, Completeness.IIntakeServiceAccessor intakeAccessor)
+            ICurrentUserContext currentUserContext, Completeness.IIntakeServiceAccessor intakeAccessor,
+            IUserSettingsService userSettings)
         {
             _dbFactory = dbFactory;
             _staffService = staffService;
             _currentUserContext = currentUserContext;
             _intakeAccessor = intakeAccessor;
+            _userSettings = userSettings;
         }
 
         public async Task<ManualTagFormViewModel> BuildAsync(
@@ -113,52 +116,60 @@ namespace GenDoc.Services.Generation
 
         public async Task SaveAsync(string contextKey, ManualTagFormViewModel form)
         {
-            using var db = _dbFactory.CreateDbContext();
-            var settings = await db.AppSettings.FirstOrDefaultAsync();
-            if (settings is null) return;
-
             var textValues = form.Rows
                 .Where(r => r.Kind == ManualTagKind.Text && !string.IsNullOrWhiteSpace(r.Value))
                 .ToDictionary(r => r.Tag, r => r.Value);
-            if (textValues.Count > 0)
+            var hasSignerChoice = form.Signer?.Selected is not null || form.CourseOfficer?.Selected is not null;
+            if (textValues.Count == 0 && !hasSignerChoice) return;
+
+            await _userSettings.UpdateAsync(settings =>
             {
-                var mergedValues = string.IsNullOrWhiteSpace(settings.LastManualValuesJson)
-                    ? new Dictionary<string, string>()
-                    : JsonSerializer.Deserialize<Dictionary<string, string>>(settings.LastManualValuesJson) ?? new Dictionary<string, string>();
-                foreach (var (tag, value) in textValues) mergedValues[tag] = value;
-                settings.LastManualValuesJson = JsonSerializer.Serialize(mergedValues);
-            }
+                if (textValues.Count > 0)
+                {
+                    var mergedValues = string.IsNullOrWhiteSpace(settings.LastManualValuesJson)
+                        ? new Dictionary<string, string>()
+                        : JsonSerializer.Deserialize<Dictionary<string, string>>(settings.LastManualValuesJson) ?? new Dictionary<string, string>();
+                    foreach (var (tag, value) in textValues) mergedValues[tag] = value;
+                    settings.LastManualValuesJson = JsonSerializer.Serialize(mergedValues);
+                }
 
-            if (form.Signer?.Selected is not null || form.CourseOfficer?.Selected is not null)
-            {
-                var mergedSigners = string.IsNullOrWhiteSpace(settings.LastSignerByTemplateJson)
-                    ? new Dictionary<string, int>()
-                    : JsonSerializer.Deserialize<Dictionary<string, int>>(settings.LastSignerByTemplateJson) ?? new Dictionary<string, int>();
+                if (hasSignerChoice)
+                {
+                    var mergedSigners = string.IsNullOrWhiteSpace(settings.LastSignerByTemplateJson)
+                        ? new Dictionary<string, int>()
+                        : JsonSerializer.Deserialize<Dictionary<string, int>>(settings.LastSignerByTemplateJson) ?? new Dictionary<string, int>();
 
-                if (form.Signer?.Selected is { } chosenSigner)
-                    mergedSigners[contextKey] = chosenSigner.RecipientId;
+                    if (form.Signer?.Selected is { } chosenSigner)
+                        mergedSigners[contextKey] = chosenSigner.RecipientId;
 
-                if (form.CourseOfficer?.Selected is { } chosenOfficer)
-                    mergedSigners[CourseOfficerContextKey(contextKey)] = chosenOfficer.RecipientId;
+                    if (form.CourseOfficer?.Selected is { } chosenOfficer)
+                        mergedSigners[CourseOfficerContextKey(contextKey)] = chosenOfficer.RecipientId;
 
-                settings.LastSignerByTemplateJson = JsonSerializer.Serialize(mergedSigners);
-            }
-
-            await db.SaveChangesAsync();
+                    settings.LastSignerByTemplateJson = JsonSerializer.Serialize(mergedSigners);
+                }
+            });
         }
 
         private async Task<Dictionary<string, string>> GetLastValuesAsync()
         {
-            using var db = _dbFactory.CreateDbContext();
-            var json = await db.AppSettings.Select(s => s.LastManualValuesJson).FirstOrDefaultAsync();
+            var json = (await _userSettings.GetForCurrentUserAsync()).LastManualValuesJson;
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                using var db = _dbFactory.CreateDbContext();
+                json = await db.AppSettings.Select(s => s.LastManualValuesJson).FirstOrDefaultAsync();
+            }
             if (string.IsNullOrWhiteSpace(json)) return new Dictionary<string, string>();
             return JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new Dictionary<string, string>();
         }
 
         private async Task<int?> GetLastSignerIdAsync(string contextKey)
         {
-            using var db = _dbFactory.CreateDbContext();
-            var json = await db.AppSettings.Select(s => s.LastSignerByTemplateJson).FirstOrDefaultAsync();
+            var json = (await _userSettings.GetForCurrentUserAsync()).LastSignerByTemplateJson;
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                using var db = _dbFactory.CreateDbContext();
+                json = await db.AppSettings.Select(s => s.LastSignerByTemplateJson).FirstOrDefaultAsync();
+            }
             if (string.IsNullOrWhiteSpace(json)) return null;
             var dict = JsonSerializer.Deserialize<Dictionary<string, int>>(json);
             return dict is not null && dict.TryGetValue(contextKey, out var id) ? id : null;

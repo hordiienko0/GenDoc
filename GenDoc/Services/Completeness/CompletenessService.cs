@@ -18,6 +18,7 @@ namespace GenDoc.Services.Completeness
         private readonly IDocumentHashService _documentHashService;
         private readonly IWatermarkService _watermarkService;
         private readonly IIntakeServiceAccessor _intakeAccessor;
+        private readonly IUserSettingsService _userSettings;
 
         public CompletenessService(
             IDbContextFactory<AppDbContext> dbFactory,
@@ -26,7 +27,8 @@ namespace GenDoc.Services.Completeness
             IDocumentGenerationService documentGenerationService,
             IDocumentHashService documentHashService,
             IWatermarkService watermarkService,
-            IIntakeServiceAccessor intakeAccessor)
+            IIntakeServiceAccessor intakeAccessor,
+            IUserSettingsService userSettings)
         {
             _dbFactory = dbFactory;
             _auditLogService = auditLogService;
@@ -35,6 +37,7 @@ namespace GenDoc.Services.Completeness
             _documentHashService = documentHashService;
             _watermarkService = watermarkService;
             _intakeAccessor = intakeAccessor;
+            _userSettings = userSettings;
         }
 
         public async Task<MatrixData> BuildAsync(int intakeId, int packageId)
@@ -414,8 +417,13 @@ namespace GenDoc.Services.Completeness
         public async Task<int?> GetDefaultPackageIdAsync()
         {
             using var db = _dbFactory.CreateDbContext();
+
+            var mine = (await _userSettings.GetForCurrentUserAsync()).LastPackageId;
+            if (mine is int m && await db.GenerationPackages.AnyAsync(p => p.Id == m)) return m;
+
             var configured = await db.AppSettings.Select(s => s.DefaultGenerationPackageId).FirstOrDefaultAsync();
             if (configured is int id && await db.GenerationPackages.AnyAsync(p => p.Id == id)) return id;
+
             return await db.GenerationPackages.OrderBy(p => p.Name).Select(p => (int?)p.Id).FirstOrDefaultAsync();
         }
 
