@@ -57,8 +57,12 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         var packageId = nav.PackageId ?? await _completenessService.GetDefaultPackageIdAsync();
         if (packageId is not int id) return;
 
+        // Відновлення навігації - не вибір користувача (навіть коли пакет
+        // визначено через GetDefaultPackageIdAsync, який сам читає
+        // LastPackageId): читаємо, але не пишемо назад, інакше кожен захід
+        // на екран мовчки "підтверджував" би вже запам'ятоване значення.
         var item = Packages.FirstOrDefault(p => p.Id == id);
-        if (item is not null) await SelectPackageAsync(item);
+        if (item is not null) await RefreshForPackageAsync(item);
     }
 
     [ObservableProperty]
@@ -353,17 +357,26 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         return item is null ? Task.CompletedTask : SelectPackageAsync(item);
     }
 
+    // Єдина точка, де вибір пакета - справжня дія користувача (клік по картці
+    // пакета чи "відкрити останній пакет"): тут і лише тут пишемо
+    // LastPackageId. Відновлення навігації й пере-збірка форми після
+    // редагування вимог ідуть напряму в RefreshForPackageAsync, обходячи запис.
     [RelayCommand]
     private async Task SelectPackageAsync(GenerationPackageListItemViewModel? item)
     {
         if (item is null) return;
 
+        await _userSettings.UpdateAsync(s => s.LastPackageId = item.Id);
+        await RefreshForPackageAsync(item);
+    }
+
+    private async Task RefreshForPackageAsync(GenerationPackageListItemViewModel item)
+    {
         IsCreatingPackage = false;
 
         foreach (var p in Packages) p.IsSelected = false;
         item.IsSelected = true;
         SelectedPackage = item;
-        await _userSettings.UpdateAsync(s => s.LastPackageId = item.Id);
 
         var summary = new List<PackageTemplateSummaryItemViewModel>();
         summary.AddRange(_generationService.GetPackageTemplates(item.Id)
@@ -465,7 +478,9 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         if (_dialogService.ShowDialog(vm, Application.Current.MainWindow) == true)
         {
             WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
-            await SelectPackageAsync(SelectedPackage);
+            // Пере-збірка форми/зведення після редагування вимог - не новий
+            // вибір пакета користувачем, тож LastPackageId тут не пишемо.
+            await RefreshForPackageAsync(SelectedPackage);
         }
     }
 
