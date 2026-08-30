@@ -1,4 +1,5 @@
-﻿using GenDoc.Data;
+﻿using System.IO;
+using GenDoc.Data;
 using Microsoft.Data.Sqlite;
 
 namespace GenDoc.Services
@@ -12,6 +13,10 @@ namespace GenDoc.Services
             _passwordProvider = passwordProvider;
             SqlCipherBootstrapper.EnsureInitialized();
         }
+
+        public string DatabasePath => DbPaths.DatabasePath;
+
+        public bool DatabaseExists => File.Exists(DbPaths.DatabasePath);
 
         public bool TryUnlock(string password, out string? errorMessage)
         {

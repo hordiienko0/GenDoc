@@ -559,6 +559,16 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         // Ідемпотентно, як EnsureExportTemplateTables: таблиці, додані в модель після
         // першого створення бази, EnsureCreated сам не створить.
         EnsureOrgTables(db);
+
+        // Колонки v2-v4 були ТІЛЬКИ в одноразових гілках, тож на базі з
+        // SchemaVersions >= 4, якій цих колонок бракує, їх не додавав уже ніхто, а
+        // безумовний UPDATE OrganizationSettings нижче падав з «no such column»
+        // при кожному вході (аудит 2026-08-28). Конвенція: кожна колонка - і в
+        // гілці версії, і тут.
+        AddMissingColumns(db, "Recipients", QuestionnaireColumns);
+        AddMissingColumns(db, "OrganizationSettings", OrganizationSettingsColumnsV3);
+        AddMissingColumns(db, "Rooms", RoomColumnsV4);
+
         AddMissingColumns(db, "Recipients", RecipientColumnsV5);
         AddMissingColumns(db, "AppSettings", AppSettingsColumnsV5);
         SeedOrgTree(db);
@@ -1044,14 +1054,18 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                 );
                 """;
             command.ExecuteNonQuery();
-
-            using var index = connection.CreateCommand();
-            index.CommandText =
-                """CREATE UNIQUE INDEX "IX_UserSettings_UserProfileId" ON "UserSettings" ("UserProfileId");""";
-            index.ExecuteNonQuery();
         }
 
         AddMissingColumns(connection, "UserSettings", UserSettingsColumnsV26);
+
+        // Індекс - теж БЕЗУМОВНО і з IF NOT EXISTS. Усередині if (!TableExists) він
+        // не з'являвся на таблиці, яку лишив недоформованою проміжний білд, а без
+        // унікальності find-or-insert у UserSettingsService тихо створює два рядки
+        // на профіль: читається один, запис іде в інший (аудит 2026-08-28).
+        using var index = connection.CreateCommand();
+        index.CommandText =
+            """CREATE UNIQUE INDEX IF NOT EXISTS "IX_UserSettings_UserProfileId" ON "UserSettings" ("UserProfileId");""";
+        index.ExecuteNonQuery();
     }
 
     private static void EnsureGroupDocumentTables(AppDbContext db)

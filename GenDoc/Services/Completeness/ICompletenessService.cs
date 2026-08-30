@@ -33,8 +33,14 @@ namespace GenDoc.Services.Completeness
         TemplateRequirement RequirementLimited, int SortOrder);
 
     // Стан одного шаблону пакета для однієї людини - картка «Особовий склад» → вкладка «Документи».
+    //
+    // Requirement резолвиться за категорією придатності КОНКРЕТНОЇ людини. Без
+    // нього картка вважала бракуючим і генерувала шаблон, позначений «не
+    // потрібен» для обмежено придатних, - документ лягав в архів, а в матриці
+    // його не було видно взагалі (аудит 2026-08-28).
     public record RecipientDocStatus(
-        int TemplateId, string TemplateName, int? DocumentId, int Version, bool HasContent, bool IsStale);
+        int TemplateId, string TemplateName, int? DocumentId, int Version, bool HasContent, bool IsStale,
+        TemplateRequirement Requirement = TemplateRequirement.Required);
 
     public interface ICompletenessService
     {
@@ -45,6 +51,10 @@ namespace GenDoc.Services.Completeness
         Task<(int People, int Files, List<string> Warnings)> ExportPackagesAsync(
             IReadOnlyList<int> recipientIds, int packageId, string targetFolder);
         Task<int> GetBadgeCountAsync();
+
+        /// <summary>Ті самі два числа окремо: бейдж навігації їх складає, домашня
+        /// картка показує роздільно - «бракує» і «застарілих» це різні дії.</summary>
+        Task<(int Missing, int Stale)> GetBadgeBreakdownAsync();
         Task<int?> GetDefaultPackageIdAsync();
 
         Task<List<RecipientDocStatus>> GetRecipientStatusAsync(int recipientId, int packageId);
@@ -58,8 +68,12 @@ namespace GenDoc.Services.Completeness
         Task SaveRequirementsAsync(int packageId, IReadOnlyList<RequirementRow> rows);
 
         // придатний → RequirementRegular; обмежено придатний і непридатний → RequirementLimited.
+        // Порівняння - через FitnessCategoryHelper, єдину точку в проєкті: власне
+        // ordinal-порівняння з рядком робило «Придатний» з великої «обмежено
+        // придатним» у матриці, тоді як фільтри генерації вважали його придатним
+        // (аудит 2026-08-28).
         static TemplateRequirement Resolve(MatrixTemplateInfo template, string? fitnessCategory)
-            => fitnessCategory == "придатний" || string.IsNullOrWhiteSpace(fitnessCategory)
+            => FitnessCategoryHelper.IsRegular(fitnessCategory)
                 ? template.RequirementRegular
                 : template.RequirementLimited;
     }

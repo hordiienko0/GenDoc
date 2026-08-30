@@ -81,7 +81,7 @@ namespace GenDoc.Services.Completeness
             // (a) люди набору
             var people = await db.Recipients
                 .Where(r => r.IntakeId == intakeId)
-                .Include(r => r.Unit).Include(r => r.Room).Include(r => r.OrgNode)
+                .WithHashSources()
                 .AsNoTracking()
                 .ToListAsync();
             people = people.OrderBy(r => r.LastName).ThenBy(r => r.FirstName).ToList();
@@ -92,8 +92,15 @@ namespace GenDoc.Services.Completeness
 
             // (c) всі актуальні документи набору по шаблонах пакета - один запит
             var templateIds = templates.Where(t => !t.IsGroup).Select(t => t.TemplateId).ToList();
+
+            // Фільтруємо за ЛЮДЬМИ набору, а не за GeneratedDocument.IntakeId:
+            // ця колонка з'явилась у v6 без backfill, тож усі документи, старші
+            // за v6, мають NULL і зникали з матриці, хоча картка особи й архів
+            // їх бачили - «Згенерувати все, чого бракує» плодила їм дублі
+            // (аудит 2026-08-28). Список людей уже завантажено рядком вище.
+            var peopleIds = people.Select(p => p.Id).ToList();
             var docs = await db.GeneratedDocuments
-                .Where(g => g.IntakeId == intakeId && g.IsCurrent && templateIds.Contains(g.TemplateId))
+                .Where(g => peopleIds.Contains(g.RecipientId) && g.IsCurrent && templateIds.Contains(g.TemplateId))
                 .Select(g => new { g.Id, g.RecipientId, g.TemplateId, g.Version, g.HasContent, g.SourceHash, g.SourceType })
                 .ToListAsync();
 
@@ -176,7 +183,7 @@ namespace GenDoc.Services.Completeness
             if (detectStale && doc.SourceHash is not null)
             {
                 var recipient = await db.Recipients
-                    .Include(r => r.Unit).Include(r => r.Room)
+                    .WithHashSources()
                     .AsNoTracking().FirstOrDefaultAsync(r => r.Id == recipientId);
                 var mappings = await db.TemplateFieldMappings
                     .Where(m => m.TemplateId == templateId).AsNoTracking().ToListAsync();
@@ -193,7 +200,7 @@ namespace GenDoc.Services.Completeness
         {
             using var db = _dbFactory.CreateDbContext();
             var recipient = await db.Recipients
-                .Include(r => r.Unit).Include(r => r.Room).Include(r => r.OrgNode).Include(r => r.Weapons)
+                .WithHashSources()
                 .FirstOrDefaultAsync(r => r.Id == recipientId);
             var template = await db.Templates.FirstOrDefaultAsync(t => t.Id == templateId);
             if (recipient is null || template is null)
@@ -379,16 +386,27 @@ namespace GenDoc.Services.Completeness
         public async Task<List<RecipientDocStatus>> GetRecipientStatusAsync(int recipientId, int packageId)
         {
             List<MatrixTemplateInfo> templates;
+            string? fitnessCategory;
             using (var db = _dbFactory.CreateDbContext())
+            {
                 templates = await GetPackageLinksInternalAsync(db, packageId, includeGroup: false);
+                fitnessCategory = await db.Recipients
+                    .Where(r => r.Id == recipientId).Select(r => r.FitnessCategory).FirstOrDefaultAsync();
+            }
+
             var result = new List<RecipientDocStatus>(templates.Count);
 
             foreach (var template in templates)
             {
+                // Вимога - за категорією ЦІЄЇ людини, як у матриці. Раніше цього
+                // не було, тож «н/п» для обмежено придатних читалось як «бракує».
+                var requirement = ICompletenessService.Resolve(template, fitnessCategory);
                 var cell = await GetCellAsync(recipientId, template.TemplateId);
+
                 result.Add(cell is null
-                    ? new RecipientDocStatus(template.TemplateId, template.Name, null, 0, false, false)
-                    : new RecipientDocStatus(template.TemplateId, template.Name, cell.Id, cell.Version, cell.HasContent, cell.IsStale));
+                    ? new RecipientDocStatus(template.TemplateId, template.Name, null, 0, false, false, requirement)
+                    : new RecipientDocStatus(template.TemplateId, template.Name, cell.Id, cell.Version,
+                        cell.HasContent, cell.IsStale, requirement));
             }
 
             return result;
@@ -404,6 +422,9 @@ namespace GenDoc.Services.Completeness
 
             foreach (var status in statuses)
             {
+                // «Не потрібен» для цієї людини не генеруємо: документ ліг би в
+                // архів, а в матриці його колонка навіть не показується.
+                if (status.Requirement == TemplateRequirement.NotApplicable) { skipped++; continue; }
                 if (status.HasContent) { skipped++; continue; }
 
                 var result = await GenerateForPairAsync(recipientId, status.TemplateId, manualValues);
@@ -430,25 +451,49 @@ namespace GenDoc.Services.Completeness
         // Бейдж навігації: застарілі + відсутні обов'язкові по активному набору з дефолтним пакетом.
         public async Task<int> GetBadgeCountAsync()
         {
+            var breakdown = await GetBadgeBreakdownAsync();
+            return breakdown.Missing + breakdown.Stale;
+        }
+
+        // Ті самі два числа окремо: бейдж навігації складає їх, а домашня картка
+        // показує роздільно - «бракує» і «застарілих» це різні дії оператора.
+        public async Task<(int Missing, int Stale)> GetBadgeBreakdownAsync()
+        {
             var intake = _intakeAccessor.ActiveIntake;
-            if (intake is null) return 0;
+            if (intake is null) return (0, 0);
 
             var packageId = await GetDefaultPackageIdAsync();
-            if (packageId is not int pid) return 0;
+            if (packageId is not int pid) return (0, 0);
 
             var data = await BuildAsync(intake.Id, pid);
-            var count = 0;
+            var missing = 0;
+            var stale = 0;
             foreach (var person in data.People)
             {
                 foreach (var template in data.Templates)
                 {
-                    var requirement = ICompletenessService.Resolve(template, person.FitnessCategory);
+                    // Бейдж дорівнює рівно тому, на що на екрані є кнопки:
+                    // «Згенерувати все, чого бракує» (обов'язкові персональні) і
+                    // «Перегенерувати застарілі» (обов'язкові, що застаріли).
+                    // Раніше сюди потрапляли ще й застарілі «н/п», яких матриця
+                    // не показує, і групові, яких кнопка не чіпає, тож число не
+                    // зводилось до нуля ніколи (аудит 2026-08-28).
+                    if (ICompletenessService.Resolve(template, person.FitnessCategory) != TemplateRequirement.Required)
+                        continue;
+
                     var hasDoc = data.Docs.TryGetValue((person.Id, template.TemplateId), out var doc);
-                    if (requirement == TemplateRequirement.Required && !hasDoc) count++;
-                    else if (hasDoc && doc!.IsStale) count++;
+
+                    if (!hasDoc)
+                    {
+                        if (!template.IsGroup) missing++;
+                    }
+                    else if (doc!.IsStale)
+                    {
+                        stale++;
+                    }
                 }
             }
-            return count;
+            return (missing, stale);
         }
 
         public async Task<List<MatrixTemplateInfo>> GetPackageLinksAsync(int packageId)

@@ -231,12 +231,25 @@ namespace GenDoc.Services.OrgTree
                 .Where(n => n.Path.StartsWith(node.Path) && n.DeletedAt == cascadeStamp)
                 .ToListAsync();
 
+            // Симетрично до DeleteAsync, який кладе в кошик і папку, і сам набір:
+            // без цього папки поверталися, а Intake лишався видаленим назавжди, і
+            // гілка переставала бути набором - повернути її з UI було неможливо
+            // взагалі (аудит 2026-08-28). Звіряємо мітку часу, щоб не воскресити
+            // набір, який видалили ОКРЕМОЮ операцією.
+            var intake = await db.Intakes.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(i => i.RootOrgNodeId == node.Id && i.DeletedAt == cascadeStamp);
+
             async Task ApplyAsync()
             {
                 foreach (var n in subtree)
                 {
                     n.DeletedAt = null;
                     n.DeletedBy = null;
+                }
+                if (intake is not null)
+                {
+                    intake.DeletedAt = null;
+                    intake.DeletedBy = null;
                 }
                 await db.SaveChangesAsync();
 

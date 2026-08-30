@@ -150,29 +150,37 @@ namespace GenDoc.Services.Generation
             });
         }
 
+        // Профільні значення накладаються на глобальні ПО КЛЮЧАХ, а не замість
+        // усього блоба. Інакше перший же збережений тег назавжди затіняв усе,
+        // що оператор накопичив до переходу на v26: решта полів поверталась
+        // порожньою (аудит 2026-08-28). Глобальні AppSettings лишаються
+        // замороженим fallback-ом і більше не оновлюються.
+        private static Dictionary<string, T> Merge<T>(string? globalJson, string? userJson)
+        {
+            var merged = Parse<T>(globalJson);
+            foreach (var (key, value) in Parse<T>(userJson)) merged[key] = value;
+            return merged;
+        }
+
+        private static Dictionary<string, T> Parse<T>(string? json) =>
+            string.IsNullOrWhiteSpace(json)
+                ? new Dictionary<string, T>()
+                : JsonSerializer.Deserialize<Dictionary<string, T>>(json) ?? new Dictionary<string, T>();
+
         private async Task<Dictionary<string, string>> GetLastValuesAsync()
         {
-            var json = (await _userSettings.GetForCurrentUserAsync()).LastManualValuesJson;
-            if (string.IsNullOrWhiteSpace(json))
-            {
-                using var db = _dbFactory.CreateDbContext();
-                json = await db.AppSettings.Select(s => s.LastManualValuesJson).FirstOrDefaultAsync();
-            }
-            if (string.IsNullOrWhiteSpace(json)) return new Dictionary<string, string>();
-            return JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new Dictionary<string, string>();
+            var user = (await _userSettings.GetForCurrentUserAsync()).LastManualValuesJson;
+            using var db = _dbFactory.CreateDbContext();
+            var global = await db.AppSettings.Select(s => s.LastManualValuesJson).FirstOrDefaultAsync();
+            return Merge<string>(global, user);
         }
 
         private async Task<int?> GetLastSignerIdAsync(string contextKey)
         {
-            var json = (await _userSettings.GetForCurrentUserAsync()).LastSignerByTemplateJson;
-            if (string.IsNullOrWhiteSpace(json))
-            {
-                using var db = _dbFactory.CreateDbContext();
-                json = await db.AppSettings.Select(s => s.LastSignerByTemplateJson).FirstOrDefaultAsync();
-            }
-            if (string.IsNullOrWhiteSpace(json)) return null;
-            var dict = JsonSerializer.Deserialize<Dictionary<string, int>>(json);
-            return dict is not null && dict.TryGetValue(contextKey, out var id) ? id : null;
+            var user = (await _userSettings.GetForCurrentUserAsync()).LastSignerByTemplateJson;
+            using var db = _dbFactory.CreateDbContext();
+            var global = await db.AppSettings.Select(s => s.LastSignerByTemplateJson).FirstOrDefaultAsync();
+            return Merge<int>(global, user).TryGetValue(contextKey, out var id) ? id : null;
         }
     }
 }

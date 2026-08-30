@@ -22,6 +22,16 @@ public class TemplateNamingTests
     public void Clean_LeavesOrdinaryNamesAlone(string input, string expected)
         => Assert.Equal(expected, TemplateNaming.Clean(input));
 
+    // Квантифікатор * у регексі дозволяв НУЛЬ роздільників, тож збіг наставав і
+    // тоді, коли після «шаблон» іде літера, і префікс відкушував початок слова:
+    // «Шаблони обліку» → «и обліку» (аудит 2026-08-28).
+    [Theory]
+    [InlineData("Шаблони обліку", "Шаблони обліку")]
+    [InlineData("Шаблонний перелік", "Шаблонний перелік")]
+    [InlineData("Шаблонування", "Шаблонування")]
+    public void Clean_DoesNotBiteIntoLongerWordStartingWithTemplate(string input, string expected)
+        => Assert.Equal(expected, TemplateNaming.Clean(input));
+
     // Міграція v20 проганяє Clean по наявних назвах; повторний запуск застосунку
     // не повинен нічого зіпсувати.
     [Fact]

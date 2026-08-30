@@ -121,6 +121,8 @@ namespace GenDoc
             services.AddSingleton<PersonnelViewModel>();
             services.AddSingleton<ArchiveViewModel>();
             services.AddSingleton<ViewModels.Completeness.CompletenessViewModel>();
+            services.AddTransient<ViewModels.Home.HomeViewModel>();
+            services.AddTransient<IntakeWizardViewModel>();
             services.AddTransient<TrashViewModel>();
             services.AddTransient<MainWindow>();
         }

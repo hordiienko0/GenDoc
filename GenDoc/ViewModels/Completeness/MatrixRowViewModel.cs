@@ -75,7 +75,7 @@ namespace GenDoc.ViewModels.Completeness
         {
             var required = Cells.Where(c => c.Requirement == Models.Enums.TemplateRequirement.Required).ToList();
             RequiredTotal = required.Count;
-            RequiredPresent = required.Count(c => c.IsPresent);
+            RequiredPresent = required.Count(c => c.IsSatisfied);
             MissingRequiredCount = required.Count(c => c.IsMissingRequired);
         }
     }

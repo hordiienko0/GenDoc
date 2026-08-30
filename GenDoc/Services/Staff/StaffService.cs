@@ -157,16 +157,22 @@ namespace GenDoc.Services.Staff
             return generated;
         }
 
+        // Профільні значення накладаються на глобальні по ключах - те саме
+        // правило, що в ManualTagFormBuilder (аудит 2026-08-28).
         public async Task<Dictionary<string, string>> GetLastManualValuesAsync()
         {
-            var json = (await _userSettings.GetForCurrentUserAsync()).LastManualValuesJson;
-            if (string.IsNullOrWhiteSpace(json))
-            {
-                using var db = _dbFactory.CreateDbContext();
-                json = await db.AppSettings.Select(s => s.LastManualValuesJson).FirstOrDefaultAsync();
-            }
-            if (string.IsNullOrWhiteSpace(json)) return new Dictionary<string, string>();
-            return JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new Dictionary<string, string>();
+            var user = (await _userSettings.GetForCurrentUserAsync()).LastManualValuesJson;
+            using var db = _dbFactory.CreateDbContext();
+            var global = await db.AppSettings.Select(s => s.LastManualValuesJson).FirstOrDefaultAsync();
+
+            var merged = Parse(global);
+            foreach (var (key, value) in Parse(user)) merged[key] = value;
+            return merged;
+
+            static Dictionary<string, string> Parse(string? json) =>
+                string.IsNullOrWhiteSpace(json)
+                    ? new Dictionary<string, string>()
+                    : JsonSerializer.Deserialize<Dictionary<string, string>>(json) ?? new Dictionary<string, string>();
         }
 
         private async Task SaveLastManualValuesAsync(Dictionary<string, string> manualValues)

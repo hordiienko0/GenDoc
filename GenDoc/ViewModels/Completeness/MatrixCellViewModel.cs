@@ -58,7 +58,15 @@ namespace GenDoc.ViewModels.Completeness
         [ObservableProperty]
         private DocumentSourceType sourceType;
 
+        // «Документ узагалі є?» - для показу меню, версії, посилання на файл.
         public bool IsPresent => State is MatrixCellState.Present or MatrixCellState.PresentStale;
+
+        // «Зараховано до готовності?» - НАЯВНИЙ І НЕ ЗАСТАРІЛИЙ. Саме це число
+        // йде в «N з M» і в «Пакет повний». Раніше рядок рахував застарілий як
+        // наявний, а зведення по набору - ні, і два екрани про той самий набір
+        // суперечили один одному: «Пакет повний» поруч із «Перегенерувати
+        // застарілі (4)» і 60 % на картці набору (аудит 2026-08-28).
+        public bool IsSatisfied => State == MatrixCellState.Present;
         public bool IsStale => State == MatrixCellState.PresentStale;
         public bool IsMissingRequired => State == MatrixCellState.MissingRequired;
         public bool IsMissingOptional => State == MatrixCellState.MissingOptional;

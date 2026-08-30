@@ -37,11 +37,24 @@ namespace GenDoc.Services
         public static string ArrivedVerb(Gender gender) => gender == Gender.Male ? "прибув" : "прибула";
         public static string SuchPronoun(Gender gender) => gender == Gender.Male ? "таким" : "такою";
 
+        // Флотські звання: «капітан 1 рангу», «капітан 2 рангу». Головне слово тут
+        // ПЕРШЕ, а «рангу» - неузгоджене означення в родовому, яке не змінюється.
+        // Відмінювання останнього слова, як у решті звань, давало «капітан 1 рангуа».
+        private const string NavalRankMarker = "рангу";
+
         // Звання можуть бути складеними («старший лейтенант») - відмінюється кожне слово:
         // прикметникова частина за прикметниковим правилом, іменникова - за іменниковим.
         private static string DeclineRankPhrase(string phrase, Gender gender)
         {
             var words = phrase.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (words.Length == 0) return phrase;
+
+            if (words.Contains(NavalRankMarker, StringComparer.OrdinalIgnoreCase))
+            {
+                words[0] = DeclineWord(words[0], GrammaticalKind.Rank, gender);
+                return string.Join(' ', words);
+            }
+
             for (var i = 0; i < words.Length; i++)
             {
                 words[i] = i == words.Length - 1
@@ -58,11 +71,24 @@ namespace GenDoc.Services
             return word;
         }
 
+        // Особові імена м'якої групи: «Ігоря», а не «Ігора». Список навмисно
+        // вузький - загальне правило для основ на -р зробило б гірше, бо
+        // українська тут непослідовна («майора» і «командира» тверді, «Кобзаря»
+        // м'яка). Нетипові форми лишаються за ручним Recipient.FullNameAccusative.
+        private static readonly HashSet<string> SoftStemGivenNames =
+            new(StringComparer.OrdinalIgnoreCase) { "Ігор", "Лазар" };
+
         private static string DeclineWord(string word, GrammaticalKind kind, Gender gender)
         {
-            // Прізвища на -ко незмінні (Шевченко, Петренко) - і чоловічі, і жіночі.
+            // Прізвища на -ко: за правописом не відмінюються лише ЖІНОЧІ
+            // («Ірину Шевченко»), а чоловічі відмінюються як іменники другої
+            // відміни («солдата Шевченка»). До 2026-08-28 код лишав незмінними
+            // обидва, і найпоширеніший тип прізвища йшов у накази в називному.
             if (kind == GrammaticalKind.Surname && word.EndsWith("ко", StringComparison.OrdinalIgnoreCase))
-                return word;
+                return gender == Gender.Male ? word[..^1] + "а" : word;
+
+            if (kind == GrammaticalKind.GivenName && SoftStemGivenNames.Contains(word))
+                return word + "я";
 
             // Прикметникові закінчення трапляються лише в прізвищах і званнях
             // (Ковальський, «старший»); особові імена на -ій (Юрій) - інший клас, нижче.
@@ -87,7 +113,10 @@ namespace GenDoc.Services
                 return kind == GrammaticalKind.GivenName ? word[..^1] + "а" : word;
 
             // Жіночі прізвища/імена на приголосний незмінні (Кравчук, Мельник).
-            if (gender == Gender.Female)
+            // ЗВАННЯ сюди не потрапляють: вони граматично чоловічого роду й
+            // відмінюються незалежно від статі особи, інакше складене звання
+            // виходило напівузгодженим - «старшого лейтенант».
+            if (gender == Gender.Female && kind != GrammaticalKind.Rank)
                 return word;
 
             // Імена/прізвища на -й (Юрій, Андрій) втрачають "й" і отримують "я".

@@ -24,14 +24,23 @@ namespace GenDoc.Services
             {
                 if (Current is null) return "Активного набору немає";
 
-                var totalDays = Current.DateEnd.DayNumber - Current.DateStart.DayNumber + 1;
-                var day = DateOnly.FromDateTime(DateTime.Today).DayNumber - Current.DateStart.DayNumber + 1;
-                day = Math.Clamp(day, 1, totalDays);
+                var (day, totalDays) = DayOfTotal(Current, DateOnly.FromDateTime(DateTime.Today));
                 return $"Активний набір: №{Current.Number} · {Current.DisplayNumber} · день {day} з {totalDays}";
             }
         }
 
         public bool HasActive => Current is not null;
+
+        // Скільки днів набору минуло і скільки їх усього - інклюзивний підрахунок
+        // (день старту й день завершення рахуються обидва), спільний для
+        // статус-рядка й картки набору на «Мій набір» (5/6) - формулу не дублюємо.
+        public static (int Day, int Total) DayOfTotal(Intake intake, DateOnly today)
+        {
+            var total = intake.DateEnd.DayNumber - intake.DateStart.DayNumber + 1;
+            var day = today.DayNumber - intake.DateStart.DayNumber + 1;
+            day = Math.Clamp(day, 1, total);
+            return (day, total);
+        }
 
         public async Task RefreshAsync()
         {

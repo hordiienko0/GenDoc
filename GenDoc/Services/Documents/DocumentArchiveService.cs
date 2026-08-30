@@ -336,6 +336,12 @@ namespace GenDoc.Services.Documents
             var doc = await db.GeneratedDocuments
                 .Include(g => g.Recipient!).ThenInclude(r => r.Unit)
                 .Include(g => g.Recipient!).ThenInclude(r => r.Room)
+                // Без OrgNode і Weapons перегенерація писала у файл ПОРОЖНІ поля
+                // зброї, після чого SourceHash сходився і матриця вважала
+                // документ свіжим - дані губились мовчки. Перелік той самий, що
+                // в RecipientHashSources.
+                .Include(g => g.Recipient!).ThenInclude(r => r.OrgNode)
+                .Include(g => g.Recipient!).ThenInclude(r => r.Weapons)
                 .FirstAsync(g => g.Id == documentId);
 
             var template = await db.Templates.FirstOrDefaultAsync(t => t.Id == doc.TemplateId);
@@ -888,6 +894,14 @@ namespace GenDoc.Services.Documents
             if (content is null) return new ArchiveOpResult(false, NoContentMessage);
 
             var bytes = _watermarkService.Apply(content.Content, doc.FileName);
+
+            // FileName групового документа - це ВІДНОСНИЙ ШЛЯХ (ForGroup кладе
+            // позначку прогону в ім'я файлу, а тека - «Спільні/шаблон»), тож
+            // пакетний експорт складає його з обраною текою. Без створення підтек
+            // запис падав на першому ж рядку, як у SaveManyAsync (аудит 2026-08-28).
+            var targetFolder = Path.GetDirectoryName(targetPath);
+            if (!string.IsNullOrEmpty(targetFolder)) Directory.CreateDirectory(targetFolder);
+
             await File.WriteAllBytesAsync(targetPath, bytes);
 
             _auditLogService.LogExport(db, "GeneratedGroupDocument", 1, $"1 групова відомість → {Path.GetFileName(targetPath)}");

@@ -3,9 +3,30 @@ using System.Text;
 using GenDoc.Models;
 using GenDoc.Models.Enums;
 using GenDoc.Services.Generation;
+using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.Services.Documents
 {
+    /// <summary>
+    /// Навігації <see cref="Recipient"/>, від яких залежить значення міток, а отже
+    /// й <see cref="IDocumentHashService.ComputeSourceHash"/>.
+    ///
+    /// Живе окремо, бо той самий пропущений Include ловили вже тричі: спершу
+    /// порожні колонки зі зброєю в експорті (RecipientService.QueryEntities),
+    /// потім «вічно застарілі» документи в комплектності, потім перегенерація в
+    /// архіві, яка ці порожні значення ще й записувала у файл. Ледаче
+    /// завантаження вимкнене, тож пропуск не падає - він мовчки дає порожній
+    /// рядок. Один спільний запит замість чотирьох копій списку.
+    /// </summary>
+    public static class RecipientHashSources
+    {
+        public static IQueryable<Recipient> WithHashSources(this IQueryable<Recipient> query) => query
+            .Include(r => r.Unit)
+            .Include(r => r.Room)
+            .Include(r => r.OrgNode)
+            .Include(r => r.Weapons);
+    }
+
     public interface IDocumentHashService
     {
         // Хеш значень усіх нерукописних міток шаблону для людини -

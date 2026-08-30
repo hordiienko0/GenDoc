@@ -298,10 +298,30 @@ namespace GenDoc.Services.Generation
         // Стабільна "випадкова" оцінка 3 або 4: той самий (RecipientId, ColumnIndex)
         // завжди дає те саме число - і між перегенераціями, і між колонками рядка
         // відрізняється, бо колонка теж входить у seed.
-        private static int ComputeGradeRandom34(int recipientId, int columnIndex)
+        internal static int ComputeGradeRandom34(int recipientId, int columnIndex)
         {
-            var seed = HashCode.Combine(recipientId, columnIndex);
-            return new Random(seed).Next(3, 5);
+            // ВЛАСНИЙ детермінований хеш, а не HashCode.Combine: той у .NET
+            // рандомізований на кожен процес (документована гарантія), тож
+            // «стабільна» оцінка мінялась після кожного перезапуску застосунку -
+            // включно з уже роздрукованими відомостями (аудит 2026-08-28).
+            // FNV-1a на двох числах: дешево, детерміновано, добре розсіює.
+            unchecked
+            {
+                const uint offset = 2166136261;
+                const uint prime = 16777619;
+
+                var hash = offset;
+                foreach (var value in stackalloc[] { recipientId, columnIndex })
+                {
+                    for (var shift = 0; shift < 32; shift += 8)
+                    {
+                        hash ^= (byte)(value >> shift);
+                        hash *= prime;
+                    }
+                }
+
+                return 3 + (int)(hash % 2);
+            }
         }
 
         private static string ResolveCourseOfficerSignature(
@@ -368,7 +388,7 @@ namespace GenDoc.Services.Generation
             }
         }
 
-        private static void AssignTypedOrString(IXLCell cell, string raw)
+        internal static void AssignTypedOrString(IXLCell cell, string raw)
         {
             if (string.IsNullOrEmpty(raw))
             {
@@ -378,7 +398,11 @@ namespace GenDoc.Services.Generation
             {
                 cell.Value = date;
             }
-            else if (int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var intValue))
+            // Провідний нуль означає, що це не число, а код: телефон, ВОС,
+            // особовий номер. Excel мовчки зрізав би нуль, і в надрукованій
+            // відомості лишався б неправильний номер (аудит 2026-08-28).
+            else if (!HasLeadingZero(raw)
+                     && int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var intValue))
             {
                 cell.Value = intValue;
             }
@@ -386,6 +410,12 @@ namespace GenDoc.Services.Generation
             {
                 cell.Value = raw;
             }
+        }
+
+        private static bool HasLeadingZero(string raw)
+        {
+            var trimmed = raw.Trim();
+            return trimmed.Length > 1 && trimmed[0] == '0';
         }
 
         private static void SubstituteOutsideTags(

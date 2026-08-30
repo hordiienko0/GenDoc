@@ -83,7 +83,7 @@ namespace GenDoc.ViewModels.Archive
         {
             if (row is null || !row.CanOpen) return;
 
-            var dialog = new SaveFileDialog { FileName = row.Dto.FileName };
+            var dialog = new SaveFileDialog { FileName = System.IO.Path.GetFileName(row.Dto.FileName) };
             if (dialog.ShowDialog() != true) return;
 
             var result = await _archiveService.SaveGroupAsAsync(row.Dto.Id, dialog.FileName);

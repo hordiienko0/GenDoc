@@ -384,6 +384,29 @@ public class ImportService : IImportService
         person.OriginUnit = KeepNullable(fields.OriginUnit, person.OriginUnit);
         person.Vehicle = KeepNullable(fields.Vehicle, person.Vehicle);
 
+        // Зброя живе в окремій таблиці, і при перенесенні про неї забували:
+        // ParseWeaponUnits викликався лише в гілці вставки, тож «Перемістити»
+        // проходило успішно, а мітки зброї в шаблонах лишались порожні
+        // (аудит 2026-08-28). Правило те саме, що в KeepNullable: непорожня
+        // колонка ЗАМІНЮЄ наявний перелік, порожня - лишає як є.
+        var weapons = ParseWeaponUnits(fields.WeaponRaw);
+        if (weapons.Count > 0)
+        {
+            var existing = db.Weapons.Where(w => w.RecipientId == person.Id).ToList();
+            db.Weapons.RemoveRange(existing);
+
+            foreach (var (name, serialNumber, rawText) in weapons)
+            {
+                db.Weapons.Add(new Weapon
+                {
+                    RecipientId = person.Id,
+                    Name = name,
+                    SerialNumber = serialNumber,
+                    RawText = rawText
+                });
+            }
+        }
+
         // Зміна чужої картки мусить лишати слід: інакше «звідки він тут узявся»
         // не має відповіді ніде.
         _auditLogService.LogUpdate(

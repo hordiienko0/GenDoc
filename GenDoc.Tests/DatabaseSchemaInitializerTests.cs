@@ -1,4 +1,5 @@
 using System.Data.Common;
+using System.Text.RegularExpressions;
 using GenDoc.Services;
 using Microsoft.Data.Sqlite;
 
@@ -384,6 +385,79 @@ public class DatabaseSchemaInitializerTests
 
         // Наявний рядок не втрачено, ArchiveMineOnly дістав DEFAULT 0.
         Assert.Equal(0L, Scalar(connection, """SELECT "ArchiveMineOnly" FROM "UserSettings" WHERE "Id" = 1"""));
+    }
+
+    // Та сама пастка, але для ОБМЕЖЕННЯ, а не колонки: CREATE UNIQUE INDEX стояв
+    // усередині if (!TableExists), тож на «вилікуваній» таблиці індексу не було
+    // ніколи. UserSettingsService робить find-or-insert без транзакції, і без
+    // індексу профіль тихо отримував ДВА рядки: читався один, запис ішов в інший,
+    // і «мій набір» довільно не зберігався (аудит 2026-08-28).
+    [Fact]
+    public void EnsureUserSettingsTable_ExistingTableWithoutIndex_GetsUniqueIndex()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        Exec(connection, """
+            CREATE TABLE "Users" ("Id" INTEGER NOT NULL CONSTRAINT "PK_Users" PRIMARY KEY AUTOINCREMENT, "FullName" TEXT NOT NULL);
+            INSERT INTO "Users" ("Id", "FullName") VALUES (1, 'Тест');
+            CREATE TABLE "UserSettings" (
+                "Id" INTEGER NOT NULL CONSTRAINT "PK_UserSettings" PRIMARY KEY AUTOINCREMENT,
+                "UserProfileId" INTEGER NOT NULL
+            );
+            """);
+
+        DatabaseSchemaInitializer.EnsureUserSettingsTable((DbConnection)connection);
+
+        Exec(connection, """INSERT INTO "UserSettings" ("UserProfileId") VALUES (1);""");
+        Assert.Throws<SqliteException>(() =>
+            Exec(connection, """INSERT INTO "UserSettings" ("UserProfileId") VALUES (1);"""));
+    }
+
+    // Ідемпотентний хвіст EnsureInitialized мусить дорощувати КОЖНУ колонку, а не
+    // лише ті, що прийшли з v5 і пізніше. Колонки v2 (анкета), v3 (реквізити
+    // організації) і v4 (кімнати) були тільки в одноразових гілках, тож на базі з
+    // SchemaVersions >= 4 без них жодна гілка вже не спрацьовувала, а безумовний
+    // UPDATE OrganizationSettings падав з «no such column» при кожному вході.
+    // Колонки саме МІГРАЦІЙНІ (v2-v4), а не ті, що їх створює EnsureCreated з
+    // моделі на чистій базі: Rooms.Building існує з v1, а от Rooms.Note додала v4.
+    [Theory]
+    [InlineData("Recipients", "Nationality")]
+    [InlineData("OrganizationSettings", "HrOfficerFullName")]
+    [InlineData("Rooms", "Note")]
+    [InlineData("Rooms", "CreatedAt")]
+    public void IdempotentTail_CoversColumnsFromEveryVersion(string table, string column)
+    {
+        var source = File.ReadAllText(SchemaInitializerSourcePath());
+        var tailStart = source.IndexOf("// Ідемпотентно, як EnsureExportTemplateTables", StringComparison.Ordinal);
+        Assert.True(tailStart > 0, "Не знайдено ідемпотентний хвіст EnsureInitialized");
+
+        var tail = source[tailStart..];
+        var arrays = Regex.Matches(tail, @"AddMissingColumns\(db, ""(?<table>\w+)"", (?<array>\w+)\)")
+            .Where(m => m.Groups["table"].Value == table)
+            .Select(m => m.Groups["array"].Value)
+            .ToList();
+
+        Assert.True(arrays.Count > 0, $"У хвості немає жодного AddMissingColumns для «{table}»");
+
+        var covered = arrays.Any(array =>
+        {
+            var declaration = Regex.Match(source, @$"{array}\s*=\s*(?:new\[\]\s*)?\{{(?<body>[^}}]*)\}}",
+                RegexOptions.Singleline);
+            return declaration.Success && declaration.Groups["body"].Value.Contains($"\"{column}\"", StringComparison.Ordinal);
+        });
+
+        Assert.True(covered,
+            $"Колонка «{column}» таблиці «{table}» не покрита жодним AddMissingColumns в ідемпотентному хвості "
+            + $"(перевірені масиви: {string.Join(", ", arrays)})");
+    }
+
+    private static string SchemaInitializerSourcePath()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null && !Directory.Exists(Path.Combine(dir.FullName, "GenDoc", "Services")))
+            dir = dir.Parent;
+        if (dir is null) throw new DirectoryNotFoundException("Не знайдено корінь репозиторію");
+        return Path.Combine(dir.FullName, "GenDoc", "Services", "DatabaseSchemaInitializer.cs");
     }
 
     private static void CreateOldSchema(SqliteConnection connection)

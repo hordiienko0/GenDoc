@@ -22,6 +22,17 @@ public partial class LoginViewModel : ObservableObject
         _schemaInitializer = schemaInitializer;
     }
 
+    /// <summary>
+    /// Питання «створити нову порожню базу?» перед першим запуском. Делегат, а не
+    /// прямий MessageBox, щоб правило перевірялось тестом: сам показ підміняє
+    /// в'юха тільки в застосунку.
+    /// </summary>
+    public Func<string, bool> ConfirmCreateDatabase { get; set; } = message =>
+        System.Windows.MessageBox.Show(
+            message, "GenDoc - базу даних не знайдено",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning) == System.Windows.MessageBoxResult.Yes;
+
     [ObservableProperty]
     private LoginStage stage = LoginStage.DatabasePassword;
 
@@ -56,6 +67,24 @@ public partial class LoginViewModel : ObservableObject
         {
             ErrorMessage = "Введіть пароль бази даних.";
             return;
+        }
+
+        // Відсутній файл бази неможливо відрізнити від невірного пароля вже
+        // після Open(): режим ReadWriteCreate мовчки створить нову порожню базу,
+        // і вхід виглядатиме вдалим. Питаємо ДО спроби, називаючи повний шлях.
+        if (!_unlockService.DatabaseExists)
+        {
+            var agreed = ConfirmCreateDatabase(
+                $"Базу даних не знайдено за шляхом\n{_unlockService.DatabasePath}\n\n"
+                + "Якщо база має бути там, застосунок запущено не з тієї теки - тоді "
+                + "натисніть «Ні» й перевірте розташування.\n\n"
+                + "Створити нову порожню базу з цим паролем?");
+
+            if (!agreed)
+            {
+                ErrorMessage = $"Базу даних не знайдено за шляхом {_unlockService.DatabasePath}.";
+                return;
+            }
         }
 
         if (!_unlockService.TryUnlock(DatabasePassword, out var error))

@@ -315,6 +315,23 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
 
         RefreshSelectedRecipientsCount();
         OnPropertyChanged(nameof(SelectedRecipientsCountLabel));
+        RefreshAllRecipientsCount();
+    }
+
+    // Число в «Згенерувати всім (N)» рахується тим самим шляхом, що й прогін,
+    // і перераховується при кожній зміні фільтра звань. Раніше воно бралося з
+    // усієї таблиці й обіцяло 300 там, де прогін робив 40 (аудит 2026-08-28).
+    private void RefreshAllRecipientsCount()
+    {
+        var checkedRanks = RankOptions.Where(o => o.IsChecked).Select(o => o.Rank).ToList();
+
+        RecipientCount = _generationService.GetRecipientCount(new RosterSelection(
+            AllRecipients: true,
+            RecipientIds: Array.Empty<int>(),
+            FitnessFilter.All,
+            PermanentStaffOnly: false,
+            Array.Empty<RankCategory>(),
+            checkedRanks));
     }
 
     private void RefreshPackages()
@@ -392,8 +409,8 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
             ? await _manualTagFormBuilder.BuildAsync(tags, $"pkg:{item.Id}", needsCourseOfficer)
             : null;
 
-        RecipientCount = _generationService.GetRecipientCount();
         RefreshRecipientOptions();
+        RefreshAllRecipientsCount();
         // 2.1: тека не скидається при виборі пакета; порожня - підставляється типова.
         if (string.IsNullOrWhiteSpace(OutputFolder)) await LoadDefaultOutputFolderAsync();
         LastResult = null;
@@ -526,17 +543,27 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         IsBusy = true;
         ProgressText = "Підготовка…";
 
-        var result = await Task.Run(() =>
-            _generationService.RunPackage(packageId, outputFolderPath, manualValues, regenerate, rosterSelection, progress, courseOfficerId));
+        // try/finally обов'язковий: без нього виняток із RunPackage (недоступна
+        // мережева тека, видалений в іншому вікні пакет, збій SaveChanges)
+        // лишав IsBusy = true, і весь екран генерації був заблокований до
+        // перезапуску застосунку (аудит 2026-08-28). Так само зроблено в
+        // GenerateDocumentsDialogViewModel.
+        try
+        {
+            var result = await Task.Run(() =>
+                _generationService.RunPackage(packageId, outputFolderPath, manualValues, regenerate, rosterSelection, progress, courseOfficerId));
 
-        if (ManualTagForm is not null)
-            await _manualTagFormBuilder.SaveAsync($"pkg:{packageId}", ManualTagForm);
+            if (ManualTagForm is not null)
+                await _manualTagFormBuilder.SaveAsync($"pkg:{packageId}", ManualTagForm);
 
-        IsBusy = false;
-        ProgressText = string.Empty;
-
-        // 2.4: картка підсумку під кнопкою замість двох MessageBox («Завершено» → «Відкрити папку?»).
-        LastResult = new GenerationResultViewModel(result, outputFolderPath);
+            // 2.4: картка підсумку під кнопкою замість двох MessageBox («Завершено» → «Відкрити папку?»).
+            LastResult = new GenerationResultViewModel(result, outputFolderPath);
+        }
+        finally
+        {
+            IsBusy = false;
+            ProgressText = string.Empty;
+        }
     }
 
     // Тег "{{дата}}" зарезервований під це поле - підставляється в кожен документ

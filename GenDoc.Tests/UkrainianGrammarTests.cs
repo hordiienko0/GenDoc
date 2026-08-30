@@ -34,7 +34,7 @@ public class UkrainianGrammarTests
     }
 
     [Theory]
-    [InlineData("Шевченко", GrammaticalKind.Surname, Gender.Male, "Шевченко")]
+    [InlineData("Шевченко", GrammaticalKind.Surname, Gender.Male, "Шевченка")]
     [InlineData("Шевченко", GrammaticalKind.Surname, Gender.Female, "Шевченко")]
     [InlineData("Ковальський", GrammaticalKind.Surname, Gender.Male, "Ковальського")]
     [InlineData("Ковальська", GrammaticalKind.Surname, Gender.Female, "Ковальську")]
@@ -79,23 +79,63 @@ public class UkrainianGrammarTests
         Assert.Equal("такою", UkrainianGrammar.SuchPronoun(Gender.Female));
     }
 
-    // 32 прізвища з джерела групового рапорту (Шаблон_Рапорт_котлове_ГРУПОВИЙ) -
-    // ті самі, що йдуть у RosterOrdering; перевіряємо, що жодне не падає в
-    // виняток і що типові закінчення відмінюються за правилом, а не залишаються
-    // незмінними без потреби.
+    // 30 прізвищ із джерела групового рапорту (Шаблон_Рапорт_котлове_ГРУПОВИЙ) -
+    // ті самі, що йдуть у RosterOrdering.
+    //
+    // ВАЖЛИВО (виправлено 2026-08-28): за правописом не відмінюються лише
+    // ЖІНОЧІ прізвища на -ко; чоловічі відмінюються як іменники другої відміни
+    // («направити солдата ПЕТРЕНКА»). До аудиту код повертав їх незмінними для
+    // обох статей, а цей тест саме таку поведінку й закріплював, тож помилка
+    // жила в надрукованих наказах попри зелені тести.
+    public static IEnumerable<object[]> KoSurnames() => new[]
+    {
+        "Іваненко", "Петренко", "Бондаренко", "Кравченко", "Шевченко", "Ткаченко",
+        "Гончаренко", "Захарченко", "Марченко", "Романенко", "Савченко", "Тимошенко",
+        "Литвиненко", "Дяченко", "Клименко", "Науменко", "Панченко", "Руденко",
+        "Сидоренко", "Степаненко", "Юрченко", "Яременко", "Бойко", "Гриценко",
+        "Демченко", "Іщенко", "Коваленко", "Лисенко", "Онищенко", "Прокопенко",
+    }.Select(s => new object[] { s });
+
     [Theory]
-    [InlineData("Іваненко")] [InlineData("Петренко")] [InlineData("Бондаренко")]
-    [InlineData("Кравченко")] [InlineData("Шевченко")] [InlineData("Ткаченко")]
-    [InlineData("Гончаренко")] [InlineData("Захарченко")] [InlineData("Марченко")]
-    [InlineData("Романенко")] [InlineData("Савченко")] [InlineData("Тимошенко")]
-    [InlineData("Литвиненко")] [InlineData("Дяченко")] [InlineData("Клименко")]
-    [InlineData("Науменко")] [InlineData("Панченко")] [InlineData("Руденко")]
-    [InlineData("Сидоренко")] [InlineData("Степаненко")] [InlineData("Юрченко")]
-    [InlineData("Яременко")] [InlineData("Бойко")] [InlineData("Гриценко")]
-    [InlineData("Демченко")] [InlineData("Іщенко")] [InlineData("Коваленко")]
-    [InlineData("Лисенко")] [InlineData("Онищенко")] [InlineData("Прокопенко")]
-    public void Accusative_KoSuffixSurnames_AreInvariant(string surname)
-        => Assert.Equal(surname, UkrainianGrammar.Accusative(surname, GrammaticalKind.Surname, Gender.Male));
+    [MemberData(nameof(KoSurnames))]
+    public void Accusative_KoSuffixSurnames_DeclineForMale(string surname)
+        => Assert.Equal(surname[..^1] + "а",
+            UkrainianGrammar.Accusative(surname, GrammaticalKind.Surname, Gender.Male));
+
+    [Theory]
+    [MemberData(nameof(KoSurnames))]
+    public void Accusative_KoSuffixSurnames_StayInvariantForFemale(string surname)
+        => Assert.Equal(surname, UkrainianGrammar.Accusative(surname, GrammaticalKind.Surname, Gender.Female));
+
+    // Звання граматично чоловічого роду й відмінюються незалежно від статі
+    // особи. Раніше правило «жіноче - незмінне» гасило й звання, а складене
+    // виходило напівузгодженим: «старшого лейтенант».
+    [Theory]
+    [InlineData("майор", "майора")]
+    [InlineData("капітан", "капітана")]
+    [InlineData("старший лейтенант", "старшого лейтенанта")]
+    [InlineData("молодший сержант", "молодшого сержанта")]
+    public void Accusative_Rank_DeclinesForFemaleToo(string nominative, string expected)
+        => Assert.Equal(expected, UkrainianGrammar.Accusative(nominative, GrammaticalKind.Rank, Gender.Female));
+
+    // Флотські звання: головне слово ПЕРШЕ, а не останнє. Відмінювання
+    // останнього давало «капітан 1 рангуа».
+    [Theory]
+    [InlineData("капітан 1 рангу", "капітана 1 рангу")]
+    [InlineData("капітан 2 рангу", "капітана 2 рангу")]
+    [InlineData("капітан 3 рангу", "капітана 3 рангу")]
+    public void Accusative_NavalRanks_DeclineTheHeadWord(string nominative, string expected)
+        => Assert.Equal(expected, UkrainianGrammar.Accusative(nominative, GrammaticalKind.Rank, Gender.Male));
+
+    // Імена м'якої групи. Загальне правило для основ на -р не змінюємо:
+    // українська тут непослідовна («майора», «командира» - тверді), тому
+    // виняток вузький і явний, а нетипові форми лишаються за ручним
+    // Recipient.FullNameAccusative.
+    [Theory]
+    [InlineData("Ігор", "Ігоря")]
+    [InlineData("Лазар", "Лазаря")]
+    public void Accusative_SoftStemGivenNames(string nominative, string expected)
+        => Assert.Equal(expected, UkrainianGrammar.Accusative(nominative, GrammaticalKind.GivenName, Gender.Male));
 
     [Theory]
     [InlineData("Ковальчук", "Ковальчука")]

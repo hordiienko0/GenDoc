@@ -127,6 +127,12 @@ namespace GenDoc.ViewModels.Archive
         {
             if (!int.TryParse(index, out var i) || i == SelectedTabIndex) return;
             SelectedTabIndex = i;
+
+            // Перезавантажуємо будь-яку вкладку, на яку переходимо, включно з
+            // «Документами». Раніше нульова вкладка не оновлювалась, тож після
+            // перемикача «Всі / Мої» на сусідній вкладці вона показувала стару
+            // таблицю під новим станом перемикача (аудит 2026-08-28).
+            if (i == 0) await ResetAndReloadAsync();
             if (i == 1) await ReloadRunsAsync();
             if (i == 2) await ReloadGroupAsync();
         }
@@ -381,6 +387,19 @@ namespace GenDoc.ViewModels.Archive
             SelectedAuthor = AuthorOptions.FirstOrDefault();
             SelectedYear = YearOptions.FirstOrDefault();
             SearchText = null;
+
+            // «Мої» - теж фільтр, і найнепомітніший: він живе в шапці вкладок,
+            // окремо від панелі фільтрів, тож на порожньому списку користувач
+            // тиснув «Скинути фільтри» й далі бачив порожньо (аудит 2026-08-28).
+            // Скидаємо під тим самим прапорцем, а стан зберігаємо в профіль.
+            if (MineOnly)
+            {
+                _suppressMineOnlyReload = true;
+                MineOnly = false;
+                _suppressMineOnlyReload = false;
+                _ = _userSettings.UpdateAsync(s => s.ArchiveMineOnly = false);
+            }
+
             _suppressFilterReload = false;
             _ = ResetAndReloadAsync();
         }
@@ -603,7 +622,7 @@ namespace GenDoc.ViewModels.Archive
 
             if (rows.Count == 1)
             {
-                var dialog = new SaveFileDialog { FileName = rows[0].Dto.FileName };
+                var dialog = new SaveFileDialog { FileName = System.IO.Path.GetFileName(rows[0].Dto.FileName) };
                 if (dialog.ShowDialog() != true) return;
 
                 IsBusy = true;
@@ -883,7 +902,7 @@ namespace GenDoc.ViewModels.Archive
         {
             if (item?.Dto.DocumentId is not int docId || !item.CanOpen) return;
 
-            var dialog = new SaveFileDialog { FileName = item.Dto.FileName };
+            var dialog = new SaveFileDialog { FileName = System.IO.Path.GetFileName(item.Dto.FileName) };
             if (dialog.ShowDialog() != true) return;
 
             var result = await _archiveService.SaveAsAsync(docId, dialog.FileName);
@@ -967,9 +986,17 @@ namespace GenDoc.ViewModels.Archive
 
         private void OnGroupRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
+            // Дужки обов'язкові: без них другий рядок стояв ПОЗА умовою й ходив у
+            // файлову систему на кожну зміну будь-якої властивості будь-якого
+            // рядка - зокрема під час масового зняття позначок, коли лічильник
+            // ще не оновлено. Паралельні виклики лишали CheckedGroupDiskPath від
+            // попереднього вибору, і «Показати в теці» відкривало чужий файл
+            // (аудит 2026-08-28).
             if (e.PropertyName == nameof(GroupDocumentRowViewModel.IsChecked) && !_suppressGroupHeaderCheck)
+            {
                 GroupCheckedCount = GroupRows.Count(r => r.IsChecked);
                 _ = RefreshGroupDiskPathAsync();
+            }
         }
 
         private List<GroupDocumentRowViewModel> CheckedGroupRows => GroupRows.Where(r => r.IsChecked).ToList();
@@ -1097,7 +1124,7 @@ namespace GenDoc.ViewModels.Archive
 
             if (rows.Count == 1)
             {
-                var dialog = new SaveFileDialog { FileName = rows[0].Dto.FileName };
+                var dialog = new SaveFileDialog { FileName = System.IO.Path.GetFileName(rows[0].Dto.FileName) };
                 if (dialog.ShowDialog() != true) return;
 
                 IsBusy = true;

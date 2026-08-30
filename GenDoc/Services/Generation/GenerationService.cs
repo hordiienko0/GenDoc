@@ -336,6 +336,14 @@ namespace GenDoc.Services.Generation
             return db.Recipients.Count();
         }
 
+        // Один шлях із прогоном: LoadRosterRecipients - єдине місце, де живуть
+        // правила відбору, тож лічильник не може розійтися з фактом.
+        public int GetRecipientCount(RosterSelection selection)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            return LoadRosterRecipients(db, selection).Count;
+        }
+
         public int GetRecipientCount(FitnessFilter filter)
         {
             if (filter == FitnessFilter.All) return GetRecipientCount();
@@ -494,7 +502,7 @@ namespace GenDoc.Services.Generation
         // звань і/або конкретними званнями - усе через AND.
         private static List<Recipient> LoadRosterRecipients(AppDbContext db, RosterSelection selection)
         {
-            IQueryable<Recipient> query = db.Recipients.Include(r => r.Unit).Include(r => r.Room).Include(r => r.OrgNode).Include(r => r.Weapons);
+            IQueryable<Recipient> query = db.Recipients.WithHashSources();
 
             if (!selection.AllRecipients)
                 query = query.Where(r => selection.RecipientIds.Contains(r.Id));
@@ -1094,13 +1102,18 @@ namespace GenDoc.Services.Generation
         /// <summary>Позначка прогону для цього запуску. Час у ній з'являється
         /// лише тоді, коли папка з сьогоднішньою датою вже десь є - тобто це
         /// другий прогін за день і без часу він затер би перший.</summary>
-        private static string ResolveRunStamp(string outputFolder)
+        internal static string ResolveRunStamp(string outputFolder)
         {
             var now = DateTime.Now;
             var dateFolder = now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
+            // Ознаку шукаємо і серед ТЕК, і серед ФАЙЛІВ: персональна розкладка
+            // кладе дату рівнем теки (ForPerson), а групова - в ім'я файлу
+            // (ForGroup). Дивитись лише на теки означало, що пакет із самих
+            // відомостей другого прогону за день не помічав і затирав перший.
             var alreadyUsed = Directory.Exists(outputFolder)
-                && Directory.EnumerateDirectories(outputFolder, dateFolder, SearchOption.AllDirectories).Any();
+                && (Directory.EnumerateDirectories(outputFolder, dateFolder, SearchOption.AllDirectories).Any()
+                    || Directory.EnumerateFiles(outputFolder, dateFolder + ".*", SearchOption.AllDirectories).Any());
 
             return DocumentFolderLayout.RunStamp(now, alreadyUsed);
         }

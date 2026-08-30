@@ -8,8 +8,13 @@ namespace GenDoc.Services
     // документів. Людині потрібне «Залік Додаток 8», а не технічне ім'я файлу.
     public static class TemplateNaming
     {
+        // Роздільник обов'язковий (+, не *): з * збіг наставав і тоді, коли після
+        // «шаблон» іде літера, і префікс відкушував початок слова -
+        // «Шаблони обліку» перетворювалось на «и обліку» (аудит 2026-08-28).
+        // Назва рівно «Шаблон» під це вже не підпадає, але страховка на порожній
+        // результат нижче лишається.
         private static readonly Regex TemplatePrefixRegex = new(
-            @"^\s*шаблон[_\s\-–—:]*", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+            @"^\s*шаблон[_\s\-–—:]+", RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         private static readonly Regex WhitespaceRegex = new(@"\s+", RegexOptions.Compiled);
 

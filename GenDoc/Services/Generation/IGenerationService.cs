@@ -67,6 +67,12 @@ namespace GenDoc.Services.Generation
         int GetRecipientCount();
         int GetRecipientCount(FitnessFilter filter);
 
+        /// <summary>Скільки людей реально потрапить у прогін із цим вибором.
+        /// Рахує тим самим шляхом, що й сама генерація: напис «Згенерувати всім
+        /// (N)» брав N з усієї таблиці й ігнорував фільтр звань, тож обіцяв 300
+        /// там, де прогін робив 40 (аудит 2026-08-28).</summary>
+        int GetRecipientCount(RosterSelection selection);
+
         RunResult RunPackage(
             int packageId,
             string outputFolder,

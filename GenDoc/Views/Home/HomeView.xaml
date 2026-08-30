@@ -1,0 +1,132 @@
+<UserControl x:Class="GenDoc.Views.Home.HomeView"
+             x:Name="HomeRoot"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Loaded="HomeView_Loaded">
+
+    <UserControl.Resources>
+        <!-- Картки за зразком «Наборів»: PanelBrush на BorderLineBrush, без тіней. -->
+        <Style x:Key="HomeCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="16,14"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
+        </Style>
+
+        <Style x:Key="CardCaptionStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <Style x:Key="CardPrimaryStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+
+        <Style x:Key="CardSecondaryStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12.5"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="Margin" Value="0,4,0,0"/>
+        </Style>
+
+        <Style x:Key="CardLinkStyle" TargetType="Button" BasedOn="{StaticResource TextLinkButtonStyle}">
+            <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
+            <Setter Property="HorizontalAlignment" Value="Left"/>
+            <Setter Property="Margin" Value="0,10,0,0"/>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Margin="20,18,20,18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Шапка -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,14">
+            <TextBlock Text="Мій набір" FontSize="19" FontWeight="SemiBold"
+                       Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock Text="Що зараз важливо: набір, готовність документів, останній запуск" FontSize="12"
+                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel MaxWidth="760" HorizontalAlignment="Left">
+
+                <!-- Картка набору -->
+                <Border Style="{StaticResource HomeCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="НАБІР" Style="{StaticResource CardCaptionStyle}"/>
+
+                        <StackPanel Visibility="{Binding HasIntake, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="{Binding IntakeTitle}" Style="{StaticResource CardPrimaryStyle}"/>
+                            <TextBlock Text="{Binding PeopleCountText}" Style="{StaticResource CardSecondaryStyle}"/>
+                            <Button Content="Відкрити «Особовий склад»" Style="{StaticResource CardLinkStyle}"
+                                    Command="{Binding OpenPersonnelCommand}"/>
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding HasNoIntake, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="Активного набору немає" Style="{StaticResource CardPrimaryStyle}"/>
+                            <TextBlock Text="Оберіть набір у розділі «Набори» — дією «Зробити моїм»."
+                                       Style="{StaticResource CardSecondaryStyle}"/>
+                            <Button Content="Перейти до «Наборів»" Style="{StaticResource CardLinkStyle}"
+                                    Command="{Binding OpenIntakesCommand}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Картка готовності -->
+                <Border Style="{StaticResource HomeCardStyle}"
+                        Visibility="{Binding HasIntake, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel>
+                        <TextBlock Text="ГОТОВНІСТЬ ДОКУМЕНТІВ" Style="{StaticResource CardCaptionStyle}"/>
+                        <TextBlock Text="{Binding MissingCountText}" Style="{StaticResource CardPrimaryStyle}"/>
+                        <TextBlock Text="{Binding StaleCountText}" Style="{StaticResource CardSecondaryStyle}"/>
+                        <Button Content="Перейти до «Комплектності»" Style="{StaticResource CardLinkStyle}"
+                                Command="{Binding OpenCompletenessCommand}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Картка останнього запуску -->
+                <Border Style="{StaticResource HomeCardStyle}">
+                    <StackPanel>
+                        <TextBlock Text="ОСТАННІЙ ЗАПУСК" Style="{StaticResource CardCaptionStyle}"/>
+
+                        <StackPanel Visibility="{Binding HasLastRun, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="{Binding LastRunText}" Style="{StaticResource CardPrimaryStyle}"/>
+                            <Button Content="Показати в архіві" Style="{StaticResource CardLinkStyle}"
+                                    Command="{Binding OpenLastRunCommand}"/>
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding HasNoLastRun, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="Запусків ще не було" Style="{StaticResource CardPrimaryStyle}"/>
+                            <TextBlock Text="Документи цього набору ще не генерувалися."
+                                       Style="{StaticResource CardSecondaryStyle}"/>
+                            <Button Content="Перейти до «Генерації»" Style="{StaticResource CardLinkStyle}"
+                                    Command="{Binding OpenGenerationCommand}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Швидкі дії -->
+                <TextBlock Text="ШВИДКІ ДІЇ" Style="{StaticResource CardCaptionStyle}" Margin="0,6,0,8"/>
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Згенерувати документи" Command="{Binding OpenGenerationCommand}" Margin="0,0,8,0"/>
+                    <Button Content="Комплектність" Style="{StaticResource SecondaryButtonStyle}"
+                            Command="{Binding OpenCompletenessCommand}" Margin="0,0,8,0"/>
+                    <Button Content="Архів документів" Style="{StaticResource SecondaryButtonStyle}"
+                            Command="{Binding OpenArchiveCommand}" Margin="0,0,8,0"/>
+                    <Button Content="Набори" Style="{StaticResource SecondaryButtonStyle}"
+                            Command="{Binding OpenIntakesCommand}"/>
+                </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

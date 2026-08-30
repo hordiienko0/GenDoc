@@ -81,5 +81,14 @@ public sealed class FakeTempFiles : ISecureTempFileService
 // саме прив'язку до заїзду, достатньо стабільного null.
 public sealed class FakeIntakeAccessor : GenDoc.Services.Completeness.IIntakeServiceAccessor
 {
-    public GenDoc.Models.Intake? ActiveIntake => null;
+    private readonly GenDoc.Models.Intake? _intake;
+
+    public FakeIntakeAccessor() { }
+
+    // Бейдж навігації читає активний набір саме звідси, тож для тестів на нього
+    // фейк мусить уміти його віддати - інакше GetBadgeCountAsync виходить на
+    // першому ж рядку й тест нічого не доводить.
+    public FakeIntakeAccessor(GenDoc.Models.Intake intake) => _intake = intake;
+
+    public GenDoc.Models.Intake? ActiveIntake => _intake;
 }

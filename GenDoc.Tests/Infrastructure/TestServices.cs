@@ -32,14 +32,15 @@ public static class TestServices
         new FakeCurrentUser(),
         UserSettings(db, userId));
 
-    public static CompletenessService Completeness(TestDb db, int? userId = null) => new(
+    public static CompletenessService Completeness(
+        TestDb db, int? userId = null, GenDoc.Models.Intake? activeIntake = null) => new(
         db.Factory,
         new FakeAuditLog(),
         new FakeCurrentUser(),
         new DocumentGenerationService(),
         new DocumentHashService(),
         new NoOpWatermarkService(),
-        new FakeIntakeAccessor(),
+        activeIntake is null ? new FakeIntakeAccessor() : new FakeIntakeAccessor(activeIntake),
         UserSettings(db, userId));
 
     public static GenDoc.Services.Generation.ManualTagFormBuilder ManualTagForm(

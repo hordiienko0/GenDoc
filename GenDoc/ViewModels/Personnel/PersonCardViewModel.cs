@@ -76,9 +76,6 @@ namespace GenDoc.ViewModels.Personnel
             roomNumber = model.RoomNumber;
             fitness = model.FitnessCategory;
 
-            HeaderName = Id == 0 ? "Нова особа" : BuildShortName(model.LastName, model.FirstName, model.MiddleName);
-            HeaderSub = string.Join(" · ", new[] { model.Rank, model.Position }.Where(p => !string.IsNullOrWhiteSpace(p)));
-
             // Нова особа - картка одразу відкривається в режимі редагування,
             // бо переглядати ще нічого.
             isEditing = IsNew;
@@ -94,8 +91,35 @@ namespace GenDoc.ViewModels.Personnel
         public int? IntakeId { get; }
         public bool IsNew => Id == 0;
         public string UnitDisplay { get; }
-        public string HeaderName { get; }
-        public string HeaderSub { get; }
+
+        // Обчислюються на льоту, а не фіксуються в конструкторі: після «Додати» →
+        // ввести ПІБ → «Зберегти» шапка так і лишалась «Нова особа», і це саме
+        // значення йшло в діалог генерації як відображуване ім'я
+        // (аудит 2026-08-28). RefreshHeader() кличеться після збереження.
+        public string HeaderName => BuildHeaderName(Id, LastName, FirstMiddle);
+        public string HeaderSub => BuildHeaderSub(Rank, Position);
+
+        internal static string BuildHeaderName(int id, string? lastName, string? firstMiddle)
+        {
+            if (id == 0) return "Нова особа";
+
+            var parts = (firstMiddle ?? string.Empty).Trim()
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+            return BuildShortName(
+                lastName ?? string.Empty,
+                parts.Length > 0 ? parts[0] : null,
+                parts.Length > 1 ? string.Join(' ', parts.Skip(1)) : null);
+        }
+
+        internal static string BuildHeaderSub(string? rank, string? position) =>
+            string.Join(" · ", new[] { rank, position }.Where(p => !string.IsNullOrWhiteSpace(p)));
+
+        private void RefreshHeader()
+        {
+            OnPropertyChanged(nameof(HeaderName));
+            OnPropertyChanged(nameof(HeaderSub));
+        }
 
         public IReadOnlyList<string> FitnessList => FitnessOptions;
 
@@ -193,7 +217,6 @@ namespace GenDoc.ViewModels.Personnel
                 DocumentRows.Clear();
                 foreach (var status in statuses) DocumentRows.Add(new RecipientDocRowViewModel(status));
 
-                HasMissingDocuments = statuses.Any(s => !s.HasContent);
                 DocumentsEmptyNote = statuses.Count == 0 ? "У пакеті немає шаблонів." : null;
                 DocumentsFooterNote = await BuildDocumentsFooterNoteAsync(packageId.Value);
 
@@ -201,6 +224,15 @@ namespace GenDoc.ViewModels.Personnel
                 GroupDocumentRows.Clear();
                 foreach (var g in groupDocs) GroupDocumentRows.Add(new GroupDocumentRowViewModel(g));
                 HasGroupDocuments = GroupDocumentRows.Count > 0;
+
+                // Бейдж мусить збігатися з матрицею. Раніше він (а) рахував
+                // бракуючим і те, що для цієї людини «не потрібне», і (б) не бачив
+                // групових документів узагалі - тож картка казала «Пакет повний»,
+                // коли в матриці стояло «0 з 1» через обов'язковий груповий наказ,
+                // до складу якого людина не входить (аудит 2026-08-28).
+                HasMissingDocuments =
+                    statuses.Any(s => s.Requirement == Models.Enums.TemplateRequirement.Required && !s.HasContent)
+                    || groupDocs.Any(g => !g.IsParticipant);
             }
             finally
             {
@@ -384,6 +416,7 @@ namespace GenDoc.ViewModels.Personnel
 
             Id = result.Id;
             TakeSnapshot();
+            RefreshHeader();
             IsEditing = false;
             Saved?.Invoke(result.Id);
             return true;

@@ -484,7 +484,7 @@
 
                                                                         <TextBlock Text="Шрифт" FontSize="11" Margin="0,0,0,3"
                                                                                    Foreground="{StaticResource TextSecondaryBrush}"/>
-                                                                        <ComboBox ItemsSource="{Binding FontOptions}" DisplayMemberPath="Label"
+                                                                        <ComboBox ItemsSource="{x:Static builderVm:BuilderBlockViewModel.FontOptions}" DisplayMemberPath="Label"
                                                                                   SelectedItem="{Binding SelectedFont, Mode=TwoWay}"
                                                                                   Margin="0,0,0,9"/>
 
@@ -497,7 +497,7 @@
                                                                             <StackPanel Grid.Column="0" Margin="0,0,10,0">
                                                                                 <TextBlock Text="Розмір" FontSize="11" Margin="0,0,0,3"
                                                                                            Foreground="{StaticResource TextSecondaryBrush}"/>
-                                                                                <ComboBox ItemsSource="{Binding FontSizeOptions}" DisplayMemberPath="Label"
+                                                                                <ComboBox ItemsSource="{x:Static builderVm:BuilderBlockViewModel.FontSizeOptions}" DisplayMemberPath="Label"
                                                                                           SelectedItem="{Binding SelectedFontSize, Mode=TwoWay}"/>
                                                                             </StackPanel>
 
@@ -534,7 +534,7 @@
 
                                                                         <TextBlock Text="Колір" FontSize="11" Margin="0,0,0,3"
                                                                                    Foreground="{StaticResource TextSecondaryBrush}"/>
-                                                                        <ComboBox ItemsSource="{Binding ColorOptions}"
+                                                                        <ComboBox ItemsSource="{x:Static builderVm:BuilderBlockViewModel.ColorOptions}"
                                                                                   SelectedItem="{Binding SelectedColor, Mode=TwoWay}">
                                                                             <ComboBox.ItemTemplate>
                                                                                 <DataTemplate>
