@@ -59,20 +59,43 @@ public partial class CompletenessView : UserControl
         </DataTemplate>
         """;
 
+    // Підписка на ColumnsChanged мусить зніматись: в'ю-модель - singleton, а
+    // DataTemplate створює НОВУ в'юху на кожен вхід у розділ. Без відписки
+    // після десяти заходів одна зміна фільтра викликала RebuildColumns десять
+    // разів, дев'ять - на мертвих грідах із повним XamlReader.Parse, і жодна з
+    // в'юх не збиралась GC (аудит 2026-08-28). Тримаємо посилання на сам
+    // обробник: лямбда без нього не відписується.
+    private Action? _columnsChangedHandler;
+
     public CompletenessView()
     {
         InitializeComponent();
         MatrixGrid.PreviewMouseLeftButtonDown += MatrixGrid_PreviewMouseLeftButtonDown;
+        Unloaded += CompletenessView_Unloaded;
     }
 
     private async void CompletenessView_Loaded(object sender, RoutedEventArgs e)
     {
         if (DataContext is CompletenessViewModel vm)
         {
-            vm.ColumnsChanged += () => RebuildColumns(vm);
+            // Loaded спрацьовує щоразу при поверненні контролу у візуальне
+            // дерево, тож спершу знімаємо попередню підписку.
+            DetachColumnsChanged();
+            _columnsChangedHandler = () => RebuildColumns(vm);
+            vm.ColumnsChanged += _columnsChangedHandler;
+
             await vm.InitializeAsync();
             RebuildColumns(vm);
         }
+    }
+
+    private void CompletenessView_Unloaded(object sender, RoutedEventArgs e) => DetachColumnsChanged();
+
+    private void DetachColumnsChanged()
+    {
+        if (_columnsChangedHandler is null) return;
+        if (DataContext is CompletenessViewModel vm) vm.ColumnsChanged -= _columnsChangedHandler;
+        _columnsChangedHandler = null;
     }
 
     // Пастка: спершу ItemsSource=null, потім Columns.Clear(), потім нові колонки - інакше

@@ -203,8 +203,18 @@ namespace GenDoc.ViewModels.Completeness
             IntakeOptions.Clear();
             foreach (var option in intakes) IntakeOptions.Add(option);
 
-            var activePackageDefault = await _completenessService.GetDefaultPackageIdAsync();
-            SelectedIntake = IntakeOptions.FirstOrDefault(o => o.Label.Contains("активний"))
+            // Спершу «мій» набір, і лише потім глобальний активний за текстовою
+            // міткою. Бейдж біля розділу рахується по ActiveIntakeState, тож
+            // вибір за міткою розходився з ним: бейдж показував число по Набору
+            // №3, а розділ відкривав матрицю Набору №5 (аудит 2026-08-28).
+            var mine = _serviceProvider.GetService(typeof(Services.ActiveIntakeState))
+                as Services.ActiveIntakeState;
+
+            SelectedIntake =
+                (mine?.Current is { } current
+                    ? IntakeOptions.FirstOrDefault(o => o.Id == current.Id)
+                    : null)
+                ?? IntakeOptions.FirstOrDefault(o => o.Label.Contains("активний"))
                 ?? IntakeOptions.FirstOrDefault();
             _suppressFilterReload = false;
 

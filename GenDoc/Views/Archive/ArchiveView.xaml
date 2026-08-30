@@ -166,8 +166,14 @@
                               SelectedItem="{Binding SelectedTemplate}" DisplayMemberPath="Label"/>
                     <ComboBox Style="{StaticResource ArchiveFilterComboStyle}" ItemsSource="{Binding PackageOptions}"
                               SelectedItem="{Binding SelectedPackage}" DisplayMemberPath="Label"/>
+                    <!-- Під «Мої» фільтр за автором задає перемикач у шапці, і вибір
+                         тут не має жодного впливу. Комбобокс лишався активним і
+                         показував обране значення - виглядало як зламаний фільтр
+                         (аудит 2026-08-28). Тепер він явно недоступний. -->
                     <ComboBox Style="{StaticResource ArchiveFilterComboStyle}" ItemsSource="{Binding AuthorOptions}"
-                              SelectedItem="{Binding SelectedAuthor}" DisplayMemberPath="Label"/>
+                              SelectedItem="{Binding SelectedAuthor}" DisplayMemberPath="Label"
+                              IsEnabled="{Binding MineOnly, Converter={StaticResource InverseBoolean}}"
+                              ToolTip="Під час «Мої» автор задається перемикачем угорі"/>
                     <ComboBox Style="{StaticResource ArchiveFilterComboStyle}" ItemsSource="{Binding YearOptions}"
                               SelectedItem="{Binding SelectedYear}" DisplayMemberPath="Label"/>
                 </StackPanel>

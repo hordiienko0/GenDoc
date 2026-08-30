@@ -45,8 +45,15 @@ namespace GenDoc.Services.Audit
             if (!string.IsNullOrWhiteSpace(filter.Action))
                 query = query.Where(e => e.Action == filter.Action);
 
+            // Вторинний ключ обов'язковий: AuditLogService пише DateTime.Now, а
+            // роздільність системного годинника ~15 мс, тож усі записи одного
+            // SaveChanges мають ОДНАКОВУ мітку. Без tie-break порядок між
+            // запитами не гарантований, і між сторінками рядки то дублювались,
+            // то зникали (аудит 2026-08-28). За однакового часу новішим
+            // вважаємо більший Id - він доданий пізніше.
             var entities = query
                 .OrderByDescending(e => e.OccurredAt)
+                .ThenByDescending(e => e.Id)
                 .Skip(filter.Skip)
                 .Take(filter.Take)
                 .ToList();

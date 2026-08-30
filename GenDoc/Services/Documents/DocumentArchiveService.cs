@@ -250,7 +250,13 @@ namespace GenDoc.Services.Documents
 
             foreach (var id in documentIds)
             {
+                // IgnoreQueryFilters - з тієї ж причини, що в ApplyFilter: обидва
+                // зв'язки обов'язкові, тож людина чи шаблон у кошику робили з
+                // Include INNER JOIN, рядок зникав і FirstAsync падав сирим
+                // «Sequence contains no elements» просто посеред циклу експорту
+                // (аудит 2026-08-28).
                 var doc = await db.GeneratedDocuments
+                    .IgnoreQueryFilters()
                     .Include(g => g.Recipient)
                     .Include(g => g.Template)
                     .FirstAsync(g => g.Id == id);
@@ -430,7 +436,8 @@ namespace GenDoc.Services.Documents
         public async Task<ArchiveOpResult> UploadManualAsync(int documentId, string filePath, string? note)
         {
             using var db = _dbFactory.CreateDbContext();
-            var doc = await db.GeneratedDocuments.FirstAsync(g => g.Id == documentId);
+            var doc = await db.GeneratedDocuments.FirstOrDefaultAsync(g => g.Id == documentId);
+            if (doc is null) return new ArchiveOpResult(false, RecordGoneMessage);
 
             var maxKb = await db.AppSettings.Select(s => s.MaxDocumentSizeKb).FirstOrDefaultAsync()
                 ?? DefaultMaxDocumentSizeKb;
@@ -473,19 +480,37 @@ namespace GenDoc.Services.Documents
         public async Task<ArchiveRowDto?> GetCurrentRowAsync(int recipientId, int templateId)
         {
             using var db = _dbFactory.CreateDbContext();
+
+            // Проєкція дзеркалить QueryAsync: зв'язані сутності беремо ПІДЗАПИТОМ
+            // з IgnoreQueryFilters, а не навігацією. Через навігацію обов'язковий
+            // зв'язок дає INNER JOIN, тож людина чи шаблон у кошику прибирали
+            // рядок цілком - метод повертав null, RefreshRowsAsync тихо нічого не
+            // оновлював, і в таблиці лишалась стара версія, ніби дію не виконано
+            // (аудит 2026-08-28). Захисні «!= null ? … : "-"» тут були мертві.
             return await db.GeneratedDocuments
-                .Where(g => g.RecipientId == recipientId && g.TemplateId == templateId && g.IsCurrent)
+                .IgnoreQueryFilters()
+                .Where(g => g.DeletedAt == null
+                    && g.RecipientId == recipientId && g.TemplateId == templateId && g.IsCurrent)
                 .Select(g => new ArchiveRowDto(
                     g.Id, g.RecipientId, g.TemplateId,
-                    g.Recipient!.LastName, g.Recipient.FirstName, g.Recipient.MiddleName,
-                    g.Template != null ? g.Template.Name : "-",
-                    g.Template != null && g.Template.DeletedAt == null,
+                    db.Recipients.IgnoreQueryFilters()
+                        .Where(r => r.Id == g.RecipientId).Select(r => r.LastName).FirstOrDefault() ?? "-",
+                    db.Recipients.IgnoreQueryFilters()
+                        .Where(r => r.Id == g.RecipientId).Select(r => r.FirstName).FirstOrDefault(),
+                    db.Recipients.IgnoreQueryFilters()
+                        .Where(r => r.Id == g.RecipientId).Select(r => r.MiddleName).FirstOrDefault(),
+                    db.Templates.IgnoreQueryFilters()
+                        .Where(t => t.Id == g.TemplateId).Select(t => t.Name).FirstOrDefault() ?? "-",
+                    db.Templates.IgnoreQueryFilters()
+                        .Any(t => t.Id == g.TemplateId && t.DeletedAt == null),
                     g.Version, g.IntakeId,
                     g.IntakeId != null
-                        ? db.Intakes.Where(i => i.Id == g.IntakeId).Select(i => (int?)i.Number).FirstOrDefault()
+                        ? db.Intakes.IgnoreQueryFilters()
+                            .Where(i => i.Id == g.IntakeId).Select(i => (int?)i.Number).FirstOrDefault()
                         : null,
                     g.OrgPathSnapshot, g.GeneratedAt,
-                    g.GeneratedByUser != null ? g.GeneratedByUser.FullName : "-",
+                    db.Users.IgnoreQueryFilters()
+                        .Where(u => u.Id == g.GeneratedByUserId).Select(u => u.FullName).FirstOrDefault() ?? "-",
                     g.Attachments.Count(a => a.DeletedAt == null),
                     g.HasContent, g.SourceType, g.FileName, g.SizeBytes))
                 .FirstOrDefaultAsync();
@@ -494,7 +519,9 @@ namespace GenDoc.Services.Documents
         public async Task<ArchiveOpResult> OpenAttachmentAsync(int attachmentId)
         {
             using var db = _dbFactory.CreateDbContext();
-            var attachment = await db.DocumentAttachments.FirstAsync(a => a.Id == attachmentId);
+            var attachment = await db.DocumentAttachments.FirstOrDefaultAsync(a => a.Id == attachmentId);
+            if (attachment is null) return new ArchiveOpResult(false, RecordGoneMessage);
+
             await _tempFileService.OpenAsync(attachment.FileName, attachment.Content);
 
             _auditLogService.Log(db, "Відкрито документ", "GeneratedDocument",
@@ -506,7 +533,9 @@ namespace GenDoc.Services.Documents
         public async Task<ArchiveOpResult> SaveAttachmentAsAsync(int attachmentId, string targetPath)
         {
             using var db = _dbFactory.CreateDbContext();
-            var attachment = await db.DocumentAttachments.FirstAsync(a => a.Id == attachmentId);
+            var attachment = await db.DocumentAttachments.FirstOrDefaultAsync(a => a.Id == attachmentId);
+            if (attachment is null) return new ArchiveOpResult(false, RecordGoneMessage);
+
             var bytes = _watermarkService.Apply(attachment.Content, attachment.FileName);
             await File.WriteAllBytesAsync(targetPath, bytes);
 
@@ -542,7 +571,10 @@ namespace GenDoc.Services.Documents
         public async Task DeleteAttachmentAsync(int attachmentId)
         {
             using var db = _dbFactory.CreateDbContext();
-            var attachment = await db.DocumentAttachments.FirstAsync(a => a.Id == attachmentId);
+            // Вкладення могли прибрати в іншому сеансі - тоді видаляти вже нічого.
+            var attachment = await db.DocumentAttachments.FirstOrDefaultAsync(a => a.Id == attachmentId);
+            if (attachment is null) return;
+
             attachment.DeletedAt = DateTime.Now;
             attachment.DeletedBy = _currentUserContext.CurrentUserFullName;
 
@@ -554,7 +586,10 @@ namespace GenDoc.Services.Documents
         public async Task<int> MakeCurrentAsync(int versionDocumentId)
         {
             using var db = _dbFactory.CreateDbContext();
-            var target = await db.GeneratedDocuments.FirstAsync(g => g.Id == versionDocumentId);
+            // 0 - «нічого не зробили»: версію могли видалити в іншому сеансі, і
+            // сире «Sequence contains no elements» тут ні про що не каже.
+            var target = await db.GeneratedDocuments.FirstOrDefaultAsync(g => g.Id == versionDocumentId);
+            if (target is null) return 0;
 
             foreach (var current in db.GeneratedDocuments
                 .Where(g => g.RecipientId == target.RecipientId && g.TemplateId == target.TemplateId && g.IsCurrent)
@@ -957,7 +992,8 @@ namespace GenDoc.Services.Documents
         public async Task<int> MakeGroupCurrentAsync(int versionDocumentId)
         {
             using var db = _dbFactory.CreateDbContext();
-            var target = await db.GeneratedGroupDocuments.FirstAsync(g => g.Id == versionDocumentId);
+            var target = await db.GeneratedGroupDocuments.FirstOrDefaultAsync(g => g.Id == versionDocumentId);
+            if (target is null) return 0;
 
             foreach (var current in SameGroupSeries(db.GeneratedGroupDocuments, target)
                 .Where(g => g.IsCurrent).ToList())
