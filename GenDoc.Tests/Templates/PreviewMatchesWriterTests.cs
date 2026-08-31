@@ -26,7 +26,7 @@ public class PreviewMatchesWriterTests
     {
         using var stream = new MemoryStream(content);
         using var word = WordprocessingDocument.Open(stream, false);
-        return word.MainDocumentPart!.Document.Body!
+        return word.MainDocumentPart!.Document!.Body!
             .Descendants<DocumentFormat.OpenXml.Wordprocessing.Paragraph>()
             .Select(p => p.InnerText)
             .ToList();

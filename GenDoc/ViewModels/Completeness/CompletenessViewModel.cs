@@ -38,6 +38,7 @@ namespace GenDoc.ViewModels.Completeness
         private readonly DispatcherTimer _searchDebounceTimer;
 
         private readonly List<MatrixRowViewModel> _allRows = new();
+        private readonly GenDoc.ViewModels.Shell.ReloadGeneration _reload = new();
         private MatrixData? _matrixData;
         private bool _initialized;
         private bool _suppressFilterReload;
@@ -246,7 +247,14 @@ namespace GenDoc.ViewModels.Completeness
 
         private async Task RebuildAsync()
         {
+            // Перебудову запускають «і забувають» (зміна набору, зміна пакета).
+            // Швидке перемикання лишало два запити в польоті, і повільніший
+            // приходив останнім - матриця показувала попередній набір, тоді як
+            // комбо вже показувало новий (аудит 2026-08-28).
+            var token = _reload.Begin();
+
             if (PackageOptions.Count == 0) await ReloadPackagesAsync();
+            if (!_reload.IsCurrent(token)) return;
 
             if (SelectedIntake is null || SelectedPackage is null)
             {
@@ -261,7 +269,10 @@ namespace GenDoc.ViewModels.Completeness
             IsBusy = true;
             try
             {
-                _matrixData = await _completenessService.BuildAsync(SelectedIntake.Id, SelectedPackage.Id);
+                var data = await _completenessService.BuildAsync(SelectedIntake.Id, SelectedPackage.Id);
+                if (!_reload.IsCurrent(token)) return;
+
+                _matrixData = data;
 
                 PackageIsEmpty = _matrixData.Templates.Count == 0;
                 IntakeHasNoPeople = !PackageIsEmpty && _matrixData.People.Count == 0;
@@ -294,7 +305,9 @@ namespace GenDoc.ViewModels.Completeness
             }
             finally
             {
-                IsBusy = false;
+                // Гасить індикатор лише актуальний прогін: інакше той, що
+                // завершився першим, прибирав би його, поки другий ще працює.
+                if (_reload.IsCurrent(token)) IsBusy = false;
             }
         }
 

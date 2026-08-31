@@ -40,6 +40,7 @@ namespace GenDoc.ViewModels.Personnel
         private readonly DispatcherTimer _searchDebounceTimer;
 
         private List<PersonRowViewModel> _allRows = new();
+        private readonly ViewModels.Shell.ReloadGeneration _reload = new();
         private bool _initialized;
         private bool _suppressHeaderCheck;
 
@@ -174,6 +175,13 @@ namespace GenDoc.ViewModels.Personnel
 
         private async Task ReloadListAsync()
         {
+            // Перезавантаження запускають «і забувають» (вибір вузла дерева,
+            // перемикач «з підрозділами», повідомлення про зміну лічильників).
+            // Швидке клацання по дереву лишало два запити в польоті, і
+            // повільніший приходив останнім - список показував людей іншого
+            // вузла, ніж підсвічений у дереві (аудит 2026-08-28).
+            var token = _reload.Begin();
+
             var node = Tree.SelectedNode;
             BuildBreadcrumb(node);
 
@@ -189,6 +197,7 @@ namespace GenDoc.ViewModels.Personnel
             }
 
             var items = await _personnelService.QueryByNodeAsync(node.Id, Tree.ShowDescendants);
+            if (!_reload.IsCurrent(token)) return;
 
             _allRows = items.Select(i =>
             {
