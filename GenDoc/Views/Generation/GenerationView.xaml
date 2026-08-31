@@ -41,22 +41,36 @@
         </Style>
     </UserControl.Resources>
 
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="0,0,0,24">
+    <!-- Наскрізного ScrollViewer тут немає навмисно (Варіант Б, 6/6). Поки він
+         охоплював увесь екран, кнопка «Згенерувати» і картка підсумку жили
+         нижче краю вікна: оператор налаштовував прогін, а тоді мусив шукати
+         кнопку прокруткою, і не бачив, чим прогін скінчився. Тепер прокручується
+         лише середина, а низ закріплений.
+         Пастка: внутрішній ScrollViewer НЕ можна класти в Auto-рядок - Auto
+         міряє нескінченністю, і прокрутка не спрацює. Тому в рядках "*". -->
+    <Grid Margin="0,0,0,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
 
+        <StackPanel Grid.Row="0">
             <TextBlock Text="Генерація" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
             <TextBlock Text="Пакети шаблонів для масової генерації документів"
                        Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,4,0,22"/>
+        </StackPanel>
 
-            <Grid>
+            <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="300"/>
                     <ColumnDefinition Width="20"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Ліва колонка: пакети -->
-                <StackPanel Grid.Column="0">
+                <!-- Ліва колонка: пакети. Розкладка не змінена - додано лише
+                     власну прокрутку замість наскрізної, що була раніше. -->
+                <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
+                <StackPanel>
                     <ItemsControl ItemsSource="{Binding Packages}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
@@ -127,6 +141,7 @@
                         </StackPanel>
                     </Border>
                 </StackPanel>
+                </ScrollViewer>
 
                 <!-- Права панель: обраний пакет -->
                 <Grid Grid.Column="2">
@@ -162,9 +177,17 @@
                         </Border>
                     </StackPanel>
 
-                    <StackPanel Visibility="{Binding HasSelectedPackage, Converter={StaticResource BoolToVisibility}}">
+                    <Grid Visibility="{Binding HasSelectedPackage, Converter={StaticResource BoolToVisibility}}">
+                        <Grid.RowDefinitions>
+                            <!-- шапка пакета -->
+                            <RowDefinition Height="Auto"/>
+                            <!-- прокручується лише це -->
+                            <RowDefinition Height="*"/>
+                            <!-- закріплений низ: тека, чекбокс, кнопка, підсумок -->
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
 
-                        <Grid Margin="0,0,0,4">
+                        <Grid Grid.Row="0" Margin="0,0,0,4">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
@@ -173,6 +196,9 @@
                             <Button Grid.Column="1" Content="⚙ Вимоги" Style="{StaticResource SecondaryButtonStyle}"
                                     ToolTip="Вимоги пакета…" Command="{Binding OpenRequirementsCommand}"/>
                         </Grid>
+
+                        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="0,0,6,0">
+                        <StackPanel>
                         <ItemsControl ItemsSource="{Binding PackageTemplates}" Margin="0,0,0,16">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
@@ -415,6 +441,11 @@
                             </Border>
                         </StackPanel>
 
+                        </StackPanel>
+                        </ScrollViewer>
+
+                        <StackPanel Grid.Row="2" Margin="0,14,0,0">
+
                         <!-- 2.1: тека підставляється сама (налаштування або Документи\GenDoc) і не
                              скидається при зміні пакета; «Змінити…» зберігає нову як типову. -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
@@ -454,8 +485,14 @@
                             <StackPanel>
                                 <TextBlock Text="{Binding SummaryText}" FontSize="13.5" FontWeight="Bold"
                                            Foreground="{StaticResource TextPrimaryBrush}"/>
-                                <ItemsControl ItemsSource="{Binding Issues}" Margin="0,8,0,0"
+                                <!-- Картка підсумку живе в закріпленому низу, а
+                                     список хиб буває довгим - без стелі він би
+                                     виштовхнув кнопку «Згенерувати» за край
+                                     вікна, тобто повернув би те, що виправляє
+                                     Варіант Б (6/6). Стеля з власною прокруткою. -->
+                                <ScrollViewer MaxHeight="140" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0"
                                               Visibility="{Binding HasIssues, Converter={StaticResource BoolToVisibility}}">
+                                <ItemsControl ItemsSource="{Binding Issues}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <TextBlock FontSize="12" TextWrapping="Wrap" Margin="0,2" Foreground="{StaticResource WarnTextBrush}">
@@ -464,6 +501,7 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
+                                </ScrollViewer>
                                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
                                     <Button Content="Відкрити теку" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding OpenFolderCommand}"/>
                                     <Button Content="Показати в архіві" Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0"
@@ -472,10 +510,10 @@
                             </StackPanel>
                         </Border>
 
-                    </StackPanel>
+                        </StackPanel>
+                    </Grid>
                 </Grid>
             </Grid>
 
-        </StackPanel>
-    </ScrollViewer>
+    </Grid>
 </UserControl>
