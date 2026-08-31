@@ -135,8 +135,14 @@ public class ImportService : IImportService
         var seenNameKeysInFile = new HashSet<string>(StringComparer.Ordinal);
         var unitCache = new Dictionary<string, Unit>(UkIgnoreCase);
         var orgNodeCache = new Dictionary<string, OrgNode>(UkIgnoreCase);
-        var roomCache = new Dictionary<(string Building, string Number), Room>();
+        var roomCache = new Dictionary<(string Building, string Number), Room>(RoomKeyComparer.Instance);
         var intakeFolderCache = new Dictionary<int, Dictionary<string, int>>();
+
+        // Довідники вичитуються ОДИН раз, а не на кожен рядок. Порівняння
+        // кирилиці мусить іти в пам'яті (SQLite вважає «Корпус А» і «корпус а»
+        // різними), тож Resolve* без цього робили б повне сканування таблиці на
+        // кожне нове значення - для файлу на 500 рядків це 500 сканувань.
+        PrefillLookups(db, unitCache, orgNodeCache, roomCache);
 
         var imported = 0;
         var skipped = 0;
@@ -873,19 +879,49 @@ public class ImportService : IImportService
         return map;
     }
 
+    /// <summary>Порівняння ключа кімнати - те саме правило, що й для пошуку в
+    /// базі: корпус і номер без урахування регістру за uk-UA. Типовий компаратор
+    /// кортежа порівнює побайтово, і «Корпус А»/«корпус а» промазували повз
+    /// кеш, знову ведучи до сканування таблиці.</summary>
+    private sealed class RoomKeyComparer : IEqualityComparer<(string Building, string Number)>
+    {
+        public static readonly RoomKeyComparer Instance = new();
+
+        public bool Equals((string Building, string Number) x, (string Building, string Number) y)
+            => UkIgnoreCase.Equals(x.Building, y.Building) && UkIgnoreCase.Equals(x.Number, y.Number);
+
+        public int GetHashCode((string Building, string Number) key)
+            => HashCode.Combine(
+                UkIgnoreCase.GetHashCode(key.Building),
+                UkIgnoreCase.GetHashCode(key.Number));
+    }
+
+    /// <summary>Вичитує довідники в кеші одним запитом на таблицю. За наявності
+    /// дублів лишається перший - рівно те, що повертав FirstOrDefault.</summary>
+    private static void PrefillLookups(
+        AppDbContext db,
+        Dictionary<string, Unit> unitCache,
+        Dictionary<string, OrgNode> orgNodeCache,
+        Dictionary<(string Building, string Number), Room> roomCache)
+    {
+        foreach (var unit in db.Units.AsEnumerable())
+            unitCache.TryAdd(unit.Name.Trim(), unit);
+
+        foreach (var node in db.OrgNodes.AsEnumerable())
+            orgNodeCache.TryAdd(node.Name.Trim(), node);
+
+        foreach (var room in db.Rooms.AsEnumerable())
+            roomCache.TryAdd(((room.Building ?? string.Empty).Trim(), room.Number.Trim()), room);
+    }
+
     private static Unit? ResolveUnit(AppDbContext db, Dictionary<string, Unit> cache, string name)
     {
         var trimmed = name.Trim();
         if (trimmed.Length == 0) return null;
 
+        // Кеш заповнений PrefillLookups, тож промах означає «такого підрозділу
+        // ще немає» - шукати повторно в базі нема потреби.
         if (cache.TryGetValue(trimmed, out var cached)) return cached;
-
-        var existing = db.Units.AsEnumerable().FirstOrDefault(u => UkIgnoreCase.Equals(u.Name, trimmed));
-        if (existing is not null)
-        {
-            cache[trimmed] = existing;
-            return existing;
-        }
 
         var created = new Unit { Name = trimmed };
         db.Units.Add(created);
@@ -904,14 +940,9 @@ public class ImportService : IImportService
         var trimmed = name.Trim();
         if (trimmed.Length == 0) return root;
 
+        // Як і в ResolveUnit: кеш уже містить усі наявні вузли (PrefillLookups),
+        // тож промах означає «такого вузла ще немає».
         if (cache.TryGetValue(trimmed, out var cached)) return cached;
-
-        var existing = db.OrgNodes.AsEnumerable().FirstOrDefault(n => UkIgnoreCase.Equals(n.Name, trimmed));
-        if (existing is not null)
-        {
-            cache[trimmed] = existing;
-            return existing;
-        }
 
         var maxSort = db.OrgNodes.Where(n => n.ParentId == root.Id)
             .Select(n => (int?)n.SortOrder).Max() ?? -1;
@@ -937,19 +968,12 @@ public class ImportService : IImportService
         if (trimmedNumber.Length == 0) return null;
 
         var trimmedBuilding = building.Trim();
+        // Кеш порівнює ключ без урахування регістру за uk-UA (RoomKeyComparer) і
+        // вже містить усі наявні кімнати (PrefillLookups): «Корпус А» і
+        // «корпус а» - одна кімната, і шукати повторно в базі нема потреби.
+        // SQLite для такого порівняння не годиться (аудит 2026-08-28).
         var key = (trimmedBuilding, trimmedNumber);
         if (cache.TryGetValue(key, out var cached)) return cached;
-
-        // У пам'яті, як ResolveUnit і ResolveOrgNode поруч: SQLite вважав би
-        // «Корпус А» і «корпус а» різними кімнатами (аудит 2026-08-28).
-        var existing = db.Rooms.AsEnumerable()
-            .FirstOrDefault(r => UkIgnoreCase.Equals(r.Building, trimmedBuilding)
-                              && UkIgnoreCase.Equals(r.Number, trimmedNumber));
-        if (existing is not null)
-        {
-            cache[key] = existing;
-            return existing;
-        }
 
         var created = new Room { Building = trimmedBuilding, Number = trimmedNumber, Capacity = DefaultImportedRoomCapacity };
         db.Rooms.Add(created);
