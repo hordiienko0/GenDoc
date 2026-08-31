@@ -98,6 +98,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
             <Border Grid.Column="0" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1">
@@ -106,10 +107,13 @@
                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>
 
+                    <!-- Клік по рядку відкриває картку - той самий жест, що і в
+                         «Особовому складі» (PeopleGrid_MouseLeftButtonUp). -->
                     <DataGrid x:Name="StaffGrid" ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True"
                               CanUserSortColumns="False" EnableRowVirtualization="True"
-                              CanUserResizeColumns="True"
+                              CanUserResizeColumns="True" SelectionMode="Single"
                               HorizontalScrollBarVisibility="Auto"
+                              MouseLeftButtonUp="StaffGrid_MouseLeftButtonUp"
                               Visibility="{Binding HasRows, Converter={StaticResource BoolToVisibility}}">
                         <DataGrid.RowStyle>
                             <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
@@ -121,6 +125,9 @@
                                 <Setter Property="ContextMenu">
                                     <Setter.Value>
                                         <ContextMenu>
+                                            <MenuItem Header="Відкрити картку"
+                                                      Command="{Binding PlacementTarget.Tag.OpenCardCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                             <MenuItem Header="Згенерувати документ…"
                                                       Command="{Binding PlacementTarget.Tag.GenerateDocumentForRowCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
@@ -276,6 +283,107 @@
                         </Border>
                     </StackPanel>
                 </DockPanel>
+            </Border>
+
+            <!-- КАРТКА ЛЮДИНИ. Розкладка - як в «Особовому складі»: перегляд і
+                 редагування це дві візуалізації одного значення, що
+                 перемикаються прапорцем IsEditing (стилі CardReadValueStyle /
+                 CardEditFieldStyle - глобальні, з Theme.xaml).
+                 Колонка Auto: коли картки немає, вона згортається в нуль і
+                 список забирає всю ширину. -->
+            <Border Grid.Column="2" Width="330" Background="{StaticResource PanelBrush}"
+                    BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,1,1" Margin="-1,0,0,0"
+                    Visibility="{Binding HasCard, Converter={StaticResource BoolToVisibility}}">
+                <Grid DataContext="{Binding Card}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <Border Grid.Row="0" BorderBrush="{StaticResource BorderLineBrush}"
+                            BorderThickness="0,0,0,1" Padding="16,12">
+                        <Grid>
+                            <StackPanel Margin="0,0,58,0">
+                                <TextBlock Text="{Binding HeaderName}" FontWeight="Bold" FontSize="14.5"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                                <TextBlock Text="{Binding HeaderSub}" FontSize="11.5" Margin="0,2,0,0"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                                <Button Content="&#xE70F;" ToolTip="Редагувати"
+                                        Style="{StaticResource RowIconButtonStyle}"
+                                        Command="{Binding EditCommand}"
+                                        Visibility="{Binding IsReadOnly, Converter={StaticResource BoolToVisibility}}"/>
+                                <Button Content="✕" Style="{StaticResource CloseButtonStyle}" Margin="4,0,0,0"
+                                        Command="{Binding DataContext.CloseCardCommand, ElementName=StaffRoot}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+
+                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="16,12">
+                        <StackPanel>
+                            <TextBlock Text="Прізвище *" Style="{StaticResource CardFieldLabelStyle}"/>
+                            <TextBlock Text="{Binding LastName}" Style="{StaticResource CardReadValueStyle}"/>
+                            <TextBox Text="{Binding LastName, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource CardEditFieldStyle}"/>
+                            <TextBlock Text="{Binding LastNameError}" FontSize="11" TextWrapping="Wrap"
+                                       Foreground="{StaticResource DangerBrush}" Margin="0,3,0,0"/>
+
+                            <TextBlock Text="Ім'я та по батькові" Style="{StaticResource CardFieldLabelStyle}" Margin="0,12,0,4"/>
+                            <TextBlock Text="{Binding FirstMiddle}" Style="{StaticResource CardReadValueStyle}"/>
+                            <TextBox Text="{Binding FirstMiddle, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource CardEditFieldStyle}"/>
+
+                            <TextBlock Text="Звання" Style="{StaticResource CardFieldLabelStyle}" Margin="0,12,0,4"/>
+                            <TextBlock Text="{Binding Rank}" Style="{StaticResource CardReadValueStyle}"/>
+                            <TextBox Text="{Binding Rank, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource CardEditFieldStyle}"/>
+
+                            <TextBlock Text="Посада" Style="{StaticResource CardFieldLabelStyle}" Margin="0,12,0,4"/>
+                            <TextBlock Text="{Binding Position}" Style="{StaticResource CardReadValueStyle}"/>
+                            <TextBox Text="{Binding Position, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource CardEditFieldStyle}"/>
+
+                            <TextBlock Text="Підрозділ" Style="{StaticResource CardFieldLabelStyle}" Margin="0,12,0,4"/>
+                            <TextBlock Text="{Binding UnitName}" Style="{StaticResource CardReadValueStyle}"/>
+                            <TextBox Text="{Binding UnitName, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource CardEditFieldStyle}"/>
+
+                            <TextBlock Text="Особовий номер" Style="{StaticResource CardFieldLabelStyle}" Margin="0,12,0,4"/>
+                            <TextBlock Text="{Binding ServiceNumber}" Style="{StaticResource CardReadValueStyle}"/>
+                            <TextBox Text="{Binding ServiceNumber, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource CardEditFieldStyle}"/>
+
+                            <TextBlock Text="Телефон" Style="{StaticResource CardFieldLabelStyle}" Margin="0,12,0,4"/>
+                            <TextBlock Text="{Binding Phone}" Style="{StaticResource CardReadValueStyle}"/>
+                            <TextBox Text="{Binding Phone, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource CardEditFieldStyle}"/>
+
+                            <!-- Ознака, заради якої розділ і потрібен: підписантом
+                                 відомостей може стати лише курсовий офіцер. -->
+                            <CheckBox Content="Курсовий офіцер" Margin="0,16,0,0"
+                                      IsChecked="{Binding IsCourseOfficer}"
+                                      IsEnabled="{Binding IsEditing}"/>
+
+                            <TextBlock Text="{Binding SaveError}" FontSize="11.5" TextWrapping="Wrap"
+                                       Foreground="{StaticResource DangerBrush}" Margin="0,12,0,0"/>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <Border Grid.Row="2" BorderBrush="{StaticResource BorderLineBrush}"
+                            BorderThickness="0,1,0,0" Padding="16,10"
+                            Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="Скасувати" Style="{StaticResource SecondaryButtonStyle}"
+                                    Command="{Binding DataContext.CancelCardCommand, ElementName=StaffRoot}"/>
+                            <Button Content="Зберегти" Margin="8,0,0,0"
+                                    Command="{Binding DataContext.SaveCardCommand, ElementName=StaffRoot}"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
             </Border>
         </Grid>
     </Grid>

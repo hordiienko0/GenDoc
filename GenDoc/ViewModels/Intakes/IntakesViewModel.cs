@@ -204,13 +204,10 @@ namespace GenDoc.ViewModels.Intakes
                 new IntakeNavigationPayload(card.Id, card.RootOrgNodeId, null)));
         }
 
-        [RelayCommand]
-        private async Task MakeMineAsync(IntakeCardViewModel? card)
-        {
-            if (card is null) return;
-            await _userSettings.UpdateAsync(s => s.ActiveIntakeId = card.Id);
-            await _activeIntakeState.RefreshAsync();
-        }
+        // «Зробити моїм» прибрано: активний набір ОДИН на всю базу й
+        // визначається датами, а не вибором профілю (рішення користувача
+        // 2026-08-31). Два курсові на одному екрані більше не можуть бачити
+        // різні числа.
 
         [RelayCommand]
         private async Task CloseIntakeAsync(IntakeCardViewModel? card)

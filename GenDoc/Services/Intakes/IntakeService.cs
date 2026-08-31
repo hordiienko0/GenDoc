@@ -172,32 +172,24 @@ namespace GenDoc.Services.Intakes
                 await ApplyAsync();
             }
 
-            // Хто набір створив, той із ним і працює: він одразу стає «моїм», без
-            // окремого кліку по «Зробити моїм». Це персональний вибір, а не
-            // спільний стан, тож інші профілі це не зачіпає (рішення користувача
-            // 2026-08-31). Поза транзакцією: вибір розділу - не частина
-            // цілісності дерева, і його невдача не має відкочувати створений набір.
-            await MakeMineAsync(intake.Id);
-
-            return intake;
-        }
-
-        private async Task MakeMineAsync(int intakeId)
-        {
+            // Активний набір ОДИН на всю базу й визначається датами: якщо новий
+            // набір уже почався, Status вище виставлено Active, і GetActiveAsync
+            // віддасть саме його (номер найбільший). Персонального вибору більше
+            // немає - «Зробити моїм» прибрано (рішення користувача 2026-08-31).
+            // Поза транзакцією: оновлення екранного стану - не частина цілісності
+            // дерева, і його невдача не має відкочувати створений набір.
             try
             {
-                await _serviceProvider.GetRequiredService<IUserSettingsService>()
-                    .UpdateAsync(s => s.ActiveIntakeId = intakeId);
                 await _serviceProvider.GetRequiredService<ActiveIntakeState>().RefreshAsync();
             }
             catch (Exception ex)
             {
-                // Набір уже створено й закомічено - валити все через невдалий
-                // вибір розділу не можна. Але й мовчати не можна: без цього
-                // запису функція просто «іноді не працює». Запасне правило
-                // (глобальний активний набір) тим часом діє.
+                // Набір уже створено й закомічено. Мовчати не можна - інакше
+                // статус-рядок «іноді не оновлюється» без жодного сліду.
                 ErrorLog.Write(ex, _currentUserContext.CurrentUserFullName);
             }
+
+            return intake;
         }
 
         private static async Task<int> GetNextNumberInternalAsync(AppDbContext db)

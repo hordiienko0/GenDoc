@@ -103,6 +103,7 @@ namespace GenDoc
             services.AddTransient<Services.Generation.IManualTagFormBuilder, Services.Generation.ManualTagFormBuilder>();
             services.AddTransient<ViewModels.Staff.StaffViewModel>();
             services.AddTransient<ViewModels.Staff.StaffDocDialogViewModel>();
+            services.AddTransient<ViewModels.Staff.StaffCardViewModel>();
 
             services.AddTransient<LoginViewModel>();
             services.AddTransient<LoginWindow>();

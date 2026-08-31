@@ -33,25 +33,9 @@
             <Setter Property="Padding" Value="0,6"/>
         </Style>
 
-        <!-- Вкладка «Дані» картки особи: перегляд/редагування перемикаються через IsEditing,
-             без дублювання логіки збереження - просто дві альтернативні візуалізації одного значення. -->
-        <Style x:Key="CardReadValueStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="12.5"/>
-            <Setter Property="TextWrapping" Value="Wrap"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsEditing}" Value="True">
-                    <Setter Property="Visibility" Value="Collapsed"/>
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
-        <Style x:Key="CardEditFieldStyle" TargetType="TextBox">
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding IsEditing}" Value="False">
-                    <Setter Property="Visibility" Value="Collapsed"/>
-                </DataTrigger>
-            </Style.Triggers>
-        </Style>
+        <!-- CardReadValueStyle і CardEditFieldStyle переїхали в Theme.xaml:
+             їх ділять «Особовий склад» і «Постійний склад», а посилання на
+             чужий локальний ресурс мовчки не резолвиться. -->
         <Style x:Key="CardEditGridStyle" TargetType="Grid">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsEditing}" Value="False">

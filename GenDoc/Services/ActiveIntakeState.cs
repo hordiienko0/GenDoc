@@ -5,15 +5,19 @@ using GenDoc.Services.Intakes;
 namespace GenDoc.Services
 {
     // Singleton-стан активного набору для статус-рядка й екрана «Особовий склад».
+    //
+    // Активний набір ОДИН на всю базу, а не по профілю (рішення користувача
+    // 2026-08-31). Раніше кожен профіль міг обрати собі свій через «Зробити
+    // моїм», і два курсові бачили на одному екрані різні числа. Тепер набір
+    // визначають дати: GetActiveAsync сам переводить Planned → Active →
+    // Completed і віддає найсвіжіший активний.
     public class ActiveIntakeState
     {
         private readonly IIntakeService _intakeService;
-        private readonly IUserSettingsService _userSettings;
 
-        public ActiveIntakeState(IIntakeService intakeService, IUserSettingsService userSettings)
+        public ActiveIntakeState(IIntakeService intakeService)
         {
             _intakeService = intakeService;
-            _userSettings = userSettings;
         }
 
         public Intake? Current { get; private set; }
@@ -44,15 +48,8 @@ namespace GenDoc.Services
 
         public async Task RefreshAsync()
         {
-            var settings = await _userSettings.GetForCurrentUserAsync();
-            Intake? mine = settings.ActiveIntakeId is int id
-                ? await _intakeService.GetByIdAsync(id)   // null, якщо набір видалили
-                : null;
-            Current = Pick(mine, mine is null ? await _intakeService.GetActiveAsync() : null);
+            Current = await _intakeService.GetActiveAsync();
             WeakReferenceMessenger.Default.Send(new ActiveIntakeChangedMessage());
         }
-
-        // Чисте правило: свій набір, поки він існує; інакше глобальний активний.
-        internal static Intake? Pick(Intake? mine, Intake? globalActive) => mine ?? globalActive;
     }
 }

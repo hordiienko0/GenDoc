@@ -108,15 +108,18 @@ public class IntakeCreationDefaultsTests
 
     // ─── «Мій» одразу ────────────────────────────────────────────────────────
 
+    // Активний набір один на всю базу й визначається датами: набір, що вже
+    // почався, стає активним сам, без кліку по «Зробити моїм» (кнопку
+    // прибрано - рішення користувача 2026-08-31).
     [Fact]
-    public async Task ANewIntakeBecomesTheCreatorsOwnWithoutAnExtraClick()
+    public async Task AnIntakeThatHasAlreadyStartedIsTheActiveOne()
     {
         using var db = new TestDb();
         var (intake, provider) = await CreateIntakeAsync(db);
 
-        var settings = await provider.GetRequiredService<IUserSettingsService>().GetForCurrentUserAsync();
+        var active = await provider.GetRequiredService<IIntakeService>().GetActiveAsync();
 
-        Assert.Equal(intake.Id, settings.ActiveIntakeId);
+        Assert.Equal(intake.Id, active!.Id);
     }
 
     [Fact]

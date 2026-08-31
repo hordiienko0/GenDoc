@@ -16,7 +16,7 @@ namespace GenDoc.ViewModels.Staff
     public record StaffStateFilterOption(StaffStateFilter Filter, string Label);
     public record StaffUnitFilterOption(string? Unit, string Label);
 
-    public partial class StaffViewModel : ObservableObject
+    public partial class StaffViewModel : ObservableObject, Shell.IGuardedSection
     {
         private static readonly CompareInfo UkCompare = CultureInfo.GetCultureInfo("uk-UA").CompareInfo;
 
@@ -57,6 +57,14 @@ namespace GenDoc.ViewModels.Staff
 
         [ObservableProperty]
         private bool showOnlyCourseOfficers;
+
+        /// <summary>Картка праворуч від списку - як в «Особовому складі».
+        /// null - панель закрита, видно лише список.</summary>
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasCard))]
+        private StaffCardViewModel? card;
+
+        public bool HasCard => Card is not null;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(IsEmpty))]
@@ -177,12 +185,95 @@ namespace GenDoc.ViewModels.Staff
         [RelayCommand]
         private async Task AddPersonAsync()
         {
-            var vm = _serviceProvider.GetRequiredService<RecipientEditViewModel>();
-            vm.Initialize(null);
+            if (!await TryLeaveCardAsync()) return;
 
-            var result = _dialogService.ShowDialog(vm, Application.Current.MainWindow);
-            if (result == true) await RefreshAsync();
+            var card = _serviceProvider.GetRequiredService<StaffCardViewModel>();
+            card.StartNew();
+            Card = card;
         }
+
+        /// <summary>Клік по рядку відкриває картку на ПЕРЕГЛЯД - редагування
+        /// вмикає олівець, як в «Особовому складі». До цього постійний склад не
+        /// редагувався взагалі.</summary>
+        [RelayCommand]
+        private async Task OpenCardAsync(StaffRowViewModel? row)
+        {
+            if (row is null) return;
+            if (Card is not null && Card.Id == row.Id && !Card.IsEditing) return;
+            if (!await TryLeaveCardAsync()) return;
+
+            var card = _serviceProvider.GetRequiredService<StaffCardViewModel>();
+            if (!card.Load(row.Id))
+            {
+                MessageBox.Show(
+                    "Картку не знайдено - можливо, її видалили в іншій сесії.",
+                    "Картку не знайдено", MessageBoxButton.OK, MessageBoxImage.Information);
+                await RefreshAsync();
+                return;
+            }
+
+            Card = card;
+        }
+
+        [RelayCommand]
+        private async Task CloseCardAsync()
+        {
+            if (!await TryLeaveCardAsync()) return;
+            Card = null;
+        }
+
+        [RelayCommand]
+        private async Task SaveCardAsync()
+        {
+            if (Card is null) return;
+            if (!Card.TrySave()) return;
+
+            await RefreshAsync();
+        }
+
+        [RelayCommand]
+        private async Task CancelCardAsync()
+        {
+            if (Card is null) return;
+
+            // Скасування НОВОЇ картки закриває панель: лишати порожню форму
+            // «ні в перегляді, ні в редагуванні» безглуздо.
+            if (Card.IsNew)
+            {
+                Card = null;
+                return;
+            }
+
+            Card.CancelCommand.Execute(null);
+            await Task.CompletedTask;
+        }
+
+        /// <summary>Єдина точка dirty-guard: інша людина, «+ Додати», ✕, інший
+        /// розділ, закриття вікна.</summary>
+        public async Task<bool> TryLeaveCardAsync()
+        {
+            if (Card is null || !Card.IsDirty) return true;
+
+            var result = MessageBox.Show(
+                "Зберегти зміни?", "Незбережені зміни",
+                MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+
+            switch (result)
+            {
+                case MessageBoxResult.Yes:
+                    if (!Card.TrySave()) return false;
+                    await RefreshAsync();
+                    Card = null;
+                    return true;
+                case MessageBoxResult.No:
+                    Card = null;
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        Task<bool> Shell.IGuardedSection.TryLeaveAsync() => TryLeaveCardAsync();
 
         [RelayCommand(CanExecute = nameof(HasSelection))]
         private async Task OpenTripAsync() => await OpenDocDialogAsync(StaffEventKind.BusinessTrip);

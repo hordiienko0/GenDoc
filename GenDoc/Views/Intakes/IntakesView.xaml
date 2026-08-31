@@ -183,9 +183,6 @@
                                                     Command="{Binding DataContext.ReopenIntakeCommand, ElementName=IntakesRoot}"
                                                     CommandParameter="{Binding}"
                                                     Visibility="{Binding IsCompleted, Converter={StaticResource BoolToVisibility}}"/>
-                                            <Button Content="Зробити моїм" Style="{StaticResource TextLinkButtonStyle}"
-                                                    Command="{Binding DataContext.MakeMineCommand, ElementName=IntakesRoot}"
-                                                    CommandParameter="{Binding}"/>
                                         </WrapPanel>
 
                                     </StackPanel>

@@ -796,4 +796,36 @@
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
     </Style>
 
+
+    <!-- ── Картка людини: перегляд / редагування ──────────────────────────
+         Перегляд і редагування - дві альтернативні візуалізації одного
+         значення, що перемикаються прапорцем IsEditing; логіка збереження не
+         дублюється. Стилі ГЛОБАЛЬНІ, бо їх ділять «Особовий склад» і
+         «Постійний склад»: локальна копія в кожній в'юсі неминуче розійшлася б,
+         а посилання на чужий локальний ресурс мовчки не резолвиться. -->
+    <Style x:Key="CardReadValueStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="12.5"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsEditing}" Value="True">
+                <Setter Property="Visibility" Value="Collapsed"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="CardEditFieldStyle" TargetType="TextBox">
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding IsEditing}" Value="False">
+                <Setter Property="Visibility" Value="Collapsed"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
+
+    <Style x:Key="CardFieldLabelStyle" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="11.5"/>
+        <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+        <Setter Property="Margin" Value="0,0,0,4"/>
+    </Style>
+
 </ResourceDictionary>

@@ -260,6 +260,11 @@ namespace GenDoc.Services.Recipients
             if (isNew) db.Recipients.Add(recipient);
             db.SaveChanges();
 
+            // Id щойно вставленого рядка повертається у модель: інакше викликач
+            // не знає, кого саме створив, і не може ні перечитати картку, ні
+            // виділити її в списку.
+            model.Id = recipient.Id;
+
             var newSnapshot = BuildSnapshot(recipient);
             if (isNew)
                 _auditLogService.LogCreate(db, "Recipient", recipient.Id, newSnapshot);
