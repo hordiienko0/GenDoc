@@ -154,7 +154,13 @@
                                  змінних полів два - ПІБ і посада, і частки між ними
                                  доречні. Звання фіксоване з тієї ж причини, що й у
                                  «Особовому складі». -->
-                            <DataGridTextColumn Header="ПІБ" Binding="{Binding FullName}" Width="2.1*"
+                            <!-- MinWidth обов'язковий: зіркова колонка стискається
+                                 до НУЛЯ, коли решті не вистачає місця, і з
+                                 відкритою карткою праворуч ПІБ зникав зі списку
+                                 зовсім - лишалися саме лише звання й посада
+                                 (побачено живим прогоном 2026-08-31). Тепер
+                                 замість зникнення - горизонтальна прокрутка. -->
+                            <DataGridTextColumn Header="ПІБ" Binding="{Binding FullName}" Width="2.1*" MinWidth="210"
                                                  ElementStyle="{StaticResource TruncatedCellStyle}"/>
                             <DataGridTextColumn Header="Звання" Binding="{Binding RankShort}" Width="132">
                                 <DataGridTextColumn.ElementStyle>
@@ -163,7 +169,7 @@
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
-                            <DataGridTextColumn Header="Посада" Binding="{Binding Position}" Width="1.8*"
+                            <DataGridTextColumn Header="Посада" Binding="{Binding Position}" Width="1.8*" MinWidth="150"
                                                  ElementStyle="{StaticResource TruncatedCellStyle}"/>
 
                             <!-- «КО» у 40 px не вміщалось навіть як заголовок і читалось
