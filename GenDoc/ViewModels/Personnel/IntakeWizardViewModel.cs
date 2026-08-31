@@ -37,9 +37,13 @@ namespace GenDoc.ViewModels.Personnel
         [NotifyCanExecuteChangedFor(nameof(CreateCommand))]
         private DateTime? dateEnd = DateTime.Today.AddMonths(1);
 
-        // Структура фіксована - «Всі» → «Придатні», «Обмежено придатні» - тому
-        // текст статичний, а не рахується з чекбоксів.
-        public string SummaryText => "Буде створено 3 папки: Всі → Придатні, Обмежено придатні";
+        // Структура фіксована - «Всі» і під нею по папці на кожну категорію
+        // придатності, - тому текст не рахується з чекбоксів. Перелік беремо з
+        // IntakeFitnessFolders, щоб підпис не розійшовся з тим, що справді
+        // створює IntakeService.
+        public string SummaryText =>
+            $"Буде створено {Services.Intakes.IntakeFitnessFolders.AllFolderNames.Count + 1} папки: "
+            + $"Всі → {string.Join(", ", Services.Intakes.IntakeFitnessFolders.AllFolderNames)}";
 
         [ObservableProperty]
         private string? errorText;

@@ -571,24 +571,14 @@ public class ImportService : IImportService
 
             if (values.TryGetValue(ImportTargetField.FullName, out var fullName) && !string.IsNullOrWhiteSpace(fullName))
             {
-                var parts = fullName.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length >= 3)
-                {
-                    fields.LastName = parts[0];
-                    fields.FirstName = parts[1];
-                    fields.MiddleName = string.Join(' ', parts[2..]);
-                }
-                else if (parts.Length == 2)
-                {
-                    fields.LastName = parts[0];
-                    fields.FirstName = parts[1];
-                }
-                else if (parts.Length == 1)
-                {
-                    fields.LastName = parts[0];
-                    fields.FirstName = string.Empty;
-                    incompleteFullName = true;
-                }
+                // Розбір спільний із карткою постійного складу, що заводиться
+                // разом із профілем: дві копії розійшлися б у дрібницях, а це
+                // прізвище в наказі.
+                var name = FullNameParser.Split(fullName);
+                fields.LastName = name.LastName;
+                fields.FirstName = name.FirstName;
+                if (!string.IsNullOrEmpty(name.MiddleName)) fields.MiddleName = name.MiddleName;
+                if (name.IsIncomplete) incompleteFullName = true;
             }
             else
             {
@@ -752,28 +742,25 @@ public class ImportService : IImportService
     // набору (Intakes.IntakeFolderNames). Старі набори, створені до цієї
     // структури, їх не мають - тоді повертає null, і виклик лишає людину
     // там, куди її поставило зіставлення підрозділу.
+    /// <summary>Папка набору за придатністю. Правило спільне з майстром набору й
+    /// картками людей (IntakeFitnessFolders) - три копії розійшлися б так само,
+    /// як свого часу розійшлися два мапери заголовків. Кеш - на пару
+    /// (набір, категорія): у файлі на 300 рядків категорій усього чотири.</summary>
     private static int? ResolveIntakeFitnessFolderId(
         AppDbContext db, Dictionary<int, Dictionary<string, int>> cache, int intakeId, string? fitnessCategory)
     {
         if (!cache.TryGetValue(intakeId, out var folders))
         {
-            folders = db.OrgNodes
-                .Where(n => n.IntakeId == intakeId &&
-                    (n.Name == Intakes.IntakeFolderNames.Fit ||
-                     n.Name == Intakes.IntakeFolderNames.LimitedFit ||
-                     n.Name == Intakes.IntakeFolderNames.All))
-                .ToDictionary(n => n.Name, n => n.Id);
+            folders = new Dictionary<string, int>(UkIgnoreCase);
             cache[intakeId] = folders;
         }
 
-        var targetName = fitnessCategory switch
-        {
-            "придатний" => Intakes.IntakeFolderNames.Fit,
-            "обмежено придатний" => Intakes.IntakeFolderNames.LimitedFit,
-            _ => Intakes.IntakeFolderNames.All
-        };
+        var targetName = Intakes.IntakeFitnessFolders.FolderNameFor(fitnessCategory);
+        if (folders.TryGetValue(targetName, out var cached)) return cached;
 
-        return folders.TryGetValue(targetName, out var id) ? id : null;
+        var resolved = Intakes.IntakeFitnessFolders.Resolve(db, intakeId, fitnessCategory);
+        if (resolved is int id) folders[targetName] = id;
+        return resolved;
     }
 
     private static readonly System.Text.RegularExpressions.Regex WeaponPrefixRegex = new(

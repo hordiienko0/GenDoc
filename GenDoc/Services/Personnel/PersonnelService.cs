@@ -1,5 +1,6 @@
 using GenDoc.Data;
 using GenDoc.Models;
+using GenDoc.Services.Intakes;
 using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.Services.Personnel
@@ -96,6 +97,8 @@ namespace GenDoc.Services.Personnel
             recipient.Rank = model.Rank.Trim();
             recipient.Position = model.Position.Trim();
             recipient.ServiceNumber = serviceNumber;
+
+            var previousFitness = recipient.FitnessCategory;
             recipient.FitnessCategory = string.IsNullOrWhiteSpace(model.FitnessCategory) ? null : model.FitnessCategory;
             recipient.RoomId = await ResolveRoomIdAsync(db, model.RoomBuilding, model.RoomNumber);
 
@@ -104,6 +107,23 @@ namespace GenDoc.Services.Personnel
                 recipient.OrgNodeId = model.OrgNodeId;
                 recipient.IntakeId = model.IntakeId;
                 db.Recipients.Add(recipient);
+            }
+
+            // Категорія придатності визначає папку в дереві набору, тож зміна
+            // категорії - це переїзд. Раніше розкладав лише імпорт, і людина,
+            // якій змінили придатність у картці, лишалася в старій папці:
+            // дерево показувало одне, картка - інше.
+            //
+            // Рухаємо ЛИШЕ на зміну категорії. Інакше кожне збереження (правка
+            // телефону, кімнати) висмикувало б людину з папки, куди курсовий
+            // переставив її руками через «Перемістити до…».
+            var fitnessChanged = !UkrainianCollation.IgnoreCase.Equals(
+                previousFitness ?? string.Empty, recipient.FitnessCategory ?? string.Empty);
+
+            if (recipient.IntakeId is int intakeId && (isNew || fitnessChanged))
+            {
+                var folderId = await IntakeFitnessFolders.ResolveAsync(db, intakeId, recipient.FitnessCategory);
+                if (folderId is int id) recipient.OrgNodeId = id;
             }
 
             await db.SaveChangesAsync();

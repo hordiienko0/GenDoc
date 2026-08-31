@@ -14,6 +14,12 @@ namespace GenDoc.Services.Intakes
         public const string All = "Всі";
         public const string Fit = "Придатні";
         public const string LimitedFit = "Обмежено придатні";
+        public const string Unfit = "Непридатні";
+
+        /// <summary>Категорію ще не проставили. Окрема папка, а не «Всі»: так
+        /// одразу видно, кому бракує висновку, і людина не вдає обмежено
+        /// придатну (рішення користувача 2026-08-31).</summary>
+        public const string NoCategory = "Без категорії";
     }
 
     public class IntakeService : IIntakeService
@@ -125,32 +131,33 @@ namespace GenDoc.Services.Intakes
                 await db.SaveChangesAsync();
                 allNode.Path = $"{rootNode.Path}{allNode.Id}/";
 
-                var fitNode = new OrgNode
+                // По підпапці на кожну категорію придатності - перелік і порядок
+                // задає IntakeFitnessFolders, щоб майстер, імпорт і переїзд за
+                // зміною статусу спиралися на одне правило.
+                var categoryNodes = new List<OrgNode>();
+                for (var i = 0; i < IntakeFitnessFolders.AllFolderNames.Count; i++)
                 {
-                    Name = IntakeFolderNames.Fit,
-                    ParentId = allNode.Id,
-                    Depth = allNode.Depth + 1,
-                    SortOrder = 0,
-                    IntakeId = intake.Id
-                };
-                db.OrgNodes.Add(fitNode);
+                    var node = new OrgNode
+                    {
+                        Name = IntakeFitnessFolders.AllFolderNames[i],
+                        ParentId = allNode.Id,
+                        Depth = allNode.Depth + 1,
+                        SortOrder = i,
+                        IntakeId = intake.Id
+                    };
+                    categoryNodes.Add(node);
+                    db.OrgNodes.Add(node);
+                }
 
-                var limitedFitNode = new OrgNode
-                {
-                    Name = IntakeFolderNames.LimitedFit,
-                    ParentId = allNode.Id,
-                    Depth = allNode.Depth + 1,
-                    SortOrder = 1,
-                    IntakeId = intake.Id
-                };
-                db.OrgNodes.Add(limitedFitNode);
                 await db.SaveChangesAsync();
-                fitNode.Path = $"{allNode.Path}{fitNode.Id}/";
-                limitedFitNode.Path = $"{allNode.Path}{limitedFitNode.Id}/";
+                foreach (var node in categoryNodes)
+                    node.Path = $"{allNode.Path}{node.Id}/";
 
                 intake.RootOrgNodeId = rootNode.Id;
+                var folderList = string.Join(", ", IntakeFitnessFolders.AllFolderNames);
                 _auditLogService.Log(db, "Створено набір", "Intake", intake.Id, null, intake.DisplayNumber,
-                    $"3 папки (Всі, Придатні, Обмежено придатні), {request.DateStart:dd.MM.yyyy} - {request.DateEnd:dd.MM.yyyy}");
+                    $"{categoryNodes.Count + 1} папки (Всі; {folderList}), "
+                    + $"{request.DateStart:dd.MM.yyyy} - {request.DateEnd:dd.MM.yyyy}");
                 await db.SaveChangesAsync();
             }
 
@@ -165,7 +172,32 @@ namespace GenDoc.Services.Intakes
                 await ApplyAsync();
             }
 
+            // Хто набір створив, той із ним і працює: він одразу стає «моїм», без
+            // окремого кліку по «Зробити моїм». Це персональний вибір, а не
+            // спільний стан, тож інші профілі це не зачіпає (рішення користувача
+            // 2026-08-31). Поза транзакцією: вибір розділу - не частина
+            // цілісності дерева, і його невдача не має відкочувати створений набір.
+            await MakeMineAsync(intake.Id);
+
             return intake;
+        }
+
+        private async Task MakeMineAsync(int intakeId)
+        {
+            try
+            {
+                await _serviceProvider.GetRequiredService<IUserSettingsService>()
+                    .UpdateAsync(s => s.ActiveIntakeId = intakeId);
+                await _serviceProvider.GetRequiredService<ActiveIntakeState>().RefreshAsync();
+            }
+            catch (Exception ex)
+            {
+                // Набір уже створено й закомічено - валити все через невдалий
+                // вибір розділу не можна. Але й мовчати не можна: без цього
+                // запису функція просто «іноді не працює». Запасне правило
+                // (глобальний активний набір) тим часом діє.
+                ErrorLog.Write(ex, _currentUserContext.CurrentUserFullName);
+            }
         }
 
         private static async Task<int> GetNextNumberInternalAsync(AppDbContext db)
