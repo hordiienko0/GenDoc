@@ -46,6 +46,7 @@ public class ImportService : IImportService
         var columnCount = usedRange.ColumnCount();
 
         var rawRows = new List<string?[]>();
+        var rawRowNumbers = new List<int>();
         foreach (var dataRow in dataRows)
         {
             var values = new string?[columnCount];
@@ -54,6 +55,12 @@ public class ImportService : IImportService
                 values[c - 1] = GetCellText(dataRow.Cell(c));
             }
             rawRows.Add(values);
+
+            // Справжній номер рядка в аркуші, а не порядковий у списку:
+            // RowsUsed() пропускає порожні рядки, а сам діапазон може
+            // починатися не з першого. «Рядок N» у звіті вказував оператора на
+            // сусідній рядок (аудит 2026-08-28).
+            rawRowNumbers.Add(dataRow.RowNumber());
         }
 
         var columns = new List<ImportColumn>();
@@ -72,6 +79,7 @@ public class ImportService : IImportService
 
         result.Columns = columns;
         result.RawRows = rawRows;
+        result.RawRowNumbers = rawRowNumbers;
         result.TotalRows = rawRows.Count;
         return result;
     }
@@ -176,8 +184,23 @@ public class ImportService : IImportService
             try
             {
                 var unit = ResolveUnit(db, unitCache, row.Fields.UnitName);
-                var orgNode = ResolveOrgNode(db, orgNodeCache, row.Fields.UnitName);
                 var room = ResolveRoom(db, roomCache, row.Fields.Building, row.Fields.RoomNumber);
+
+                // Вузол дерева за назвою підрозділу з файлу створюється ЛІНИВО:
+                // ResolveOrgNode не читає, а ДОПИСУЄ - за відсутності вузла він
+                // його створює. Безумовний виклик залишав у дереві папки, у які
+                // ніхто не потрапляв: коли гілку обрав оператор або коли людину
+                // розкладено по «Придатні/Обмежено придатні», результат просто
+                // відкидався (аудит 2026-08-28).
+                OrgNode? fileOrgNode = null;
+                var fileOrgNodeResolved = false;
+                OrgNode? FileOrgNode()
+                {
+                    if (fileOrgNodeResolved) return fileOrgNode;
+                    fileOrgNode = ResolveOrgNode(db, orgNodeCache, row.Fields.UnitName);
+                    fileOrgNodeResolved = true;
+                    return fileOrgNode;
+                }
 
                 // Постійний склад - людина не належить жодному набору, навіть якщо
                 // підрозділ з файлу технічно прив'язаний до набору. Обраний набір
@@ -187,7 +210,7 @@ public class ImportService : IImportService
                 {
                     ImportTargetKind.PermanentStaff => null,
                     ImportTargetKind.Intake => target.IntakeId,
-                    _ => orgNode?.IntakeId
+                    _ => FileOrgNode()?.IntakeId
                 };
 
                 var fitnessCategory = ParseFitnessCategory(row.Fields.FitnessRaw);
@@ -196,17 +219,15 @@ public class ImportService : IImportService
                 // «Обмежено придатні»/«Всі» замість того вузла, куди її поставило
                 // саме лише зіставлення підрозділу. Старі набори без цих трьох
                 // папок - лишаємо як є, без падіння.
+                int? resolvedOrgNodeId = resolvedIntakeId is int intakeIdForRouting
+                    ? ResolveIntakeFitnessFolderId(db, intakeFolderCache, intakeIdForRouting, fitnessCategory)
+                    : null;
+
                 // Обрана гілка - база для людини; підрозділ із файлу її не
                 // перебиває, інакше вибір оператора не мав би сенсу.
-                var resolvedOrgNodeId = target.Kind == ImportTargetKind.Intake
-                    ? target.OrgNodeId ?? orgNode?.Id
-                    : orgNode?.Id;
-
-                if (resolvedIntakeId is int intakeIdForRouting)
-                {
-                    var folderId = ResolveIntakeFitnessFolderId(db, intakeFolderCache, intakeIdForRouting, fitnessCategory);
-                    if (folderId is int fid) resolvedOrgNodeId = fid;
-                }
+                resolvedOrgNodeId ??= target.Kind == ImportTargetKind.Intake
+                    ? target.OrgNodeId ?? FileOrgNode()?.Id
+                    : FileOrgNode()?.Id;
 
                 var recipient = new Recipient
                 {
@@ -325,27 +346,36 @@ public class ImportService : IImportService
         var previousIntakeId = person.IntakeId;
 
         var unit = ResolveUnit(db, unitCache, fields.UnitName);
-        var orgNode = ResolveOrgNode(db, orgNodeCache, fields.UnitName);
         var room = ResolveRoom(db, roomCache, fields.Building, fields.RoomNumber);
+
+        // Ліниво, як і в гілці вставки: ResolveOrgNode дописує вузол, тож
+        // безумовний виклик плодив папки, у які нікого не клали.
+        OrgNode? fileOrgNode = null;
+        var fileOrgNodeResolved = false;
+        OrgNode? FileOrgNode()
+        {
+            if (fileOrgNodeResolved) return fileOrgNode;
+            fileOrgNode = ResolveOrgNode(db, orgNodeCache, fields.UnitName);
+            fileOrgNodeResolved = true;
+            return fileOrgNode;
+        }
 
         var resolvedIntakeId = target.Kind switch
         {
             ImportTargetKind.PermanentStaff => null,
             ImportTargetKind.Intake => target.IntakeId,
-            _ => orgNode?.IntakeId
+            _ => FileOrgNode()?.IntakeId
         };
 
         var fitnessCategory = ParseFitnessCategory(fields.FitnessRaw) ?? person.FitnessCategory;
 
-        var resolvedOrgNodeId = target.Kind == ImportTargetKind.Intake
-            ? target.OrgNodeId ?? orgNode?.Id
-            : orgNode?.Id;
+        int? resolvedOrgNodeId = resolvedIntakeId is int intakeIdForRouting
+            ? ResolveIntakeFitnessFolderId(db, intakeFolderCache, intakeIdForRouting, fitnessCategory)
+            : null;
 
-        if (resolvedIntakeId is int intakeIdForRouting)
-        {
-            var folderId = ResolveIntakeFitnessFolderId(db, intakeFolderCache, intakeIdForRouting, fitnessCategory);
-            if (folderId is int fid) resolvedOrgNodeId = fid;
-        }
+        resolvedOrgNodeId ??= target.Kind == ImportTargetKind.Intake
+            ? target.OrgNodeId ?? FileOrgNode()?.Id
+            : FileOrgNode()?.Id;
 
         // Набір і гілка - власне переїзд, вони задані ціллю, а не файлом, тож
         // ставляться беззастережно. Постійний склад навмисно лишає null.
@@ -437,11 +467,18 @@ public class ImportService : IImportService
         return text.Length == 0 ? null : text;
     }
 
-    private static ImportTargetField AutoMapHeader(string header, ref bool noteColumnAssigned)
+    internal static ImportTargetField AutoMapHeader(string header, ref bool noteColumnAssigned)
     {
         var normalized = HeaderNormalization.Normalize(header);
 
         if (normalized.Contains("№ з/п")) return ImportTargetField.NotImported;
+
+        // «Командир» - ПЕРЕД усіма правилами імені й телефону. Реальні файли
+        // підписують цю колонку «Командир (ПІБ та телефон)», і правило «піб»,
+        // що стояло вище, забирало її собі: людей звали іменами їхніх
+        // командирів, а власна колонка ПІБ лишалась незіставленою (аудит
+        // 2026-08-28). Те саме з «телефон» нижче.
+        if (normalized.Contains("командир")) return ImportTargetField.CommanderContact;
 
         if (normalized.Contains("іноземній мові")) return ImportTargetField.NameTransliterated;
         if (normalized.Contains("піб")) return ImportTargetField.FullName;
@@ -458,7 +495,6 @@ public class ImportService : IImportService
         if (normalized.Contains("адреса реєстрації")) return ImportTargetField.RegistrationAddress;
         if (normalized.Contains("фактичного проживання")) return ImportTargetField.ResidenceAddress;
 
-        if (normalized.Contains("командир")) return ImportTargetField.CommanderContact;
         if (normalized.Contains("телефон")) return ImportTargetField.Phone;
 
         if (normalized.Contains("примітка"))
@@ -510,7 +546,19 @@ public class ImportService : IImportService
             {
                 if (column.MappedField == ImportTargetField.NotImported) continue;
                 var value = column.ColumnIndex < raw.Length ? raw[column.ColumnIndex] : null;
-                values[column.MappedField] = value?.Trim();
+                var trimmed = value?.Trim();
+
+                // Два стовпці, зіставлені з тим самим полем, - звичайна справа
+                // у зведених файлах. Простий запис у словник віддавав поле
+                // ОСТАННЬОМУ стовпцю, тож порожній дубль тихо стирав заповнене
+                // значення. Перемагає перше непорожнє (аудит 2026-08-28).
+                if (values.TryGetValue(column.MappedField, out var already)
+                    && !string.IsNullOrWhiteSpace(already))
+                {
+                    continue;
+                }
+
+                values[column.MappedField] = trimmed;
             }
 
             var fields = new RowFields();
@@ -590,7 +638,11 @@ public class ImportService : IImportService
                     courseArrivalDateInvalid = true;
             }
 
-            result.Add(new RowInfo(i + 2, fields, incompleteFullName, courseArrivalDateInvalid));
+            // Номер із файлу, якщо розбір його зберіг; інакше - старий
+            // розрахунок «порядковий + 2» (ImportParseResult, зібраний руками
+            // в тестах і в'ю-моделях, номерів не має).
+            var rowNumber = i < parsed.RawRowNumbers.Count ? parsed.RawRowNumbers[i] : i + 2;
+            result.Add(new RowInfo(rowNumber, fields, incompleteFullName, courseArrivalDateInvalid));
         }
 
         return result;

@@ -156,6 +156,13 @@ public class ImportParseResult
     public string FilePath { get; set; } = string.Empty;
     public List<ImportColumn> Columns { get; set; } = new();
     public List<string?[]> RawRows { get; set; } = new();
+
+    /// <summary>Номер рядка в аркуші для кожного елемента <see cref="RawRows"/>.
+    /// Порядковий номер для цього не годиться: RowsUsed() пропускає порожні
+    /// рядки, тож «Рядок N» у звіті переставав збігатися з файлом. Порожній
+    /// список означає «номерів немає» - тоді діє старий розрахунок.</summary>
+    public List<int> RawRowNumbers { get; set; } = new();
+
     public int TotalRows { get; set; }
 }
 
