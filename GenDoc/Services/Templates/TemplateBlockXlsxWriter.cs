@@ -6,8 +6,12 @@ namespace GenDoc.Services.Templates
 {
     /// <summary>Байти книги + номер рядка-шаблону, який далі клонується по одному
     /// на людину. Рядок обчислює саме writer - тільки він знає, скільки рядків
-    /// зайняли заголовки над таблицею.</summary>
-    public record XlsxBuildResult(byte[] Content, int TemplateRowIndex);
+    /// зайняли заголовки над таблицею.
+    ///
+    /// TemplateSheetIndex - аркуш, якому цей рядок належить. Без нього сканер
+    /// міток вважав би пер-людинним і той тег, що на ІНШОМУ аркуші випадково
+    /// стоїть у рядку з тим самим номером (аудит 2026-08-28).</summary>
+    public record XlsxBuildResult(byte[] Content, int TemplateRowIndex, int TemplateSheetIndex = 0);
 
     /// <summary>
     /// Збирає .xlsx-відомість із блоків конструктора. Як і для Word, це навмисно
@@ -34,6 +38,7 @@ namespace GenDoc.Services.Templates
 
             var sheetNames = document.ResolvedSheetNames();
             var templateRowIndex = 0;
+            var templateSheetIndex = 0;
 
             for (var sheetIndex = 0; sheetIndex < sheetNames.Count; sheetIndex++)
             {
@@ -46,13 +51,16 @@ namespace GenDoc.Services.Templates
                 // Рядок-шаблон у книзі один на всі аркуші (так влаштований
                 // XlsxGenerationService), тому беремо перший знайдений.
                 if (templateRowIndex == 0 && layout.TemplateRowIndex > 0)
+                {
                     templateRowIndex = layout.TemplateRowIndex;
+                    templateSheetIndex = sheetIndex;
+                }
             }
 
             using var stream = new MemoryStream();
             workbook.SaveAs(stream);
 
-            return new XlsxBuildResult(stream.ToArray(), templateRowIndex);
+            return new XlsxBuildResult(stream.ToArray(), templateRowIndex, templateSheetIndex);
         }
 
         private static void WriteSheet(

@@ -80,8 +80,13 @@ namespace GenDoc.Services.Templates
                     yield return Text(block.Text ?? string.Empty, style);
                     break;
 
+                // Переноси - окремі абзаци, як у Header і Paragraph. Один абзац
+                // із \n усередині <w:t> Word просто ігнорує: рядок склеювався в
+                // документі й розходився з відомістю, де writer його розбивав
+                // (аудит 2026-08-28).
                 case TemplateBlockKind.DateAndCity:
-                    yield return Text(block.Text ?? string.Empty, style);
+                    foreach (var line in SplitLines(block.Text))
+                        yield return Text(line, style);
                     break;
 
                 case TemplateBlockKind.Paragraph:

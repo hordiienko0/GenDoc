@@ -211,7 +211,7 @@ namespace GenDoc.Services.Templates
 
             if (isNew) db.ExportTemplates.Add(template);
 
-            SyncExportMappings(template, built.Content, built.TemplateRowIndex);
+            SyncExportMappings(template, built.Content, built.TemplateRowIndex, built.TemplateSheetIndex);
 
             db.SaveChanges();
 
@@ -252,21 +252,44 @@ namespace GenDoc.Services.Templates
         /// <summary>Мітки описує той самий сканер, що й при завантаженні книги файлом
         /// (ExportTemplateService.BuildPlaceholderMappings) - інакше зібрана відомість
         /// і така сама завантажена поводились би на генерації по-різному.</summary>
-        private static void SyncExportMappings(ExportTemplate template, byte[] content, int templateRowIndex)
+        private static void SyncExportMappings(
+            ExportTemplate template, byte[] content, int templateRowIndex, int templateSheetIndex)
         {
             using var stream = new MemoryStream(content);
             using var workbook = new XLWorkbook(stream);
-            var usedRange = workbook.Worksheets.First().RangeUsed();
 
             var scanned = new ExportTemplate();
-            if (usedRange is not null)
-                ExportTemplateService.BuildPlaceholderMappings(scanned, usedRange, templateRowIndex);
+
+            // Скануються ВСІ аркуші, а не лише перший: відомість конструктора
+            // буває на кілька аркушів, і теги з другого не діставали мапінгу -
+            // тобто лишалися сирими {{тегами}} у готовій книзі.
+            //
+            // Рядок-шаблон у книзі один на всі аркуші (так влаштований
+            // XlsxGenerationService), тож номер рядка передається ЛИШЕ його
+            // аркушеві. Решті йде 0: рядків з таким номером не буває, і їхні
+            // теги правильно лягають як теги рівня документа, а не як
+            // пер-людинні колонки, що клонувалися б разом із рядком.
+            var sheets = workbook.Worksheets.ToList();
+            for (var i = 0; i < sheets.Count; i++)
+            {
+                var usedRange = sheets[i].RangeUsed();
+                if (usedRange is null) continue;
+
+                ExportTemplateService.BuildPlaceholderMappings(
+                    scanned, usedRange, i == templateSheetIndex ? templateRowIndex : 0);
+            }
 
             var existing = template.ColumnMappings.ToList();
             template.ColumnMappings.Clear();
 
+            // Один тег на кількох аркушах дав би стільки ж однакових мапінгів -
+            // на екрані «Мітки» це дублі, які оператор не може розрізнити.
+            var seen = new HashSet<(string Tag, int Column)>();
+
             foreach (var mapping in scanned.ColumnMappings)
             {
+                if (!seen.Add((mapping.PlaceholderTag, mapping.ColumnIndex))) continue;
+
                 // Ручні правки джерела для тега, що лишився на тому самому місці,
                 // переживають перезбереження - як і в Word-гілці.
                 var previous = existing.FirstOrDefault(e =>

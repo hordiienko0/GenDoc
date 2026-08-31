@@ -183,8 +183,13 @@ namespace GenDoc.Services.Templates
                     yield return new PreviewLine(Substitute(block.Text ?? string.Empty, values), style);
                     break;
 
+                // Розбивається на рядки, як Header і Paragraph: TemplateSheetLayout
+                // резервує під блок LineCount(Text) рядків, і xlsx-writer стільки
+                // й пише. Один рядок із переносом усередині означав, що на екрані
+                // блок займає рядок, а в книзі - два (аудит 2026-08-28).
                 case TemplateBlockKind.DateAndCity:
-                    yield return new PreviewLine(Substitute(block.Text ?? string.Empty, values), style);
+                    foreach (var line in SplitLines(block.Text))
+                        yield return new PreviewLine(Substitute(line, values), style);
                     break;
 
                 case TemplateBlockKind.Paragraph:
@@ -218,17 +223,34 @@ namespace GenDoc.Services.Templates
                 signatories.TryGetValue(id, out person);
 
             var runs = new List<PreviewRun>();
-            runs.AddRange(Substitute($"{line.Caption}: ", values));
+
+            // Склеювання - дзеркало writer'ів: порожні частини викидаються, між
+            // рештою рівно один пробіл. Прев'ю додавало пробіли безумовно й
+            // показувало «Начальник курсу:  ______ » - подвійний після двокрапки
+            // й хвостовий, - коли підписанта не обрано (аудит 2026-08-28).
+            void Space()
+            {
+                if (runs.Count > 0) runs.Add(new PreviewRun(" ", PreviewRunKind.Text));
+            }
+
+            runs.AddRange(Substitute($"{line.Caption}:", values));
+
+            if (!string.IsNullOrWhiteSpace(person?.Rank))
+            {
+                Space();
+                runs.Add(new PreviewRun(person!.Rank, PreviewRunKind.DbValue));
+            }
 
             // Порожні місця під ручний підпис - рівно те, що зробить і writer,
             // коли підписанта не обрано.
-            if (!string.IsNullOrWhiteSpace(person?.Rank))
-                runs.Add(new PreviewRun(person!.Rank, PreviewRunKind.DbValue));
-
-            runs.Add(new PreviewRun($" {SignatureRule} ", PreviewRunKind.Text));
+            Space();
+            runs.Add(new PreviewRun(SignatureRule, PreviewRunKind.Text));
 
             if (!string.IsNullOrWhiteSpace(person?.ShortName))
+            {
+                Space();
                 runs.Add(new PreviewRun(person!.ShortName, PreviewRunKind.DbValue));
+            }
 
             return runs;
         }

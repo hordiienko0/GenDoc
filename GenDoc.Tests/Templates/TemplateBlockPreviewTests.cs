@@ -106,7 +106,12 @@ public class TemplateBlockPreviewTests
 
         var runs = Assert.Single(Lines(document, NoValues, signatories)).Runs;
 
-        Assert.Equal("Прийняв: ", runs[0].Text);
+        // Перевіряється зібраний рядок, а не текст окремих прогонів: пробіли між
+        // частинами тепер розставляє те саме правило, що й у writer'ів (порожні
+        // частини викидаються, між рештою - рівно один пробіл). Стара перевірка
+        // «runs[0] == "Прийняв: "» закріплювала якраз ті зайві пробіли, через
+        // які прев'ю розходилось із документом (аудит 2026-08-28).
+        Assert.StartsWith("Прийняв: ", string.Concat(runs.Select(r => r.Text)));
         Assert.Equal(new[] { "майор", "Даниленко Є. О." },
             runs.Where(r => r.Kind == PreviewRunKind.DbValue).Select(r => r.Text));
         Assert.Contains(runs, r => r.Text.Contains("____"));
