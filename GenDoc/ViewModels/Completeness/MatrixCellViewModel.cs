@@ -119,13 +119,23 @@ namespace GenDoc.ViewModels.Completeness
         public Brush DashedBorderBrush => ShowDashedBorder ? Res("WarningBrush") : Brushes.Transparent;
 
         public Visibility VersionVisibility => string.IsNullOrEmpty(VersionText) ? Visibility.Collapsed : Visibility.Visible;
-        public Visibility PresentMenuVisibility => IsPresent || IsRosterUnknown ? Visibility.Visible : Visibility.Collapsed;
-        public Visibility GenerateMenuVisibility => CanGenerate ? Visibility.Visible : Visibility.Collapsed;
+        // Кожен пункт меню показується рівно тоді, коли він працює. Раніше
+        // чотири пункти ділили одну PresentMenuVisibility, тож у груповій
+        // клітинці (а це й відомості) з них працював лише «Відкрити», а решта
+        // три висіли неактивними - меню виглядало зламаним
+        // (побачено живим прогоном 2026-08-31).
+        public Visibility OpenMenuVisibility => Show(CanOpen);
+        public Visibility RegenerateMenuVisibility => Show(CanRegenerate);
+        public Visibility HistoryMenuVisibility => Show(CanHistory);
+        public Visibility SaveAsMenuVisibility => Show(CanSaveAs);
+        public Visibility GenerateMenuVisibility => Show(CanGenerate);
 
-        // Меню не відкривається взагалі, коли в ньому не було б жодного пункту:
-        // «Не потрібен» і групова клітинка без документа (людина не в складі -
-        // персональних дій нема, групові живуть у «Генерації» та «Архів → Групові»).
-        public bool HasMenu => !IsNotApplicable && !(IsGroupColumn && DocumentId is null);
+        private static Visibility Show(bool can) => can ? Visibility.Visible : Visibility.Collapsed;
+
+        /// <summary>Меню не відкривається взагалі, коли в ньому не було б жодного
+        /// пункту. Рахується з тих самих можливостей, що й видимість пунктів, -
+        /// інакше з появою нової дії список довелося б правити у двох місцях.</summary>
+        public bool HasMenu => CanOpen || CanRegenerate || CanHistory || CanSaveAs || CanGenerate;
 
         private static Brush Res(string key)
             => Application.Current.Resources[key] as Brush ?? Brushes.Transparent;
@@ -207,7 +217,10 @@ namespace GenDoc.ViewModels.Completeness
             OnPropertyChanged(nameof(DashedBorderBrush));
             OnPropertyChanged(nameof(ToolTipText));
             OnPropertyChanged(nameof(VersionVisibility));
-            OnPropertyChanged(nameof(PresentMenuVisibility));
+            OnPropertyChanged(nameof(OpenMenuVisibility));
+            OnPropertyChanged(nameof(RegenerateMenuVisibility));
+            OnPropertyChanged(nameof(HistoryMenuVisibility));
+            OnPropertyChanged(nameof(SaveAsMenuVisibility));
             OnPropertyChanged(nameof(GenerateMenuVisibility));
             OnPropertyChanged(nameof(HasMenu));
         }

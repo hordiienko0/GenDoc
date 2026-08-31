@@ -22,16 +22,29 @@ public partial class CompletenessView : UserControl
                     <Style TargetType="Border">
                         <Setter Property="ContextMenu">
                             <Setter.Value>
-                                <ContextMenu>
+                                <!-- Стилі задані ЯВНО. Без них меню бере НЕЯВНИЙ
+                                     Style TargetType="MenuItem" з теми, писаний для
+                                     темної смуги меню (Foreground = MenuTextBrush,
+                                     #D0E0F2), і на білому тлі всі пункти виглядають
+                                     блідо-сірими - «ніби недоступні», хоча
+                                     працюють (побачено живим прогоном 2026-08-31).
+                                     DynamicResource, а не StaticResource: шаблон
+                                     розбирає XamlReader без контексту ресурсів. -->
+                                <ContextMenu Style="{{DynamicResource AppContextMenuStyle}}">
                                     <MenuItem Header="Відкрити" Command="{{Binding Cells[{0}].OpenCommand}}"
-                                              Visibility="{{Binding Cells[{0}].PresentMenuVisibility}}"/>
+                                              Style="{{DynamicResource AppContextMenuItemStyle}}"
+                                              Visibility="{{Binding Cells[{0}].OpenMenuVisibility}}"/>
                                     <MenuItem Header="Перегенерувати" Command="{{Binding Cells[{0}].RegenerateCommand}}"
-                                              Visibility="{{Binding Cells[{0}].PresentMenuVisibility}}"/>
+                                              Style="{{DynamicResource AppContextMenuItemStyle}}"
+                                              Visibility="{{Binding Cells[{0}].RegenerateMenuVisibility}}"/>
                                     <MenuItem Header="Історія версій" Command="{{Binding Cells[{0}].HistoryCommand}}"
-                                              Visibility="{{Binding Cells[{0}].PresentMenuVisibility}}"/>
+                                              Style="{{DynamicResource AppContextMenuItemStyle}}"
+                                              Visibility="{{Binding Cells[{0}].HistoryMenuVisibility}}"/>
                                     <MenuItem Header="Зберегти як…" Command="{{Binding Cells[{0}].SaveAsCommand}}"
-                                              Visibility="{{Binding Cells[{0}].PresentMenuVisibility}}"/>
+                                              Style="{{DynamicResource AppContextMenuItemStyle}}"
+                                              Visibility="{{Binding Cells[{0}].SaveAsMenuVisibility}}"/>
                                     <MenuItem Header="Згенерувати" Command="{{Binding Cells[{0}].GenerateCommand}}"
+                                              Style="{{DynamicResource AppContextMenuItemStyle}}"
                                               Visibility="{{Binding Cells[{0}].GenerateMenuVisibility}}"/>
                                 </ContextMenu>
                             </Setter.Value>
