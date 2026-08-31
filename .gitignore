@@ -361,3 +361,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# Робоча тека Superpowers: тимчасові сторінки брейнштормів разом із
+# .last-token - токеном локального сервера. У git їй не місце.
+.superpowers/
