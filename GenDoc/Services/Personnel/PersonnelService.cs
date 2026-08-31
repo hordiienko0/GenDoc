@@ -187,7 +187,11 @@ namespace GenDoc.Services.Personnel
             var b = building.Trim();
             var n = number.Trim();
 
-            var existing = await db.Rooms.FirstOrDefaultAsync(r => r.Building == b && r.Number == n);
+            // Порівняння в пам'яті, не запитом: SQLite вважав би «Корпус А» і
+            // «корпус а» різними кімнатами й плодив дублі (аудит 2026-08-28).
+            var existing = (await db.Rooms.ToListAsync())
+                .FirstOrDefault(r => UkrainianCollation.IgnoreCase.Equals(r.Building, b)
+                                  && UkrainianCollation.IgnoreCase.Equals(r.Number, n));
             if (existing is not null) return existing.Id;
 
             var room = new Room { Building = b, Number = n, Capacity = 1 };

@@ -8,7 +8,13 @@ namespace GenDoc.Services
     // UTF-16, як StringComparer.Ordinal (де ці літери потрапляють далеко не на свої місця).
     public static class UkrainianCollation
     {
-        public static readonly StringComparer Surname =
+        // Єдина точка порівняння кирилиці без урахування регістру. SQLite для
+        // цього не годиться: побайтове порівняння вважає «Корпус А» і «корпус а»
+        // різними, а NOCASE знає лише латиницю. Тому такі порівняння роблять У
+        // ПАМ'ЯТІ - через цей компаратор.
+        public static readonly StringComparer IgnoreCase =
             StringComparer.Create(CultureInfo.GetCultureInfo("uk-UA"), ignoreCase: true);
+
+        public static readonly StringComparer Surname = IgnoreCase;
     }
 }

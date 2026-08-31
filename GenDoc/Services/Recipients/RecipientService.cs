@@ -287,7 +287,10 @@ namespace GenDoc.Services.Recipients
             if (string.IsNullOrWhiteSpace(unitName)) return null;
             var name = unitName.Trim();
 
-            var existing = db.Units.FirstOrDefault(u => u.Name == name);
+            // Те саме правило, що й для кімнат: «Перша Рота» і «перша рота» -
+            // один підрозділ, тож порівнюємо в пам'яті.
+            var existing = db.Units.AsEnumerable()
+                .FirstOrDefault(u => UkrainianCollation.IgnoreCase.Equals(u.Name, name));
             if (existing is not null) return existing.Id;
 
             var unit = new Unit { Name = name };
@@ -302,7 +305,11 @@ namespace GenDoc.Services.Recipients
             var b = building.Trim();
             var n = number.Trim();
 
-            var existing = db.Rooms.FirstOrDefault(r => r.Building == b && r.Number == n);
+            // Порівняння в пам'яті, не запитом: SQLite вважав би «Корпус А» і
+            // «корпус а» різними кімнатами й плодив дублі (аудит 2026-08-28).
+            var existing = db.Rooms.AsEnumerable()
+                .FirstOrDefault(r => UkrainianCollation.IgnoreCase.Equals(r.Building, b)
+                                  && UkrainianCollation.IgnoreCase.Equals(r.Number, n));
             if (existing is not null) return existing.Id;
 
             var room = new Room { Building = b, Number = n, Capacity = 1 };

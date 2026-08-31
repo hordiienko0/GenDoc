@@ -17,8 +17,7 @@ public class ImportService : IImportService
     // тож ставимо стандартну на 6 місць замість 1.
     private const int DefaultImportedRoomCapacity = 6;
 
-    private static readonly StringComparer UkIgnoreCase =
-        StringComparer.Create(CultureInfo.GetCultureInfo("uk-UA"), ignoreCase: true);
+    private static readonly StringComparer UkIgnoreCase = UkrainianCollation.IgnoreCase;
 
     private readonly IDbContextFactory<AppDbContext> _dbFactory;
     private readonly IAuditLogService _auditLogService;
@@ -941,7 +940,11 @@ public class ImportService : IImportService
         var key = (trimmedBuilding, trimmedNumber);
         if (cache.TryGetValue(key, out var cached)) return cached;
 
-        var existing = db.Rooms.FirstOrDefault(r => r.Building == trimmedBuilding && r.Number == trimmedNumber);
+        // У пам'яті, як ResolveUnit і ResolveOrgNode поруч: SQLite вважав би
+        // «Корпус А» і «корпус а» різними кімнатами (аудит 2026-08-28).
+        var existing = db.Rooms.AsEnumerable()
+            .FirstOrDefault(r => UkIgnoreCase.Equals(r.Building, trimmedBuilding)
+                              && UkIgnoreCase.Equals(r.Number, trimmedNumber));
         if (existing is not null)
         {
             cache[key] = existing;
