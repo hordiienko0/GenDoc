@@ -40,7 +40,7 @@ public class DependencyRegistrationTests
     }
 
     // Порівнюємо коротким іменем: у коді той самий тип пишеться то з простором
-    // імен (ViewModels.Home.HomeViewModel), то без нього.
+    // імен (ViewModels.Completeness.CompletenessViewModel), то без нього.
     private static string ShortName(string typeName)
     {
         var i = typeName.LastIndexOf('.');

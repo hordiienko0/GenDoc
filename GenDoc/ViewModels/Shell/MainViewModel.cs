@@ -25,7 +25,6 @@ namespace GenDoc.ViewModels.Shell;
 
 public partial class MainViewModel : ObservableObject
 {
-    public const string HomeSectionTitle = "Мій набір";
     public const string PersonnelSectionTitle = "Особовий склад";
     public const string IntakesSectionTitle = "Набори";
     public const string CompletenessSectionTitle = "Комплектність";
@@ -90,7 +89,6 @@ public partial class MainViewModel : ObservableObject
             // рядків таблиць. У згорнутій панелі меню від пункту лишається саме вона.
             new(new[]
             {
-                new NavigationItem(HomeSectionTitle, "\uE7C1", () => _serviceProvider.GetRequiredService<GenDoc.ViewModels.Home.HomeViewModel>()),
                 new NavigationItem(PersonnelSectionTitle, "\uE716", () => _serviceProvider.GetRequiredService<PersonnelViewModel>()),
                 new NavigationItem("Постійний склад", "\uE77B", () => _serviceProvider.GetRequiredService<GenDoc.ViewModels.Staff.StaffViewModel>()),
                 (_intakesNavItem = new NavigationItem(IntakesSectionTitle, "\uE787",
@@ -115,9 +113,9 @@ public partial class MainViewModel : ObservableObject
             }, showDividerAfter: false),
         };
 
-        // «Мій набір» стоїть у меню першим, але стартовим лишається «Особовий
-        // склад» - рішення користувача 2026-08-25. Тому розділ шукаємо за
-        // назвою, а не беремо перший пункт списку.
+        // Стартовий розділ - «Особовий склад». Шукаємо за назвою, а не беремо
+        // перший пункт списку: порядок меню - справа розкладки, і зміна порядку
+        // не повинна мовчки міняти те, з чого починається робота.
         var items = Groups.SelectMany(g => g.Items).ToList();
         var startItem = items.FirstOrDefault(i => i.Title == PersonnelSectionTitle) ?? items.First();
         _ = SelectItemAsync(startItem);

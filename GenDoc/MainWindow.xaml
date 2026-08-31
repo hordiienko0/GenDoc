@@ -28,8 +28,6 @@
         xmlns:intakesView="clr-namespace:GenDoc.Views.Intakes"
         xmlns:staffVm="clr-namespace:GenDoc.ViewModels.Staff"
         xmlns:staffView="clr-namespace:GenDoc.Views.Staff"
-        xmlns:homeVm="clr-namespace:GenDoc.ViewModels.Home"
-        xmlns:homeView="clr-namespace:GenDoc.Views.Home"
         Style="{StaticResource {x:Type Window}}"
         Title="GenDoc - Облік особового складу" Height="720" Width="1180"
         MinWidth="960" MinHeight="600"
@@ -86,9 +84,6 @@
         </DataTemplate>
         <DataTemplate DataType="{x:Type staffVm:StaffViewModel}">
             <staffView:StaffView/>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type homeVm:HomeViewModel}">
-            <homeView:HomeView/>
         </DataTemplate>
 
         <Style x:Key="WindowButtonStyle" TargetType="Button">
