@@ -417,6 +417,12 @@ namespace GenDoc.Services
 
             if (normalized.Contains("№ з/п")) return ExportFieldKey.RowNumber;
 
+            // «Командир» - ПЕРЕД правилами імені й телефону, як і в
+            // ImportService.AutoMapHeader: заголовок «Командир (ПІБ та телефон)»
+            // інакше забирає собі поле ПІБ. Два мапери мусять читати ті самі
+            // назви однаково (аудит 2026-08-28).
+            if (normalized.Contains("командир")) return ExportFieldKey.CommanderContact;
+
             if (normalized.Contains("іноземній мові")) return ExportFieldKey.NameTransliterated;
             if (normalized.Contains("піб")) return ExportFieldKey.FullNameFormatted;
 
@@ -432,7 +438,6 @@ namespace GenDoc.Services
             if (normalized.Contains("адреса реєстрації")) return ExportFieldKey.RegistrationAddress;
             if (normalized.Contains("фактичного проживання")) return ExportFieldKey.ResidenceAddress;
 
-            if (normalized.Contains("командир")) return ExportFieldKey.CommanderContact;
             if (normalized.Contains("телефон")) return ExportFieldKey.Phone;
 
             if (normalized.Contains("примітка"))
