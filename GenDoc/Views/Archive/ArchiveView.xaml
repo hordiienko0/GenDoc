@@ -485,7 +485,26 @@
 
         <!-- ТАБ «ЗАПУСКИ» -->
         <Grid Grid.Row="2" Visibility="{Binding IsRunsTab, Converter={StaticResource BoolToVisibility}}">
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Список запусків фільтрується SelectedIntake і SelectedYear, а
+                 комбо для них жили ЛИШЕ на вкладці «Документи»: оператор звужував
+                 там набір, переходив сюди й бачив короткий список без жодної
+                 видимої причини (аудит 2026-08-28). Ті самі властивості - тож
+                 вибір спільний для обох вкладок. Решта фільтрів («Шаблон»,
+                 «Пакет», «Автор», пошук) до запусків не застосовується, і їх тут
+                 навмисно немає. -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,9">
+                <ComboBox Style="{StaticResource ArchiveFilterComboStyle}" ItemsSource="{Binding IntakeOptions}"
+                          SelectedItem="{Binding SelectedIntake}" DisplayMemberPath="Label"/>
+                <ComboBox Style="{StaticResource ArchiveFilterComboStyle}" ItemsSource="{Binding YearOptions}"
+                          SelectedItem="{Binding SelectedYear}" DisplayMemberPath="Label"/>
+            </StackPanel>
+
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                 <ItemsControl ItemsSource="{Binding Runs}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -595,7 +614,7 @@
             </ScrollViewer>
 
             <!-- 2.6: порожній стан веде до дії -->
-            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+            <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center"
                         Visibility="{Binding RunsEmpty, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="Запусків ще не було" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"
                            HorizontalAlignment="Center"/>
