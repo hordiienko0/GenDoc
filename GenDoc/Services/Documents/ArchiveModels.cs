@@ -12,8 +12,7 @@ namespace GenDoc.Services.Documents
         int? UserId,
         int? Year,
         int Skip,
-        int Take,
-        string? FolderPath = null);
+        int Take);
 
     public record ArchiveRowDto(
         int Id,

@@ -116,10 +116,12 @@ public class GenerationFolderLayoutEndToEndTests : IDisposable
         }
     }
 
-    // Дерево «Архіву» будується розбором цього ж шляху - перевіряємо, що на
-    // справжніх даних воно дає саме ті гілки, які є на диску.
+    // Розкладка трирівнева: набір → тип документа → прогін. Перевіряємо саме
+    // теки на диску, а не дерево «Архіву»: панель папок прибрано, бо нею не
+    // користувалися, а сама розкладка на диску лишається (рішення користувача
+    // 2026-08-31).
     [Fact]
-    public void ArchiveTree_BuiltFromStoredPaths_MatchesTheFoldersOnDisk()
+    public void StoredPaths_HaveIntakeThenTypeThenRun_AndTheFoldersExistOnDisk()
     {
         using var db = new TestDb();
         var packageId = Seed(db);
@@ -129,18 +131,22 @@ public class GenerationFolderLayoutEndToEndTests : IDisposable
             regenerateExisting: false, RosterSelection.Everyone, NoProgress);
 
         using var ctx = db.Factory.CreateDbContext();
-        var tree = ArchiveFolderTree.Build(ctx.GeneratedDocuments.Select(g => g.FileName).ToList());
+        var stored = ctx.GeneratedDocuments.Select(g => g.FileName).ToList();
 
-        var intake = Assert.Single(tree);
-        Assert.Equal("Набір №15", intake.Name);
-        Assert.Equal(2, intake.DocumentCount);
+        Assert.Equal(2, stored.Count);
 
-        var type = Assert.Single(intake.Children);
-        Assert.Equal(TemplateName, type.Name);
+        foreach (var relative in stored)
+        {
+            var parts = relative.Split('\\');
+            Assert.Equal(4, parts.Length);
+            Assert.Equal("Набір №15", parts[0]);
+            Assert.Equal(TemplateName, parts[1]);
 
-        var run = Assert.Single(type.Children);
-        Assert.True(
-            Directory.Exists(Path.Combine(_folder, intake.Name, type.Name, run.Name)),
-            $"Гілка дерева не відповідає теці на диску: {run.Name}");
+            var runFolder = Path.Combine(_folder, parts[0], parts[1], parts[2]);
+            Assert.True(Directory.Exists(runFolder), $"Немає теки прогону: {runFolder}");
+        }
+
+        // Прогін один, тож і тека прогону одна на обидва документи.
+        Assert.Single(stored.Select(p => p.Split('\\')[2]).Distinct());
     }
 }

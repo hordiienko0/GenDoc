@@ -198,116 +198,7 @@
             <Border Grid.Row="2" Background="{StaticResource PanelBrush}"
                     BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1">
                 <Grid>
-                    <Grid.ColumnDefinitions>
-                        <!-- Явна ширина, НЕ Auto: Auto-колонка міряється нескінченністю,
-                             і довга назва папки роздула б панель за край вікна.
-                             Ширину тримає в'ю-модель, а Thumb лише зсуває число -
-                             GridSplitter писав би в ColumnDefinition напряму й
-                             розривав би прив'язку. -->
-                        <ColumnDefinition Width="{Binding FolderPanelColumnWidth}"/>
-                        <ColumnDefinition Width="6"/>
-                        <ColumnDefinition Width="*" MinWidth="320"/>
-                    </Grid.ColumnDefinitions>
-
-                    <!-- ДЕРЕВО - навігатор, а не заміна списку. Клік по гілці лише
-                         додає префікс шляху до запиту; фільтри, колонки, версії й
-                         підвантаження праворуч працюють як раніше. -->
-                    <!-- Складена смужка: сама лише кнопка розгортання. Дерево з
-                         єдиної гілки нічого не дає, а панель забирає ширину в
-                         таблиці - тож доки гілок мало, вона складена. -->
-                    <Border Grid.Column="0" Background="{StaticResource PanelBrush}"
-                            BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,1,0"
-                            Visibility="{Binding IsFolderPanelCollapsed, Converter={StaticResource BoolToVisibility}}">
-                        <Button Content="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="15"
-                                Style="{StaticResource RowIconButtonStyle}"
-                                VerticalAlignment="Top" Margin="0,8,0,0"
-                                ToolTip="Показати папки"
-                                Command="{Binding ToggleFolderPanelCommand}"/>
-                    </Border>
-
-                    <DockPanel Grid.Column="0" Margin="0,0,0,0"
-                               Visibility="{Binding IsFolderPanelExpanded, Converter={StaticResource BoolToVisibility}}">
-                        <Border DockPanel.Dock="Top" Padding="10,8" Margin="0,0,0,6"
-                                Background="{StaticResource PanelBrush}"
-                                BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0">
-                                    <!-- Властивості задані тут, а не стилем: TableHeaderTextStyle -
-                                         ЛОКАЛЬНИЙ ресурс ImportView.xaml, і посилання на нього
-                                         звідси валить застосунок при відкритті розділу. -->
-                                    <TextBlock Text="ПАПКИ" Foreground="{StaticResource NavyBrush}"
-                                               FontSize="10.5" FontWeight="Bold"/>
-                                    <TextBlock Text="{Binding FolderScopeText}" FontSize="11" Margin="0,4,0,0"
-                                               TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"
-                                               ToolTip="{Binding FolderScopeText}"
-                                               Foreground="{StaticResource TextSecondaryBrush}"/>
-                                </StackPanel>
-                                <Button Grid.Column="1" Content="&#xE76B;" FontFamily="Segoe MDL2 Assets" FontSize="12"
-                                        Style="{StaticResource RowIconButtonStyle}"
-                                        VerticalAlignment="Top" ToolTip="Згорнути панель"
-                                        Command="{Binding ToggleFolderPanelCommand}"/>
-                            </Grid>
-                        </Border>
-
-                        <Button DockPanel.Dock="Bottom" Content="Усі документи" Margin="0,6,0,0"
-                                Style="{StaticResource TextLinkButtonStyle}"
-                                HorizontalAlignment="Left"
-                                Command="{Binding ClearFolderCommand}"/>
-
-                        <TreeView ItemsSource="{Binding FolderTree}" BorderThickness="0"
-                                  Background="Transparent"
-                                  ScrollViewer.HorizontalScrollBarVisibility="Auto"
-                                  VirtualizingStackPanel.IsVirtualizing="False">
-                            <TreeView.ItemContainerStyle>
-                                <Style TargetType="TreeViewItem">
-                                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
-                                    <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}"/>
-                                </Style>
-                            </TreeView.ItemContainerStyle>
-                            <TreeView.ItemTemplate>
-                                <HierarchicalDataTemplate ItemsSource="{Binding Children}">
-                                    <Grid Margin="0,2">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*"/>
-                                            <ColumnDefinition Width="Auto"/>
-                                        </Grid.ColumnDefinitions>
-                                        <!-- Кнопка, а не сам вибір TreeView: команді потрібен
-                                             повторний клік по обраній гілці, щоб зняти фільтр. -->
-                                        <Button Grid.Column="0" Content="{Binding Name}"
-                                                Style="{StaticResource TextLinkButtonStyle}"
-                                                HorizontalContentAlignment="Left"
-                                                Command="{Binding DataContext.SelectFolderCommand, RelativeSource={RelativeSource AncestorType=TreeView}}"
-                                                CommandParameter="{Binding}"
-                                                ToolTip="{Binding Path}"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding DocumentCount}" Margin="8,0,4,0"
-                                                   VerticalAlignment="Center" FontSize="11"
-                                                   Foreground="{StaticResource TextSecondaryBrush}"/>
-                                    </Grid>
-                                </HierarchicalDataTemplate>
-                            </TreeView.ItemTemplate>
-                        </TreeView>
-                    </DockPanel>
-
-                    <!-- Thumb, а не GridSplitter: розділювач писав би ширину прямо
-                         в ColumnDefinition і тим розривав прив'язку до в'ю-моделі,
-                         після чого згортання перестало б діяти. Тут він лише
-                         зсуває число, а розкладку рахує прив'язка. -->
-                    <Thumb Grid.Column="1" Width="6" Cursor="SizeWE"
-                           HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                           DragDelta="FolderResizeThumb_DragDelta"
-                           Visibility="{Binding IsFolderPanelExpanded, Converter={StaticResource BoolToVisibility}}">
-                        <Thumb.Template>
-                            <ControlTemplate TargetType="Thumb">
-                                <Border Background="Transparent"/>
-                            </ControlTemplate>
-                        </Thumb.Template>
-                    </Thumb>
-
-                    <DataGrid Grid.Column="2" x:Name="DocsGrid" ItemsSource="{Binding Rows}"
+                    <DataGrid x:Name="DocsGrid" ItemsSource="{Binding Rows}"
                               AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
                               HorizontalScrollBarVisibility="Auto"
                               CanUserResizeColumns="True"
@@ -423,14 +314,14 @@
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <StackPanel Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
                                 Visibility="{Binding IsArchiveEmpty, Converter={StaticResource BoolToVisibility}}">
                         <TextBlock Text="Документи з'являться після першої генерації"
                                    Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"
                                    HorizontalAlignment="Center"/>
                     </StackPanel>
 
-                    <StackPanel Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center"
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
                                 Visibility="{Binding IsFilteredEmpty, Converter={StaticResource BoolToVisibility}}">
                         <TextBlock Text="Нічого не знайдено. Змініть фільтри"
                                    Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"
