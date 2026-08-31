@@ -55,13 +55,13 @@ public class GroupTemplatesOutsideMatrixTests
 
         Assert.Contains(data.Templates, t => t.TemplateId == groupTemplateId && t.IsGroup);
 
-        var cell = data.Docs[(personInId, groupTemplateId)];
+        var cell = data.Docs[(personInId, groupTemplateId, false)];
         Assert.True(cell.IsGroup);
         Assert.False(cell.RosterUnknown);
         Assert.Equal(groupDocId, cell.Id);
         Assert.Equal(8, cell.Version);
 
-        Assert.False(data.Docs.ContainsKey((personOutId, groupTemplateId)));
+        Assert.False(data.Docs.ContainsKey((personOutId, groupTemplateId, false)));
     }
 
     // Документ, згенерований до v25: складу немає (RecipientCount > 0, учасників 0) -
@@ -74,8 +74,8 @@ public class GroupTemplatesOutsideMatrixTests
 
         var data = await TestServices.Completeness(db).BuildAsync(intakeId, packageId);
 
-        Assert.True(data.Docs[(personInId, groupTemplateId)].RosterUnknown);
-        Assert.True(data.Docs[(personOutId, groupTemplateId)].RosterUnknown);
+        Assert.True(data.Docs[(personInId, groupTemplateId, false)].RosterUnknown);
+        Assert.True(data.Docs[(personOutId, groupTemplateId, false)].RosterUnknown);
     }
 
     // Персональний список картки («Сформувати повний пакет») групових як і раніше не містить.

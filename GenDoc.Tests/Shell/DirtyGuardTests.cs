@@ -99,7 +99,9 @@ public class DirtyGuardTests
         var vm = NewSettings(db);
         vm.City = "Львів";
 
-        vm.SaveCommand.Execute(null);
+        // SaveCore, а не команда: команда показує підтвердження, а модальне
+        // вікно в тест-хості валить процес.
+        vm.SaveCore();
 
         Assert.False(vm.IsDirty);
     }
@@ -159,6 +161,7 @@ public class DirtyGuardTests
         vm.TemplateName = "Довідка";
         vm.Blocks[0].Text = "НАКАЗ";
 
+        // Тут команда безпечна: конструктор показує вікно лише на помилці.
         vm.SaveCommand.Execute(null);
 
         Assert.Equal(1, service.SaveCalls);

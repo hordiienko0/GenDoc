@@ -111,7 +111,7 @@ public class WeaponIncludeStalenessTests
 
         var data = await TestServices.Completeness(db).BuildAsync(intakeId, packageId);
 
-        Assert.False(data.Docs[(personId, templateId)].IsStale,
+        Assert.False(data.Docs[(personId, templateId, false)].IsStale,
             "Документ із міткою зброї застарів одразу після генерації - у комплектності забутий Include(Weapons).");
     }
 

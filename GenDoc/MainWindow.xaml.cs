@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Windows.Threading;
 using System.Windows;
 using System.Windows.Input;
 using GenDoc.Native;
@@ -25,16 +26,26 @@ namespace GenDoc
         // а після згоди воно повторюється прапорцем _closeConfirmed.
         private bool _closeConfirmed;
 
-        private async void Window_Closing(object sender, CancelEventArgs e)
+        private void Window_Closing(object sender, CancelEventArgs e)
         {
             if (_closeConfirmed) return;
             if (DataContext is not MainViewModel viewModel) return;
 
             e.Cancel = true;
-            if (!await viewModel.TryLeaveCurrentSectionAsync()) return;
 
-            _closeConfirmed = true;
-            Close();
+            // Запитання показуємо ПІСЛЯ того, як обробник Closing завершився.
+            // Доки подія триває, WPF вважає вікно таким, що закривається, і
+            // будь-яке модальне вікно (а guard показує саме MessageBox) кидає
+            // InvalidOperationException «Cannot ... call ShowDialog while a
+            // Window is closing». e.Cancel = true цього не рятує: він набуває
+            // сили лише коли обробник повернув керування.
+            Dispatcher.BeginInvoke(new Action(async () =>
+            {
+                if (!await viewModel.TryLeaveCurrentSectionAsync()) return;
+
+                _closeConfirmed = true;
+                Close();
+            }), DispatcherPriority.Background);
         }
 
         // Наведення на згорнуту панель розкриває її поверх вмісту. Це стан миші,

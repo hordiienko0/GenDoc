@@ -119,7 +119,7 @@ public class CompletenessConsistencyTests
 
         var data = await TestServices.Completeness(db).BuildAsync(intakeId, packageId);
 
-        Assert.True(data.Docs.ContainsKey((personId, templateId)),
+        Assert.True(data.Docs.ContainsKey((personId, templateId, false)),
             "Документ без IntakeId (до v6) не потрапив у матрицю.");
     }
 
@@ -272,7 +272,7 @@ public class CompletenessConsistencyTests
             new NoOpCellCoordinator(), personId, templateId, row.FitnessCategory,
             ICompletenessService.Resolve(template, person.FitnessCategory), template.IsGroup);
 
-        data.Docs.TryGetValue((personId, templateId), out var doc);
+        data.Docs.TryGetValue((personId, templateId, false), out var doc);
         cell.Initialize(doc);
 
         row.Cells.Add(cell);

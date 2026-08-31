@@ -288,7 +288,7 @@ namespace GenDoc.ViewModels.Completeness
                     {
                         var requirement = ICompletenessService.Resolve(template, row.FitnessCategory);
                         var cell = new MatrixCellViewModel(this, person.Id, template.TemplateId, row.FitnessCategory, requirement, template.IsGroup);
-                        _matrixData.Docs.TryGetValue((person.Id, template.TemplateId), out var doc);
+                        _matrixData.Docs.TryGetValue((person.Id, template.TemplateId, template.IsExport), out var doc);
                         cell.Initialize(doc);
                         row.Cells.Add(cell);
                     }

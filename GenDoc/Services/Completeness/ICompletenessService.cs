@@ -4,10 +4,17 @@ using GenDoc.Services.Documents;
 
 namespace GenDoc.Services.Completeness
 {
+    /// <summary>Колонка матриці. IsGroup - один документ на весь склад
+    /// (клітинка каже, чи людина в ньому), а не документ на людину.
+    ///
+    /// IsExport розрізняє ТАБЛИЦЮ, на яку вказує TemplateId: ExportTemplate
+    /// (відомість Excel) чи Template (документ Word). Лічильники в них
+    /// незалежні, тож без цієї ознаки відомість і шаблон з однаковим Id ділили
+    /// б одну клітинку.</summary>
     public record MatrixTemplateInfo(
         int LinkId, int TemplateId, string Name, string? ShortName, int SortOrder,
         TemplateRequirement RequirementRegular, TemplateRequirement RequirementLimited,
-        bool IsGroup = false);
+        bool IsGroup = false, bool IsExport = false);
 
     // Групові відомості пакета (один документ на весь склад) - показуються в підвалі
     // картки особи, а не серед її персональних документів. IsParticipant/RosterUnknown
@@ -20,12 +27,15 @@ namespace GenDoc.Services.Completeness
     // RosterUnknown - документ згенеровано до v25, складу не записано.
     public record MatrixDocDto(
         int Id, int RecipientId, int TemplateId, int Version, bool HasContent, bool IsStale,
-        DocumentSourceType SourceType, bool IsGroup = false, bool RosterUnknown = false);
+        DocumentSourceType SourceType, bool IsGroup = false, bool RosterUnknown = false,
+        bool IsExport = false);
 
+    /// <summary>Ключ клітинки містить IsExport з тієї самої причини, що й
+    /// MatrixTemplateInfo: Template.Id і ExportTemplate.Id - різні лічильники.</summary>
     public record MatrixData(
         List<Recipient> People,
         List<MatrixTemplateInfo> Templates,
-        Dictionary<(int RecipientId, int TemplateId), MatrixDocDto> Docs,
+        Dictionary<(int RecipientId, int TemplateId, bool IsExport), MatrixDocDto> Docs,
         bool DetectStale);
 
     public record RequirementRow(

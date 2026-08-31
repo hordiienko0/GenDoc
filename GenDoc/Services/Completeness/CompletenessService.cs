@@ -65,7 +65,7 @@ namespace GenDoc.Services.Completeness
                         continue;
 
                     requiredCells++;
-                    var hasDoc = data.Docs.TryGetValue((person.Id, template.TemplateId), out var doc);
+                    var hasDoc = data.Docs.TryGetValue((person.Id, template.TemplateId, template.IsExport), out var doc);
                     if (hasDoc && !doc!.IsStale) satisfiedCells++;
                     else personIncomplete = true;
                 }
@@ -88,7 +88,7 @@ namespace GenDoc.Services.Completeness
 
             // (b) зв'язки пакета з вимогами. Групові шаблони - теж колонки (v25):
             // клітинка каже, чи людина в складі чинного групового документа.
-            var templates = await GetPackageLinksInternalAsync(db, packageId, includeGroup: true);
+            var templates = await GetPackageLinksInternalAsync(db, packageId, includeGroup: true, includeSheets: true);
 
             // (c) всі актуальні документи набору по шаблонах пакета - один запит
             var templateIds = templates.Where(t => !t.IsGroup).Select(t => t.TemplateId).ToList();
@@ -113,7 +113,7 @@ namespace GenDoc.Services.Completeness
             var orgSettings = detectStale ? await db.OrganizationSettings.AsNoTracking().FirstOrDefaultAsync() : null;
 
             var peopleById = people.ToDictionary(p => p.Id);
-            var dict = new Dictionary<(int, int), MatrixDocDto>();
+            var dict = new Dictionary<(int, int, bool), MatrixDocDto>();
             foreach (var doc in docs)
             {
                 var stale = false;
@@ -124,44 +124,58 @@ namespace GenDoc.Services.Completeness
                     stale = _documentHashService.ComputeSourceHash(mappings, person, orgSettings) != doc.SourceHash;
                 }
 
-                dict[(doc.RecipientId, doc.TemplateId)] =
+                dict[(doc.RecipientId, doc.TemplateId, false)] =
                     new MatrixDocDto(doc.Id, doc.RecipientId, doc.TemplateId, doc.Version, doc.HasContent, stale, doc.SourceType);
             }
 
             // (d) групові колонки: участь людини в чинному груповому документі (v25).
             // Документ без записаного складу (до v25) дає всім «склад не записано».
-            var groupTemplates = templates.Where(t => t.IsGroup).ToList();
-            if (groupTemplates.Count > 0)
+            // Групові документи Word і відомості Excel лежать в одній таблиці
+            // GeneratedGroupDocuments і розрізняються тим, яке з двох посилань
+            // заповнене. Правило клітинки в них однакове: людина є в складі -
+            // зелено; немає - клітинки немає. Тому обидва види йдуть одним
+            // проходом, а не двома схожими копіями.
+            var groupColumns = templates.Where(t => t.IsGroup).ToList();
+            if (groupColumns.Count > 0)
             {
-                var groupIds = groupTemplates.Select(t => t.TemplateId).ToList();
+                var docxIds = groupColumns.Where(t => !t.IsExport).Select(t => t.TemplateId).ToList();
+                var sheetIds = groupColumns.Where(t => t.IsExport).Select(t => t.TemplateId).ToList();
+
                 var groupDocs = await db.GeneratedGroupDocuments
-                    .Where(g => g.TemplateId != null && groupIds.Contains(g.TemplateId.Value) && g.IsCurrent
-                                && (g.IntakeId == intakeId || g.IntakeId == null))
+                    .Where(g => g.IsCurrent
+                                && (g.IntakeId == intakeId || g.IntakeId == null)
+                                && ((g.TemplateId != null && docxIds.Contains(g.TemplateId.Value))
+                                    || (g.ExportTemplateId != null && sheetIds.Contains(g.ExportTemplateId.Value))))
                     .Select(g => new
                     {
-                        g.TemplateId, g.IntakeId, g.Id, g.Version, g.HasContent, g.RecipientCount,
+                        g.TemplateId, g.ExportTemplateId, g.IntakeId, g.Id, g.Version, g.HasContent, g.RecipientCount,
                         ParticipantIds = g.Recipients.Select(r => r.RecipientId).ToList()
                     })
                     .ToListAsync();
 
-                foreach (var template in groupTemplates)
+                foreach (var column in groupColumns)
                 {
                     // Свій документ набору має пріоритет над «спільним» (IntakeId = null).
-                    var doc = groupDocs.Where(d => d.TemplateId == template.TemplateId)
+                    var doc = groupDocs
+                        .Where(d => column.IsExport
+                            ? d.ExportTemplateId == column.TemplateId
+                            : d.TemplateId == column.TemplateId)
                         .OrderByDescending(d => d.IntakeId == intakeId)
                         .FirstOrDefault();
                     if (doc is null) continue;
 
+                    // Документ, згенерований до появи запису складу (v25): хто в
+                    // ньому - невідомо, тож позначаємо всіх, але окремим станом.
                     var rosterUnknown = doc.RecipientCount > 0 && doc.ParticipantIds.Count == 0;
                     var participants = rosterUnknown ? null : doc.ParticipantIds.ToHashSet();
 
                     foreach (var person in people)
                     {
                         if (rosterUnknown || participants!.Contains(person.Id))
-                            dict[(person.Id, template.TemplateId)] = new MatrixDocDto(
-                                doc.Id, person.Id, template.TemplateId, doc.Version, doc.HasContent,
+                            dict[(person.Id, column.TemplateId, column.IsExport)] = new MatrixDocDto(
+                                doc.Id, person.Id, column.TemplateId, doc.Version, doc.HasContent,
                                 IsStale: false, DocumentSourceType.Generated,
-                                IsGroup: true, RosterUnknown: rosterUnknown);
+                                IsGroup: true, RosterUnknown: rosterUnknown, IsExport: column.IsExport);
                     }
                 }
             }
@@ -481,7 +495,7 @@ namespace GenDoc.Services.Completeness
                     if (ICompletenessService.Resolve(template, person.FitnessCategory) != TemplateRequirement.Required)
                         continue;
 
-                    var hasDoc = data.Docs.TryGetValue((person.Id, template.TemplateId), out var doc);
+                    var hasDoc = data.Docs.TryGetValue((person.Id, template.TemplateId, template.IsExport), out var doc);
 
                     if (!hasDoc)
                     {
@@ -502,21 +516,63 @@ namespace GenDoc.Services.Completeness
             return await GetPackageLinksInternalAsync(db, packageId, includeGroup: true);
         }
 
-        private static async Task<List<MatrixTemplateInfo>> GetPackageLinksInternalAsync(AppDbContext db, int packageId, bool includeGroup)
+        /// <param name="includeSheets">Додати відомості Excel як колонки. Лише
+        /// для МАТРИЦІ: діалог «Вимоги» веде їх окремою секцією з фільтром
+        /// придатності, і в списку шаблонів вони були б дублем.</param>
+        private static async Task<List<MatrixTemplateInfo>> GetPackageLinksInternalAsync(
+            AppDbContext db, int packageId, bool includeGroup, bool includeSheets = false)
         {
             var query = db.GenerationPackageTemplates
                 .Where(pt => pt.GenerationPackageId == packageId && pt.Template != null && pt.Template.DeletedAt == null);
             // Вада 1.4: груповий шаблон у персональній матриці давав порожню колонку в кожного.
             if (!includeGroup) query = query.Where(pt => pt.Template!.Kind != TemplateKind.Group);
 
-            return await query
+            var links = await query
                 .OrderBy(pt => pt.SortOrder)
                 .Select(pt => new MatrixTemplateInfo(
                     pt.Id, pt.TemplateId, pt.Template!.Name, pt.Template.ShortName,
                     pt.SortOrder, pt.RequirementRegular, pt.RequirementLimited,
-                    pt.Template.Kind == TemplateKind.Group))
+                    pt.Template.Kind == TemplateKind.Group, false))
                 .ToListAsync();
+
+            if (!includeSheets) return links;
+
+            // Відомості Excel («котлове», «зброя») - теж колонки: це один
+            // документ на весь склад, і клітинка каже, чи людина в ньому. Доти
+            // їх у матриці не було взагалі, і побачити їх можна було лише в
+            // архіві, перемикаючи фільтр (вимога користувача 2026-08-31).
+            //
+            // Вимогу задає не матриця вимог пакета, а ФІЛЬТР ПРИДАТНОСТІ на
+            // зв'язку: відомість зобов'язана охопити рівно тих, кого охоплює
+            // фільтр. Інакше обмежено придатний світився б червоним у
+            // відомості, яка його свідомо не бере.
+            var sheets = await db.GenerationPackageExportTemplates
+                .Where(pt => pt.GenerationPackageId == packageId
+                             && pt.ExportTemplate != null && pt.ExportTemplate.DeletedAt == null)
+                .OrderBy(pt => pt.SortOrder)
+                .Select(pt => new
+                {
+                    pt.Id,
+                    pt.ExportTemplateId,
+                    pt.ExportTemplate!.Name,
+                    pt.SortOrder,
+                    pt.FitnessFilter
+                })
+                .ToListAsync();
+
+            links.AddRange(sheets.Select(s => new MatrixTemplateInfo(
+                s.Id, s.ExportTemplateId, s.Name, null, s.SortOrder,
+                RequiredWhen(s.FitnessFilter, FitnessFilter.RegularOnly),
+                RequiredWhen(s.FitnessFilter, FitnessFilter.LimitedOnly),
+                IsGroup: true, IsExport: true)));
+
+            return links;
         }
+
+        private static TemplateRequirement RequiredWhen(FitnessFilter filter, FitnessFilter category)
+            => filter == FitnessFilter.All || filter == category
+                ? TemplateRequirement.Required
+                : TemplateRequirement.NotApplicable;
 
         public async Task<List<PackageGroupDocumentStatus>> GetPackageGroupDocumentsAsync(int packageId, int? intakeId, int? recipientId = null)
         {
