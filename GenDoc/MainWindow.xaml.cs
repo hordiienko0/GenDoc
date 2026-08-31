@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Input;
 using GenDoc.Native;
@@ -12,6 +13,28 @@ namespace GenDoc
             InitializeComponent();
             DwmHelper.EnableDarkTitleBar(this);
             DataContext = viewModel;
+        }
+
+        // Guard спрацьовував лише на перехід МІЖ розділами: хрестик закривав
+        // вікно одразу, і незбережена картка, складання чи майстер імпорту
+        // гинули без запитання (аудит 2026-08-28).
+        //
+        // Скасування - через Cancel, а не через повторний Close(): TryLeave
+        // показує модальне вікно, і вихід із Closing із уже початим закриттям
+        // призвів би до рекурсії. Тому перший прохід завжди скасовує закриття,
+        // а після згоди воно повторюється прапорцем _closeConfirmed.
+        private bool _closeConfirmed;
+
+        private async void Window_Closing(object sender, CancelEventArgs e)
+        {
+            if (_closeConfirmed) return;
+            if (DataContext is not MainViewModel viewModel) return;
+
+            e.Cancel = true;
+            if (!await viewModel.TryLeaveCurrentSectionAsync()) return;
+
+            _closeConfirmed = true;
+            Close();
         }
 
         // Наведення на згорнуту панель розкриває її поверх вмісту. Це стан миші,

@@ -8,13 +8,14 @@ using GenDoc.Models.Enums;
 using GenDoc.Models.TemplateBuilder;
 using GenDoc.Services;
 using GenDoc.Services.Templates;
+using GenDoc.ViewModels.Shell;
 using GenDoc.ViewModels.Templates.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 
 namespace GenDoc.ViewModels.Templates;
 
-public partial class TemplatesViewModel : ObservableObject
+public partial class TemplatesViewModel : ObservableObject, IGuardedSection
 {
     private readonly IExportTemplateService _exportTemplateService;
     private readonly ITemplateService _templateService;
@@ -117,6 +118,17 @@ public partial class TemplatesViewModel : ObservableObject
     public bool IsBuilderOpen => Builder is not null;
 
     public bool IsListVisible => Builder is null;
+
+    /// <summary>Незбережене складання в конструкторі гинуло мовчки при переході
+    /// в інший розділ. Питає той самий guard, що й «✕ Закрити» в конструкторі.</summary>
+    public Task<bool> TryLeaveAsync()
+    {
+        if (Builder is null) return Task.FromResult(true);
+        if (!Builder.TryLeave()) return Task.FromResult(false);
+
+        Builder = null;
+        return Task.FromResult(true);
+    }
 
     [RelayCommand]
     private void CreateWithBuilder()

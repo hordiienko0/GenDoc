@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Input;
 using GenDoc.Services.Import;
 using GenDoc.Services.Intakes;
 using GenDoc.Services.OrgTree;
+using GenDoc.ViewModels.Shell;
 using Microsoft.Win32;
 
 namespace GenDoc.ViewModels.Import;
@@ -38,7 +39,7 @@ public partial class BranchOptionViewModel : ObservableObject
     private bool isCurrent;
 }
 
-public partial class ImportViewModel : ObservableObject
+public partial class ImportViewModel : ObservableObject, IGuardedSection
 {
     private readonly IImportService _importService;
     private readonly IIntakeService _intakeService;
@@ -127,6 +128,28 @@ public partial class ImportViewModel : ObservableObject
         $"Рядків: {TotalRows} · готово {ReadyCount} · потребують уваги {IssueCount}";
 
     public bool CanGoBack => CurrentStep > 1;
+
+    /// <summary>Незавершений майстер: файл обрано, колонки зіставлено, але
+    /// імпорт ще не запущено. Після успішного прогону Reset() гасить прапорець
+    /// сам, тож guard мовчить.</summary>
+    public bool HasPendingWork => HasFile;
+
+    /// <summary>Тут нема чого «зберігати» - є що втратити, тож питання інше, ніж
+    /// у картці особи: два варіанти, без «Так/Ні/Скасувати». До цього перехід у
+    /// інший розділ скидав зіставлення колонок мовчки (аудит 2026-08-28).</summary>
+    public Task<bool> TryLeaveAsync()
+    {
+        if (!HasPendingWork) return Task.FromResult(true);
+
+        var result = MessageBox.Show(
+            $"Імпорт файлу «{FileName}» не завершено. Вийти й скинути зіставлення колонок?",
+            "Незавершений імпорт", MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+        if (result != MessageBoxResult.Yes) return Task.FromResult(false);
+
+        Reset();
+        return Task.FromResult(true);
+    }
 
     /// <summary>Далі не пускаємо без файлу, а з кроку «Набір і гілка» - без
     /// обраного набору: інакше крок нічого не вирішує.</summary>

@@ -225,13 +225,20 @@ public partial class MainViewModel : ObservableObject
 
     private void RefreshIntakesBadgeFireAndForget() => _ = RefreshIntakesBadgeAsync();
 
+    /// <summary>Спитати поточний розділ, чи можна його полишити. Одна точка на
+    /// два випадки: перехід у інший розділ і закриття вікна. До цього хрестик
+    /// закривав вікно, не питаючи нікого, і незбережена робота гинула
+    /// (аудит 2026-08-28).</summary>
+    public async Task<bool> TryLeaveCurrentSectionAsync()
+        => CurrentContent is not IGuardedSection guarded || await guarded.TryLeaveAsync();
+
     [RelayCommand]
     private async Task SelectItemAsync(NavigationItem? item)
     {
         if (item is null || item == SelectedItem) return;
 
         // Розділ із незбереженими змінами може заблокувати перехід.
-        if (CurrentContent is IGuardedSection guarded && !await guarded.TryLeaveAsync()) return;
+        if (!await TryLeaveCurrentSectionAsync()) return;
 
         if (SelectedItem is not null) SelectedItem.IsActive = false;
         SelectedItem = item;

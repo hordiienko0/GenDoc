@@ -310,6 +310,20 @@ public partial class TemplateBuilderViewModel : ObservableObject
     /// <summary>Шаблон збережено - перелік у «Шаблонах» треба перечитати.</summary>
     public event Action? Saved;
 
+    /// <summary>Стан складання на момент відкриття або останнього збереження.
+    /// Порівняння зі знімком, а не прапорець: скасувавши правку руками, оператор
+    /// не має отримувати запитання про зміни, яких уже немає. Знімок - той самий
+    /// JSON, що лягає в BuilderJson, тож «змінилось» означає рівно те, що
+    /// відрізнятиме збережений шаблон (аудит 2026-08-28).</summary>
+    private string _snapshot = string.Empty;
+
+    public bool IsDirty => CurrentSnapshot() != _snapshot;
+
+    private string CurrentSnapshot()
+        => TemplateName.Trim() + " " + TemplateBuilderJson.Serialize(ToDocument());
+
+    private void TakeSnapshot() => _snapshot = CurrentSnapshot();
+
     public void StartNew(TemplateBuilderMode mode = TemplateBuilderMode.Word)
     {
         EditingTemplateId = null;
@@ -328,6 +342,7 @@ public partial class TemplateBuilderViewModel : ObservableObject
             Signatories, mode));
 
         StatusMessage = null;
+        TakeSnapshot();
         RefreshPreview();
     }
 
@@ -352,6 +367,7 @@ public partial class TemplateBuilderViewModel : ObservableObject
             Blocks.Add(BuilderBlockViewModel.FromBlock(block, Signatories, source.Document.Mode));
 
         StatusMessage = null;
+        TakeSnapshot();
         RefreshPreview();
         return true;
     }
@@ -565,6 +581,7 @@ public partial class TemplateBuilderViewModel : ObservableObject
         try
         {
             EditingTemplateId = _builderService.Save(EditingTemplateId, TemplateName.Trim(), ToDocument());
+            TakeSnapshot();
             StatusMessage = $"Шаблон збережено ({DateTime.Now:HH:mm}).";
             Saved?.Invoke();
         }
@@ -658,7 +675,36 @@ public partial class TemplateBuilderViewModel : ObservableObject
         => new(name.Where(c => !Path.GetInvalidFileNameChars().Contains(c)).ToArray());
 
     [RelayCommand]
-    private void Close() => RequestClose?.Invoke();
+    private void Close()
+    {
+        if (!TryLeave()) return;
+        RequestClose?.Invoke();
+    }
+
+    /// <summary>Єдина точка dirty-guard конструктора: «✕ Закрити», перехід в
+    /// інший розділ, закриття вікна. До цього складання гинуло мовчки в усіх
+    /// трьох випадках.</summary>
+    public bool TryLeave()
+    {
+        if (!IsDirty) return true;
+
+        var result = MessageBox.Show(
+            "Зберегти зміни в шаблоні?", "Незбережені зміни",
+            MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+
+        switch (result)
+        {
+            case MessageBoxResult.Yes:
+                // Save сам покаже, чого бракує (назва, блоки, таблиця у
+                // відомості), і нічого не збереже - тоді й виходити не можна.
+                Save();
+                return !IsDirty;
+            case MessageBoxResult.No:
+                return true;
+            default:
+                return false;
+        }
+    }
 
     public TemplateBuilderDocument ToDocument()
         => new(Blocks.Select(b => b.ToBlock()).ToList(),

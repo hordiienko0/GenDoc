@@ -35,7 +35,8 @@
         MinWidth="960" MinHeight="600"
         Background="{StaticResource BackgroundBrush}"
         WindowStyle="None" ResizeMode="CanResize"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        Closing="Window_Closing">
 
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="0" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0"/>
