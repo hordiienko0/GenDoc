@@ -155,12 +155,21 @@ namespace GenDoc.Services.Completeness
 
                 foreach (var column in groupColumns)
                 {
-                    // Свій документ набору має пріоритет над «спільним» (IntakeId = null).
+                    // Свій документ набору має пріоритет над «спільним»
+                    // (IntakeId = null), а серед рівних - НАЙСВІЖІШИЙ.
+                    //
+                    // Сортування за версією тут не косметика: у справжній базі
+                    // знайшлося три рядки з IsCurrent = true на одну відомість,
+                    // і без нього бралася довільна - зі складом, у якому
+                    // теперішніх людей нема. Колонка виглядала порожньою, хоча
+                    // генерація щоразу рапортувала успіх (2026-09-01).
                     var doc = groupDocs
                         .Where(d => column.IsExport
                             ? d.ExportTemplateId == column.TemplateId
                             : d.TemplateId == column.TemplateId)
                         .OrderByDescending(d => d.IntakeId == intakeId)
+                        .ThenByDescending(d => d.Version)
+                        .ThenByDescending(d => d.Id)
                         .FirstOrDefault();
                     if (doc is null) continue;
 

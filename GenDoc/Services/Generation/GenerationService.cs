@@ -735,8 +735,15 @@ namespace GenDoc.Services.Generation
                     var rosterEntries = roster.Select(r => (r.Id, SourceHash: ComputeRecipientSourceHash(mappings, r, orgSettings))).ToList();
                     var rosterHash = _documentHashService.ComputeRosterHash(template.Id, rosterEntries);
 
-                    var current = db.GeneratedGroupDocuments
-                        .FirstOrDefault(g => g.ExportTemplateId == template.Id && g.IntakeId == null && g.IsCurrent);
+                    // ВСІ поточні, не один: гасіння через FirstOrDefault лишало
+                    // другий «поточний» рядок, якщо він якось з'явився, і з
+                    // кожним прогоном їх ставало більше. У справжній базі так
+                    // накопичилось три - і «Комплектність» брала з них
+                    // найстаріший (2026-09-01).
+                    var currents = db.GeneratedGroupDocuments
+                        .Where(g => g.ExportTemplateId == template.Id && g.IntakeId == null && g.IsCurrent)
+                        .ToList();
+                    var current = currents.OrderByDescending(g => g.Version).FirstOrDefault();
 
                     if (!regenerateExisting && current is not null && current.RosterHash == rosterHash
                         && ExistsInOutputFolder(outputFolder, current.FileName))
@@ -789,7 +796,7 @@ namespace GenDoc.Services.Generation
                         .Select(g => (int?)g.Version)
                         .Max() ?? 0;
 
-                    if (current is not null) current.IsCurrent = false;
+                    foreach (var stale in currents) stale.IsCurrent = false;
 
                     var groupDoc = new GeneratedGroupDocument
                     {
@@ -903,8 +910,11 @@ namespace GenDoc.Services.Generation
                         .ToList();
                     var rosterHash = _documentHashService.ComputeRosterHash(template.Id, rosterEntries);
 
-                    var current = db.GeneratedGroupDocuments
-                        .FirstOrDefault(g => g.TemplateId == template.Id && g.IntakeId == null && g.IsCurrent);
+                    // ВСІ поточні, не один - причина та сама, що у відомостях.
+                    var currents = db.GeneratedGroupDocuments
+                        .Where(g => g.TemplateId == template.Id && g.IntakeId == null && g.IsCurrent)
+                        .ToList();
+                    var current = currents.OrderByDescending(g => g.Version).FirstOrDefault();
 
                     if (!regenerateExisting && current is not null && current.RosterHash == rosterHash
                         && ExistsInOutputFolder(outputFolder, current.FileName))
@@ -934,7 +944,7 @@ namespace GenDoc.Services.Generation
                         .Where(g => g.TemplateId == template.Id && g.IntakeId == null)
                         .Select(g => (int?)g.Version).Max() ?? 0;
 
-                    if (current is not null) current.IsCurrent = false;
+                    foreach (var stale in currents) stale.IsCurrent = false;
 
                     var groupDoc = new GeneratedGroupDocument
                     {
