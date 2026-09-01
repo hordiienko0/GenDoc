@@ -325,10 +325,49 @@ namespace GenDoc.ViewModels.Completeness
             RecomputeAggregates();
         }
 
+        /// <summary>Групові колонки (наказ або відомість), яких бракує хоча б
+        /// одній людині, що їх зобов'язана мати. Кожна така колонка - ОДИН
+        /// документ на весь склад; разом із нею повертається перелік людей, які
+        /// в цей документ мають потрапити.</summary>
+        private List<(MatrixTemplateInfo Column, List<int> RecipientIds)> MissingGroupColumns()
+        {
+            var result = new List<(MatrixTemplateInfo, List<int>)>();
+            if (_matrixData is null) return result;
+
+            for (var i = 0; i < _matrixData.Templates.Count; i++)
+            {
+                var column = _matrixData.Templates[i];
+                if (!column.IsGroup) continue;
+
+                // Кого документ зобов'язаний охопити - вирішує вимога колонки
+                // за придатністю людини; у відомості це той самий фільтр, що
+                // стоїть на зв'язку пакета.
+                var covered = Rows
+                    .Where(r => i < r.Cells.Count
+                                && r.Cells[i].Requirement == TemplateRequirement.Required)
+                    .ToList();
+                if (covered.Count == 0) continue;
+
+                // Документ уже є й охоплює всіх, кого мав - генерувати нічого.
+                if (covered.All(r => r.Cells[i].IsPresent)) continue;
+
+                result.Add((column, covered.Select(r => r.RecipientId).ToList()));
+            }
+
+            return result;
+        }
+
         private void RecomputeAggregates()
         {
-            // Кнопка «Згенерувати все, чого бракує» - лише персональні: групові формує «Генерація».
-            MissingRequiredCount = Rows.Sum(r => r.Cells.Count(c => c.IsMissingRequired && !c.IsGroupColumn));
+            // Кнопка «Згенерувати все, чого бракує» рахує персональні документи
+            // ПОШТУЧНО, а групові (наказ і відомість) - ПО ОДНОМУ на колонку:
+            // це один документ на весь склад, а не документ на людину. Доти
+            // групові не рахувались узагалі, тож кнопка показувала «(0)» і
+            // відомість не було звідки згенерувати (вимога користувача
+            // 2026-09-01).
+            MissingRequiredCount =
+                Rows.Sum(r => r.Cells.Count(c => c.IsMissingRequired && !c.IsGroupColumn))
+                + MissingGroupColumns().Count;
             MissingOptionalCount = Rows.Sum(r => r.Cells.Count(c => c.IsMissingOptional));
             StaleCount = Rows.Sum(r => r.Cells.Count(c => c.IsStale));
 
@@ -376,11 +415,21 @@ namespace GenDoc.ViewModels.Completeness
                 }
             }
 
+            // Групові наказ і відомість - один документ на весь склад, тож
+            // рахуються по одному, а не на кожну людину.
+            var missingGroups = MissingGroupColumns();
+
             var includeOptional = false;
             {
+                var groupLine = missingGroups.Count == 0
+                    ? string.Empty
+                    : $"групових документів і відомостей: {missingGroups.Count} "
+                      + "(по одному на весь склад)\n";
+
                 var confirm = MessageBox.Show(
                     $"Набір «{SelectedIntake?.Label}» · пакет «{SelectedPackage?.Label}» · буде згенеровано:\n" +
-                    $"обов'язкових: {missingRequired.Count}\n" +
+                    $"обов'язкових персональних: {missingRequired.Count}\n" +
+                    groupLine +
                     $"Також згенерувати опційні ({missingOptional.Count})? Так - з опційними, Ні - лише обов'язкові.",
                     "Генерація відсутніх документів", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
                 if (confirm == MessageBoxResult.Cancel) return;
@@ -388,13 +437,19 @@ namespace GenDoc.ViewModels.Completeness
             }
 
             var targets = includeOptional ? missingRequired.Concat(missingOptional).ToList() : missingRequired;
-            if (targets.Count == 0) return;
+            if (targets.Count == 0 && missingGroups.Count == 0) return;
 
-            var manualValues = await CollectManualValuesAsync(targets.Select(t => t.TemplateId).Distinct().ToList());
+            // Ручні мітки збираємо за всіма шаблонами разом - і персональними, і
+            // груповими: інакше форма спливала б двічі.
+            var tagSources = targets.Select(t => t.TemplateId)
+                .Concat(missingGroups.Where(g => !g.Column.IsExport).Select(g => g.Column.TemplateId))
+                .Distinct().ToList();
+            var manualValues = await CollectManualValuesAsync(tagSources);
             if (manualValues is null) return;
 
             IsBusy = true;
             var done = 0;
+            var attempted = targets.Count + missingGroups.Count;
             var errors = new List<string>();
             try
             {
@@ -404,13 +459,20 @@ namespace GenDoc.ViewModels.Completeness
                     if (result.Success) done++;
                     else errors.Add(result.ErrorMessage ?? "невідома помилка");
                 }
+
+                foreach (var group in missingGroups)
+                {
+                    var (ok, error) = await GenerateGroupDocumentAsync(group.Column, group.RecipientIds, manualValues);
+                    if (ok) done++;
+                    else errors.Add($"«{group.Column.Name}»: {error}");
+                }
             }
             finally
             {
                 IsBusy = false;
             }
 
-            ShowBatchSummary("Генерація завершена", done, targets.Count - done, errors);
+            ShowBatchSummary("Генерація завершена", done, attempted - done, errors);
             await RebuildAsync();
             WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
         }
@@ -482,6 +544,44 @@ namespace GenDoc.ViewModels.Completeness
             if (failed > 0) message += $"\nПомилок: {failed}\n{string.Join("\n", errors.Take(6))}";
             MessageBox.Show(message, title, MessageBoxButton.OK,
                 failed > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
+        }
+
+        /// <summary>Створює ОДИН груповий документ (наказ або відомість) на
+        /// переданий склад. Це не «документ на людину»: клітинки в колонці
+        /// позеленіють у всіх, хто потрапив у документ.
+        ///
+        /// Йде тим самим конвеєром, що й «Генерація» (розкладка тек, версії,
+        /// архів, запис прогону) - через вибіркову генерацію, а не окремою
+        /// гілкою: інакше документ із матриці й документ із «Генерації» лягали б
+        /// у різні місця.</summary>
+        private async Task<(bool Ok, string? Error)> GenerateGroupDocumentAsync(
+            MatrixTemplateInfo column, List<int> recipientIds, Dictionary<string, string> manualValues)
+        {
+            try
+            {
+                var generation = _serviceProvider.GetRequiredService<Services.Generation.IGenerationService>();
+                var outputFolder = await _serviceProvider
+                    .GetRequiredService<Services.Generation.IOutputFolderService>().GetDefaultAsync();
+
+                var templateIds = column.IsExport ? Array.Empty<int>() : new[] { column.TemplateId };
+                var exportIds = column.IsExport ? new[] { column.TemplateId } : Array.Empty<int>();
+
+                var result = await Task.Run(() => generation.GenerateTemplatesForRecipients(
+                    templateIds, exportIds, recipientIds, outputFolder, manualValues,
+                    new Progress<string>()));
+
+                if (result.DocxGroupErrors + result.GroupErrors > 0)
+                {
+                    var first = result.Issues?.FirstOrDefault();
+                    return (false, first?.Message ?? "документ не сформовано");
+                }
+
+                return (result.DocxGroupGenerated + result.GroupGenerated > 0, "документ не сформовано");
+            }
+            catch (Exception ex)
+            {
+                return (false, ex.GetBaseException().Message);
+            }
         }
 
         private async Task<Dictionary<string, string>?> CollectManualValuesAsync(List<int> templateIds)

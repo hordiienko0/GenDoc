@@ -439,9 +439,17 @@ namespace GenDoc.Services.Generation
         {
             using var db = _dbFactory.CreateDbContext();
 
-            var templates = db.Templates
-                .Where(t => templateIds.Contains(t.Id) && t.Kind == TemplateKind.PerRecipient)
+            var requested = db.Templates
+                .Where(t => templateIds.Contains(t.Id))
                 .ToList();
+
+            var templates = requested.Where(t => t.Kind == TemplateKind.PerRecipient).ToList();
+
+            // Групові Word-шаблони теж треба вміти згенерувати вибірково: інакше
+            // «Комплектність» могла попросити відсутню відомість, але не
+            // відсутній груповий наказ - обидва ж один документ на весь склад
+            // (вимога користувача 2026-09-01).
+            var groupTemplates = requested.Where(t => t.Kind == TemplateKind.Group).ToList();
 
             // Excel-відомості - через ті самі «зв'язки», що й у пакеті, але тимчасові
             // (не в БД): RunXlsxPhase бере з них лише шаблон і фільтр придатності.
@@ -478,23 +486,27 @@ namespace GenDoc.Services.Generation
                 usedFileNames, runStamp, regenerateExisting: true, progress);
             var xlsx = RunXlsxPhase(db, exportLinks, recipients, orgSettings, run, manualValues, outputFolder,
                 usedFileNames, runStamp, regenerateExisting: true, progress, courseOfficerId);
+            var docxGroup = RunDocxGroupPhase(db, groupTemplates, recipients, orgSettings, run, manualValues,
+                outputFolder, usedFileNames, runStamp, regenerateExisting: true, progress);
 
-            run.GeneratedCount = docx.Generated + xlsx.Generated;
-            run.SkippedCount = docx.Skipped + xlsx.Skipped;
-            run.ErrorCount = docx.Errors + xlsx.Errors;
+            run.GeneratedCount = docx.Generated + xlsx.Generated + docxGroup.Generated;
+            run.SkippedCount = docx.Skipped + xlsx.Skipped + docxGroup.Skipped;
+            run.ErrorCount = docx.Errors + xlsx.Errors + docxGroup.Errors;
             var issues = new List<RunIssue>(docx.Issues);
             issues.AddRange(xlsx.Issues);
+            issues.AddRange(docxGroup.Issues);
             run.Summary = RunIssue.Serialize(issues);
 
             _auditLogService.LogGenerate(db, "GenerationPackageRun", run.Id,
-                $"Вибірково: шаблонів {templates.Count}, відомостей {exportTemplates.Count}, осіб {recipients.Count}; " +
-                $"згенеровано {run.GeneratedCount}, помилок {run.ErrorCount}");
+                $"Вибірково: шаблонів {templates.Count}, групових {groupTemplates.Count}, "
+                + $"відомостей {exportTemplates.Count}, осіб {recipients.Count}; "
+                + $"згенеровано {run.GeneratedCount}, помилок {run.ErrorCount}");
             db.SaveChanges();
 
             return new RunResult(
                 docx.Generated, docx.Skipped, docx.Errors,
                 xlsx.Generated, xlsx.Skipped, xlsx.Errors,
-                0, 0, 0, run.Id, issues);
+                docxGroup.Generated, docxGroup.Skipped, docxGroup.Errors, run.Id, issues);
         }
 
         // Особовий склад для запуску: весь або лише позначені, завжди звужений
