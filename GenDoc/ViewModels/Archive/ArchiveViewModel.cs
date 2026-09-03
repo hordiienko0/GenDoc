@@ -218,6 +218,7 @@ namespace GenDoc.ViewModels.Archive
             if (_suppressFilterReload) return;
             _ = ResetAndReloadAsync();
             if (IsRunsTab) _ = ReloadRunsAsync();
+            if (IsGroupTab) _ = ReloadGroupAsync();
         }
 
         private ArchiveFilter BuildFilter(int skip) => new(
@@ -835,7 +836,7 @@ namespace GenDoc.ViewModels.Archive
                 ClearGroupChecked();
                 var rows = await _archiveService.QueryGroupAsync(new GroupArchiveFilter(
                     SelectedGroupTemplate?.ExportTemplateId, SelectedGroupTemplate?.DocxTemplateId, null, 0, PageSize,
-                    MineOnly ? _currentUser.CurrentUserId : null));
+                    MineOnly ? _currentUser.CurrentUserId : null, SelectedIntake?.Id));
                 GroupRows.Clear();
                 foreach (var dto in rows)
                 {
@@ -1047,6 +1048,7 @@ namespace GenDoc.ViewModels.Archive
                 _archiveService,
                 row.ExportTemplateId == 0 ? null : row.ExportTemplateId,
                 row.Dto.DocxTemplateId,
+                row.Dto.IntakeId,
                 row.Dto.TemplateName);
             await vm.InitializeAsync();
             _dialogService.ShowDialog(vm, Application.Current.MainWindow);

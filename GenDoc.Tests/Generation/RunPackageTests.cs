@@ -303,4 +303,63 @@ public class RunPackageTests : IDisposable
         using var check = db.Factory.CreateDbContext();
         Assert.Null(check.GenerationPackageRuns.Single().IntakeId);
     }
+
+    private static void AddSheetToPackage(TestDb db, int packageId)
+    {
+        using var ctx = db.Factory.CreateDbContext();
+        var sheet = new ExportTemplate
+        {
+            Name = "Допуск Додаток 5",
+            OriginalFileName = "dopusk.xlsx",
+            Content = TemplateFixtures.Bytes(TemplateFixtures.DopuskXlsx),
+            UploadedAt = DateTime.Now,
+            UsesPlaceholders = true
+        };
+        ctx.ExportTemplates.Add(sheet);
+        ctx.SaveChanges();
+        ctx.GenerationPackageExportTemplates.Add(new GenerationPackageExportTemplate
+        {
+            GenerationPackageId = packageId, ExportTemplateId = sheet.Id, SortOrder = 0, FitnessFilter = FitnessFilter.All
+        });
+        ctx.SaveChanges();
+    }
+
+    [Fact]
+    public void RunPackage_GroupSheetRecordsIntakeOfRun()
+    {
+        using var db = new TestDb();
+        int intakeId;
+        using (var ctx = db.Factory.CreateDbContext())
+        {
+            var intake = new Intake { Number = 15, DisplayNumber = "Набір №15" };
+            ctx.Intakes.Add(intake);
+            ctx.SaveChanges();
+            intakeId = intake.Id;
+        }
+        var people = TemplateFixtures.Roster(2);
+        foreach (var p in people) p.IntakeId = intakeId;
+        var (packageId, _) = SeedPackage(db, people);
+        AddSheetToPackage(db, packageId);
+
+        var result = Run(db, packageId);
+
+        Assert.Equal(1, result.GroupGenerated);
+        using var check = db.Factory.CreateDbContext();
+        var sheet = check.GeneratedGroupDocuments.Single();
+        Assert.Equal(intakeId, sheet.IntakeId);
+        Assert.Equal(check.GenerationPackageRuns.Single().Id, sheet.RunId);
+    }
+
+    [Fact]
+    public void RunPackage_PermanentStaffOnly_GroupSheetHasNoIntake()
+    {
+        using var db = new TestDb();
+        var (packageId, _) = SeedPackage(db, TemplateFixtures.Roster(2));
+        AddSheetToPackage(db, packageId);
+
+        Run(db, packageId, selection: RosterSelection.Everyone with { PermanentStaffOnly = true });
+
+        using var check = db.Factory.CreateDbContext();
+        Assert.Null(check.GeneratedGroupDocuments.Single().IntakeId);
+    }
 }

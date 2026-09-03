@@ -700,7 +700,7 @@ namespace GenDoc.Services.Generation
                     var rosterHash = _documentHashService.ComputeRosterHash(template.Id, rosterEntries);
 
                     var currents = db.GeneratedGroupDocuments
-                        .Where(g => g.ExportTemplateId == template.Id && g.IntakeId == null && g.IsCurrent)
+                        .Where(g => g.ExportTemplateId == template.Id && g.IntakeId == run.IntakeId && g.IsCurrent)
                         .ToList();
                     var current = currents.OrderByDescending(g => g.Version).FirstOrDefault();
 
@@ -744,7 +744,7 @@ namespace GenDoc.Services.Generation
                     File.WriteAllBytes(outputPath, result.Content!);
 
                     var maxVersion = db.GeneratedGroupDocuments.IgnoreQueryFilters()
-                        .Where(g => g.ExportTemplateId == template.Id && g.IntakeId == null)
+                        .Where(g => g.ExportTemplateId == template.Id && g.IntakeId == run.IntakeId)
                         .Select(g => (int?)g.Version)
                         .Max() ?? 0;
 
@@ -754,7 +754,7 @@ namespace GenDoc.Services.Generation
                     {
                         ExportTemplateId = template.Id,
                         RunId = run.Id,
-                        IntakeId = null,
+                        IntakeId = run.IntakeId,
                         GeneratedAt = DateTime.Now,
                         GeneratedByUserId = _currentUserContext.CurrentUserId ?? 0,
                         FileName = fileName,
@@ -855,7 +855,7 @@ namespace GenDoc.Services.Generation
                     var rosterHash = _documentHashService.ComputeRosterHash(template.Id, rosterEntries);
 
                     var currents = db.GeneratedGroupDocuments
-                        .Where(g => g.TemplateId == template.Id && g.IntakeId == null && g.IsCurrent)
+                        .Where(g => g.TemplateId == template.Id && g.IntakeId == run.IntakeId && g.IsCurrent)
                         .ToList();
                     var current = currents.OrderByDescending(g => g.Version).FirstOrDefault();
 
@@ -884,7 +884,7 @@ namespace GenDoc.Services.Generation
 
                     var bytes = File.ReadAllBytes(outputPath);
                     var maxVersion = db.GeneratedGroupDocuments.IgnoreQueryFilters()
-                        .Where(g => g.TemplateId == template.Id && g.IntakeId == null)
+                        .Where(g => g.TemplateId == template.Id && g.IntakeId == run.IntakeId)
                         .Select(g => (int?)g.Version).Max() ?? 0;
 
                     foreach (var stale in currents) stale.IsCurrent = false;
@@ -894,7 +894,7 @@ namespace GenDoc.Services.Generation
                         TemplateId = template.Id,
                         ExportTemplateId = null,
                         RunId = run.Id,
-                        IntakeId = null,
+                        IntakeId = run.IntakeId,
                         GeneratedAt = DateTime.Now,
                         GeneratedByUserId = _currentUserContext.CurrentUserId ?? 0,
                         FileName = fileName,

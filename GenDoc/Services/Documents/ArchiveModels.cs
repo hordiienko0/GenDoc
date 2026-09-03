@@ -72,7 +72,8 @@ namespace GenDoc.Services.Documents
 
     public record ArchiveOpResult(bool Success, string? ErrorMessage);
 
-    public record GroupArchiveFilter(int? ExportTemplateId, int? DocxTemplateId, int? Year, int Skip, int Take, int? UserId = null);
+    public record GroupArchiveFilter(
+        int? ExportTemplateId, int? DocxTemplateId, int? Year, int Skip, int Take, int? UserId = null, int? IntakeId = null);
 
     public record GroupTemplateOption(int? ExportTemplateId, int? DocxTemplateId, string Name);
 
@@ -88,7 +89,8 @@ namespace GenDoc.Services.Documents
         string Author,
         bool HasContent,
         string FileName,
-        long SizeBytes);
+        long SizeBytes,
+        int? IntakeId = null);
 
     public record GroupVersionDto(
         int Id, int Version, DateTime CreatedAt, string Author, long SizeBytes,

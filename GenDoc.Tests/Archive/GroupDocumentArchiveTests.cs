@@ -47,13 +47,14 @@ public class GroupDocumentArchiveTests
 
     private static int AddGroupDocument(
         TestDb db, int? exportTemplateId, int? templateId, int version, bool isCurrent,
-        bool hasContent = true)
+        bool hasContent = true, int? intakeId = null)
     {
         using var ctx = db.Factory.CreateDbContext();
         var doc = new GeneratedGroupDocument
         {
             ExportTemplateId = exportTemplateId,
             TemplateId = templateId,
+            IntakeId = intakeId,
             GeneratedAt = DateTime.Now.AddMinutes(version),
             GeneratedByUserId = 1,
             FileName = $"group-v{version}.xlsx",
@@ -219,7 +220,7 @@ public class GroupDocumentArchiveTests
         var zalikV2 = AddGroupDocument(db, zalik, null, version: 2, isCurrent: true);
         AddGroupDocument(db, dopusk, null, version: 1, isCurrent: true);
 
-        var versions = await TestServices.Archive(db).GetGroupVersionsAsync(zalik, null);
+        var versions = await TestServices.Archive(db).GetGroupVersionsAsync(zalik, null, null);
 
         Assert.Equal(new[] { zalikV2, zalikV1 }, versions.Select(v => v.Id));
     }
@@ -235,8 +236,76 @@ public class GroupDocumentArchiveTests
         var aV2 = AddGroupDocument(db, null, rapportA, version: 2, isCurrent: true);
         AddGroupDocument(db, null, rapportB, version: 1, isCurrent: true);
 
-        var versions = await TestServices.Archive(db).GetGroupVersionsAsync(null, rapportA);
+        var versions = await TestServices.Archive(db).GetGroupVersionsAsync(null, rapportA, null);
 
         Assert.Equal(new[] { aV2, aV1 }, versions.Select(v => v.Id));
+    }
+
+    private static int AddIntake(TestDb db, int number)
+    {
+        using var ctx = db.Factory.CreateDbContext();
+        var intake = new Intake { Number = number, DisplayNumber = $"Набір №{number}" };
+        ctx.Intakes.Add(intake);
+        ctx.SaveChanges();
+        return intake.Id;
+    }
+
+    [Fact]
+    public async Task DeleteGroupAsync_PromotesPreviousVersionWithinTheSameIntakeOnly()
+    {
+        using var db = new TestDb();
+        SeedUser(db);
+        var zalik = AddExportTemplate(db, "Залік");
+        var intakeA = AddIntake(db, 28);
+        var intakeB = AddIntake(db, 29);
+        var aV1 = AddGroupDocument(db, zalik, null, version: 1, isCurrent: false, intakeId: intakeA);
+        var aV2 = AddGroupDocument(db, zalik, null, version: 2, isCurrent: true, intakeId: intakeA);
+        var bV1 = AddGroupDocument(db, zalik, null, version: 1, isCurrent: true, intakeId: intakeB);
+
+        await TestServices.Archive(db).DeleteGroupAsync(new[] { aV2 });
+
+        using var ctx = db.Factory.CreateDbContext();
+        Assert.True(ctx.GeneratedGroupDocuments.First(g => g.Id == aV1).IsCurrent);
+        Assert.True(ctx.GeneratedGroupDocuments.First(g => g.Id == bV1).IsCurrent);
+    }
+
+    [Fact]
+    public async Task GetGroupVersionsAsync_ReturnsOnlyTheIntakesSeries()
+    {
+        using var db = new TestDb();
+        SeedUser(db);
+        var zalik = AddExportTemplate(db, "Залік");
+        var intakeA = AddIntake(db, 28);
+        var intakeB = AddIntake(db, 29);
+        var aV1 = AddGroupDocument(db, zalik, null, version: 1, isCurrent: false, intakeId: intakeA);
+        var aV2 = AddGroupDocument(db, zalik, null, version: 2, isCurrent: true, intakeId: intakeA);
+        AddGroupDocument(db, zalik, null, version: 1, isCurrent: true, intakeId: intakeB);
+        AddGroupDocument(db, zalik, null, version: 3, isCurrent: true);
+
+        var versions = await TestServices.Archive(db).GetGroupVersionsAsync(zalik, null, intakeA);
+
+        Assert.Equal(new[] { aV2, aV1 }, versions.Select(v => v.Id));
+    }
+
+    [Fact]
+    public async Task QueryGroupAsync_IntakeFilterKeepsOnlyThatIntakesDocuments()
+    {
+        using var db = new TestDb();
+        SeedUser(db);
+        var zalik = AddExportTemplate(db, "Залік");
+        var intakeA = AddIntake(db, 28);
+        var intakeB = AddIntake(db, 29);
+        var a = AddGroupDocument(db, zalik, null, version: 1, isCurrent: true, intakeId: intakeA);
+        AddGroupDocument(db, zalik, null, version: 1, isCurrent: true, intakeId: intakeB);
+        AddGroupDocument(db, zalik, null, version: 1, isCurrent: true);
+
+        var service = TestServices.Archive(db);
+        var filtered = await service.QueryGroupAsync(new GroupArchiveFilter(null, null, null, 0, 50, IntakeId: intakeA));
+        var all = await service.QueryGroupAsync(new GroupArchiveFilter(null, null, null, 0, 50));
+
+        var row = Assert.Single(filtered);
+        Assert.Equal(a, row.Id);
+        Assert.Equal(intakeA, row.IntakeId);
+        Assert.Equal(3, all.Count);
     }
 }

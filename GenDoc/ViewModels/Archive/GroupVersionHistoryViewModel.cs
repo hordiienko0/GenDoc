@@ -35,13 +35,16 @@ namespace GenDoc.ViewModels.Archive
         private readonly IDocumentArchiveService _archiveService;
         private readonly int? _exportTemplateId;
         private readonly int? _docxTemplateId;
+        private readonly int? _intakeId;
 
         public GroupVersionHistoryViewModel(
-            IDocumentArchiveService archiveService, int? exportTemplateId, int? docxTemplateId, string templateName)
+            IDocumentArchiveService archiveService, int? exportTemplateId, int? docxTemplateId, int? intakeId,
+            string templateName)
         {
             _archiveService = archiveService;
             _exportTemplateId = exportTemplateId;
             _docxTemplateId = docxTemplateId;
+            _intakeId = intakeId;
             HeaderText = templateName;
         }
 
@@ -53,7 +56,7 @@ namespace GenDoc.ViewModels.Archive
         public async Task InitializeAsync()
         {
             Versions.Clear();
-            foreach (var version in await _archiveService.GetGroupVersionsAsync(_exportTemplateId, _docxTemplateId))
+            foreach (var version in await _archiveService.GetGroupVersionsAsync(_exportTemplateId, _docxTemplateId, _intakeId))
                 Versions.Add(new GroupVersionRowViewModel(version));
         }
 

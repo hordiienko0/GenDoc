@@ -694,6 +694,8 @@ namespace GenDoc.Services.Documents
                 query = query.Where(g => g.GeneratedAt.Year == year);
             if (filter.UserId is int uid)
                 query = query.Where(g => g.GeneratedByUserId == uid);
+            if (filter.IntakeId is int intakeId)
+                query = query.Where(g => g.IntakeId == intakeId);
 
             return await query
                 .OrderByDescending(g => g.GeneratedAt)
@@ -715,7 +717,8 @@ namespace GenDoc.Services.Documents
                     g.GeneratedByUser != null ? g.GeneratedByUser.FullName : "-",
                     g.HasContent,
                     g.FileName,
-                    g.SizeBytes))
+                    g.SizeBytes,
+                    g.IntakeId))
                 .ToListAsync();
         }
 
@@ -869,10 +872,10 @@ namespace GenDoc.Services.Documents
             await db.SaveChangesAsync();
         }
 
-        public async Task<List<GroupVersionDto>> GetGroupVersionsAsync(int? exportTemplateId, int? docxTemplateId)
+        public async Task<List<GroupVersionDto>> GetGroupVersionsAsync(int? exportTemplateId, int? docxTemplateId, int? intakeId)
         {
             using var db = _dbFactory.CreateDbContext();
-            return await SameGroupSeries(db.GeneratedGroupDocuments, exportTemplateId, docxTemplateId, intakeId: null)
+            return await SameGroupSeries(db.GeneratedGroupDocuments, exportTemplateId, docxTemplateId, intakeId)
                 .OrderByDescending(g => g.Version)
                 .Select(g => new GroupVersionDto(
                     g.Id, g.Version, g.GeneratedAt,

@@ -41,7 +41,7 @@ namespace GenDoc.Services.Documents
         Task<List<GroupParticipantDto>> GetGroupParticipantsAsync(int groupDocumentId);
         Task<ArchiveOpResult> SaveGroupAsAsync(int groupDocumentId, string targetPath);
         Task DeleteGroupAsync(IReadOnlyList<int> groupDocumentIds);
-        Task<List<GroupVersionDto>> GetGroupVersionsAsync(int? exportTemplateId, int? docxTemplateId);
+        Task<List<GroupVersionDto>> GetGroupVersionsAsync(int? exportTemplateId, int? docxTemplateId, int? intakeId);
         Task<int> MakeGroupCurrentAsync(int versionDocumentId);
         Task<List<DeletedGroupDocumentInfo>> GetDeletedGroupDocumentsAsync();
         Task RestoreGroupAsync(int groupDocumentId);

@@ -50,13 +50,23 @@ public class OneCurrentGroupDocumentTests
         return new Seeded(intake.Id, package.Id, sheet.Id, older.Id, new List<int> { one.Id, two.Id });
     }
 
-    private static void AddCurrentDocument(TestDb db, int sheetId, int version, IEnumerable<int> participants)
+    private static int AddIntake(TestDb db, int number)
+    {
+        using var ctx = db.Factory.CreateDbContext();
+        var intake = new Intake { Number = number, DisplayNumber = $"Набір №{number}" };
+        ctx.Intakes.Add(intake);
+        ctx.SaveChanges();
+        return intake.Id;
+    }
+
+    private static void AddCurrentDocument(
+        TestDb db, int sheetId, int version, IEnumerable<int> participants, int? intakeId = null)
     {
         using var ctx = db.Factory.CreateDbContext();
         var doc = new GeneratedGroupDocument
         {
             ExportTemplateId = sheetId,
-            IntakeId = null,
+            IntakeId = intakeId,
             GeneratedAt = new DateTime(2026, 8, 24).AddDays(version),
             GeneratedByUserId = 1,
             FileName = $"dopusk-v{version}.xlsx",
@@ -111,9 +121,9 @@ public class OneCurrentGroupDocumentTests
         using var db = new TestDb();
         var s = Seed(db);
 
-        AddCurrentDocument(db, s.SheetId, version: 5, new[] { s.OldPersonId });
-        AddCurrentDocument(db, s.SheetId, version: 6, s.NowPersonIds);
-        AddCurrentDocument(db, s.SheetId, version: 7, s.NowPersonIds);
+        AddCurrentDocument(db, s.SheetId, version: 5, new[] { s.OldPersonId }, s.IntakeId);
+        AddCurrentDocument(db, s.SheetId, version: 6, s.NowPersonIds, s.IntakeId);
+        AddCurrentDocument(db, s.SheetId, version: 7, s.NowPersonIds, s.IntakeId);
 
         var folder = Path.Combine(Path.GetTempPath(), $"gendoc-onecur-{Guid.NewGuid():N}");
         Directory.CreateDirectory(folder);
@@ -134,5 +144,75 @@ public class OneCurrentGroupDocumentTests
         {
             if (Directory.Exists(folder)) Directory.Delete(folder, recursive: true);
         }
+    }
+
+    [Fact]
+    public void GeneratingStoresTheIntakeOfTheRoster()
+    {
+        using var db = new TestDb();
+        var s = Seed(db);
+
+        var folder = Path.Combine(Path.GetTempPath(), $"gendoc-onecur-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(folder);
+        try
+        {
+            TestServices.Generation(db).GenerateTemplatesForRecipients(
+                Array.Empty<int>(), new[] { s.SheetId }, s.NowPersonIds,
+                folder, new Dictionary<string, string>(), new Progress<string>());
+
+            using var ctx = db.Factory.CreateDbContext();
+            var doc = Assert.Single(ctx.GeneratedGroupDocuments.Where(g => g.ExportTemplateId == s.SheetId).ToList());
+            Assert.Equal(s.IntakeId, doc.IntakeId);
+        }
+        finally
+        {
+            if (Directory.Exists(folder)) Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void GeneratingForOneIntakeKeepsTheOtherIntakesSheetCurrent()
+    {
+        using var db = new TestDb();
+        var s = Seed(db);
+        var otherIntakeId = AddIntake(db, 28);
+        AddCurrentDocument(db, s.SheetId, version: 7, new[] { s.OldPersonId }, otherIntakeId);
+
+        var folder = Path.Combine(Path.GetTempPath(), $"gendoc-onecur-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(folder);
+        try
+        {
+            TestServices.Generation(db).GenerateTemplatesForRecipients(
+                Array.Empty<int>(), new[] { s.SheetId }, s.NowPersonIds,
+                folder, new Dictionary<string, string>(), new Progress<string>());
+
+            using var ctx = db.Factory.CreateDbContext();
+            var other = ctx.GeneratedGroupDocuments.Single(g => g.IntakeId == otherIntakeId);
+            var mine = ctx.GeneratedGroupDocuments.Single(g => g.IntakeId == s.IntakeId);
+
+            Assert.True(other.IsCurrent, "відомість чужого набору втратила статус поточної");
+            Assert.True(mine.IsCurrent);
+            Assert.Equal(1, mine.Version);
+        }
+        finally
+        {
+            if (Directory.Exists(folder)) Directory.Delete(folder, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task TheMatrixIgnoresSheetsOfAnotherIntake()
+    {
+        using var db = new TestDb();
+        var s = Seed(db);
+        var otherIntakeId = AddIntake(db, 28);
+
+        AddCurrentDocument(db, s.SheetId, version: 3, s.NowPersonIds, otherIntakeId);
+
+        var data = await TestServices.Completeness(db).BuildAsync(s.IntakeId, s.PackageId);
+
+        foreach (var personId in s.NowPersonIds)
+            Assert.False(data.Docs.ContainsKey((personId, s.SheetId, true)),
+                "матриця показала відомість чужого набору");
     }
 }
