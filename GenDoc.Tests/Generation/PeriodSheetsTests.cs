@@ -102,7 +102,9 @@ public class PeriodSheetsTests
         foreach (var sheetName in new[] { "03.08.2026", "04.08.2026" })
         {
             var text = produced.Worksheet(sheetName).RangeUsed()!.CellsUsed()
-                .Select(c => c.GetString())
+                .Select(c => c.DataType == XLDataType.DateTime
+                    ? c.GetDateTime().ToString("dd.MM.yyyy")
+                    : c.GetString())
                 .Aggregate(string.Empty, (a, b) => a + "\n" + b);
 
             Assert.Contains(sheetName, text);
