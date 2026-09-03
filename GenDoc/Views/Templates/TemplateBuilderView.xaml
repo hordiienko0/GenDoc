@@ -739,68 +739,60 @@
                         </Border>
                     </ScrollViewer>
 
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
-                                  Background="{StaticResource BackgroundBrush}"
+                    <ScrollViewer x:Name="SheetScrollViewer"
+                                  VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                                  Background="White"
+                                  SizeChanged="SheetScrollViewer_SizeChanged"
                                   Visibility="{Binding IsExcelMode, Converter={StaticResource BoolToVisibility}}">
-                        <Border Background="White" Margin="10" BorderBrush="{StaticResource BorderLineBrush}"
-                                BorderThickness="1">
-                            <StackPanel>
-                                <DockPanel Background="{StaticResource RowAltBrush}">
-                                    <Border DockPanel.Dock="Left" Width="32" BorderBrush="{StaticResource BorderLineBrush}"
-                                            BorderThickness="0,0,1,1"/>
-                                    <ItemsControl ItemsSource="{Binding SheetColumnLetters}">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate>
-                                                <UniformGrid Rows="1"/>
-                                            </ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate>
-                                                <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,1,1"
-                                                        Padding="4,3" MinWidth="86" MaxWidth="130">
-                                                    <TextBlock Text="{Binding}" TextAlignment="Center" FontSize="11"
-                                                               FontWeight="Bold" Foreground="{StaticResource TextSecondaryBrush}"/>
-                                                </Border>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                </DockPanel>
-
-                                <ItemsControl ItemsSource="{Binding SheetRows}">
+                        <StackPanel Background="White" HorizontalAlignment="Left" VerticalAlignment="Top">
+                            <StackPanel Orientation="Horizontal" Background="{StaticResource RowAltBrush}"
+                                        Height="{x:Static builderVm:TemplateBuilderViewModel.SheetRowHeight}">
+                                <Border Width="{x:Static builderVm:TemplateBuilderViewModel.SheetRowHeaderWidth}"
+                                        BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,1,1"/>
+                                <ItemsControl ItemsSource="{Binding SheetColumnLetters}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <DockPanel>
-                                                <Border DockPanel.Dock="Left" Width="32" Padding="4,3"
-                                                        Background="{StaticResource RowAltBrush}"
-                                                        BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,1,1">
-                                                    <TextBlock Text="{Binding Number}" TextAlignment="Center" FontSize="11"
-                                                               Foreground="{StaticResource TextSecondaryBrush}"/>
-                                                </Border>
+                                            <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,1,1"
+                                                    Width="{x:Static builderVm:TemplateBuilderViewModel.SheetCellWidth}">
+                                                <TextBlock Text="{Binding}" TextAlignment="Center" VerticalAlignment="Center"
+                                                           FontSize="11" FontWeight="Bold"
+                                                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
 
-                                                <ItemsControl ItemsSource="{Binding Cells}">
-                                                    <ItemsControl.ItemsPanel>
-                                                        <ItemsPanelTemplate>
-                                                            <UniformGrid Rows="1"/>
-                                                        </ItemsPanelTemplate>
-                                                    </ItemsControl.ItemsPanel>
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <Border BorderBrush="{StaticResource BorderLineBrush}"
-                                                                    BorderThickness="0,0,1,1" Padding="5,4" MinHeight="26">
-                                                                <Border.Style>
-                                                                    <Style TargetType="Border">
-                                                                        <Setter Property="MinWidth" Value="86"/>
-                                                                        <Setter Property="MaxWidth" Value="130"/>
-                                                                        <Style.Triggers>
-                                                                            <DataTrigger Binding="{Binding DataContext.IsMerged, RelativeSource={RelativeSource AncestorType=DockPanel}}"
-                                                                                         Value="True">
-                                                                                <Setter Property="MinWidth" Value="0"/>
-                                                                                <Setter Property="MaxWidth" Value="Infinity"/>
-                                                                            </DataTrigger>
-                                                                        </Style.Triggers>
-                                                                    </Style>
-                                                                </Border.Style>
-                                                                <TextBlock local:PreviewInlines.Runs="{Binding}" TextWrapping="Wrap"
+                            <ItemsControl ItemsSource="{Binding SheetRows}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <DockPanel MinHeight="{x:Static builderVm:TemplateBuilderViewModel.SheetRowHeight}">
+                                            <Border DockPanel.Dock="Left"
+                                                    Width="{x:Static builderVm:TemplateBuilderViewModel.SheetRowHeaderWidth}"
+                                                    Background="{StaticResource RowAltBrush}"
+                                                    BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,1,1">
+                                                <TextBlock Text="{Binding Number}" TextAlignment="Center" VerticalAlignment="Center"
+                                                           FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            </Border>
+
+                                            <ItemsControl ItemsSource="{Binding Cells}" HorizontalAlignment="Left">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Orientation="Horizontal"/>
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border BorderBrush="{StaticResource BorderLineBrush}"
+                                                                BorderThickness="0,0,1,1" Padding="5,4"
+                                                                Width="{Binding Width}"
+                                                                MinHeight="{x:Static builderVm:TemplateBuilderViewModel.SheetRowHeight}">
+                                                            <TextBlock local:PreviewInlines.Runs="{Binding Runs}" TextWrapping="Wrap"
                                                                            FontFamily="{Binding DataContext.Style.Family, RelativeSource={RelativeSource AncestorType=DockPanel}}"
                                                                            FontSize="{Binding DataContext.Style.Size, RelativeSource={RelativeSource AncestorType=DockPanel}}"
                                                                            Foreground="{Binding DataContext.Style.Foreground, RelativeSource={RelativeSource AncestorType=DockPanel}}"
@@ -815,8 +807,7 @@
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                            </StackPanel>
-                        </Border>
+                        </StackPanel>
                     </ScrollViewer>
                 </DockPanel>
             </Border>

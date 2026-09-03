@@ -99,23 +99,64 @@ public class PreviewLineViewModel
     public PreviewStyleViewModel Style { get; }
 }
 
+public class SheetCellViewModel
+{
+    public SheetCellViewModel(IReadOnlyList<PreviewRun> runs, double width)
+    {
+        Runs = runs;
+        Width = width;
+    }
+
+    public IReadOnlyList<PreviewRun> Runs { get; }
+    public double Width { get; }
+}
+
 public class SheetRowViewModel
 {
-    public SheetRowViewModel(SheetPreviewRow row)
+    private static readonly IReadOnlyList<PreviewRun> NoRuns = Array.Empty<PreviewRun>();
+
+    private static readonly PreviewStyleViewModel FillerStyle =
+        new(BlockStyleDefaults.Resolve(TemplateBlockKind.Paragraph, null));
+
+    public SheetRowViewModel(SheetPreviewRow row, int dataColumnCount, int columnCount, double cellWidth)
     {
         Number = row.Number;
         IsMerged = row.IsMerged;
         IsTableHeader = row.IsTableHeader;
         IsTemplateRow = row.IsTemplateRow;
-        Cells = row.Cells;
         Style = new PreviewStyleViewModel(row.Style);
+
+        var cells = new List<SheetCellViewModel>(columnCount);
+
+        if (row.IsMerged)
+        {
+            var span = Math.Max(dataColumnCount, 1);
+            cells.Add(new SheetCellViewModel(row.Cells.Count > 0 ? row.Cells[0] : NoRuns, span * cellWidth));
+            for (var i = span; i < columnCount; i++) cells.Add(new SheetCellViewModel(NoRuns, cellWidth));
+        }
+        else
+        {
+            foreach (var cell in row.Cells) cells.Add(new SheetCellViewModel(cell, cellWidth));
+            for (var i = row.Cells.Count; i < columnCount; i++) cells.Add(new SheetCellViewModel(NoRuns, cellWidth));
+        }
+
+        Cells = cells;
+    }
+
+    public SheetRowViewModel(int number, int columnCount, double cellWidth)
+    {
+        Number = number;
+        Style = FillerStyle;
+        Cells = Enumerable.Range(0, columnCount)
+            .Select(_ => new SheetCellViewModel(NoRuns, cellWidth))
+            .ToList();
     }
 
     public int Number { get; }
     public bool IsMerged { get; }
     public bool IsTableHeader { get; }
     public bool IsTemplateRow { get; }
-    public IReadOnlyList<IReadOnlyList<PreviewRun>> Cells { get; }
+    public IReadOnlyList<SheetCellViewModel> Cells { get; }
     public PreviewStyleViewModel Style { get; }
 }
 
@@ -196,6 +237,49 @@ public partial class TemplateBuilderViewModel : ObservableObject
     public ObservableCollection<SheetRowViewModel> SheetRows { get; } = new();
 
     public ObservableCollection<string> SheetColumnLetters { get; } = new();
+
+    public const double SheetCellWidth = 96;
+    public const double SheetRowHeight = 26;
+    public const double SheetRowHeaderWidth = 32;
+
+    private SheetPreview? _sheet;
+    private double _sheetViewportWidth;
+    private double _sheetViewportHeight;
+
+    public void SetSheetViewport(double width, double height)
+    {
+        if (Math.Abs(width - _sheetViewportWidth) < 0.5 && Math.Abs(height - _sheetViewportHeight) < 0.5) return;
+
+        _sheetViewportWidth = width;
+        _sheetViewportHeight = height;
+        RebuildSheetGrid();
+    }
+
+    private void RebuildSheetGrid()
+    {
+        SheetRows.Clear();
+        SheetColumnLetters.Clear();
+
+        if (_sheet is null) return;
+
+        var dataColumnCount = _sheet.ColumnLetters.Count;
+        var visibleColumns = (int)Math.Ceiling(Math.Max(_sheetViewportWidth - SheetRowHeaderWidth, 0) / SheetCellWidth);
+        var columnCount = Math.Max(dataColumnCount, visibleColumns);
+
+        for (var i = 1; i <= columnCount; i++)
+            SheetColumnLetters.Add(TemplateSheetLayout.ColumnLetter(i));
+
+        var lastNumber = 0;
+        foreach (var row in _sheet.Rows)
+        {
+            SheetRows.Add(new SheetRowViewModel(row, dataColumnCount, columnCount, SheetCellWidth));
+            lastNumber = Math.Max(lastNumber, row.Number);
+        }
+
+        var visibleRows = (int)Math.Ceiling(Math.Max(_sheetViewportHeight - SheetRowHeight, 0) / SheetRowHeight);
+        for (var number = lastNumber + 1; number <= visibleRows; number++)
+            SheetRows.Add(new SheetRowViewModel(number, columnCount, SheetCellWidth));
+    }
 
     [ObservableProperty]
     private BuilderTestPerson? selectedTestPerson;
@@ -744,17 +828,12 @@ public partial class TemplateBuilderViewModel : ObservableObject
         var signatories = Signatories.ToDictionary(
             s => s.Id, s => new SignatoryInfo(s.Rank, s.ShortName));
 
-        SheetRows.Clear();
-        SheetColumnLetters.Clear();
+        _sheet = IsExcelMode
+            ? TemplateBlockPreview.BuildSheet(document.Blocks, values, signatories)
+            : null;
+        RebuildSheetGrid();
 
-        if (IsExcelMode)
-        {
-            var sheet = TemplateBlockPreview.BuildSheet(document.Blocks, values, signatories);
-
-            foreach (var letter in sheet.ColumnLetters) SheetColumnLetters.Add(letter);
-            foreach (var row in sheet.Rows) SheetRows.Add(new SheetRowViewModel(row));
-            return;
-        }
+        if (IsExcelMode) return;
 
         foreach (var element in TemplateBlockPreview.Build(document, values, signatories))
         {

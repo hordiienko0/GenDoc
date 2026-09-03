@@ -11,6 +11,13 @@ namespace GenDoc.Views.Templates
         public TemplateBuilderView()
         {
             InitializeComponent();
+            DataContextChanged += (_, _) => PushSheetViewport();
+        }
+
+        private void PushSheetViewport()
+        {
+            if (DataContext is TemplateBuilderViewModel viewModel && SheetScrollViewer.ActualWidth > 0)
+                viewModel.SetSheetViewport(SheetScrollViewer.ActualWidth, SheetScrollViewer.ActualHeight);
         }
 
         private void PreviewResizeThumb_DragDelta(object sender, System.Windows.Controls.Primitives.DragDeltaEventArgs e)
@@ -21,6 +28,12 @@ namespace GenDoc.Views.Templates
                 viewModel.PreviewWidth - e.HorizontalChange,
                 TemplateBuilderViewModel.PreviewMinWidth,
                 TemplateBuilderViewModel.PreviewMaxWidth);
+        }
+
+        private void SheetScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (DataContext is TemplateBuilderViewModel viewModel)
+                viewModel.SetSheetViewport(e.NewSize.Width, e.NewSize.Height);
         }
 
         private void BlockText_GotFocus(object sender, RoutedEventArgs e)
