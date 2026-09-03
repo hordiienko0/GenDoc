@@ -507,6 +507,52 @@ public class DatabaseSchemaInitializerTests
     }
 
     [Fact]
+    public void BackfillGroupDocumentIntakeIds_TakesIntakeOfRunAndRestoresOneCurrentPerSeries()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        Exec(connection, """
+            CREATE TABLE "GenerationPackageRuns" ("Id" INTEGER PRIMARY KEY, "IntakeId" INTEGER NULL);
+            CREATE TABLE "GeneratedGroupDocuments" (
+                "Id" INTEGER PRIMARY KEY, "RunId" INTEGER NULL, "IntakeId" INTEGER NULL,
+                "ExportTemplateId" INTEGER NULL, "TemplateId" INTEGER NULL,
+                "Version" INTEGER NOT NULL, "IsCurrent" INTEGER NOT NULL, "DeletedAt" TEXT NULL);
+            INSERT INTO "GenerationPackageRuns" VALUES (1, 4), (2, 5), (3, NULL);
+            INSERT INTO "GeneratedGroupDocuments" VALUES
+                (1, 1, NULL, 7, NULL, 1, 0, NULL),
+                (2, 2, NULL, 7, NULL, 2, 1, NULL),
+                (3, 3, NULL, 7, NULL, 3, 0, NULL),
+                (4, 1, 9, 7, NULL, 1, 1, NULL),
+                (5, 1, NULL, 8, NULL, 1, 0, '2026-01-01'),
+                (6, NULL, NULL, NULL, 12, 1, 1, NULL),
+                (7, 1, NULL, NULL, 13, 1, 0, NULL),
+                (8, 1, NULL, NULL, 13, 2, 0, NULL);
+            """);
+
+        DatabaseSchemaInitializer.BackfillGroupDocumentIntakeIds((DbConnection)connection);
+        DatabaseSchemaInitializer.BackfillGroupDocumentIntakeIds((DbConnection)connection);
+
+        object Intake(int id) => Scalar(connection, $"""SELECT "IntakeId" FROM "GeneratedGroupDocuments" WHERE "Id" = {id}""");
+        object Current(int id) => Scalar(connection, $"""SELECT "IsCurrent" FROM "GeneratedGroupDocuments" WHERE "Id" = {id}""");
+
+        Assert.Equal(4L, Intake(1));
+        Assert.Equal(5L, Intake(2));
+        Assert.Equal(DBNull.Value, Intake(3));
+        Assert.Equal(9L, Intake(4));
+        Assert.Equal(4L, Intake(5));
+        Assert.Equal(DBNull.Value, Intake(6));
+
+        Assert.Equal(1L, Current(1));
+        Assert.Equal(1L, Current(2));
+        Assert.Equal(1L, Current(3));
+        Assert.Equal(1L, Current(4));
+        Assert.Equal(0L, Current(5));
+        Assert.Equal(1L, Current(6));
+        Assert.Equal(0L, Current(7));
+        Assert.Equal(1L, Current(8));
+    }
+
+    [Fact]
     public void MigrateGenerationPackageRunsForAdHocRuns_MakesPackageNullableAndKeepsRows()
     {
         using var connection = new SqliteConnection("Data Source=:memory:");

@@ -576,6 +576,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         AddMissingColumns(db, "TemplateFieldMappings", TemplateFieldMappingColumnsV12);
         MigrateGeneratedGroupDocumentsForDocxSupport(db);
         BackfillRunIntakeIds(db);
+        BackfillGroupDocumentIntakeIds(db);
 
         AddMissingColumns(db, "AppSettings", AppSettingsColumnsV13);
         AddMissingColumns(db, "Recipients", RecipientColumnsV14);
@@ -1433,6 +1434,52 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
               AND EXISTS (SELECT 1 FROM ({union}));
             """;
         cmd.ExecuteNonQuery();
+    }
+
+    private static void BackfillGroupDocumentIntakeIds(AppDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        var wasClosed = connection.State != System.Data.ConnectionState.Open;
+        if (wasClosed) connection.Open();
+        try { BackfillGroupDocumentIntakeIds(connection); }
+        finally { if (wasClosed) connection.Close(); }
+    }
+
+    internal static void BackfillGroupDocumentIntakeIds(System.Data.Common.DbConnection connection)
+    {
+        if (!TableExists(connection, "GenerationPackageRuns") || !TableExists(connection, "GeneratedGroupDocuments")) return;
+        if (!GetExistingColumns(connection, "GenerationPackageRuns").Contains("IntakeId")) return;
+        var columns = GetExistingColumns(connection, "GeneratedGroupDocuments");
+        if (!columns.IsSupersetOf(new[] { "IntakeId", "RunId", "TemplateId", "IsCurrent", "DeletedAt" })) return;
+
+        using var fill = connection.CreateCommand();
+        fill.CommandText = """
+            UPDATE "GeneratedGroupDocuments" SET "IntakeId" = (
+                SELECT r."IntakeId" FROM "GenerationPackageRuns" r WHERE r."Id" = "GeneratedGroupDocuments"."RunId")
+            WHERE "IntakeId" IS NULL
+              AND EXISTS (SELECT 1 FROM "GenerationPackageRuns" r
+                          WHERE r."Id" = "GeneratedGroupDocuments"."RunId" AND r."IntakeId" IS NOT NULL);
+            """;
+        fill.ExecuteNonQuery();
+
+        using var promote = connection.CreateCommand();
+        promote.CommandText = """
+            UPDATE "GeneratedGroupDocuments" SET "IsCurrent" = 1
+            WHERE "Id" IN (
+                SELECT d."Id" FROM "GeneratedGroupDocuments" d
+                WHERE d."DeletedAt" IS NULL
+                  AND NOT EXISTS (SELECT 1 FROM "GeneratedGroupDocuments" c
+                                  WHERE c."DeletedAt" IS NULL AND c."IsCurrent" = 1
+                                    AND c."ExportTemplateId" IS d."ExportTemplateId"
+                                    AND c."TemplateId" IS d."TemplateId"
+                                    AND c."IntakeId" IS d."IntakeId")
+                  AND d."Version" = (SELECT MAX(m."Version") FROM "GeneratedGroupDocuments" m
+                                     WHERE m."DeletedAt" IS NULL
+                                       AND m."ExportTemplateId" IS d."ExportTemplateId"
+                                       AND m."TemplateId" IS d."TemplateId"
+                                       AND m."IntakeId" IS d."IntakeId"));
+            """;
+        promote.ExecuteNonQuery();
     }
 
     private static bool TableExists(System.Data.Common.DbConnection connection, string tableName)
