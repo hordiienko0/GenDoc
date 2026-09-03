@@ -4,10 +4,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Services;
 
-// Новий профіль - це новий курсовий офіцер. Доки йому не заведено картку в
-// постійному складі з відповідною ознакою, він не може ні підписати документ,
-// ні потрапити в поле «Курсовий офіцер» у генерації (рішення користувача
-// 2026-08-31).
 public class ProfileCourseOfficerTests
 {
     private static UserProfileService NewService(TestDb db)
@@ -59,8 +55,6 @@ public class ProfileCourseOfficerTests
         Assert.Null(person.MiddleName);
     }
 
-    // Дублі в постійному складі гірші за незаповнені поля: якщо офіцера вже
-    // завели руками, його картка лишається як є - додається лише ознака.
     [Fact]
     public void AnExistingStaffMemberIsFlagged_NotDuplicated()
     {
@@ -85,12 +79,10 @@ public class ProfileCourseOfficerTests
         var people = check.Recipients.Where(r => r.IntakeId == null).ToList();
         var person = Assert.Single(people);
         Assert.True(person.IsCourseOfficer);
-        // Наявні дані не затерті.
         Assert.Equal("майор", person.Rank);
         Assert.Equal("АА-123456", person.ServiceNumber);
     }
 
-    // Збіг шукається без урахування регістру - як і всюди в кирилиці.
     [Fact]
     public void TheNameMatchIgnoresCase()
     {
@@ -111,7 +103,6 @@ public class ProfileCourseOfficerTests
         Assert.Single(check.Recipients.Where(r => r.IntakeId == null).ToList());
     }
 
-    // Однофамільця з іншим іменем це правило не має чіпати.
     [Fact]
     public void ADifferentPersonWithTheSameSurnameGetsTheirOwnCard()
     {
@@ -132,7 +123,6 @@ public class ProfileCourseOfficerTests
         Assert.Equal(2, check.Recipients.Count(r => r.IntakeId == null));
     }
 
-    // Невдале створення профілю не має лишати по собі картку.
     [Fact]
     public void ARejectedProfileLeavesNoStaffCard()
     {
@@ -169,7 +159,6 @@ public class FullNameParserTests
         Assert.Null(parts.MiddleName);
     }
 
-    // Подвійне по батькові або складене ім'я не має обрізатися.
     [Fact]
     public void ExtraWordsAllGoIntoThePatronymic()
     {

@@ -5,7 +5,6 @@ using GenDoc.ViewModels.Personnel;
 
 namespace GenDoc.ViewModels.Archive
 {
-    // «Учасники» групового документа (v25): склад конкретної версії.
     public partial class GroupParticipantsViewModel : DialogViewModelBase
     {
         public GroupParticipantsViewModel(string title, IReadOnlyList<GroupParticipantDto> participants)

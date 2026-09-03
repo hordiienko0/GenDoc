@@ -3,9 +3,6 @@ using GenDoc.Services.Templates;
 
 namespace GenDoc.Tests.Templates;
 
-// Розкладка - спільна для writer'а і для підписів у конструкторі («рядки 2–3»,
-// «A–C»). Якщо вони розійдуться, оператор бачитиме одне, а в книзі буде інше -
-// саме той клас помилок, через який мапи тегів колись звели в одне місце.
 public class TemplateSheetLayoutTests
 {
     [Fact]
@@ -61,7 +58,6 @@ public class TemplateSheetLayoutTests
     public void Column_letters_match_excel(int index, string expected)
         => Assert.Equal(expected, TemplateSheetLayout.ColumnLetter(index));
 
-    // Найважливіше: те, що показує розкладка, і те, що написав writer, - одне й те саме.
     [Fact]
     public void Writer_puts_the_template_row_where_the_layout_says()
     {

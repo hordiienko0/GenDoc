@@ -5,8 +5,6 @@ namespace GenDoc.ViewModels.Generation
 {
     public enum ManualTagKind { Text, Date }
 
-    // Один рядок форми ручних міток. Value завжди тримає кінцевий рядок для підстановки -
-    // для Date-рядків він перераховується з DateValue при зміні.
     public partial class ManualTagRowViewModel : ObservableObject
     {
         private readonly Func<DateOnly, string>? _dateFormatter;
@@ -29,8 +27,6 @@ namespace GenDoc.ViewModels.Generation
 
         public string Tag { get; }
 
-        /// <summary>Підпис поля для оператора. Сам тег нікуди не зникає - він
-        /// лишається в підказці, бо саме за ним звіряються з шаблоном.</summary>
         public string Label => Services.Generation.ManualTagLabel.Human(Tag);
 
         public ManualTagKind Kind { get; }
@@ -60,8 +56,6 @@ namespace GenDoc.ViewModels.Generation
         [ObservableProperty] private StaffPickerOption? selected;
     }
 
-    // Форма ручних міток для групового запуску й ad-hoc діалогу: звичайні тексти,
-    // дати з префілом і формою, та (за наявності пари тегів) пікер підписанта.
     public class ManualTagFormViewModel
     {
         public const string SignerRankTag = "звання_підписанта";
@@ -78,9 +72,6 @@ namespace GenDoc.ViewModels.Generation
             Signer = signer;
             CourseOfficer = courseOfficer;
 
-            // Ключі підписанта мусять збігатися з тим, що шукає генерація, а
-            // шукає вона за PlaceholderTag - тобто з дужками. Тому запам'ятовуємо
-            // ТІ САМІ рядки, які прийшли в переліку тегів, а не константи.
             _signerRankTag = signerRankTag ?? SignerRankTag;
             _signerNameTag = signerNameTag ?? SignerNameTag;
         }
@@ -91,10 +82,6 @@ namespace GenDoc.ViewModels.Generation
         public ObservableCollection<ManualTagRowViewModel> Rows { get; }
         public SignerPickerViewModel? Signer { get; }
 
-        /// <summary>Окремий пікер для {{курсовий_офіцер}}. Це не той самий
-        /// підписант: список вужчий (лише ознака IsCourseOfficer), а значення
-        /// їде в генерацію не через Rows, а окремим ідентифікатором - тег
-        /// підставляє XlsxGenerationService, а не підстановка міток.</summary>
         public SignerPickerViewModel? CourseOfficer { get; }
 
         public bool HasContent => Rows.Count > 0 || Signer is not null || CourseOfficer is not null;

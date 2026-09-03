@@ -14,17 +14,12 @@ public class TemplateNamingTests
     public void Clean_StripsTemplatePrefixAndUnderscores(string input, string expected)
         => Assert.Equal(expected, TemplateNaming.Clean(input));
 
-    // Назва без префікса не повинна постраждати, а слово «шаблон» усередині назви -
-    // прибирається лише з початку.
     [Theory]
     [InlineData("Роздавальна відомість", "Роздавальна відомість")]
     [InlineData("Акт за шаблоном 5", "Акт за шаблоном 5")]
     public void Clean_LeavesOrdinaryNamesAlone(string input, string expected)
         => Assert.Equal(expected, TemplateNaming.Clean(input));
 
-    // Квантифікатор * у регексі дозволяв НУЛЬ роздільників, тож збіг наставав і
-    // тоді, коли після «шаблон» іде літера, і префікс відкушував початок слова:
-    // «Шаблони обліку» → «и обліку» (аудит 2026-08-28).
     [Theory]
     [InlineData("Шаблони обліку", "Шаблони обліку")]
     [InlineData("Шаблонний перелік", "Шаблонний перелік")]
@@ -32,8 +27,6 @@ public class TemplateNamingTests
     public void Clean_DoesNotBiteIntoLongerWordStartingWithTemplate(string input, string expected)
         => Assert.Equal(expected, TemplateNaming.Clean(input));
 
-    // Міграція v20 проганяє Clean по наявних назвах; повторний запуск застосунку
-    // не повинен нічого зіпсувати.
     [Fact]
     public void Clean_IsIdempotent()
     {
@@ -41,8 +34,6 @@ public class TemplateNamingTests
         Assert.Equal(once, TemplateNaming.Clean(once));
     }
 
-    // Назва з самого лише слова «Шаблон» не має перетворитись на порожній рядок -
-    // інакше документ лишиться без імені.
     [Fact]
     public void Clean_NameThatIsOnlyThePrefix_KeepsOriginal()
         => Assert.Equal("Шаблон", TemplateNaming.Clean("Шаблон"));

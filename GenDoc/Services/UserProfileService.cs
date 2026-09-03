@@ -85,23 +85,11 @@ public class UserProfileService : IUserProfileService
         return true;
     }
 
-    /// <summary>
-    /// Новий профіль - це новий курсовий офіцер, тож він одразу з'являється в
-    /// постійному складі з відповідною ознакою. Без цього він не міг би ні
-    /// підписати документ, ні потрапити в поле «Курсовий офіцер» у генерації,
-    /// доки хтось не завів би йому картку руками (рішення користувача
-    /// 2026-08-31).
-    ///
-    /// Якщо людина з таким ПІБ у постійному складі вже є - її картка лишається
-    /// як є, додається лише ознака курсового: дублі в цьому списку гірші за
-    /// незаповнені поля.
-    /// </summary>
     private static void EnsureCourseOfficerCard(AppDbContext db, string fullName)
     {
         var name = FullNameParser.Split(fullName);
         if (name.LastName.Length == 0) return;
 
-        // Постійний склад - це люди поза наборами (IntakeId is null).
         var existing = db.Recipients
             .Where(r => r.IntakeId == null)
             .AsEnumerable()
@@ -123,9 +111,6 @@ public class UserProfileService : IUserProfileService
             LastName = name.LastName,
             FirstName = name.FirstName,
             MiddleName = string.IsNullOrEmpty(name.MiddleName) ? null : name.MiddleName,
-            // Звання й посаду курсовий заповнить сам у «Постійному складі»:
-            // з імені профілю їх не вивести, а вигадувати не можна - вони
-            // друкуються в документах.
             Rank = string.Empty,
             Position = string.Empty,
             ServiceNumber = string.Empty,

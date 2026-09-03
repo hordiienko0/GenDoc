@@ -6,14 +6,6 @@ using GenDoc.ViewModels.Completeness;
 
 namespace GenDoc.Tests.Completeness;
 
-/// <summary>
-/// Аудит 2026-08-28 знайшов чотири розбіжності, які виявились проявами одного:
-/// «порахувати готовність» написано в чотирьох файлах по-різному.
-///
-/// Прийняте визначення: документ зараховано до готовності тоді й лише тоді,
-/// коли він НАЯВНИЙ І НЕ ЗАСТАРІЛИЙ. «Пакет повний» не можна стверджувати,
-/// поки частина документів прострочена.
-/// </summary>
 public class CompletenessConsistencyTests
 {
     private static (int PackageId, int IntakeId, int PersonId, int TemplateId) SeedOnePersonalTemplate(
@@ -42,8 +34,6 @@ public class CompletenessConsistencyTests
 
         person.IntakeId = intake.Id;
 
-        // «Застарілість» рахується тільки для шаблонів, у яких є мапінг: без
-        // нього ComputeSourceHash не з чим порівнювати й стан завжди «свіжий».
         ctx.TemplateFieldMappings.Add(new TemplateFieldMapping
         {
             TemplateId = template.Id, PlaceholderTag = "{{піб}}",
@@ -70,15 +60,11 @@ public class CompletenessConsistencyTests
             RecipientId = personId, TemplateId = templateId, IntakeId = intakeId,
             FileName = "a.docx", GeneratedAt = DateTime.Now, GeneratedByUserId = 1,
             Version = 1, IsCurrent = true, HasContent = true,
-            // Хеш, що завідомо не збігається → документ вважається застарілим.
             SourceHash = stale ? "СТАРИЙ-ХЕШ" : null
         });
         ctx.SaveChanges();
     }
 
-    // C5: категорія порівнюється через єдину точку (FitnessCategoryHelper),
-    // а не ordinal-рядком - інакше «Придатний» з великої мовчки ставав
-    // «обмежено придатним» у матриці й «придатним» у фільтрах генерації.
     [Theory]
     [InlineData("придатний")]
     [InlineData("Придатний")]
@@ -106,10 +92,6 @@ public class CompletenessConsistencyTests
             ICompletenessService.Resolve(template, "обмежено придатний"));
     }
 
-    // C4: документ, згенерований до v6, має IntakeId = NULL (backfill робився лише
-    // для GenerationPackageRuns). Матриця фільтрувала за IntakeId і показувала «-»,
-    // хоча картка особи й архів документ бачили, а «Згенерувати все, чого бракує»
-    // створювала дублі-версії.
     [Fact]
     public async Task Matrix_ShowsLegacyDocumentWithoutIntakeId()
     {
@@ -123,8 +105,6 @@ public class CompletenessConsistencyTests
             "Документ без IntakeId (до v6) не потрапив у матрицю.");
     }
 
-    // C2: зведення по набору не зараховувало застарілий документ, а рядок матриці
-    // зараховував. Через це один екран показував «Пакет повний», а другий - 0 %.
     [Fact]
     public async Task StaleDocument_CountsAsNotReady_InBothSummaryAndMatrixRow()
     {
@@ -161,9 +141,6 @@ public class CompletenessConsistencyTests
         Assert.Equal(1, BuildRow(data, personId, templateId).RequiredPresent);
     }
 
-    // C1: картка особи не резолвила вимогу за категорією, тож шаблон, позначений
-    // «не потрібен» для обмежено придатних, вважався бракуючим - і «Сформувати
-    // повний пакет» його ГЕНЕРУВАЛА, хоча в матриці його не було видно.
     [Fact]
     public async Task RecipientStatus_MarksRequirementPerFitnessCategory()
     {
@@ -197,10 +174,6 @@ public class CompletenessConsistencyTests
         Assert.Equal(0, result.Generated);
     }
 
-    // C3: бейдж навігації мусить дорівнювати рівно тому, на що є кнопки на екрані:
-    // «бракує обов'язкових персональних» + «застарілих обов'язкових». Раніше він
-    // рахував і застарілі «н/п» (яких матриця не показує), і групові шаблони
-    // (яких кнопка не чіпає), тож число не можна було звести до нуля ніколи.
     [Fact]
     public async Task Badge_DoesNotCountStaleDocumentsOfNotApplicableTemplates()
     {
@@ -221,8 +194,6 @@ public class CompletenessConsistencyTests
         Assert.Equal(0, badge);
     }
 
-    // Друга половина того ж дефекту: бейдж рахував і ГРУПОВІ шаблони, яких кнопка
-    // «Згенерувати все, чого бракує» не чіпає, тож число не зводилось до нуля.
     [Fact]
     public async Task Badge_CountsOnlyWhatTheScreenButtonsCanFix()
     {
@@ -256,12 +227,10 @@ public class CompletenessConsistencyTests
 
         var badge = await TestServices.Completeness(db, activeIntake: activeIntake).GetBadgeCountAsync();
 
-        // Персональний шаблон бракує - це 1. Груповий у бейдж не входить.
         Assert.Equal(1, badge);
         Assert.True(personId > 0);
     }
 
-    // Збирає рядок матриці рівно так, як це робить CompletenessViewModel.
     private static MatrixRowViewModel BuildRow(MatrixData data, int personId, int templateId)
     {
         var person = data.People.Single(p => p.Id == personId);

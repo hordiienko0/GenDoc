@@ -2,20 +2,6 @@ using System.Text.RegularExpressions;
 
 namespace GenDoc.Tests;
 
-/// <summary>
-/// Кожен тип, який код дістає з контейнера через GetRequiredService&lt;T&gt;,
-/// мусить бути зареєстрований в App.ConfigureServices.
-///
-/// Навіщо тест: пропущена реєстрація компілюється без жодного попередження, а
-/// падає аж у рантаймі - InvalidOperationException «No service for type» на
-/// кліку по кнопці. Саме так сталося з IntakeWizardViewModel: кнопка «Створити
-/// набір» у «Наборах» була мертвою, попри 564 зелені тести, бо поруч в
-/// OrgTreeViewModel той самий майстер створюється через new і там працює.
-///
-/// Тест текстовий навмисно, як і StaticResourceScopeTests: підняти справжній
-/// контейнер у юніт-тесті означало б підняти WPF-вікна, а розбір коду ловить
-/// рівно цей клас помилок.
-/// </summary>
 public class DependencyRegistrationTests
 {
     private static readonly Regex Resolve = new(
@@ -25,7 +11,6 @@ public class DependencyRegistrationTests
         @"Add(?:Singleton|Transient|Scoped|DbContextFactory)<\s*([A-Za-z0-9_.]+?)(?:\s*,\s*([A-Za-z0-9_.]+?))?\s*>\s*\(",
         RegexOptions.Compiled);
 
-    // Типи, які надає сам хост, а не наша реєстрація.
     private static readonly HashSet<string> ProvidedByHost = new(StringComparer.Ordinal)
     {
         "IServiceProvider", "IServiceScopeFactory",
@@ -39,8 +24,6 @@ public class DependencyRegistrationTests
         return dir?.FullName ?? throw new DirectoryNotFoundException("Не знайдено корінь репозиторію");
     }
 
-    // Порівнюємо коротким іменем: у коді той самий тип пишеться то з простором
-    // імен (ViewModels.Completeness.CompletenessViewModel), то без нього.
     private static string ShortName(string typeName)
     {
         var i = typeName.LastIndexOf('.');

@@ -60,7 +60,6 @@ namespace GenDoc.ViewModels.Completeness
         public double ReadyRatio => RequiredTotal == 0 ? 1.0 : (double)RequiredPresent / RequiredTotal;
         public bool HasMissingRequired => MissingRequiredCount > 0;
 
-        // Ледь помітний теплий фон колонки «ОСОБА», якщо в рядку є хоч одна відсутня обов'язкова клітинка.
         public Brush FirstColumnBackground => HasMissingRequired
             ? (Application.Current.Resources["WarningSoftBrush"] as Brush ?? Brushes.Transparent)
             : Brushes.Transparent;

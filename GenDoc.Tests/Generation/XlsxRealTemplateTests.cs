@@ -6,10 +6,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Generation;
 
-// Наскрізні тести генерації XLSX на справжніх відомостях (Допуск/Залік/Роздавальна).
-// XlsxTemplateScan.ForGeneration повторює те, що ExportTemplateService робить при
-// завантаженні шаблону (Task 7); тут ми беремо (Row, Mappings) звідти і прикладаємо
-// їх до XlsxGenerationService.Generate - саме той шлях, що йде в продакшн-коді.
 public class XlsxRealTemplateTests
 {
     private static XLWorkbook Generate(
@@ -51,15 +47,11 @@ public class XlsxRealTemplateTests
         foreach (var person in roster)
             Assert.Contains(cells, t => t.Contains(person.LastName, StringComparison.Ordinal));
 
-        // Рядки-люди йдуть підряд від рядка-шаблону.
         var sheet = produced.Worksheets.First();
         for (var i = 0; i < roster.Count; i++)
             Assert.Contains(roster[i].LastName, sheet.Row(10 + i).CellsUsed().Select(c => c.GetString()).ToList()
                 .Aggregate(string.Empty, (a, b) => a + b));
 
-        // Заголовок (клітинка B4, злита в B4:I4) - рівно один раз. Це саме той
-        // клас бага, заради якого переписали FindTemplateRow: шапка вважалась
-        // рядком-шаблоном і клонувалась на кожного слухача.
         var headerCount = cells.Count(t =>
             t.Contains("складання заліку зі знань вимог безпеки", StringComparison.Ordinal));
         Assert.Equal(1, headerCount);
@@ -88,7 +80,6 @@ public class XlsxRealTemplateTests
         Assert.DoesNotContain(cells, t => t.Contains("{{", StringComparison.Ordinal));
     }
 
-    // Блок підписів під таблицею мусить з'їхати рівно на кількість вставлених рядків.
     [Fact]
     public void Zalik_SignatureBlockShiftsDownByInsertedRowCount()
     {
@@ -128,11 +119,6 @@ public class XlsxRealTemplateTests
         Assert.Equal(singleRow + (roster.Count - 1), manyRow);
     }
 
-    // У справжньому файлі (OOXML: <mergeCells count="5">) п'ять об'єднань:
-    // A1:I3, B4:I4, B5:I5, B6:I6 - усі НАД рядком-шаблоном (10) - і рівно одне
-    // під ним: B11:I11 (блок підписів). Ростер з 5 людей вставляє 4 рядки
-    // (5 − 1), тож B11:I11 має з'їхати рівно на B15:I15, а решта чотирьох -
-    // лишитись на місці (вони вище точки вставки, їх ніщо не зсуває).
     [Fact]
     public void Zalik_MergeBelowTemplateRow_ShiftsDownAndStaysMerged()
     {
@@ -156,13 +142,9 @@ public class XlsxRealTemplateTests
             .Select(m => m.RangeAddress.ToString() ?? string.Empty)
             .ToList();
 
-        // Об'єднання над рядком-шаблоном - без змін; те, що було під ним, з'їхало
-        // рівно на 4 рядки (кількість вставлених рядків) і лишилось об'єднаним.
         Assert.Equal(new[] { "A1:I3", "B4:I4", "B5:I5", "B6:I6", "B15:I15" }, producedMerges);
     }
 
-    // Оцінки мусять бути стабільні: два прогони дають ті самі числа, а загальна -
-    // округлене середнє сусідніх оцінок ТОГО САМОГО рядка.
     [Fact]
     public void Dopusk_GradesAreStable_AndOverallIsRoundedAverageOfTheRow()
     {
@@ -197,7 +179,6 @@ public class XlsxRealTemplateTests
             var grades = gradeColumns.Select(c => firstSheet.Cell(targetRow, c).GetDouble()).ToList();
             Assert.All(grades, g => Assert.InRange(g, 3, 4));
 
-            // Стабільність між прогонами.
             foreach (var c in gradeColumns)
                 Assert.Equal(firstSheet.Cell(targetRow, c).GetDouble(), secondSheet.Cell(targetRow, c).GetDouble());
 

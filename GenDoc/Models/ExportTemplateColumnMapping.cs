@@ -13,7 +13,6 @@ namespace GenDoc.Models
         public string HeaderText { get; set; } = string.Empty;
         public string FieldKey { get; set; } = string.Empty;
 
-        // {{tag}} з тексту шаблону; порожній для старих (header-driven) мапінгів.
         public string PlaceholderTag { get; set; } = string.Empty;
         public MappingSourceType SourceType { get; set; }
     }

@@ -2,13 +2,6 @@ using System.Text.RegularExpressions;
 
 namespace GenDoc.Tests;
 
-/// <summary>
-/// RowIconButtonStyle примушує шрифт Segoe MDL2 Assets. У ньому немає звичайних
-/// символів («▲», «✕», літери) - такий вміст малюється порожнім квадратом. Саме так
-/// зникли кнопки «вгору/вниз/прибрати» у вікні «Вимоги пакета» (вада 1.5).
-/// Тест текстовий, як StaticResourceScopeTests: вміст кнопки з цим стилем має бути
-/// посиланням на символ Private Use Area (&#xE000;-&#xF8FF;).
-/// </summary>
 public class IconGlyphScopeTests
 {
     private static readonly Regex ButtonTag = new(@"<Button\b[^>]*?/?>", RegexOptions.Compiled | RegexOptions.Singleline);
@@ -36,7 +29,7 @@ public class IconGlyphScopeTests
             {
                 if (!tag.Value.Contains("RowIconButtonStyle", StringComparison.Ordinal)) continue;
                 var content = ContentAttr.Match(tag.Value);
-                if (!content.Success) continue; // вміст задано вкладено - не цей випадок
+                if (!content.Success) continue;
                 var value = content.Groups[1].Value;
                 var isPua = PuaRef.IsMatch(value) || (value.Length == 1 && value[0] >= '\uE000' && value[0] <= '\uF8FF');
                 if (!isPua) offenders.Add($"{Path.GetRelativePath(viewsDir, file)}: Content=\"{value}\"");

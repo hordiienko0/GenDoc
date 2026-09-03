@@ -4,10 +4,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Completeness;
 
-// Групові шаблони в комплектності. Історія: 19.08 (вада 1.4) групові прибрали з
-// матриці, бо клітинка була беззмістовна («один документ на всіх» у рядку однієї
-// людини). 20.08 (v25) вони повернулись - тепер клітинка каже, чи людина В СКЛАДІ
-// чинного групового документа, з посиланням на нього.
 public class GroupTemplatesOutsideMatrixTests
 {
     private static (int PackageId, int IntakeId, int PersonInId, int PersonOutId, int GroupTemplateId, int GroupDocId)
@@ -64,8 +60,6 @@ public class GroupTemplatesOutsideMatrixTests
         Assert.False(data.Docs.ContainsKey((personOutId, groupTemplateId, false)));
     }
 
-    // Документ, згенерований до v25: складу немає (RecipientCount > 0, учасників 0) -
-    // усі отримують «склад не записано», а не хибне «немає».
     [Fact]
     public async Task Matrix_LegacyGroupDoc_GivesRosterUnknownToEveryone()
     {
@@ -78,7 +72,6 @@ public class GroupTemplatesOutsideMatrixTests
         Assert.True(data.Docs[(personOutId, groupTemplateId, false)].RosterUnknown);
     }
 
-    // Персональний список картки («Сформувати повний пакет») групових як і раніше не містить.
     [Fact]
     public async Task RecipientStatus_StillExcludesGroupTemplates()
     {
@@ -103,7 +96,6 @@ public class GroupTemplatesOutsideMatrixTests
         Assert.True(links.Single(l => l.TemplateId == groupTemplateId).IsGroup);
     }
 
-    // Підвал картки: участь конкретної людини.
     [Fact]
     public async Task PackageGroupDocuments_ReportParticipationPerPerson()
     {
@@ -121,7 +113,6 @@ public class GroupTemplatesOutsideMatrixTests
     }
 }
 
-// «Учасники» в «Архів → Групові»: склад конкретної версії, включно з м'яко видаленими.
 public class GroupParticipantsQueryTests
 {
     [Fact]

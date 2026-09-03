@@ -6,9 +6,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace GenDoc.Services.Intakes
 {
-    // Фіксовані назви папок усередині кожного набору - на них орієнтується і
-    // створення набору (IntakeService.CreateAsync), і розкладання людей за
-    // придатністю при імпорті (ImportService).
     public static class IntakeFolderNames
     {
         public const string All = "Всі";
@@ -16,9 +13,6 @@ namespace GenDoc.Services.Intakes
         public const string LimitedFit = "Обмежено придатні";
         public const string Unfit = "Непридатні";
 
-        /// <summary>Категорію ще не проставили. Окрема папка, а не «Всі»: так
-        /// одразу видно, кому бракує висновку, і людина не вдає обмежено
-        /// придатну (рішення користувача 2026-08-31).</summary>
         public const string NoCategory = "Без категорії";
     }
 
@@ -45,7 +39,6 @@ namespace GenDoc.Services.Intakes
         {
             using var db = _dbFactory.CreateDbContext();
 
-            // Автоперехід статусів за датами: Planned → Active → Completed.
             var today = DateOnly.FromDateTime(DateTime.Today);
             await db.Intakes
                 .Where(i => i.Status == IntakeStatus.Planned && i.DateStart <= today && i.DateEnd >= today && !i.StatusIsPinned)
@@ -118,7 +111,6 @@ namespace GenDoc.Services.Intakes
                 await db.SaveChangesAsync();
                 rootNode.Path = $"{baseNode.Path}{rootNode.Id}/";
 
-                // Фіксована структура: корінь набору → «Всі» → «Придатні», «Обмежено придатні».
                 var allNode = new OrgNode
                 {
                     Name = IntakeFolderNames.All,
@@ -131,9 +123,6 @@ namespace GenDoc.Services.Intakes
                 await db.SaveChangesAsync();
                 allNode.Path = $"{rootNode.Path}{allNode.Id}/";
 
-                // По підпапці на кожну категорію придатності - перелік і порядок
-                // задає IntakeFitnessFolders, щоб майстер, імпорт і переїзд за
-                // зміною статусу спиралися на одне правило.
                 var categoryNodes = new List<OrgNode>();
                 for (var i = 0; i < IntakeFitnessFolders.AllFolderNames.Count; i++)
                 {
@@ -172,20 +161,12 @@ namespace GenDoc.Services.Intakes
                 await ApplyAsync();
             }
 
-            // Активний набір ОДИН на всю базу й визначається датами: якщо новий
-            // набір уже почався, Status вище виставлено Active, і GetActiveAsync
-            // віддасть саме його (номер найбільший). Персонального вибору більше
-            // немає - «Зробити моїм» прибрано (рішення користувача 2026-08-31).
-            // Поза транзакцією: оновлення екранного стану - не частина цілісності
-            // дерева, і його невдача не має відкочувати створений набір.
             try
             {
                 await _serviceProvider.GetRequiredService<ActiveIntakeState>().RefreshAsync();
             }
             catch (Exception ex)
             {
-                // Набір уже створено й закомічено. Мовчати не можна - інакше
-                // статус-рядок «іноді не оновлюється» без жодного сліду.
                 ErrorLog.Write(ex, _currentUserContext.CurrentUserFullName);
             }
 
@@ -209,7 +190,6 @@ namespace GenDoc.Services.Intakes
 
             var intakes = await db.Intakes.AsNoTracking().OrderByDescending(i => i.Number).ToListAsync();
 
-            // Один груповий запит на всі набори - інакше N наборів = N запитів на екрані.
             var peopleCounts = await db.Recipients
                 .Where(r => r.IntakeId != null)
                 .GroupBy(r => r.IntakeId!.Value)

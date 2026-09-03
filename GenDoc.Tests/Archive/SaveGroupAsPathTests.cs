@@ -4,17 +4,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Archive;
 
-/// <summary>
-/// Після переходу на розкладку по теках GeneratedGroupDocument.FileName - це
-/// ВІДНОСНИЙ ШЛЯХ («Спільні\Залік Додаток 8\2026-08-06.xlsx»), а не ім'я файлу
-/// (див. DocumentFolderLayout.ForGroup: позначка прогону і є іменем файлу).
-///
-/// Пакетний експорт у «Архів → Групові» складав цей шлях із обраною текою й
-/// писав напряму, без Directory.CreateDirectory - на відміну від персональної
-/// гілки SaveManyAsync, де тека створюється. Тому «Зберегти як» для двох і
-/// більше відомостей падало ЗАВЖДИ, на першому ж рядку, а цикл без try/catch
-/// не зберігав нічого (аудит 2026-08-28).
-/// </summary>
 public class SaveGroupAsPathTests
 {
     private static int SeedGroupDocument(TestDb db, string fileName)
@@ -67,9 +56,6 @@ public class SaveGroupAsPathTests
         finally { Directory.Delete(folder, recursive: true); }
     }
 
-    // Одиночне «Зберегти як» пропонує в діалозі ІМ'Я файлу, а не весь шлях із
-    // зворотними скісними - інакше оболонка намагається розв'язати неіснуючі
-    // підтеки й відмовляє, а користувач мусить чистити поле руками.
     [Fact]
     public void SuggestedFileName_IsFileNameOnly()
     {

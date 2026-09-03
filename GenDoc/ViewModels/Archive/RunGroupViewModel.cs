@@ -18,7 +18,6 @@ namespace GenDoc.ViewModels.Archive
         public int Id => Dto.Id;
 
         public string DateText => Dto.RunAt.ToString("dd.MM.yyyy HH:mm", Uk);
-        // null - прогін по постійному складу або старий запуск без документів, з яких можна вивести набір.
         public string IntakeChip => Dto.IntakeNumber is int n ? $"Набір №{n}" : "Без набору";
         public bool HasIntake => Dto.IntakeNumber is not null;
         public string PackageText => $"пакет «{Dto.PackageName}»";

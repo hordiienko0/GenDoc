@@ -3,7 +3,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Completeness;
 
-// Стартовий пакет: мій останній → глобальний типовий → перший за алфавітом.
 public class DefaultPackageChainTests
 {
     private static (int UserId, int PackageA, int PackageB) Seed(TestDb db, int? globalDefault = null)
@@ -15,7 +14,7 @@ public class DefaultPackageChainTests
         var b = new GenerationPackage { Name = "Б-пакет" };
         ctx.GenerationPackages.AddRange(a, b);
         ctx.SaveChanges();
-        if (globalDefault == -1) globalDefault = a.Id; // сентинел «глобальний = А»
+        if (globalDefault == -1) globalDefault = a.Id;
         var settings = ctx.AppSettings.FirstOrDefault();
         if (settings is null)
         {

@@ -74,7 +74,6 @@ namespace GenDoc.ViewModels.Archive
 
         public string HeaderText { get; }
 
-        // Список оновлює рядок точково після закриття, якщо були зміни.
         public bool HasChanges { get; private set; }
 
         public ObservableCollection<VersionRowViewModel> Versions { get; } = new();

@@ -4,18 +4,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Archive;
 
-/// <summary>
-/// Документ переживає і людину, і шаблон: в архіві їх навмисно видно після
-/// того, як картку чи шаблон прибрали в кошик. Але зв'язки
-/// GeneratedDocument→Recipient і →Template обов'язкові (Id не nullable), тож
-/// EF будує INNER JOIN, глобальний фільтр м'якого видалення прибирає рядок, і
-/// FirstAsync падає з сирим «Sequence contains no elements».
-///
-/// ApplyFilter і головна проєкція це вже обходять (підзапит з
-/// IgnoreQueryFilters), а SaveManyAsync, RegenerateAsync і GetCurrentRowAsync -
-/// ні, хоча RecordGoneMessage заведений саме під такі випадки
-/// (аудит 2026-08-28).
-/// </summary>
 public class SoftDeletedRelationTests
 {
     private static (int DocId, int RecipientId, int TemplateId) Seed(TestDb db)
@@ -104,9 +92,6 @@ public class SoftDeletedRelationTests
         finally { Directory.Delete(folder, recursive: true); }
     }
 
-    // Перегенерація для видаленого шаблону НЕ повинна виконуватись - але й падати
-    // сирим винятком теж: користувач має побачити задумане повідомлення. Раніше
-    // гілка «Шаблон видалено» була недосяжна, бо FirstAsync кидав раніше за неї.
     [Fact]
     public async Task RegenerateAsync_TemplateInTrash_ReturnsMessageInsteadOfThrowing()
     {
@@ -120,8 +105,6 @@ public class SoftDeletedRelationTests
         Assert.False(string.IsNullOrWhiteSpace(result.ErrorMessage));
     }
 
-    // Після дії над рядком в'ю-модель перечитує його через GetCurrentRowAsync;
-    // null означав «нічого не оновлюємо», і таблиця тихо показувала стару версію.
     [Fact]
     public async Task GetCurrentRowAsync_TemplateInTrash_StillReturnsTheRow()
     {

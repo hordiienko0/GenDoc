@@ -5,8 +5,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Generation;
 
-// Екран «Запуски» бере лічильники з рядка GenerationPackageRun, а перелік
-// помилок відновлює з поля Summary. Обидва джерела зараз брешуть.
 public class RunPackageReportingTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), $"gendoc-report-{Guid.NewGuid():N}");
@@ -18,8 +16,6 @@ public class RunPackageReportingTests : IDisposable
 
     private static readonly IProgress<string> NoProgress = new Progress<string>(_ => { });
 
-    // Пакет з однією XLSX-відомістю зі свідомо пошкодженим вмістом - тобто
-    // XLSX-фаза дасть рівно одну помилку.
     private static int SeedPackageWithFailingXlsx(TestDb db)
     {
         using var ctx = db.Factory.CreateDbContext();
@@ -38,7 +34,7 @@ public class RunPackageReportingTests : IDisposable
         {
             Name = "Зламана відомість",
             OriginalFileName = "broken.xlsx",
-            Content = new byte[] { 0x00, 0x01, 0x02, 0x03 }, // не є zip/xlsx
+            Content = new byte[] { 0x00, 0x01, 0x02, 0x03 },
             UsesPlaceholders = true,
             TemplateRowIndex = 2,
             UploadedAt = DateTime.Now
@@ -63,14 +59,6 @@ public class RunPackageReportingTests : IDisposable
         return package.Id;
     }
 
-    // Той самий пакет, але додатково зі зламаним ГРУПОВИМ DOCX-шаблоном
-    // (Template.Kind = Group). Навіщо: у пакеті з самою лише XLSX-відомістю
-    // фаза групового DOCX узагалі не запускається (нема жодного Template
-    // з Kind = Group), тож docxGroup.Generated/Skipped/Errors лишаються 0 -
-    // і "фікс", який підсумовує тільки docx + xlsx (забувши третю фазу),
-    // усе одно пройшов би тест. Зламаний груповий DOCX-шаблон гарантує
-    // docxGroup.Errors == 1, тож пропуск третьої фази стає видимим
-    // розбіжністю в ErrorCount.
     private static int SeedPackageWithFailingXlsxAndGroupDocx(TestDb db)
     {
         var packageId = SeedPackageWithFailingXlsx(db);
@@ -81,7 +69,7 @@ public class RunPackageReportingTests : IDisposable
         {
             Name = "Зламаний груповий рапорт",
             OriginalFileName = "broken-group.docx",
-            Content = new byte[] { 0x00, 0x01, 0x02, 0x03 }, // не є zip/docx
+            Content = new byte[] { 0x00, 0x01, 0x02, 0x03 },
             Kind = TemplateKind.Group,
             UploadedAt = DateTime.Now
         };
@@ -95,8 +83,6 @@ public class RunPackageReportingTests : IDisposable
         return packageId;
     }
 
-    // Дефект B1: run.ErrorCount пишеться лише з docx-фази, тож помилка
-    // XLSX-фази і фази групового DOCX на екрані «Запуски» не видно взагалі.
     [Fact]
     public void RunPackage_PersistsCountersSummedAcrossAllThreePhases()
     {
@@ -107,9 +93,6 @@ public class RunPackageReportingTests : IDisposable
             packageId, _folder, new Dictionary<string, string>(),
             regenerateExisting: false, RosterSelection.Everyone, NoProgress);
 
-        // Три фази дають: docx - 0 (нема жодного PerRecipient-шаблону в пакеті),
-        // xlsx - 1 помилка (зламана відомість), груповий docx - 1 помилка
-        // (зламаний груповий шаблон). Це і є "внесок" кожної фази в підсумок.
         Assert.Equal(0, result.Errors);
         Assert.Equal(1, result.GroupErrors);
         Assert.Equal(1, result.DocxGroupErrors);
@@ -128,8 +111,6 @@ public class RunPackageReportingTests : IDisposable
             run.SkippedCount);
     }
 
-    // Дефект B2: рядок «ГРУПА: Назва: текст» розбирається як ПІБ = «ГРУПА»,
-    // шаблон = «-», а текст обрізається на першій двокрапці.
     [Fact]
     public async Task GetRunItemsAsync_ReportsGroupPhaseErrorWithTemplateNameIntact()
     {
@@ -151,10 +132,6 @@ public class RunPackageReportingTests : IDisposable
         Assert.DoesNotContain("ГРУПА", errorItem.Person, StringComparison.Ordinal);
     }
 
-    // Зворотна сумісність: у робочих базах уже є запуски, чий Summary - звичайний
-    // текст у старому форматі (до переходу на JSON). RunIssue.TryDeserialize має
-    // відхилити такий рядок (він не починається з '['), а GetRunItemsAsync -
-    // впасти на запасний текстовий парсер, а не мовчки загубити історію помилок.
     [Fact]
     public async Task GetRunItemsAsync_FallsBackToLegacyTextFormat_ForRunsPredatingJsonSummary()
     {
@@ -175,7 +152,6 @@ public class RunPackageReportingTests : IDisposable
                 GeneratedCount = 0,
                 SkippedCount = 0,
                 ErrorCount = 1,
-                // Старий текстовий формат: "ПІБ / Шаблон: помилка".
                 Summary = "ІВАНЕНКО Іван / Наказ про відрядження: файл шаблону пошкоджено"
             });
             ctx.SaveChanges();
@@ -193,10 +169,6 @@ public class RunPackageReportingTests : IDisposable
         Assert.Equal("помилка: файл шаблону пошкоджено", errorItem.Status);
     }
 
-    // Знахідка фінального рев'ю (Finding 1): пропуск через порожній склад і
-    // незаповнені теги - не помилки, run.ErrorCount за них не росте, тож і
-    // рядок у переліку не має бути позначений як "помилка:". Разом з тим
-    // справжній збій (result.Success == false) лишається помилкою.
     [Fact]
     public async Task GetRunItemsAsync_RendersInformationalIssueWithoutErrorPrefix_ButKeepsRealFailureAsError()
     {

@@ -6,7 +6,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Archive;
 
-// 2.5: «Друк» - ті самі байти документа, що й «Відкрити», але через shell-verb print.
 public class ArchivePrintTests
 {
     [Fact]

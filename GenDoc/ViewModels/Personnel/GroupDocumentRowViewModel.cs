@@ -2,8 +2,6 @@ using GenDoc.Services.Completeness;
 
 namespace GenDoc.ViewModels.Personnel
 {
-    // Рядок підвалу «Групові відомості пакета» у картці особи. v25: стан - про
-    // УЧАСТЬ саме цієї людини, а не про сам факт існування документа.
     public class GroupDocumentRowViewModel
     {
         public GroupDocumentRowViewModel(PackageGroupDocumentStatus status)

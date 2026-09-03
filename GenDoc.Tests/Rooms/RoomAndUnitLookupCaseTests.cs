@@ -7,12 +7,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Rooms;
 
-// Пошук наявної кімнати (і підрозділу) робився ЗАПИТОМ у SQLite: r.Building == b.
-// SQLite порівнює рядки побайтово, а NOCASE знає лише латиницю - тож «Корпус А»
-// і «корпус а» для бази різні. Кожен другий запис кімнати з іншим регістром
-// створював ДУБЛЬ, і люди в одній кімнаті опинялись у двох різних.
-// Правило гілки: порівняння кирилиці без урахування регістру - у пам'яті,
-// через uk-UA (аудит 2026-08-28).
 public class RoomAndUnitLookupCaseTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), $"gendoc-rooms-{Guid.NewGuid():N}");
@@ -94,8 +88,6 @@ public class RoomAndUnitLookupCaseTests : IDisposable
         Assert.Equal(roomId, Assert.Single(ctx.Recipients.ToList()).RoomId);
     }
 
-    // Та сама помилка в сусідньому методі того ж сервісу: підрозділ шукався
-    // запитом u.Name == name.
     [Fact]
     public void RecipientService_ReusesTheUnitWrittenInAnotherCase()
     {
@@ -165,7 +157,6 @@ public class RoomAndUnitLookupCaseTests : IDisposable
         Assert.Equal(roomId, Assert.Single(ctx.Recipients.ToList()).RoomId);
     }
 
-    // Різні кімнати не зливаються: правило про регістр, а не про схожість.
     [Fact]
     public void DifferentRoomsStayDifferent()
     {

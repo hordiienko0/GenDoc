@@ -1,8 +1,5 @@
 namespace GenDoc.ViewModels.Rooms;
 
-// Простий read-only рядок таблиці мешканців панелі деталей - список повністю
-// перебудовується у RoomsViewModel при кожній зміні складу (поселення/виселення),
-// тож окремого INotifyPropertyChanged тут не потрібно.
 public class RoomOccupantViewModel
 {
     public RoomOccupantViewModel(

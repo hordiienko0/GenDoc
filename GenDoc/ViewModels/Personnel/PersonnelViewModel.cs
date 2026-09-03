@@ -22,7 +22,6 @@ namespace GenDoc.ViewModels.Personnel
         public bool IsLink => NodeId is not null;
     }
 
-    // Singleton: зберігає стан списку/пошуку між перемиканнями розділів.
     public partial class PersonnelViewModel : ObservableObject, IGuardedSection, INavigationTarget
     {
         private static readonly CompareInfo UkCompare = CultureInfo.GetCultureInfo("uk-UA").CompareInfo;
@@ -34,7 +33,6 @@ namespace GenDoc.ViewModels.Personnel
         private readonly IIntakeService _intakeService;
         private readonly IDialogService _dialogService;
 
-        // Передається далі в картку особи: там теж є перегенерація з ручними мітками.
         private readonly Services.Generation.IManualTagFormBuilder _manualTagFormBuilder;
         private readonly IOutputFolderService _outputFolderService;
         private readonly DispatcherTimer _searchDebounceTimer;
@@ -140,7 +138,6 @@ namespace GenDoc.ViewModels.Personnel
         {
             if (_initialized)
             {
-                // Повернення в розділ: дані могли змінитись (імпорт, кошик).
                 await Tree.RefreshCountsAsync();
                 await ReloadListAsync();
                 return;
@@ -175,11 +172,6 @@ namespace GenDoc.ViewModels.Personnel
 
         private async Task ReloadListAsync()
         {
-            // Перезавантаження запускають «і забувають» (вибір вузла дерева,
-            // перемикач «з підрозділами», повідомлення про зміну лічильників).
-            // Швидке клацання по дереву лишало два запити в польоті, і
-            // повільніший приходив останнім - список показував людей іншого
-            // вузла, ніж підсвічений у дереві (аудит 2026-08-28).
             var token = _reload.Begin();
 
             var node = Tree.SelectedNode;
@@ -298,7 +290,6 @@ namespace GenDoc.ViewModels.Personnel
             RefreshCheckedState();
         }
 
-        // 2.2: документ на обраних людей прямо зі списку - без походу в «Генерацію».
         [RelayCommand]
         private void GenerateForChecked()
         {
@@ -392,7 +383,6 @@ namespace GenDoc.ViewModels.Personnel
             var row = _allRows.FirstOrDefault(r => r.Id == id);
             if (row is null)
             {
-                // Нова особа - повний перезапит гілки і лічильників.
                 WeakReferenceMessenger.Default.Send(new CountsChangedMessage());
                 return;
             }
@@ -418,7 +408,6 @@ namespace GenDoc.ViewModels.Personnel
             Card = null;
         }
 
-        // Єдина точка dirty-guard: інша людина, інший вузол, ✕, «Додати», інший розділ.
         public async Task<bool> TryLeaveEditAsync()
         {
             if (Card is null || !Card.IsDirty) return true;

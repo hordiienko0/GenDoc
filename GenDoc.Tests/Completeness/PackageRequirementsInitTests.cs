@@ -5,9 +5,6 @@ using GenDoc.ViewModels.Completeness;
 
 namespace GenDoc.Tests.Completeness;
 
-// Відтворення живої вади 2026-08-24: «⚙ Вимоги» на «Комплектності» не відкриває
-// діалог. Ініціалізація в'ю-моделі має проходити на пакеті з персональним,
-// груповим і Excel-шаблоном - як у робочій базі.
 public class PackageRequirementsInitTests
 {
     [Fact]

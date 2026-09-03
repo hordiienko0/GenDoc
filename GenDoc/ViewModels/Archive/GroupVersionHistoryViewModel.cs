@@ -36,8 +36,6 @@ namespace GenDoc.ViewModels.Archive
         private readonly int? _exportTemplateId;
         private readonly int? _docxTemplateId;
 
-        // Групова серія ключується парою (ExportTemplateId, DocxTemplateId): XLSX-відомість
-        // задає лише перше, груповий DOCX - лише друге; другий - завжди null для XLSX.
         public GroupVersionHistoryViewModel(
             IDocumentArchiveService archiveService, int? exportTemplateId, int? docxTemplateId, string templateName)
         {

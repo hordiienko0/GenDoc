@@ -45,7 +45,7 @@ namespace GenDoc.ViewModels.Intakes
             _activeIntakeState = activeIntakeState;
             _tree = tree;
             _userSettings = userSettings;
-            _ = currentUserContext; // резервується для майбутнього - Закрити/Відкрити пишуть автора через IAuditLogService
+            _ = currentUserContext;
 
             StatusOptions = new ObservableCollection<IntakeStatusFilterOption>
             {
@@ -203,11 +203,6 @@ namespace GenDoc.ViewModels.Intakes
                 MainViewModel.GenerationSectionTitle,
                 new IntakeNavigationPayload(card.Id, card.RootOrgNodeId, null)));
         }
-
-        // «Зробити моїм» прибрано: активний набір ОДИН на всю базу й
-        // визначається датами, а не вибором профілю (рішення користувача
-        // 2026-08-31). Два курсові на одному екрані більше не можуть бачити
-        // різні числа.
 
         [RelayCommand]
         private async Task CloseIntakeAsync(IntakeCardViewModel? card)

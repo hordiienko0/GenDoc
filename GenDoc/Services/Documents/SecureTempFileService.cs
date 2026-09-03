@@ -5,28 +5,17 @@ namespace GenDoc.Services.Documents
 {
     public interface ISecureTempFileService
     {
-        // Пише байти в %LOCALAPPDATA%\GenDoc\_temp\{guid}\{fileName} з ReadOnly
-        // і відкриває асоційованою програмою.
-        // Win32Exception (нема асоціації) прокидається до викликача.
         Task OpenAsync(string fileName, byte[] content);
-        // Те саме, але shell-verb "print": друкує Word/Excel, як вони ж і відкривають (2.5).
         Task PrintAsync(string fileName, byte[] content);
         Task CleanupAsync();
     }
 
     public class SecureTempFileService : ISecureTempFileService
     {
-        // Тимчасові копії - це РОЗШИФРОВАНІ персональні дані, тож їм не місце в
-        // теці застосунку: та живе на мережевому диску або на флешці, звідки її
-        // ніхто не витирає, і потрапляє в резервну копію дистрибутива цілком.
-        // Профіль користувача - локальний і невідчужуваний (аудит 2026-08-28).
         internal static string TempRoot => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "GenDoc", "_temp");
 
-        // Інсталяції, що вже працювали, лишили розшифровані документи за старою
-        // адресою. Прибирання зачищає обидві, інакше переїзд законсервував би їх
-        // там назавжди.
         internal static string LegacyTempRoot => Path.Combine(AppContext.BaseDirectory, "_temp");
 
         public async Task OpenAsync(string fileName, byte[] content)
@@ -69,7 +58,6 @@ namespace GenDoc.Services.Documents
             try { Directory.Delete(root, recursive: true); }
             catch
             {
-                // Відкритий файл лишається до наступного очищення.
             }
         }
 

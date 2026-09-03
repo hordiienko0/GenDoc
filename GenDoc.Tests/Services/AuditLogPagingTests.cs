@@ -4,16 +4,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Services;
 
-/// <summary>
-/// Журнал сортувався лише за OccurredAt, без вторинного ключа. AuditLogService
-/// пише DateTime.Now, роздільність системного годинника Windows ~15 мс, тож усі
-/// записи одного SaveChanges зазвичай мають ОДНАКОВУ мітку часу. SQLite не
-/// гарантує сталого порядку між запитами для однакових ключів, тож між першою
-/// сторінкою і «Завантажити ще» частина рядків дублювалась, а частина зникала
-/// (аудит 2026-08-28).
-///
-/// Заразом перші тести на цей сервіс узагалі: він був без покриття.
-/// </summary>
 public class AuditLogPagingTests
 {
     private const int Total = 25;
@@ -22,7 +12,6 @@ public class AuditLogPagingTests
     {
         using (var ctx = db.Factory.CreateDbContext())
         {
-            // Усі записи з ОДНІЄЮ міткою часу - саме те, що дає один SaveChanges.
             var stamp = new DateTime(2026, 8, 20, 10, 38, 0);
             for (var i = 1; i <= Total; i++)
             {
@@ -67,8 +56,6 @@ public class AuditLogPagingTests
         Assert.Equal(first, again);
     }
 
-    // Найновіші - зверху; за однакової мітки часу новішим вважається запис із
-    // більшим Id, бо він доданий пізніше в межах того самого SaveChanges.
     [Fact]
     public void Newest_ComesFirst_EvenWhenTimestampsMatch()
     {

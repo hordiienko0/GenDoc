@@ -5,9 +5,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Archive;
 
-// Документ живе довше за людину: людину можна прибрати в кошик (м'яке видалення),
-// а її документи лишаються в архіві. Лічильник унизу екрана рахує їх завжди, бо
-// не чіпає таблицю Recipients, - тож список зобов'язаний показувати те саме.
 public class ArchiveSoftDeletedPersonTests
 {
     private static readonly ArchiveFilter NoFilter = new(null, null, null, null, null, 0, 200);
@@ -54,7 +51,6 @@ public class ArchiveSoftDeletedPersonTests
         ctx.GeneratedDocuments.Add(doc);
         ctx.SaveChanges();
 
-        // Людина йде в кошик уже після того, як документ згенеровано.
         person.DeletedAt = DateTime.Now;
         ctx.SaveChanges();
 
@@ -83,8 +79,6 @@ public class ArchiveSoftDeletedPersonTests
         var rows = await service.QueryAsync(NoFilter);
         var stats = await service.GetStatsAsync(NoFilter);
 
-        // Саме це розходження бачив користувач: «351 документів» у підвалі
-        // і «Нічого не знайдено» в таблиці.
         Assert.Equal(stats.Count, rows.Count);
     }
 

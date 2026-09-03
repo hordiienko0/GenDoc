@@ -2,11 +2,6 @@ using GenDoc.Services.Generation;
 
 namespace GenDoc.Tests.Generation;
 
-// Оператор бачив підписи полів рівно так, як їх пише розробник:
-// {{дата_зарахування}}, {{кількість_патронів}}, {{причина_інструктажу}} -
-// фігурні дужки й підкреслення. Людська назва виводиться з самого тега, тож
-// працює й для міток, яких ніхто наперед не передбачив: словник потрібен лише
-// там, де механічне правило дало б неправду.
 public class ManualTagLabelTests
 {
     [Theory]
@@ -25,8 +20,6 @@ public class ManualTagLabelTests
         Assert.Equal("Калібр", ManualTagLabel.Human("{{калібр}}"));
     }
 
-    // Абревіатури механічне правило зіпсувало б: «Піб начальника» - неправда,
-    // ПІБ пишеться великими. Саме для таких випадків і потрібен словник.
     [Theory]
     [InlineData("{{піб_начальника}}", "ПІБ начальника")]
     [InlineData("{{піб_підписанта}}", "ПІБ підписанта")]
@@ -36,7 +29,6 @@ public class ManualTagLabelTests
         Assert.Equal(expected, ManualTagLabel.Human(tag));
     }
 
-    // Тег може прийти й без дужок (різні місця зберігають по-різному).
     [Fact]
     public void Human_AcceptsABareTag()
     {
@@ -52,8 +44,6 @@ public class ManualTagLabelTests
         Assert.Equal(string.Empty, ManualTagLabel.Human(tag));
     }
 
-    // Підпис - це ПІДПИС, а не заміна тега: сам тег лишається доступним, бо
-    // саме за ним оператор звіряється з шаблоном.
     [Fact]
     public void Human_DoesNotLoseTheOriginalTag()
     {

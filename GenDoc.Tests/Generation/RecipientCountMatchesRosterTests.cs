@@ -6,15 +6,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Generation;
 
-/// <summary>
-/// Напис на кнопці «Згенерувати всім (N)» брав N з db.Recipients.Count() - усіх
-/// людей у базі, включно з постійним складом та іншими наборами, - тоді як
-/// фільтр звань реально звужував склад прогону в LoadRosterRecipients.
-///
-/// Оператор бачив «Згенерувати всім (300)», а підсумок повідомляв про 40, і не
-/// мав як зрозуміти, чи фільтр застосувався, чи щось не спрацювало
-/// (аудит 2026-08-28). Лічильник мусить рахувати ТИМ САМИМ шляхом, що й прогін.
-/// </summary>
 public class RecipientCountMatchesRosterTests
 {
     private static void Seed(TestDb db)
@@ -24,7 +15,6 @@ public class RecipientCountMatchesRosterTests
         ctx.Intakes.Add(intake);
         ctx.SaveChanges();
 
-        // Двоє офіцерів і троє солдатів у наборі, плюс один постійний склад.
         ctx.Recipients.AddRange(
             new Recipient { LastName = "А", FirstName = "А", Rank = "майор", IntakeId = intake.Id },
             new Recipient { LastName = "Б", FirstName = "Б", Rank = "капітан", IntakeId = intake.Id },
@@ -83,7 +73,6 @@ public class RecipientCountMatchesRosterTests
         Assert.Equal(2, TestServices.Generation(db).GetRecipientCount(selection));
     }
 
-    // Фільтри комбінуються через AND - так само, як у LoadRosterRecipients.
     [Fact]
     public void Count_CombinesFiltersWithAnd()
     {

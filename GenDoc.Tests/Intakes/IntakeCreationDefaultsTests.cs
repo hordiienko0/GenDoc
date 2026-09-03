@@ -7,8 +7,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace GenDoc.Tests.Intakes;
 
-// Що має статися саме́ при створенні набору й при зміні придатності в картці
-// (рішення користувача 2026-08-31).
 public class IntakeCreationDefaultsTests
 {
     private static ServiceProvider BuildProvider(TestDb db, FakeCurrentUser user)
@@ -36,9 +34,6 @@ public class IntakeCreationDefaultsTests
         return root.Id;
     }
 
-    // UserSettings посилається на профіль зовнішнім ключем, тож без профілю
-    // «зробити моїм» падає на вставці. У застосунку профіль є завжди - той, під
-    // яким увійшли; у тесті його треба завести явно.
     private static int SeedProfile(TestDb db, string fullName = "Тест Тестович")
     {
         using var ctx = db.Factory.CreateDbContext();
@@ -67,8 +62,6 @@ public class IntakeCreationDefaultsTests
 
         return (intake, provider);
     }
-
-    // ─── Папки ───────────────────────────────────────────────────────────────
 
     [Fact]
     public async Task ANewIntakeGetsAFolderForEveryFitnessCategory()
@@ -106,11 +99,6 @@ public class IntakeCreationDefaultsTests
         }
     }
 
-    // ─── «Мій» одразу ────────────────────────────────────────────────────────
-
-    // Активний набір один на всю базу й визначається датами: набір, що вже
-    // почався, стає активним сам, без кліку по «Зробити моїм» (кнопку
-    // прибрано - рішення користувача 2026-08-31).
     [Fact]
     public async Task AnIntakeThatHasAlreadyStartedIsTheActiveOne()
     {
@@ -133,8 +121,6 @@ public class IntakeCreationDefaultsTests
         Assert.True(state.HasActive);
         Assert.Equal(intake.Id, state.Current!.Id);
     }
-
-    // ─── Переїзд за зміною придатності ───────────────────────────────────────
 
     private static async Task<(int RecipientId, int IntakeId)> AddPersonAsync(
         TestDb db, PersonnelService personnel, int intakeId, string? fitness)
@@ -177,8 +163,6 @@ public class IntakeCreationDefaultsTests
         Assert.Equal(IntakeFolderNames.Fit, FolderOf(db, id));
     }
 
-    // Головний випадок з вимоги: завели придатним, потім змінили на обмежено -
-    // людина мусить переїхати сама.
     [Fact]
     public async Task ChangingTheCategoryMovesThePersonToTheMatchingFolder()
     {
@@ -224,8 +208,6 @@ public class IntakeCreationDefaultsTests
         Assert.Equal(IntakeFolderNames.Unfit, FolderOf(db, id));
     }
 
-    // Зворотний бік правила: збереження БЕЗ зміни категорії не має висмикувати
-    // людину з папки, куди її переставили руками через «Перемістити до…».
     [Fact]
     public async Task EditingSomethingElseDoesNotDragThePersonBack()
     {

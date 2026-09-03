@@ -2,27 +2,11 @@ using System.Text.RegularExpressions;
 
 namespace GenDoc.Tests;
 
-/// <summary>
-/// Кожен {StaticResource ключ} мусить бути оголошений або в тому ж файлі, або
-/// глобально (App.xaml та злиті в нього словники).
-///
-/// Навіщо тест: посилання на ЧУЖИЙ локальний ресурс компілюється без жодного
-/// попередження, а падає аж у рантаймі - XamlParseException «Cannot find
-/// resource named …» валить застосунок при відкритті розділу. Саме так сталося
-/// з TableHeaderTextStyle: він оголошений усередині ImportView.xaml, а
-/// ArchiveView.xaml на нього послався. Усі 434 тести були зелені, застосунок
-/// падав на кліку по «Архів документів».
-///
-/// Тест текстовий навмисно: підняти WPF-розкладку в юніт-тесті дорого й
-/// крихко, а розбір розмітки ловить рівно цей клас помилок.
-/// </summary>
 public class StaticResourceScopeTests
 {
     private static readonly Regex ResourceUse = new(@"\{StaticResource\s+([^}\s]+)\s*\}", RegexOptions.Compiled);
     private static readonly Regex ResourceKey = new(@"x:Key=""([^""]+)""", RegexOptions.Compiled);
 
-    // Ключі, що приходять не з розмітки: типізовані стилі ({x:Type ...}) і
-    // системні. Їх у файлі не оголошують.
     private static bool IsIntrinsic(string key) =>
         key.StartsWith("{x:Type", StringComparison.Ordinal) || key.Contains('.');
 
@@ -40,7 +24,6 @@ public class StaticResourceScopeTests
         var root = RepoRoot();
         var appDir = Path.Combine(root, "GenDoc");
 
-        // Глобальна область - App.xaml і все, що злите в нього.
         var globalFiles = new List<string> { Path.Combine(appDir, "App.xaml") };
         globalFiles.AddRange(Directory.GetFiles(Path.Combine(appDir, "Themes"), "*.xaml"));
 

@@ -4,8 +4,6 @@ using GenDoc.Services.Generation;
 
 namespace GenDoc.Tests.Infrastructure;
 
-// Складає сервіси під тестом з TestDb і заглушок з Fakes.cs, щоб кожен файл
-// тестів архіву/генерації не дублював власний BuildService.
 public static class TestServices
 {
     public static DocumentArchiveService Archive(TestDb db) => new(

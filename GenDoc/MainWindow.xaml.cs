@@ -16,14 +16,6 @@ namespace GenDoc
             DataContext = viewModel;
         }
 
-        // Guard спрацьовував лише на перехід МІЖ розділами: хрестик закривав
-        // вікно одразу, і незбережена картка, складання чи майстер імпорту
-        // гинули без запитання (аудит 2026-08-28).
-        //
-        // Скасування - через Cancel, а не через повторний Close(): TryLeave
-        // показує модальне вікно, і вихід із Closing із уже початим закриттям
-        // призвів би до рекурсії. Тому перший прохід завжди скасовує закриття,
-        // а після згоди воно повторюється прапорцем _closeConfirmed.
         private bool _closeConfirmed;
 
         private void Window_Closing(object sender, CancelEventArgs e)
@@ -33,12 +25,6 @@ namespace GenDoc
 
             e.Cancel = true;
 
-            // Запитання показуємо ПІСЛЯ того, як обробник Closing завершився.
-            // Доки подія триває, WPF вважає вікно таким, що закривається, і
-            // будь-яке модальне вікно (а guard показує саме MessageBox) кидає
-            // InvalidOperationException «Cannot ... call ShowDialog while a
-            // Window is closing». e.Cancel = true цього не рятує: він набуває
-            // сили лише коли обробник повернув керування.
             Dispatcher.BeginInvoke(new Action(async () =>
             {
                 if (!await viewModel.TryLeaveCurrentSectionAsync()) return;
@@ -48,9 +34,6 @@ namespace GenDoc
             }), DispatcherPriority.Background);
         }
 
-        // Наведення на згорнуту панель розкриває її поверх вмісту. Це стан миші,
-        // тобто справа в'юхи; в'ю-модель лише зберігає прапорець, від якого
-        // залежать ширина панелі й видимість підписів.
         private void Sidebar_MouseEnter(object sender, MouseEventArgs e)
         {
             if (DataContext is MainViewModel viewModel) viewModel.IsSidebarHovered = true;

@@ -1,7 +1,5 @@
 namespace GenDoc.Services
 {
-    // «15 липня 2026 року» - форма для тексту рапортів. Місяці в родовому відмінку
-    // захардкоджені (не через CultureInfo), щоб не залежати від локалі машини оператора.
     public static class UkrainianDate
     {
         private static readonly string[] GenitiveMonths =

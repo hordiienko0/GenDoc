@@ -18,9 +18,6 @@
 
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel DataContext="{Binding Form}">
-                <!-- Ті самі рядки, що й у генерації: дату обирають пікером, а не
-                     набирають (руками в документи потрапляли і «13.08.2026», і
-                     «13.8.26»), тексти вже підставлені з минулого разу. -->
                 <ItemsControl ItemsSource="{Binding Rows}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -57,7 +54,6 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
 
-                <!-- Підписант зі списку постійного складу, а не текстом -->
                 <StackPanel Margin="0,6,0,0">
                     <StackPanel.Style>
                         <Style TargetType="StackPanel">
@@ -74,7 +70,6 @@
                               SelectedItem="{Binding Signer.Selected, Mode=TwoWay}"/>
                 </StackPanel>
 
-                <!-- Курсовий офіцер для відомостей з підписом (вибіркова генерація, 2.2) -->
                 <StackPanel Margin="0,6,0,0">
                     <StackPanel.Style>
                         <Style TargetType="StackPanel">

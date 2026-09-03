@@ -41,8 +41,6 @@ public partial class RoomsViewModel : ObservableObject
     [ObservableProperty]
     private bool isLoading;
 
-    // --- Панель деталей кімнати ---
-
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsPanelOpen))]
     [NotifyPropertyChangedFor(nameof(SelectedRoomTitle))]
@@ -281,7 +279,7 @@ public partial class RoomsViewModel : ObservableObject
             var roomId = card.Id;
             var rows = await Task.Run(() => _roomService.GetOccupants(roomId));
 
-            if (SelectedRoom != card) return; // користувач встиг відкрити іншу кімнату/закрити панель
+            if (SelectedRoom != card) return;
 
             Occupants = BuildOccupantRows(rows);
         }

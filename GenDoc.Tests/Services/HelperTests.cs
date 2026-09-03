@@ -3,9 +3,6 @@ using GenDoc.Services;
 
 namespace GenDoc.Tests.Services;
 
-// Чотири хелпери, якими користуються десятки місць і які не мали жодного тесту
-// (аудит 2026-08-28). Кожен з них тихий: помилка не падає, а лише виводить на
-// екран чи в документ трохи не те.
 public class PluralHelperTests
 {
     private static string Rooms(int count)
@@ -34,8 +31,6 @@ public class PluralHelperTests
     [InlineData(100, "кімнат")]
     public void ManyForm(int count, string expected) => Assert.Equal(expected, Rooms(count));
 
-    // Найпоширеніша помилка української плюралізації: 11-14 беруть форму
-    // «багато», хоча закінчуються на 1-4.
     [Theory]
     [InlineData(11, "кімнат")]
     [InlineData(12, "кімнат")]
@@ -46,8 +41,6 @@ public class PluralHelperTests
     public void TeensAlwaysTakeTheManyForm(int count, string expected)
         => Assert.Equal(expected, Rooms(count));
 
-    // Від'ємних лічильників на екрані бути не повинно, але хелпер не має на них
-    // падати чи повертати порожнечу.
     [Theory]
     [InlineData(-1, "кімната")]
     [InlineData(-3, "кімнати")]
@@ -58,8 +51,6 @@ public class PluralHelperTests
 
 public class FitnessCategoryHelperTests
 {
-    // Порожня категорія означає «придатний»: у старих картках поле не
-    // заповнювали, і вони не мають випадати з «Придатні».
     [Theory]
     [InlineData(null)]
     [InlineData("")]
@@ -68,9 +59,6 @@ public class FitnessCategoryHelperTests
     public void BlankOrPlainCategoryIsRegular(string? category)
         => Assert.True(FitnessCategoryHelper.IsRegular(category));
 
-    // Регістр у картках плаває - порівняння мусить його ігнорувати. Для
-    // кирилиці OrdinalIgnoreCase це вміє (на відміну від SQLite NOCASE, через
-    // який кімнати роздвоювались).
     [Theory]
     [InlineData("Придатний")]
     [InlineData("ПРИДАТНИЙ")]
@@ -83,8 +71,6 @@ public class FitnessCategoryHelperTests
     public void LimitedAndUnfitAreNotRegular(string category)
         => Assert.False(FitnessCategoryHelper.IsRegular(category));
 
-    // «непридатний» містить «придатний» як підрядок - перевірка мусить бути на
-    // рівність, а не на входження.
     [Fact]
     public void UnfitIsNotMistakenForRegular()
         => Assert.False(FitnessCategoryHelper.IsRegular("непридатний"));
@@ -102,8 +88,6 @@ public class FitnessCategoryHelperTests
     public void FilterMatches(FitnessFilter filter, string? category, bool expected)
         => Assert.Equal(expected, FitnessCategoryHelper.Matches(filter, category));
 
-    // Два фільтри, що не перетинаються, разом покривають усіх: інакше людина
-    // зникала б з обох списків.
     [Theory]
     [InlineData("придатний")]
     [InlineData("обмежено придатний")]
@@ -128,14 +112,10 @@ public class HeaderNormalizationTests
     public void CollapsesRunsOfWhitespace()
         => Assert.Equal("особовий номер", HeaderNormalization.Normalize("Особовий    номер"));
 
-    // Заголовки в реальних книгах переносяться всередині клітинки - для
-    // зіставлення перенос має бути звичайним пробілом.
     [Fact]
     public void TurnsLineBreaksIntoSpaces()
         => Assert.Equal("дата народження", HeaderNormalization.Normalize("Дата\r\nнародження"));
 
-    // Обидва апострофи - і прямий, і типографський: у файлах трапляються обидва,
-    // і «ім'я» не має залежати від того, який саме набрали.
     [Theory]
     [InlineData("Ім'я")]
     [InlineData("Ім’я")]
@@ -146,9 +126,6 @@ public class HeaderNormalizationTests
     public void EmptyHeaderStaysEmpty()
         => Assert.Equal(string.Empty, HeaderNormalization.Normalize("   "));
 
-    // Дефіс стає пробілом, а не зникає: правила зіставлення писані через пробіл,
-    // тож «По-батькові» мусить збігтися з «По батькові». Видалення дефіса
-    // давало «побатькові» - і колонка мовчки пропадала.
     [Fact]
     public void HyphenBecomesASpace()
         => Assert.Equal(

@@ -8,17 +8,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.Tests.Generation;
 
-// v25: груповий документ записує СКЛАД на момент генерації - саме на нього
-// посилається «Комплектність» («ця людина покрита груповим наказом ось цим»).
-// Кожна версія має власний склад.
 public class GroupDocumentParticipantsTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), $"gendoc-part-{Guid.NewGuid():N}");
     public void Dispose() { if (Directory.Exists(_folder)) Directory.Delete(_folder, true); }
     private static readonly IProgress<string> NoProgress = new Progress<string>(_ => { });
 
-    // Пакет зі справжнім груповим DOCX (повторюваний блок); мапінг - тим самим
-    // сканером, що й завантаження шаблону в продакшні.
     private static (int PackageId, List<int> PeopleIds) SeedGroupDocxPackage(TestDb db, int peopleCount)
     {
         using var ctx = db.Factory.CreateDbContext();

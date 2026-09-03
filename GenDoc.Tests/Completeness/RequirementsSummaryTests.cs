@@ -13,8 +13,6 @@ public class RequirementsSummaryTests
         Assert.Equal("Для набору №4: придатні - 1 обов'язковий, 1 опційний · обмежено придатні - 2 обов'язкових, 0 опційних", text);
     }
 
-    // v25: обов'язковість групового знову має сенс (участь людини в чинному документі),
-    // тож рядок вимог зберігає значення з БД, а не примусовий NotApplicable.
     [Fact]
     public void GroupRow_KeepsItsRequirementAndIsFlagged()
     {

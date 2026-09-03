@@ -18,7 +18,6 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Заголовок -->
         <Border Grid.Row="0" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1" Padding="16,12">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -32,7 +31,6 @@
             </Grid>
         </Border>
 
-        <!-- Індикатор кроків -->
         <Grid Grid.Row="1" Background="{StaticResource BackgroundBrush}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
@@ -88,7 +86,6 @@
             </Border>
         </Grid>
 
-        <!-- Крок 1: Формування -->
         <StackPanel Grid.Row="2" Margin="22,16" Visibility="{Binding IsFormStep, Converter={StaticResource BoolToVisibility}}">
 
             <TextBlock Text="{Binding PeopleText}" FontSize="12.5" TextWrapping="Wrap"
@@ -211,7 +208,6 @@
             </TextBlock>
         </StackPanel>
 
-        <!-- Крок 2: Документи -->
         <StackPanel Grid.Row="2" Margin="22,16" Visibility="{Binding ShowResults, Converter={StaticResource BoolToVisibility}}">
             <Border Background="{StaticResource AccentSoftBrush}" Padding="10,8" Margin="0,0,0,12">
                 <TextBlock Text="{Binding ResultsSummaryText}" FontSize="12.5" FontWeight="SemiBold"/>
@@ -257,7 +253,6 @@
             </Border>
         </StackPanel>
 
-        <!-- Футер: крок 1 -->
         <Border Grid.Row="3" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,0,0" Padding="22,16"
                 Visibility="{Binding IsFormStep, Converter={StaticResource BoolToVisibility}}">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
@@ -266,7 +261,6 @@
             </StackPanel>
         </Border>
 
-        <!-- Футер: крок 2 -->
         <Border Grid.Row="3" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,0,0" Padding="22,16"
                 Visibility="{Binding ShowResults, Converter={StaticResource BoolToVisibility}}">
             <Grid>

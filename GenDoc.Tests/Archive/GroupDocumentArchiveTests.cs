@@ -5,14 +5,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.Tests.Archive;
 
-// Групові документи бувають двох ґатунків: XLSX-відомість (ExportTemplateId
-// заповнено, TemplateId - null) і груповий DOCX (навпаки). Ланцюг версій
-// мусить розрізняти їх обидва.
 public class GroupDocumentArchiveTests
 {
-    // Заводить UserProfile з Id=1: GeneratedGroupDocument.GeneratedByUserId -
-    // обов'язковий FK, а FakeCurrentUser лише підмінює контекст виконання,
-    // у БД нічого не пише (як і в DocumentVersionChainTests).
     private static void SeedUser(TestDb db)
     {
         using var ctx = db.Factory.CreateDbContext();
@@ -75,8 +69,6 @@ public class GroupDocumentArchiveTests
         return doc.Id;
     }
 
-    // ── Зелені: XLSX-відомості ──────────────────────────────────────
-
     [Fact]
     public async Task DeleteGroupAsync_Xlsx_PromotesPreviousVersionOfTheSameTemplate()
     {
@@ -93,7 +85,6 @@ public class GroupDocumentArchiveTests
         Assert.NotNull(ctx.GeneratedGroupDocuments.IgnoreQueryFilters().First(g => g.Id == v2).DeletedAt);
     }
 
-    // Видалення відомості одного XLSX-шаблону не повинно чіпати інший шаблон.
     [Fact]
     public async Task DeleteGroupAsync_Xlsx_DoesNotTouchOtherTemplate()
     {
@@ -128,11 +119,6 @@ public class GroupDocumentArchiveTests
         Assert.False(ctx.GeneratedGroupDocuments.First(g => g.Id == v2).IsCurrent);
     }
 
-    // ── Червоні: груповий DOCX (дефект A1) ──────────────────────────
-
-    // ExportTemplateId у групового DOCX - NULL, і умова `g.ExportTemplateId ==
-    // doc.ExportTemplateId` перекладається в `IS NULL`, тобто зачіпає всі
-    // групові DOCX усіх шаблонів одразу.
     [Fact]
     public async Task DeleteGroupAsync_Docx_DoesNotTouchOtherDocxTemplate()
     {
@@ -142,11 +128,6 @@ public class GroupDocumentArchiveTests
         var rapportB = AddDocxTemplate(db, "Рапорт Б");
         var aV1 = AddGroupDocument(db, null, rapportA, version: 1, isCurrent: false);
         var aV2 = AddGroupDocument(db, null, rapportA, version: 2, isCurrent: true);
-        // bV1 навмисно має вищу версію (3), а не 1: інакше aV1 і bV1 дають нічию за
-        // Version, і OrderByDescending(Version).FirstOrDefault() без тайбрейка випадково
-        // повертає aV1 навіть у зіпсованому (кросс-шаблонному) наборі кандидатів - тест
-        // проходив би і на багу, і на фіксі. З version:3 зіпсований запит натомість
-        // детерміновано обирає bV1, aV1 лишається непідвищеним, і тест валиться до фіксу.
         var bV1 = AddGroupDocument(db, null, rapportB, version: 3, isCurrent: true);
 
         await TestServices.Archive(db).DeleteGroupAsync(new[] { aV2 });
@@ -175,7 +156,6 @@ public class GroupDocumentArchiveTests
         Assert.True(ctx.GeneratedGroupDocuments.First(g => g.Id == bV1).IsCurrent);
     }
 
-    // Дефект A2: DOCX-групи віддаються з ExportTemplateId ?? 0 і назвою «-».
     [Fact]
     public async Task QueryGroupAsync_ReturnsDocxGroupsWithTheirTemplateName()
     {
@@ -191,13 +171,6 @@ public class GroupDocumentArchiveTests
         Assert.True(row.TemplateAlive);
     }
 
-    // Знахідка рев'ю Task 12: id XLSX- і DOCX-шаблонів нумеруються в окремих
-    // таблицях з незалежною послідовністю, тож можуть числом випадково збігтися.
-    // У свіжій тестовій БД перший запис у кожній з таблиць отримує Id=1 - цього
-    // досить, щоб детерміновано відтворити колізію, не підганяючи id вручну.
-    // Якщо фільтр перевіряє лише ExportTemplateId (як було до фіксу), вибір
-    // DOCX-шаблону в списку поверне чужу XLSX-відомість з тим самим номером -
-    // рівно та вада, яку мав усунути цей таск.
     [Fact]
     public async Task QueryGroupAsync_FilterDistinguishesTemplateKindEvenWhenIdsCollide()
     {
@@ -205,7 +178,7 @@ public class GroupDocumentArchiveTests
         SeedUser(db);
         var xlsxTemplateId = AddExportTemplate(db, "Залік");
         var docxTemplateId = AddDocxTemplate(db, "Рапорт");
-        Assert.Equal(xlsxTemplateId, docxTemplateId); // саме та колізія, яку тест перевіряє
+        Assert.Equal(xlsxTemplateId, docxTemplateId);
 
         var xlsxDocId = AddGroupDocument(db, xlsxTemplateId, null, version: 1, isCurrent: true);
         var docxDocId = AddGroupDocument(db, null, docxTemplateId, version: 1, isCurrent: true);
@@ -221,7 +194,6 @@ public class GroupDocumentArchiveTests
         Assert.Equal(xlsxDocId, xlsxRow.Id);
     }
 
-    // Дефект A3: FirstAsync по таблиці вмісту кидає «Sequence contains no elements».
     [Fact]
     public async Task OpenGroupAsync_DocumentWithoutStoredContent_ReturnsFailureInsteadOfThrowing()
     {
@@ -236,11 +208,6 @@ public class GroupDocumentArchiveTests
         Assert.Contains("не збережено в архіві", result.ErrorMessage);
     }
 
-    // Фінальне рев'ю, Finding 2: GetGroupVersionsAsync лишався єдиним місцем, яке
-    // порівнювало серію вручну (без g.IntakeId, і без переходу через SameGroupSeries,
-    // яким керуються DeleteGroupAsync/MakeGroupCurrentAsync/RestoreGroupAsync). Тест
-    // покриває обидва ґатунки групових документів і те, що чужий шаблон не потрапляє
-    // до переліку версій.
     [Fact]
     public async Task GetGroupVersionsAsync_Xlsx_ReturnsOwnVersionsNewestFirst_ExcludingOtherTemplate()
     {

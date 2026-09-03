@@ -107,7 +107,6 @@ namespace GenDoc.Data
                     .WithOne(c => c.GeneratedGroupDocument)
                     .HasForeignKey<GeneratedGroupDocumentContent>(c => c.GeneratedGroupDocumentId)
                     .OnDelete(DeleteBehavior.Cascade);
-                // Учасники групового документа (v25): склад на момент генерації.
                 b.HasMany(g => g.Recipients)
                     .WithOne(r => r.GeneratedGroupDocument)
                     .HasForeignKey(r => r.GeneratedGroupDocumentId)
@@ -127,7 +126,6 @@ namespace GenDoc.Data
             modelBuilder.Entity<GeneratedGroupDocumentContent>()
                 .HasKey(c => c.GeneratedGroupDocumentId);
 
-            // v26: пер-профільний стан користувача.
             modelBuilder.Entity<Models.UserSettings>(e =>
             {
                 e.HasIndex(s => s.UserProfileId).IsUnique();
@@ -141,8 +139,6 @@ namespace GenDoc.Data
                 .HasForeignKey(t => t.GenerationPackageId)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // v24: запуск без пакета (вибіркова генерація) і запуск, чий пакет видалили,
-            // лишаються в історії - пакет обнуляється, а не тягне запуск за собою.
             modelBuilder.Entity<GenerationPackageRun>()
                 .HasOne(r => r.GenerationPackage)
                 .WithMany(p => p.Runs)

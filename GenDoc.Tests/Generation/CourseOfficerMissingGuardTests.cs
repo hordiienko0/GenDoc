@@ -6,12 +6,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Generation;
 
-// Відомість із {{курсовий_офіцер}}, коли підписанта немає.
-//
-// Раніше тег просто падав у unfilledTags: документ виходив, місце підпису в
-// ньому лишалось порожнім, а нотатка губилась серед решти. Порожній підпис у
-// відомості ніхто не помічає, доки папір не піде далі - тому тепер це зупинка
-// з явною помилкою, а не тиха генерація.
 public class CourseOfficerMissingGuardTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), $"gendoc-officer-{Guid.NewGuid():N}");
@@ -23,9 +17,6 @@ public class CourseOfficerMissingGuardTests : IDisposable
 
     private static readonly IProgress<string> NoProgress = new Progress<string>(_ => { });
 
-    // Найпростіша ДІЙСНА книга: шапка, рядок-шаблон із {{піб}} і клітинка
-    // підпису під таблицею. Файл справжній, тож без сторожа відомість
-    // згенерувалася б успішно - саме це й робить тест показовим.
     private static byte[] BuildSheetWithSignature()
     {
         using var workbook = new XLWorkbook();
@@ -47,8 +38,6 @@ public class CourseOfficerMissingGuardTests : IDisposable
         ctx.Recipients.AddRange(TemplateFixtures.Roster(2));
 
         if (withCourseOfficer)
-            // Явний Id: TemplateFixtures.Roster роздає 1..n, тож без нього EF
-            // упирається в конфлікт ключів у трекері.
             ctx.Recipients.Add(new Recipient
             {
                 Id = 100,
@@ -71,9 +60,6 @@ public class CourseOfficerMissingGuardTests : IDisposable
             FieldKey = nameof(ExportFieldKey.FullNameFormatted),
             PlaceholderTag = "{{піб}}", SourceType = MappingSourceType.Recipient
         });
-        // ColumnIndex = 0 - ознака «тег поза таблицею» (XlsxGenerationService
-        // ділить мапінги саме за цим). Підпис стоїть під відомістю, не в колонці,
-        // тож із ненульовим індексом він не підставився б узагалі.
         template.ColumnMappings.Add(new ExportTemplateColumnMapping
         {
             ColumnIndex = 0, HeaderText = string.Empty,
@@ -117,9 +103,6 @@ public class CourseOfficerMissingGuardTests : IDisposable
         Assert.Contains("курсов", issue.Message, StringComparison.OrdinalIgnoreCase);
     }
 
-    // Зворотний бік того самого сторожа: коли курсовий офіцер є, відомість
-    // мусить згенеруватися як і раніше. Без цього тесту «виправлення», що
-    // зупиняє генерацію завжди, теж пройшло б.
     [Fact]
     public void RunPackage_CourseOfficerPresent_GeneratesDocument()
     {
@@ -134,9 +117,6 @@ public class CourseOfficerMissingGuardTests : IDisposable
         Assert.Equal(1, result.GroupGenerated);
     }
 
-    // Суть дроплиста: підписує ОБРАНИЙ, а не той, кого база віддала першим.
-    // Ковальчук стоїть раніше за Id, тож старий авто-вибір узяв би саме його -
-    // тест проходить лише тоді, коли вибір оператора справді доїжджає до аркуша.
     [Fact]
     public void RunPackage_WithChosenCourseOfficer_SignsWithThatPerson()
     {
@@ -167,8 +147,6 @@ public class CourseOfficerMissingGuardTests : IDisposable
 
         using var workbook = new XLWorkbook(new MemoryStream(content));
 
-        // Не фіксована адреса: під кожну зайву особу генератор вставляє рядок,
-        // тож клітинка підпису з'їжджає вниз разом із усім, що під таблицею.
         var signature = string.Join(
             " ", workbook.Worksheets.First().CellsUsed().Select(c => c.GetString()));
 
@@ -176,8 +154,6 @@ public class CourseOfficerMissingGuardTests : IDisposable
         Assert.DoesNotContain("Ковальчук", signature, StringComparison.Ordinal);
     }
 
-    // Екран генерації показує дропліст лише тим пакетам, яким підпис справді
-    // потрібен - інакше зайве поле висіло б над кожним запуском.
     [Fact]
     public void PackageNeedsCourseOfficer_TrueOnlyWhenSomeTemplateAsksForTheSignature()
     {

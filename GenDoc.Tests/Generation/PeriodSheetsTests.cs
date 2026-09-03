@@ -5,13 +5,8 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Generation;
 
-// Тести ParsePeriodDates (розбір рядка «03.08.2026-05.08.2026, 09.08.2026» на дати) і
-// repeatSheetPerDate (клонування аркуша шаблону на кожну дату періоду) в
-// XlsxGenerationService. XlsxTemplateScan.ForGeneration бере (Row, Mappings) для
-// справжньої Роздавальної відомості - той самий шлях, що й у Task 7/8.
 public class PeriodSheetsTests
 {
-    // ── ParsePeriodDates ────────────────────────────────────────────
 
     [Fact]
     public void ParsePeriodDates_ExpandsRangeInclusively()
@@ -57,8 +52,6 @@ public class PeriodSheetsTests
         var ex = Assert.Throws<FormatException>(() => XlsxGenerationService.ParsePeriodDates("   "));
         Assert.Contains("порожній", ex.Message);
     }
-
-    // ── repeatSheetPerDate ──────────────────────────────────────────
 
     private static Dictionary<string, string> RozdavalnaManualValues(string? period) =>
         new()
@@ -159,11 +152,6 @@ public class PeriodSheetsTests
         Assert.Contains(XlsxGenerationService.PeriodTag, result.ErrorMessage);
     }
 
-    // Успішно підставлений тег ніколи не має потрапляти до списку "не заповнено".
-    // Це гарантовано тим, що підстановка перезаписує текст клітинки ДО того, як
-    // запускається залишковий прохід (CollectResidualUnfilledTags) - тому цей
-    // прохід бачить лише теги, для яких узагалі не було мапінгу, і саме такі
-    // репортить. Це навмисна поведінка, не дефект.
     [Fact]
     public void UnfilledTags_ExcludeTagsThatWereSubstituted()
     {

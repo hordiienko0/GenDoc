@@ -19,7 +19,6 @@ public partial class TemplateMappingRowViewModel : ObservableObject
         new(MappingSourceType.Manual, "Вручну при експорті")
     };
 
-    // Header-driven (стара поведінка: заголовок → ExportFieldKey).
     public TemplateMappingRowViewModel(int columnIndex, string headerText, ExportFieldKey fieldKey)
     {
         Id = 0;
@@ -30,7 +29,6 @@ public partial class TemplateMappingRowViewModel : ObservableObject
         selectedField = fieldKey;
     }
 
-    // Placeholder-driven (тег → джерело + поле).
     public TemplateMappingRowViewModel(int id, string placeholderTag, MappingSourceType sourceType, string? fieldKey)
     {
         Id = id;

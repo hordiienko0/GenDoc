@@ -7,8 +7,6 @@ namespace GenDoc.Tests.Templates;
 
 public class TemplateFieldPaletteTests
 {
-    // Суть палітри: вона не має власного переліку тегів. Якщо колись хтось додасть
-    // тег у мапу, він мусить з'явитися в конструкторі сам.
     [Fact]
     public void Every_offered_field_is_classified_as_its_group_promises()
     {

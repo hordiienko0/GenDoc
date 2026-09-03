@@ -20,8 +20,6 @@ namespace GenDoc.ViewModels.Completeness
     public record IntakeFilterOption(int Id, string Label);
     public record PackageFilterOption(int Id, string Label);
 
-    // Singleton: фільтри живуть між перемиканнями розділів; матриця перебудовується
-    // при зміні набору/пакета, а не тримається завжди в пам'яті.
     public partial class CompletenessViewModel : ObservableObject, ICellActionCoordinator, INavigationTarget
     {
         private static readonly CompareInfo UkCompare = CultureInfo.GetCultureInfo("uk-UA").CompareInfo;
@@ -31,8 +29,6 @@ namespace GenDoc.ViewModels.Completeness
         private readonly IDialogService _dialogService;
         private readonly Services.Generation.IManualTagFormBuilder _manualTagFormBuilder;
 
-        /// <summary>Ключ, під яким запам'ятовуються минулі значення саме для
-        /// цього місця - щоб вони не змішувалися з іншими екранами.</summary>
         private const string ManualTagContextKey = "completeness-regenerate";
         private readonly IServiceProvider _serviceProvider;
         private readonly DispatcherTimer _searchDebounceTimer;
@@ -67,7 +63,6 @@ namespace GenDoc.ViewModels.Completeness
 
         public ObservableCollection<MatrixRowViewModel> Rows { get; } = new();
 
-        // Порядок колонок - джерело правди для генератора DataGrid-колонок у view.
         public List<MatrixTemplateInfo> Columns { get; private set; } = new();
 
         public event Action? ColumnsChanged;
@@ -204,10 +199,6 @@ namespace GenDoc.ViewModels.Completeness
             IntakeOptions.Clear();
             foreach (var option in intakes) IntakeOptions.Add(option);
 
-            // Спершу «мій» набір, і лише потім глобальний активний за текстовою
-            // міткою. Бейдж біля розділу рахується по ActiveIntakeState, тож
-            // вибір за міткою розходився з ним: бейдж показував число по Набору
-            // №3, а розділ відкривав матрицю Набору №5 (аудит 2026-08-28).
             var mine = _serviceProvider.GetService(typeof(Services.ActiveIntakeState))
                 as Services.ActiveIntakeState;
 
@@ -225,7 +216,6 @@ namespace GenDoc.ViewModels.Completeness
 
         private async Task<List<IntakeFilterOption>> GetIntakeOptionsAsync()
         {
-            // Пакети/набори читаються через сервіс архіву (спільні фільтр-опції вже там реалізовані).
             var options = await _archiveService.GetFilterOptionsAsync();
             return options.Intakes.Select(i => new IntakeFilterOption(i.Id, i.Label)).ToList();
         }
@@ -247,10 +237,6 @@ namespace GenDoc.ViewModels.Completeness
 
         private async Task RebuildAsync()
         {
-            // Перебудову запускають «і забувають» (зміна набору, зміна пакета).
-            // Швидке перемикання лишало два запити в польоті, і повільніший
-            // приходив останнім - матриця показувала попередній набір, тоді як
-            // комбо вже показувало новий (аудит 2026-08-28).
             var token = _reload.Begin();
 
             if (PackageOptions.Count == 0) await ReloadPackagesAsync();
@@ -305,8 +291,6 @@ namespace GenDoc.ViewModels.Completeness
             }
             finally
             {
-                // Гасить індикатор лише актуальний прогін: інакше той, що
-                // завершився першим, прибирав би його, поки другий ще працює.
                 if (_reload.IsCurrent(token)) IsBusy = false;
             }
         }
@@ -325,10 +309,6 @@ namespace GenDoc.ViewModels.Completeness
             RecomputeAggregates();
         }
 
-        /// <summary>Групові колонки (наказ або відомість), яких бракує хоча б
-        /// одній людині, що їх зобов'язана мати. Кожна така колонка - ОДИН
-        /// документ на весь склад; разом із нею повертається перелік людей, які
-        /// в цей документ мають потрапити.</summary>
         private List<(MatrixTemplateInfo Column, List<int> RecipientIds)> MissingGroupColumns()
         {
             var result = new List<(MatrixTemplateInfo, List<int>)>();
@@ -339,16 +319,12 @@ namespace GenDoc.ViewModels.Completeness
                 var column = _matrixData.Templates[i];
                 if (!column.IsGroup) continue;
 
-                // Кого документ зобов'язаний охопити - вирішує вимога колонки
-                // за придатністю людини; у відомості це той самий фільтр, що
-                // стоїть на зв'язку пакета.
                 var covered = Rows
                     .Where(r => i < r.Cells.Count
                                 && r.Cells[i].Requirement == TemplateRequirement.Required)
                     .ToList();
                 if (covered.Count == 0) continue;
 
-                // Документ уже є й охоплює всіх, кого мав - генерувати нічого.
                 if (covered.All(r => r.Cells[i].IsPresent)) continue;
 
                 result.Add((column, covered.Select(r => r.RecipientId).ToList()));
@@ -359,12 +335,6 @@ namespace GenDoc.ViewModels.Completeness
 
         private void RecomputeAggregates()
         {
-            // Кнопка «Згенерувати все, чого бракує» рахує персональні документи
-            // ПОШТУЧНО, а групові (наказ і відомість) - ПО ОДНОМУ на колонку:
-            // це один документ на весь склад, а не документ на людину. Доти
-            // групові не рахувались узагалі, тож кнопка показувала «(0)» і
-            // відомість не було звідки згенерувати (вимога користувача
-            // 2026-09-01).
             MissingRequiredCount =
                 Rows.Sum(r => r.Cells.Count(c => c.IsMissingRequired && !c.IsGroupColumn))
                 + MissingGroupColumns().Count;
@@ -381,8 +351,6 @@ namespace GenDoc.ViewModels.Completeness
                 : $"{Rows.Count} осіб · {requiredPresentTotal} документів з {requiredTotal} обов'язкових · {StaleCount} застарілих{optionalSuffix}";
         }
 
-        // ── Меню шаблонів (⚙ Вимоги) ─────────────────────────────────────
-
         [RelayCommand]
         private async Task OpenRequirementsAsync()
         {
@@ -396,8 +364,6 @@ namespace GenDoc.ViewModels.Completeness
             }
         }
 
-        // ── Кнопки batch-дій ──────────────────────────────────────────────
-
         [RelayCommand(CanExecute = nameof(CanGenerateMissing))]
         private async Task GenerateMissingAsync()
         {
@@ -409,14 +375,12 @@ namespace GenDoc.ViewModels.Completeness
             {
                 foreach (var cell in row.Cells)
                 {
-                    if (cell.IsGroupColumn) continue; // групові не генеруються поіменно
+                    if (cell.IsGroupColumn) continue;
                     if (cell.IsMissingRequired) missingRequired.Add((cell.RecipientId, cell.TemplateId));
                     else if (cell.IsMissingOptional) missingOptional.Add((cell.RecipientId, cell.TemplateId));
                 }
             }
 
-            // Групові наказ і відомість - один документ на весь склад, тож
-            // рахуються по одному, а не на кожну людину.
             var missingGroups = MissingGroupColumns();
 
             var includeOptional = false;
@@ -439,8 +403,6 @@ namespace GenDoc.ViewModels.Completeness
             var targets = includeOptional ? missingRequired.Concat(missingOptional).ToList() : missingRequired;
             if (targets.Count == 0 && missingGroups.Count == 0) return;
 
-            // Ручні мітки збираємо за всіма шаблонами разом - і персональними, і
-            // груповими: інакше форма спливала б двічі.
             var tagSources = targets.Select(t => t.TemplateId)
                 .Concat(missingGroups.Where(g => !g.Column.IsExport).Select(g => g.Column.TemplateId))
                 .Distinct().ToList();
@@ -546,14 +508,6 @@ namespace GenDoc.ViewModels.Completeness
                 failed > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
         }
 
-        /// <summary>Створює ОДИН груповий документ (наказ або відомість) на
-        /// переданий склад. Це не «документ на людину»: клітинки в колонці
-        /// позеленіють у всіх, хто потрапив у документ.
-        ///
-        /// Йде тим самим конвеєром, що й «Генерація» (розкладка тек, версії,
-        /// архів, запис прогону) - через вибіркову генерацію, а не окремою
-        /// гілкою: інакше документ із матриці й документ із «Генерації» лягали б
-        /// у різні місця.</summary>
         private async Task<(bool Ok, string? Error)> GenerateGroupDocumentAsync(
             MatrixTemplateInfo column, List<int> recipientIds, Dictionary<string, string> manualValues)
         {
@@ -589,7 +543,6 @@ namespace GenDoc.ViewModels.Completeness
             var tags = await _archiveService.GetManualTagsAsync(templateIds);
             if (tags.Count == 0) return new Dictionary<string, string>();
 
-            // Та сама форма, що в генерації: дати пікером, тексти з минулого разу.
             var form = await _manualTagFormBuilder.BuildAsync(tags, ManualTagContextKey);
             var dialog = new ManualValuesDialogViewModel(form);
             if (_dialogService.ShowDialog(dialog, Application.Current.MainWindow) != true) return null;
@@ -598,14 +551,11 @@ namespace GenDoc.ViewModels.Completeness
             return dialog.GetValues();
         }
 
-        // ── ICellActionCoordinator: дії з меню клітинки ──────────────────
-
         public async Task OpenAsync(MatrixCellViewModel cell)
         {
             if (cell.DocumentId is not int docId) return;
             try
             {
-                // Групова клітинка посилається на GeneratedGroupDocument - інша таблиця, інший Open.
                 var result = cell.IsGroupColumn
                     ? await _archiveService.OpenGroupAsync(docId)
                     : await _archiveService.OpenAsync(docId);

@@ -1,7 +1,6 @@
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-    <!-- Палітра "Військовий облік v4" (oklch з макета -> sRGB) -->
     <SolidColorBrush x:Key="NavyBrush" Color="#012854"/>
     <SolidColorBrush x:Key="NavyDeepBrush" Color="#00183F"/>
     <SolidColorBrush x:Key="NavyMidBrush" Color="#0C3E70"/>
@@ -29,16 +28,10 @@
     <SolidColorBrush x:Key="ScrollThumbBrush" Color="#B0C0D1"/>
     <SolidColorBrush x:Key="ScrollTrackBrush" Color="#EAEFF5"/>
 
-    <!-- UnitEmblemImage живе в Themes/UnitEmblem.xaml - згенерований повний
-         шеврон із GenDoc/Assets/chevron-mark.svg. Тут його немає навмисно:
-         той словник перегенеровується цілком і правити його руками не можна. -->
-
-    <!-- Тіні: модалка / права висувна картка / контекст-меню (лише ці три) -->
     <DropShadowEffect x:Key="ModalShadowEffect" Color="#00183F" Opacity="0.35" BlurRadius="40" Direction="270" ShadowDepth="10"/>
     <DropShadowEffect x:Key="FlyoutShadowEffect" Color="#00183F" Opacity="0.25" BlurRadius="18" Direction="180" ShadowDepth="4"/>
     <DropShadowEffect x:Key="ContextMenuShadowEffect" Color="#00183F" Opacity="0.20" BlurRadius="14" Direction="270" ShadowDepth="3"/>
 
-    <!-- Window: тло/текст/шрифт успадковуються вниз по дереву -->
     <Style TargetType="Window">
         <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
@@ -46,11 +39,6 @@
         <Setter Property="FontSize" Value="12.5"/>
     </Style>
 
-    <!-- ScrollBar: 10px, без стрілок. Стиль мусить розрізняти орієнтацію -
-         неявний стиль накриває і горизонтальні смуги теж. Width="10" на
-         горизонтальній перетворює її на скіпку 10 px, ще й посеред панелі
-         (явна Width перебиває Stretch), а Track без Orientation розкладається
-         вертикально й тому не рухається. -->
     <Style x:Key="SimpleScrollBarThumbStyle" TargetType="Thumb">
         <Setter Property="Template">
             <Setter.Value>
@@ -94,9 +82,6 @@
             </Setter.Value>
         </Setter>
         <Style.Triggers>
-            <!-- Горизонтальна смуга: висота замість ширини, Width="Auto" (тобто
-                 NaN) повертає розтягування на всю ширину ScrollViewer'а, напрямок
-                 не реверсується, а гортання йде командами Left/Right. -->
             <Trigger Property="Orientation" Value="Horizontal">
                 <Setter Property="Width" Value="Auto"/>
                 <Setter Property="Height" Value="10"/>
@@ -123,7 +108,6 @@
         </Style.Triggers>
     </Style>
 
-    <!-- Button: primary за замовчуванням (Accent фон, білий текст) -->
     <Style TargetType="Button">
         <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
         <Setter Property="Foreground" Value="White"/>
@@ -163,7 +147,6 @@
         </Setter>
     </Style>
 
-    <!-- Secondary button: Panel фон, 1px BorderLine, hover бордер Accent + фон AccentSoft -->
     <Style x:Key="SecondaryButtonStyle" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
         <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
@@ -196,19 +179,11 @@
         </Setter>
     </Style>
 
-    <!-- Ghost (текстова) кнопка - напр. "Скасувати" без рамки -->
     <Style x:Key="GhostButtonStyle" TargetType="Button" BasedOn="{StaticResource SecondaryButtonStyle}">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderBrush" Value="Transparent"/>
     </Style>
 
-    <!-- Клітинка таблиці, чий текст може не влізти в колонку.
-
-         Підказка бере ТЕКСТ САМОГО елемента, а не конкретну прив'язку, тому
-         стиль однаково працює в будь-якій колонці й гарантує головне: обрізане
-         значення завжди можна прочитати повністю, нічого не втрачається.
-         Порожня клітинка підказки не показує - інакше під курсором спливала б
-         порожня рамка. -->
     <Style x:Key="TruncatedCellStyle" TargetType="TextBlock">
         <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
         <Setter Property="ToolTip" Value="{Binding Text, RelativeSource={RelativeSource Self}}"/>
@@ -219,7 +194,6 @@
         </Style.Triggers>
     </Style>
 
-    <!-- Текстова кнопка-посилання (Редагувати/Видалити/Виселити тощо) -->
     <Style x:Key="TextLinkButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
@@ -246,7 +220,6 @@
         </Setter>
     </Style>
 
-    <!-- Той самий вигляд, що TextLinkButtonStyle, але для ToggleButton (розгортання списків тощо). -->
     <Style x:Key="TextLinkToggleButtonStyle" TargetType="ToggleButton">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
@@ -273,7 +246,6 @@
         </Setter>
     </Style>
 
-    <!-- Кнопка "✕" закриття (модалка, вікно) - 23-24px квадрат, hover Danger -->
     <Style x:Key="CloseButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
@@ -303,7 +275,6 @@
         </Setter>
     </Style>
 
-    <!-- Іконка-кнопка в рядку таблиці (редагувати/видалити/мапінг тощо) -->
     <Style x:Key="RowIconButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
@@ -334,7 +305,6 @@
         </Setter>
     </Style>
 
-    <!-- Чіп-підказка (напр. звання під полем "Звання") -->
     <Style x:Key="SuggestionChipStyle" TargetType="Button">
         <Setter Property="Background" Value="{StaticResource SkySoftBrush}"/>
         <Setter Property="Foreground" Value="{StaticResource NavyBrush}"/>
@@ -362,7 +332,6 @@
         </Setter>
     </Style>
 
-    <!-- Пункт бічного навігаційного меню (сайдбар, Navy) -->
     <Style x:Key="NavItemButtonStyle" TargetType="Button">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{StaticResource MenuTextBrush}"/>
@@ -404,7 +373,6 @@
         </Style.Triggers>
     </Style>
 
-    <!-- TextBox / PasswordBox -->
     <Style TargetType="TextBox">
         <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
@@ -421,7 +389,6 @@
                     <Border x:Name="border" Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
                         <Grid>
-                            <!-- Підказка порожнього поля: текст беремо з Tag, як його задають в'юхи -->
                             <TextBlock x:Name="placeholder" Text="{TemplateBinding Tag}"
                                        Foreground="{StaticResource PlaceholderBrush}"
                                        Margin="{TemplateBinding Padding}" VerticalAlignment="Center"
@@ -473,7 +440,6 @@
         </Setter>
     </Style>
 
-    <!-- ComboBox: повний ControlTemplate, щоб і закритий стан, і Popup були у стилі теми -->
     <Style x:Key="ComboBoxToggleButtonStyle" TargetType="ToggleButton">
         <Setter Property="Focusable" Value="False"/>
         <Setter Property="ClickMode" Value="Press"/>
@@ -521,8 +487,6 @@
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <!-- Праве поле ширше за решту: стрілка розкриття лежить поверх вмісту,
-             і без цього запасу довгий підпис заповзає під неї. -->
         <Setter Property="Padding" Value="7,4,22,4"/>
         <Setter Property="FontSize" Value="11.5"/>
         <Setter Property="Template">
@@ -539,7 +503,6 @@
                                           Margin="{TemplateBinding Padding}"
                                           TextBlock.Foreground="{TemplateBinding Foreground}"
                                           VerticalAlignment="Center" HorizontalAlignment="Left"/>
-                        <!-- Підказка порожнього комбобокса: текст беремо з Tag, як у TextBox -->
                         <TextBlock x:Name="comboPlaceholder" Text="{TemplateBinding Tag}" IsHitTestVisible="False"
                                    Foreground="{StaticResource TextSecondaryBrush}" Margin="{TemplateBinding Padding}"
                                    VerticalAlignment="Center" HorizontalAlignment="Left" Visibility="Collapsed"/>
@@ -587,7 +550,6 @@
         </Setter>
     </Style>
 
-    <!-- DatePicker: текстове поле/рамка у стилі теми; спливаючий Calendar лишається нативним WPF-виглядом -->
     <Style TargetType="DatePickerTextBox">
         <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
@@ -603,7 +565,6 @@
         <Setter Property="FontSize" Value="11.5"/>
     </Style>
 
-    <!-- CheckBox: квадрат 13x13, checked - Accent фон+бордер, біла галочка -->
     <Style TargetType="CheckBox">
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
         <Setter Property="FontSize" Value="11"/>
@@ -633,7 +594,6 @@
         </Setter>
     </Style>
 
-    <!-- Menu / MenuItem (рядок меню титульної панелі, Navy) -->
     <Style TargetType="Menu">
         <Setter Property="Background" Value="{StaticResource NavyBrush}"/>
         <Setter Property="Foreground" Value="{StaticResource MenuTextBrush}"/>
@@ -663,7 +623,6 @@
         </Setter>
     </Style>
 
-    <!-- ContextMenu (меню вибору формату експорту тощо) - ПОВНИЙ ControlTemplate -->
     <Style x:Key="AppContextMenuStyle" TargetType="ContextMenu">
         <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
         <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
@@ -705,7 +664,6 @@
         </Setter>
     </Style>
 
-    <!-- DataGrid: borderless, без вертикальної сітки, uppercase-заголовки на SkySoft -->
     <Style TargetType="DataGrid">
         <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
@@ -784,8 +742,6 @@
         </Style.Triggers>
     </Style>
 
-    <!-- Вузькі колонки-чекбокси (36-40px): стандартний Padding="16,10" з'їдає майже всю
-         ширину і обрізає чекбокс - тут Padding зменшено під фактичний розмір колонки. -->
     <Style x:Key="CheckboxCellStyle" TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
         <Setter Property="Padding" Value="0"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
@@ -796,13 +752,6 @@
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
     </Style>
 
-
-    <!-- ── Картка людини: перегляд / редагування ──────────────────────────
-         Перегляд і редагування - дві альтернативні візуалізації одного
-         значення, що перемикаються прапорцем IsEditing; логіка збереження не
-         дублюється. Стилі ГЛОБАЛЬНІ, бо їх ділять «Особовий склад» і
-         «Постійний склад»: локальна копія в кожній в'юсі неминуче розійшлася б,
-         а посилання на чужий локальний ресурс мовчки не резолвиться. -->
     <Style x:Key="CardReadValueStyle" TargetType="TextBlock">
         <Setter Property="FontSize" Value="12.5"/>
         <Setter Property="TextWrapping" Value="Wrap"/>

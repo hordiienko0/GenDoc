@@ -4,14 +4,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Completeness;
 
-// Відомість Excel («котлове», «зброя») - ОДИН документ на весь склад, а не
-// документ на людину. У матриці вона мусить бути такою самою колонкою, як
-// груповий наказ: зелено, якщо людина в цьому документі є.
-//
-// До цього xlsx-відомості в матрицю не потрапляли взагалі - CompletenessService
-// будував колонки лише з GenerationPackageTemplate. Побачити їх можна було
-// тільки в архіві, перемикаючи фільтр, тож «картини разом» по людині не
-// виходило (вимога користувача 2026-08-31).
 public class GroupSheetsInMatrixTests
 {
     private sealed record Seeded(
@@ -90,8 +82,6 @@ public class GroupSheetsInMatrixTests
         return new Seeded(package.Id, intake.Id, fit.Id, limited.Id, sheet.Id, sheetDocId, personal.Id);
     }
 
-    // ─── Колонка ─────────────────────────────────────────────────────────────
-
     [Fact]
     public async Task ASheetOfThePackageBecomesAMatrixColumn()
     {
@@ -103,7 +93,6 @@ public class GroupSheetsInMatrixTests
         var column = Assert.Single(data.Templates, t => t.IsExport);
         Assert.Equal(s.SheetId, column.TemplateId);
         Assert.Equal("Котлове забезпечення", column.Name);
-        // Відомість - груповий документ: клітинка не генерується по людині.
         Assert.True(column.IsGroup);
     }
 
@@ -146,11 +135,6 @@ public class GroupSheetsInMatrixTests
         Assert.False(data.Docs.ContainsKey((s.FitPersonId, s.SheetId, true)));
     }
 
-    // ─── Кого відомість зобов'язана охопити ──────────────────────────────────
-
-    // Фільтр придатності на зв'язку пакета й вирішує, кому ця відомість
-    // потрібна: інакше «обмежено придатний» світився б червоним у відомості,
-    // яка його свідомо не охоплює.
     [Fact]
     public async Task AnAllFilterMakesTheSheetRequiredForEveryone()
     {
@@ -190,10 +174,6 @@ public class GroupSheetsInMatrixTests
         Assert.Equal(TemplateRequirement.Required, column.RequirementLimited);
     }
 
-    // ─── Відомість не генерується по людині ──────────────────────────────────
-
-    // «Сформувати повний пакет» на картці особи - список ПЕРСОНАЛЬНИХ документів.
-    // Відомість туди потрапити не може: друкувати її кожному окремо не треба.
     [Fact]
     public async Task ASheetNeverAppearsInThePerPersonList()
     {
@@ -207,12 +187,6 @@ public class GroupSheetsInMatrixTests
         Assert.Equal("Рапорт", statuses[0].TemplateName);
     }
 
-    // ─── Ідентифікатори двох таблиць не плутаються ───────────────────────────
-
-    // Template.Id і ExportTemplate.Id - незалежні лічильники, тож у ключі
-    // клітинки мусить бути ще й ознака таблиці. Без неї відомість і
-    // персональний шаблон з однаковим Id ділили б одну клітинку, і людина
-    // світилася б зеленою за чужий документ.
     [Fact]
     public async Task ASheetAndATemplateWithTheSameIdDoNotShareACell()
     {

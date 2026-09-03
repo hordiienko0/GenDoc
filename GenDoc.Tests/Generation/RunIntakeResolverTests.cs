@@ -2,8 +2,6 @@ using GenDoc.Services.Generation;
 
 namespace GenDoc.Tests.Generation;
 
-// Набір прогону виводиться з людей, яким реально генерували: найчастіший
-// не-null; усі null (лише постійний склад) - null; нічия - менший Id.
 public class RunIntakeResolverTests
 {
     [Fact]

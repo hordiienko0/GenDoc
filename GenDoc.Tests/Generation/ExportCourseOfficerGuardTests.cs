@@ -7,9 +7,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Generation;
 
-// Другий шлях, яким та сама відомість потрапляє у файл: експорт зі списку.
-// Він теж підставляв підпис курсового офіцера - і теж мовчки віддавав файл із
-// порожнім місцем підпису, коли офіцера не знайшлось.
 public class ExportCourseOfficerGuardTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), $"gendoc-export-{Guid.NewGuid():N}");

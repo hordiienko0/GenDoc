@@ -11,7 +11,6 @@ public partial class GenerateDocumentsDialog : Window
     {
         InitializeComponent();
         DataContext = viewModel;
-        // Групування «Типовий пакет / Інші шаблони»: GroupStyle працює лише з групованим view.
         var view = CollectionViewSource.GetDefaultView(viewModel.Templates);
         view.GroupDescriptions.Add(new PropertyGroupDescription(nameof(TemplateChoiceItem.Group)));
         viewModel.RequestClose += (_, _) =>

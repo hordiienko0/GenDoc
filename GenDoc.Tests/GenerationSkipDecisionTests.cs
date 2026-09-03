@@ -3,9 +3,6 @@ using GenDoc.Services.Generation;
 
 namespace GenDoc.Tests;
 
-// Раніше пропуск залежав лише від наявності запису в архіві БД. Якщо користувач
-// обирав іншу теку (або переносив/видаляв файли), запуск завершувався з «усе
-// пропущено» і порожньою текою. Тепер пропуск вимагає ще й файлу на місці.
 public class GenerationSkipDecisionTests : IDisposable
 {
     private readonly string _folder =
@@ -27,7 +24,6 @@ public class GenerationSkipDecisionTests : IDisposable
         Assert.True(GenerationService.ExistsInOutputFolder(_folder, "Залік Додаток 8 06.08.2026.xlsx"));
     }
 
-    // Ключовий випадок: в архіві запис є, у теці файлу нема - генерувати треба.
     [Fact]
     public void ExistsInOutputFolder_ArchivedButMissingFromFolder_IsFalse()
         => Assert.False(GenerationService.ExistsInOutputFolder(_folder, "Залік Додаток 8 06.08.2026.xlsx"));
@@ -40,7 +36,6 @@ public class GenerationSkipDecisionTests : IDisposable
         Assert.False(GenerationService.ExistsInOutputFolder(_folder, "   "));
     }
 
-    // Інша тека - той самий сенс: файлу тут нема, отже не пропускаємо.
     [Fact]
     public void ExistsInOutputFolder_FileInDifferentFolder_IsFalse()
     {

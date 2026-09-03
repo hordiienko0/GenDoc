@@ -8,7 +8,6 @@ namespace GenDoc.Services.Generation
     {
         Task<string> GetDefaultAsync();
         Task SaveDefaultAsync(string folder);
-        // Абсолютний шлях документа в типовій теці, якщо файл там є; інакше null.
         Task<string?> ResolveOnDiskAsync(string relativeFileName);
     }
 

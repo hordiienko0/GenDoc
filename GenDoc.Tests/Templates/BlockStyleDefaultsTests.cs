@@ -5,9 +5,6 @@ namespace GenDoc.Tests.Templates;
 
 public class BlockStyleDefaultsTests
 {
-    // Типові значення тут - не смак, а те, що раніше було зашите константами в
-    // кожному writer'і окремо. Якщо вони поїдуть, поїде і вигляд усіх уже
-    // збережених шаблонів, у яких стилю немає взагалі.
     [Theory]
     [InlineData(TemplateBlockKind.Header, BlockAlignment.Right, false)]
     [InlineData(TemplateBlockKind.Title, BlockAlignment.Center, true)]
@@ -25,9 +22,6 @@ public class BlockStyleDefaultsTests
         Assert.False(style.Italic);
     }
 
-    // «Нічого не задано» мусить лишитися саме нічим, а не перетворитися на
-    // вигаданий шрифт: у .docx це різниця між «Word бере своє з docDefaults» і
-    // «writer нав'язав гарнітуру, якої оператор не обирав».
     [Fact]
     public void Unset_font_size_and_colour_stay_null()
     {
@@ -53,13 +47,10 @@ public class BlockStyleDefaultsTests
             TemplateBlockKind.Title, new BlockStyle(FontSize: 16));
 
         Assert.Equal(16, style.FontSize);
-        // Заголовок лишається жирним і центрованим - задали ж лише кегль.
         Assert.True(style.Bold);
         Assert.Equal(BlockAlignment.Center, style.Alignment);
     }
 
-    // Без явного false зняти жирність із заголовка було б неможливо: типове
-    // значення для нього - true.
     [Fact]
     public void Explicit_false_removes_the_default_bold()
     {
@@ -79,8 +70,6 @@ public class BlockStyleDefaultsTests
 
         Assert.True(header.Bold);
         Assert.Equal(BlockAlignment.Center, header.Alignment);
-        // Гарнітуру шапка все ж успадковує - структурні тут лише жирність
-        // і вирівнювання.
         Assert.Equal("Arial", header.FontFamily);
     }
 

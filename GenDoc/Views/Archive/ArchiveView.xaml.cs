@@ -19,7 +19,6 @@ public partial class ArchiveView : UserControl
             await vm.InitializeAsync();
     }
 
-    // Клік по рядку - одиночний вибір чекбоксом; Ctrl+клік - додає; клік по чекбоксу не чіпаємо.
     private void DocsGrid_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (FindAncestor<CheckBox>(e.OriginalSource as DependencyObject) is not null) return;

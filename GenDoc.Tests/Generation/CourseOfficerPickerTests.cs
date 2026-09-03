@@ -3,10 +3,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Generation;
 
-// Список для дроплиста курсового офіцера. Пікер підписанта поруч показує ВЕСЬ
-// постійний склад - тут вужче: лише ті, у кого стоїть ознака IsCourseOfficer.
-// Показати оператору всіх означало б знову дозволити випадковий вибір, від
-// якого й тікаємо.
 public class CourseOfficerPickerTests
 {
     [Fact]

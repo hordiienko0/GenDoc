@@ -6,21 +6,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.Tests.Completeness;
 
-/// <summary>
-/// Пастка забутого Include: хеш «застарілості» рахується на сутності Recipient,
-/// і якщо в неї не завантажено Weapons, значення мітки зброї виходить порожнім.
-/// Записаний у базу SourceHash рахувався В ГЕНЕРАЦІЇ, де Include(Weapons) є
-/// (GenerationService.LoadRosterRecipients), тож хеші не збігаються НІКОЛИ:
-/// документ із міткою зброї показується застарілим одразу після генерації.
-///
-/// Гірший наслідок - «Перегенерувати застарілі» в архіві теж вантажив особу без
-/// зброї, тобто перезаписував документ ПОРОЖНІМИ полями зброї, після чого хеш
-/// сходився і матриця заспокоювалась. Дані в документі при цьому втрачались.
-///
-/// Це вже третій випадок того самого класу помилки в проєкті (перший -
-/// RecipientService.QueryEntities з порожніми колонками зброї в експорті), тому
-/// поруч з інтеграційним тестом стоїть сторож на сам хеш.
-/// </summary>
 public class WeaponIncludeStalenessTests
 {
     private const string WeaponTag = "{{зброя}}";
@@ -64,8 +49,6 @@ public class WeaponIncludeStalenessTests
         return (package.Id, intake.Id, person.Id, template.Id);
     }
 
-    // Сторож: хеш МУСИТЬ залежати від зброї. Якщо колись мітку зброї приберуть з
-    // розрахунку, цей тест впаде й пояснить, чому «застаріле» перестало ловитись.
     [Fact]
     public void ComputeSourceHash_DependsOnLoadedWeapons()
     {
@@ -84,14 +67,12 @@ public class WeaponIncludeStalenessTests
             service.ComputeSourceHash(mappings, withoutWeapon, orgSettings: null));
     }
 
-    // Документ, щойно згенерований для особи зі зброєю, НЕ застарілий у матриці.
     [Fact]
     public async Task Matrix_FreshDocumentForPersonWithWeapon_IsNotStale()
     {
         using var db = new TestDb();
         var (packageId, intakeId, personId, templateId) = Seed(db);
 
-        // SourceHash пишемо так само, як його пише генерація: на сутності з Weapons.
         using (var ctx = db.Factory.CreateDbContext())
         {
             var person = ctx.Recipients
@@ -115,7 +96,6 @@ public class WeaponIncludeStalenessTests
             "Документ із міткою зброї застарів одразу після генерації - у комплектності забутий Include(Weapons).");
     }
 
-    // Той самий пропуск у картці особи: вкладка «Документи» показувала «застарів».
     [Fact]
     public async Task RecipientCard_FreshDocumentForPersonWithWeapon_IsNotStale()
     {

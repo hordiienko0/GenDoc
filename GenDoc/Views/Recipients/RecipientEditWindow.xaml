@@ -41,7 +41,6 @@
             <Setter Property="Margin" Value="0,5,0,0"/>
         </Style>
 
-        <!-- Мінімальний Expander: системний рендериться неоднорідно з нашою темою -->
         <Style TargetType="Expander">
             <Setter Property="Template">
                 <Setter.Value>
@@ -98,7 +97,6 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Заголовок -->
         <Border Grid.Row="0" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1" Padding="16,12">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -112,7 +110,6 @@
             </Grid>
         </Border>
 
-        <!-- Прогрес заповнення -->
         <StackPanel Grid.Row="1" Margin="22,14,22,0">
             <Grid Margin="0,0,0,6">
                 <TextBlock Text="Заповнено обов'язкових полів" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Left"/>
@@ -129,7 +126,6 @@
             </Grid>
         </StackPanel>
 
-        <!-- Поля форми -->
         <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto" Margin="22,18,22,0">
             <StackPanel>
 
@@ -455,7 +451,6 @@
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Дії -->
         <Border Grid.Row="3" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
                 BorderThickness="0,1,0,0" Padding="22,16">
             <Grid>

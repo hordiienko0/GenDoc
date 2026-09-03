@@ -4,10 +4,6 @@ using GenDoc.ViewModels.Completeness;
 
 namespace GenDoc.Tests.Completeness;
 
-// Жива вада 2026-08-24: правий клік по груповій клітинці «немає» відкривав
-// ПОРОЖНЄ контекстне меню - всі пункти сховані (PresentMenu лише коли документ
-// є, «Згенерувати» для групових не показується взагалі). Меню не повинно
-// відкриватись, коли в ньому нема жодного пункту.
 public class MatrixCellMenuTests
 {
     private sealed class NoopCoordinator : ICellActionCoordinator

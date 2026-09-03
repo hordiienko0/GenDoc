@@ -7,17 +7,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.Services.Documents
 {
-    /// <summary>
-    /// Навігації <see cref="Recipient"/>, від яких залежить значення міток, а отже
-    /// й <see cref="IDocumentHashService.ComputeSourceHash"/>.
-    ///
-    /// Живе окремо, бо той самий пропущений Include ловили вже тричі: спершу
-    /// порожні колонки зі зброєю в експорті (RecipientService.QueryEntities),
-    /// потім «вічно застарілі» документи в комплектності, потім перегенерація в
-    /// архіві, яка ці порожні значення ще й записувала у файл. Ледаче
-    /// завантаження вимкнене, тож пропуск не падає - він мовчки дає порожній
-    /// рядок. Один спільний запит замість чотирьох копій списку.
-    /// </summary>
     public static class RecipientHashSources
     {
         public static IQueryable<Recipient> WithHashSources(this IQueryable<Recipient> query) => query
@@ -29,13 +18,9 @@ namespace GenDoc.Services.Documents
 
     public interface IDocumentHashService
     {
-        // Хеш значень усіх нерукописних міток шаблону для людини -
-        // порівнюється з GeneratedDocument.SourceHash для стану «застарів».
         string ComputeSourceHash(
             List<TemplateFieldMapping> mappings, Recipient recipient, OrganizationSettings? orgSettings);
 
-        // Анти-дубль групового документа: хеш впорядкованого складу відомості -
-        // (RecipientId, SourceHash) кожної людини у списку + Id шаблону.
         string ComputeRosterHash(int exportTemplateId, IReadOnlyList<(int RecipientId, string SourceHash)> roster);
     }
 

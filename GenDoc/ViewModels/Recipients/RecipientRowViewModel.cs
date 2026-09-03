@@ -3,9 +3,6 @@ using GenDoc.Services.Recipients;
 
 namespace GenDoc.ViewModels.Recipients;
 
-// Обгортка над RecipientListItem (record із сервісу) - додає мутабельний
-// IsSelected для режиму масового видалення чекбоксами, не займаючи цим
-// DTO-контракт сервісу.
 public partial class RecipientRowViewModel : ObservableObject
 {
     public RecipientRowViewModel(RecipientListItem item)

@@ -5,10 +5,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Import;
 
-// Довідники (підрозділи, вузли дерева, кімнати) вичитуються один раз на весь
-// імпорт, а не на кожен рядок. Порівняння кирилиці мусить іти в пам'яті - SQLite
-// вважає «Корпус А» і «корпус а» різними, - тож без попереднього вичитування
-// кожне нове значення робило повне сканування таблиці (аудит 2026-08-28).
 public class ImportLookupScaleTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), $"gendoc-scale-{Guid.NewGuid():N}");
@@ -42,7 +38,6 @@ public class ImportLookupScaleTests : IDisposable
             ws.Cell(row, 1).Value = $"ТЕСТЕНКО{i:D3} Тест Тестович";
             ws.Cell(row, 2).Value = $"ТЕСТ-МАСШТАБ-{i:D4}";
             ws.Cell(row, 3).Value = $"Рота {i % DistinctUnits}";
-            // Регістр корпусу навмисно плаває - саме він і ганяв пошук у базу.
             ws.Cell(row, 4).Value = i % 2 == 0 ? "Корпус А" : "корпус а";
             ws.Cell(row, 5).Value = $"{100 + i % DistinctRooms}";
         }
@@ -92,18 +87,11 @@ public class ImportLookupScaleTests : IDisposable
         Assert.Empty(summary.ErrorMessages);
 
         using var ctx = db.Factory.CreateDbContext();
-        // Корпус писаний у двох регістрах - кімнат усе одно рівно стільки,
-        // скільки різних номерів.
         Assert.Equal(DistinctRooms, ctx.Rooms.Count());
         Assert.Equal(DistinctUnits, ctx.Units.Count());
-        // Корінь + по вузлу на кожен підрозділ.
         Assert.Equal(DistinctUnits + 1, ctx.OrgNodes.Count());
     }
 
-    // Рахується не час, а звернення до бази: саме кількість SELECT-ів і
-    // відрізняє «вичитали довідник один раз» від «сканували на кожен рядок».
-    // До виправлення тут було по одному скануванню на кожне НОВЕ значення -
-    // десятки разів замість одного.
     [Theory]
     [InlineData("Rooms")]
     [InlineData("Units")]

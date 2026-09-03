@@ -12,7 +12,7 @@ public class UkrainianGrammarTests
     [InlineData("Андрійович", Gender.Male)]
     [InlineData("Олександрівна", Gender.Female)]
     [InlineData("Іванівна", Gender.Female)]
-    [InlineData("Andriyivna", Gender.Male)] // не українська форма - падає на дефолт/override нижче
+    [InlineData("Andriyivna", Gender.Male)]
     public void Detect_FromPatronymicSuffix(string middleName, Gender expected)
     {
         var recipient = new Recipient { LastName = "Тест", FirstName = "Тест", MiddleName = middleName };
@@ -79,14 +79,6 @@ public class UkrainianGrammarTests
         Assert.Equal("такою", UkrainianGrammar.SuchPronoun(Gender.Female));
     }
 
-    // 30 прізвищ із джерела групового рапорту (Шаблон_Рапорт_котлове_ГРУПОВИЙ) -
-    // ті самі, що йдуть у RosterOrdering.
-    //
-    // ВАЖЛИВО (виправлено 2026-08-28): за правописом не відмінюються лише
-    // ЖІНОЧІ прізвища на -ко; чоловічі відмінюються як іменники другої відміни
-    // («направити солдата ПЕТРЕНКА»). До аудиту код повертав їх незмінними для
-    // обох статей, а цей тест саме таку поведінку й закріплював, тож помилка
-    // жила в надрукованих наказах попри зелені тести.
     public static IEnumerable<object[]> KoSurnames() => new[]
     {
         "Іваненко", "Петренко", "Бондаренко", "Кравченко", "Шевченко", "Ткаченко",
@@ -107,9 +99,6 @@ public class UkrainianGrammarTests
     public void Accusative_KoSuffixSurnames_StayInvariantForFemale(string surname)
         => Assert.Equal(surname, UkrainianGrammar.Accusative(surname, GrammaticalKind.Surname, Gender.Female));
 
-    // Звання граматично чоловічого роду й відмінюються незалежно від статі
-    // особи. Раніше правило «жіноче - незмінне» гасило й звання, а складене
-    // виходило напівузгодженим: «старшого лейтенант».
     [Theory]
     [InlineData("майор", "майора")]
     [InlineData("капітан", "капітана")]
@@ -118,8 +107,6 @@ public class UkrainianGrammarTests
     public void Accusative_Rank_DeclinesForFemaleToo(string nominative, string expected)
         => Assert.Equal(expected, UkrainianGrammar.Accusative(nominative, GrammaticalKind.Rank, Gender.Female));
 
-    // Флотські звання: головне слово ПЕРШЕ, а не останнє. Відмінювання
-    // останнього давало «капітан 1 рангуа».
     [Theory]
     [InlineData("капітан 1 рангу", "капітана 1 рангу")]
     [InlineData("капітан 2 рангу", "капітана 2 рангу")]
@@ -127,10 +114,6 @@ public class UkrainianGrammarTests
     public void Accusative_NavalRanks_DeclineTheHeadWord(string nominative, string expected)
         => Assert.Equal(expected, UkrainianGrammar.Accusative(nominative, GrammaticalKind.Rank, Gender.Male));
 
-    // Імена м'якої групи. Загальне правило для основ на -р не змінюємо:
-    // українська тут непослідовна («майора», «командира» - тверді), тому
-    // виняток вузький і явний, а нетипові форми лишаються за ручним
-    // Recipient.FullNameAccusative.
     [Theory]
     [InlineData("Ігор", "Ігоря")]
     [InlineData("Лазар", "Лазаря")]

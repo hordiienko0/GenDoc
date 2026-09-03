@@ -8,10 +8,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.Services
 {
-    // Генерик-обгортка над ClosedXML: ViewModel описує лише колонки (заголовок +
-    // селектор значення з T), сервіс нічого не знає про конкретні моделі (Recipient,
-    // AuditLogEntry, Room тощо) - тому один і той самий метод обслуговує будь-який
-    // майбутній список без дублювання коду запису xlsx.
     public sealed class ExportService : IExportService
     {
         private readonly IDbContextFactory<AppDbContext> _dbFactory;
@@ -118,9 +114,6 @@ namespace GenDoc.Services
                         courseOfficerSignature = CourseOfficerSignature.Build(db);
                     }
 
-                    // Той самий сторож, що й у пакетній генерації: відомість із
-                    // порожнім місцем підпису гірша за явну відмову, бо порожнечу
-                    // помічають уже після того, як папір пішов далі.
                     if (mappings.Any(m => m.FieldKey == nameof(ExportFieldKey.CourseOfficerSignature))
                         && string.IsNullOrEmpty(courseOfficerSignature))
                     {

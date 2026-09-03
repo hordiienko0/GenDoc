@@ -6,8 +6,6 @@ namespace GenDoc.Tests;
 
 public class TemplateServiceScanTests
 {
-    // Шаблон А з завдання: мануальні теги поза блоком + повторюваний блок {{#список}}.
-    // Маркери й службові теги рушія (роздільник) не повинні потрапити у список полів.
     [Fact]
     public void ScanPlaceholders_GroupTemplate_DetectsBlockAndExcludesStructuralTags()
     {
@@ -25,7 +23,7 @@ public class TemplateServiceScanTests
         Assert.Contains("{{піб}}", tagNames);
 
         Assert.DoesNotContain("{{роздільник}}", tagNames);
-        Assert.DoesNotContain("{{номер}}", tagNames); // явно виключений як службовий, попри збіг з RowNumber
+        Assert.DoesNotContain("{{номер}}", tagNames);
         Assert.DoesNotContain("{{кількість_осіб}}", tagNames);
         Assert.DoesNotContain("{{#список}}", tagNames);
         Assert.DoesNotContain("{{/список}}", tagNames);
@@ -35,7 +33,6 @@ public class TemplateServiceScanTests
         Assert.True(result.Tags.First(t => t.Tag == "{{піб}}").IsInsideBlock);
     }
 
-    // Шаблон без блоку - HasBlock=false, усі теги позначені як "поза блоком".
     [Fact]
     public void ScanPlaceholders_PerRecipientTemplate_HasNoBlock()
     {

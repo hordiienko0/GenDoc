@@ -4,9 +4,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Generation;
 
-// Дропліст мусить стартувати з КИМОСЬ обраним. Порожній вибір поруч із
-// запасним авто-вибором у генерації означав би, що підписанта знову визначає
-// база, а не оператор - тобто саме та поведінка, яку прибирали.
 public class CourseOfficerPreselectionTests
 {
     private static ManualTagFormBuilder Build(TestDb db) => TestServices.ManualTagForm(
@@ -32,15 +29,10 @@ public class CourseOfficerPreselectionTests
         Assert.NotNull(form.CourseOfficer);
         Assert.Equal(2, form.CourseOfficer!.Options.Count);
 
-        // Перелік упорядкований за прізвищем, тож першим стоїть Ковальчук.
-        // SignatureName пише прізвище великими - «Василь КОВАЛЬЧУК».
         Assert.NotNull(form.CourseOfficer.Selected);
         Assert.Contains("КОВАЛЬЧУК", form.CourseOfficer.Selected!.DisplayLabel, StringComparison.Ordinal);
     }
 
-    // Те саме правило для підписанта документа. Порожній пікер не давав жодного
-    // значення тегам, і документ виходив із порожнім місцем підпису - рівно та
-    // вада, проти якої заводився дропліст курсового офіцера.
     [Fact]
     public async Task BuildAsync_SignerPickerIsNeverLeftEmptyWhenStaffExists()
     {
@@ -61,7 +53,6 @@ public class CourseOfficerPreselectionTests
         Assert.NotNull(form.Signer);
         Assert.NotNull(form.Signer!.Selected);
 
-        // І значення мусить лягти під ключем із дужками - саме його шукає генерація.
         var values = form.GetValues();
         Assert.True(values.ContainsKey("{{звання_підписанта}}"));
         Assert.True(values.ContainsKey("{{піб_підписанта}}"));

@@ -3,20 +3,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.Services
 {
-    // Підпис «особи, яка проводила інструктаж» для xlsx-відомостей ({{курсовий_офіцер}}).
-    // Був продубльований у GenerationService і ExportService - тепер одна точка,
-    // щоб обидва шляхи генерації не розходились у поведінці.
     public static class CourseOfficerSignature
     {
-        // ЛИШЕ постійний склад (IntakeId == null). Раніше тут був запасний прохід
-        // без фільтра за набором - щоб тег не лишався мовчки порожнім. Він
-        // прибраний: у наборі люди ПРОХОДЯТЬ навчання, курсовим офіцером ніхто з
-        // них бути не може, тож той прохід прикривав випадок, якого за моделлю не
-        // існує, і натомість дозволяв підписати документ людині з набору.
-        //
-        // null тепер означає рівно одне: підписанта немає. Викликач мусить
-        // попередити й НЕ генерувати - документ із порожнім місцем підпису гірший
-        // за явну зупинку, бо його ніхто не помітить.
         public static string? Build(AppDbContext db)
         {
             var courseOfficer = FindCourseOfficer(db);
@@ -24,9 +12,6 @@ namespace GenDoc.Services
             return courseOfficer is null ? null : Compose(courseOfficer);
         }
 
-        /// <summary>Підпис КОНКРЕТНОЇ людини, обраної оператором у пікері.
-        /// Генерація більше не вибирає підписанта сама - вона лише складає рядок
-        /// із того, кого назвали.</summary>
         public static string? BuildFor(AppDbContext db, int recipientId)
         {
             var courseOfficer = db.Recipients
@@ -49,9 +34,6 @@ namespace GenDoc.Services
             return string.Join(' ', parts.Where(p => !string.IsNullOrWhiteSpace(p)));
         }
 
-        /// <summary>Курсовий офіцер серед постійного складу. Прапорця
-        /// «шукати будь-де» тут навмисно немає: людина з набору підписантом бути
-        /// не може, і можливість це обійти не мусить існувати в коді.</summary>
         internal static Models.Recipient? FindCourseOfficer(AppDbContext db)
         {
             return db.Recipients

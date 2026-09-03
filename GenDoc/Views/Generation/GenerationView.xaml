@@ -41,13 +41,6 @@
         </Style>
     </UserControl.Resources>
 
-    <!-- Наскрізного ScrollViewer тут немає навмисно (Варіант Б, 6/6). Поки він
-         охоплював увесь екран, кнопка «Згенерувати» і картка підсумку жили
-         нижче краю вікна: оператор налаштовував прогін, а тоді мусив шукати
-         кнопку прокруткою, і не бачив, чим прогін скінчився. Тепер прокручується
-         лише середина, а низ закріплений.
-         Пастка: внутрішній ScrollViewer НЕ можна класти в Auto-рядок - Auto
-         міряє нескінченністю, і прокрутка не спрацює. Тому в рядках "*". -->
     <Grid Margin="0,0,0,24">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -67,8 +60,6 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- Ліва колонка: пакети. Розкладка не змінена - додано лише
-                     власну прокрутку замість наскрізної, що була раніше. -->
                 <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto">
                 <StackPanel>
                     <ItemsControl ItemsSource="{Binding Packages}">
@@ -106,7 +97,6 @@
                             Command="{Binding ShowCreatePackageCommand}" HorizontalAlignment="Left" Margin="0,4,0,0"
                             Visibility="{Binding NotCreatingPackage, Converter={StaticResource BoolToVisibility}}"/>
 
-                    <!-- Інлайн-форма створення пакета -->
                     <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
                             BorderThickness="1" CornerRadius="0" Padding="16" Margin="0,4,0,0"
                             Visibility="{Binding IsCreatingPackage, Converter={StaticResource BoolToVisibility}}">
@@ -143,15 +133,7 @@
                 </StackPanel>
                 </ScrollViewer>
 
-                <!-- Права панель: обраний пакет -->
                 <Grid Grid.Column="2">
-                    <!-- Порожній бік екрана більше не мовчить: показує, що
-                         запускали минулого разу. Найчастіша дія - знову взятися
-                         за той самий пакет - переставала вимагати згадувати,
-                         який то був, і шукати його серед карток.
-                         Кнопки «повторити» тут навмисно немає: тека виводу в
-                         прогоні не зберігається, а повторна генерація переписує
-                         документи - такого в один клік бути не повинно. -->
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="48"
                                 Visibility="{Binding NoSelectedPackage, Converter={StaticResource BoolToVisibility}}">
                         <TextBlock Text="Оберіть пакет ліворуч або створіть новий"
@@ -179,11 +161,8 @@
 
                     <Grid Visibility="{Binding HasSelectedPackage, Converter={StaticResource BoolToVisibility}}">
                         <Grid.RowDefinitions>
-                            <!-- шапка пакета -->
                             <RowDefinition Height="Auto"/>
-                            <!-- прокручується лише це -->
                             <RowDefinition Height="*"/>
-                            <!-- закріплений низ: тека, чекбокс, кнопка, підсумок -->
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
@@ -231,7 +210,6 @@
                                 <RadioButton GroupName="RosterMode" Content="Вибрані"
                                              IsChecked="{Binding UseAllRecipients, Converter={StaticResource InverseBoolean}}"/>
 
-                                <!-- Фільтр звань - звужує обидва варіанти вище однаково -->
                                 <StackPanel Margin="0,14,0,0">
                                     <TextBlock Text="Звання" Style="{StaticResource FieldLabelStyle}"/>
                                     <ItemsControl ItemsSource="{Binding RankCategoryChips}">
@@ -343,9 +321,6 @@
                                                         <ColumnDefinition Width="1*"/>
                                                         <ColumnDefinition Width="1.4*"/>
                                                     </Grid.ColumnDefinitions>
-                                                    <!-- Людський підпис; сам тег - у підказці, бо за ним
-                                                         звіряються з шаблоном. Consolas прибрано: моноширинний
-                                                         шрифт доречний для коду, а не для назви поля. -->
                                                     <TextBlock Grid.Column="0" Text="{Binding Label}"
                                                                ToolTip="{Binding Tag}" TextWrapping="Wrap"
                                                                Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
@@ -418,9 +393,6 @@
                                             <ComboBox DataContext="{Binding CourseOfficer}"
                                                       ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}"
                                                       DisplayMemberPath="DisplayLabel"/>
-                                            <!-- Порожній перелік означає, що жодну людину постійного складу не
-                                                 позначено курсовим офіцером. Сказати це тут, а не після запуску:
-                                                 інакше оператор дізнається про зупинку аж із «Запусків». -->
                                             <TextBlock Text="Немає жодного курсового офіцера - відомості з підписом не сформуються"
                                                        Foreground="{StaticResource WarnTextBrush}" TextWrapping="Wrap"
                                                        Margin="0,4,0,0" FontSize="11">
@@ -446,8 +418,6 @@
 
                         <StackPanel Grid.Row="2" Margin="0,14,0,0">
 
-                        <!-- 2.1: тека підставляється сама (налаштування або Документи\GenDoc) і не
-                             скидається при зміні пакета; «Змінити…» зберігає нову як типову. -->
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
                             <TextBlock Text="Тека документів:" Foreground="{StaticResource TextSecondaryBrush}"
                                        VerticalAlignment="Center" Margin="0,0,8,0"/>
@@ -470,7 +440,6 @@
                             <TextBlock Text="{Binding ProgressText}" Foreground="{StaticResource NavyBrush}" FontSize="12.5"/>
                         </Border>
 
-                        <!-- 2.4: підсумок останнього прогону - замість двох MessageBox -->
                         <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
                                 BorderThickness="1" Padding="14,12" Margin="0,14,0,0" DataContext="{Binding LastResult}">
                             <Border.Style>
@@ -485,11 +454,6 @@
                             <StackPanel>
                                 <TextBlock Text="{Binding SummaryText}" FontSize="13.5" FontWeight="Bold"
                                            Foreground="{StaticResource TextPrimaryBrush}"/>
-                                <!-- Картка підсумку живе в закріпленому низу, а
-                                     список хиб буває довгим - без стелі він би
-                                     виштовхнув кнопку «Згенерувати» за край
-                                     вікна, тобто повернув би те, що виправляє
-                                     Варіант Б (6/6). Стеля з власною прокруткою. -->
                                 <ScrollViewer MaxHeight="140" VerticalScrollBarVisibility="Auto" Margin="0,8,0,0"
                                               Visibility="{Binding HasIssues, Converter={StaticResource BoolToVisibility}}">
                                 <ItemsControl ItemsSource="{Binding Issues}">

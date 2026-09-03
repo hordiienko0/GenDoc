@@ -6,15 +6,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.Tests.Import;
 
-/// <summary>
-/// ParseWeaponUnits викликався рівно в одному місці - гілці ВСТАВКИ нового
-/// рядка. MoveExistingRecipient оновлював близько тридцяти полів анкети, а
-/// WeaponRaw не читав узагалі, тож «Перемістити» проходило «успішно», а зброя
-/// не з'являлась - і мітки зброї в шаблонах лишались порожні.
-///
-/// Той самий клас помилки, що з Include(Weapons) у комплектності: зброя живе в
-/// окремій таблиці, і про неї забувають (аудит 2026-08-28).
-/// </summary>
 public class ImportMoveWeaponTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), $"gendoc-move-weapon-{Guid.NewGuid():N}");
@@ -73,12 +64,10 @@ public class ImportMoveWeaponTests : IDisposable
         var (oldIntake, newIntake) = SeedIntakes(db);
         var service = new ImportService(db.Factory, new FakeAuditLog());
 
-        // Перший прогін: людина без зброї.
         service.Import(
             Mapped(service.ParseFile(WriteWorkbook("first.xlsx", ""))),
             new ImportTarget(ImportTargetKind.Intake, oldIntake));
 
-        // Другий: той самий особовий номер, тепер зі зброєю, з позначкою «Перенести».
         var parsed = Mapped(service.ParseFile(WriteWorkbook("second.xlsx", "АКМ № АБ1234")));
         var preview = Assert.Single(service.Validate(parsed, new ImportTarget(ImportTargetKind.Intake, newIntake)));
 
@@ -95,9 +84,6 @@ public class ImportMoveWeaponTests : IDisposable
         Assert.Equal("АБ1234", weapon.SerialNumber);
     }
 
-    // Порожня колонка не повинна СТИРАТИ наявну зброю: перенесення оновлює те,
-    // що є у файлі, а не нищить те, чого у файлі немає. Так само поводяться всі
-    // інші поля анкети (KeepNullable).
     [Fact]
     public void Move_WithEmptyWeaponColumn_KeepsExistingWeapon()
     {
@@ -121,8 +107,6 @@ public class ImportMoveWeaponTests : IDisposable
         Assert.Equal("ПМ", Assert.Single(person.Weapons).Name);
     }
 
-    // Зброя у файлі ЗАМІНЮЄ наявну, а не додається до неї - інакше повторні
-    // імпорти множили б однакові одиниці.
     [Fact]
     public void Move_WithDifferentWeapon_ReplacesInsteadOfAppending()
     {

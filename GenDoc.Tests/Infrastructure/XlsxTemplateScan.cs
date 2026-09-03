@@ -7,10 +7,6 @@ using GenDoc.Services.Templates;
 
 namespace GenDoc.Tests.Infrastructure;
 
-// Повторює те, що ExportTemplateService.UploadTemplate/BuildPlaceholderMappings робить
-// при завантаженні шаблону, - без запису в базу. Тести генерації беруть звідси
-// (Row, Mappings) для справжніх файлів з теки «шаблони», не дублюючи цю логіку
-// в кожному тестовому файлі.
 public static class XlsxTemplateScan
 {
     private static readonly Regex PlaceholderRegex = new(@"\{\{[^{}]+\}\}", RegexOptions.Compiled);

@@ -6,7 +6,6 @@ namespace GenDoc.Models
     {
         public int Id { get; set; }
 
-        // Марка/модель - напр. "КамАЗ-5350"
         public string Model { get; set; } = string.Empty;
         public string PlateNumber { get; set; } = string.Empty;
         public string? Note { get; set; }

@@ -3,8 +3,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Archive;
 
-// «Запуски» з обраним набором показують запуски цього набору І запуски без набору
-// (відомості по постійному складу) - інакше останні не видимі ніде.
 public class ArchiveRunsTests
 {
     [Fact]

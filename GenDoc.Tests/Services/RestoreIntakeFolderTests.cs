@@ -6,17 +6,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.Tests.Services;
 
-/// <summary>
-/// DeleteAsync свідомо кладе в кошик і папку, і сам запис Intake - з коментарем
-/// «інакше набір лишиться висіти без папки». А RestoreAsync знімав DeletedAt
-/// ЛИШЕ з OrgNodes, тож після відновлення папки поверталися, а набір - ні.
-///
-/// Наслідок був незворотний з UI: IntakeService.GetByIdAsync (глобальний фільтр
-/// м'якого видалення) віддавав null, гілка переставала бути набором - зникала з
-/// екрана «Набори», ігнорувала фільтри Активні/Завершені, ставала
-/// перейменовуваною, а люди з цим IntakeId не потрапляли ні в набір, ні в
-/// постійний склад (аудит 2026-08-28).
-/// </summary>
 public class RestoreIntakeFolderTests
 {
     private static OrgTreeService Service(TestDb db) =>
@@ -68,8 +57,6 @@ public class RestoreIntakeFolderTests
         }
     }
 
-    // Набір, видалений ОКРЕМОЮ операцією (інша мітка часу), відновлення папки
-    // чіпати не повинно - інакше кошик почав би воскрешати чуже.
     [Fact]
     public async Task Restore_DoesNotTouchIntakeDeletedInAnotherOperation()
     {

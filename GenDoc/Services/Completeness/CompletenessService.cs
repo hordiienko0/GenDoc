@@ -78,7 +78,6 @@ namespace GenDoc.Services.Completeness
 
         private async Task<MatrixData> LoadAsync(AppDbContext db, int intakeId, int packageId)
         {
-            // (a) люди набору
             var people = await db.Recipients
                 .Where(r => r.IntakeId == intakeId)
                 .WithHashSources()
@@ -86,18 +85,10 @@ namespace GenDoc.Services.Completeness
                 .ToListAsync();
             people = people.OrderBy(r => r.LastName).ThenBy(r => r.FirstName).ToList();
 
-            // (b) зв'язки пакета з вимогами. Групові шаблони - теж колонки (v25):
-            // клітинка каже, чи людина в складі чинного групового документа.
             var templates = await GetPackageLinksInternalAsync(db, packageId, includeGroup: true, includeSheets: true);
 
-            // (c) всі актуальні документи набору по шаблонах пакета - один запит
             var templateIds = templates.Where(t => !t.IsGroup).Select(t => t.TemplateId).ToList();
 
-            // Фільтруємо за ЛЮДЬМИ набору, а не за GeneratedDocument.IntakeId:
-            // ця колонка з'явилась у v6 без backfill, тож усі документи, старші
-            // за v6, мають NULL і зникали з матриці, хоча картка особи й архів
-            // їх бачили - «Згенерувати все, чого бракує» плодила їм дублі
-            // (аудит 2026-08-28). Список людей уже завантажено рядком вище.
             var peopleIds = people.Select(p => p.Id).ToList();
             var docs = await db.GeneratedDocuments
                 .Where(g => peopleIds.Contains(g.RecipientId) && g.IsCurrent && templateIds.Contains(g.TemplateId))
@@ -128,13 +119,6 @@ namespace GenDoc.Services.Completeness
                     new MatrixDocDto(doc.Id, doc.RecipientId, doc.TemplateId, doc.Version, doc.HasContent, stale, doc.SourceType);
             }
 
-            // (d) групові колонки: участь людини в чинному груповому документі (v25).
-            // Документ без записаного складу (до v25) дає всім «склад не записано».
-            // Групові документи Word і відомості Excel лежать в одній таблиці
-            // GeneratedGroupDocuments і розрізняються тим, яке з двох посилань
-            // заповнене. Правило клітинки в них однакове: людина є в складі -
-            // зелено; немає - клітинки немає. Тому обидва види йдуть одним
-            // проходом, а не двома схожими копіями.
             var groupColumns = templates.Where(t => t.IsGroup).ToList();
             if (groupColumns.Count > 0)
             {
@@ -155,14 +139,6 @@ namespace GenDoc.Services.Completeness
 
                 foreach (var column in groupColumns)
                 {
-                    // Свій документ набору має пріоритет над «спільним»
-                    // (IntakeId = null), а серед рівних - НАЙСВІЖІШИЙ.
-                    //
-                    // Сортування за версією тут не косметика: у справжній базі
-                    // знайшлося три рядки з IsCurrent = true на одну відомість,
-                    // і без нього бралася довільна - зі складом, у якому
-                    // теперішніх людей нема. Колонка виглядала порожньою, хоча
-                    // генерація щоразу рапортувала успіх (2026-09-01).
                     var doc = groupDocs
                         .Where(d => column.IsExport
                             ? d.ExportTemplateId == column.TemplateId
@@ -173,8 +149,6 @@ namespace GenDoc.Services.Completeness
                         .FirstOrDefault();
                     if (doc is null) continue;
 
-                    // Документ, згенерований до появи запису складу (v25): хто в
-                    // ньому - невідомо, тож позначаємо всіх, але окремим станом.
                     var rosterUnknown = doc.RecipientCount > 0 && doc.ParticipantIds.Count == 0;
                     var participants = rosterUnknown ? null : doc.ParticipantIds.ToHashSet();
 
@@ -229,11 +203,6 @@ namespace GenDoc.Services.Completeness
             if (recipient is null || template is null)
                 return new ArchiveOpResult(false, "Людину або шаблон не знайдено");
 
-            // Груповий шаблон формує один документ для всього складу одразу - матриця
-            // комплектності показує клітинку "людина × шаблон", але для групового
-            // шаблону такої клітинки по суті нема, і добудувати з нього документ саме
-            // для цієї людини не можна. Перевірка тут ловить це раніше і чіткіше, ніж
-            // якби GenerateOne довелось відмовляти через маркер блоку в тексті.
             if (template.Kind == TemplateKind.Group)
                 return new ArchiveOpResult(false,
                     $"Шаблон «{template.Name}» - груповий: він формує один документ для всього складу, "
@@ -421,8 +390,6 @@ namespace GenDoc.Services.Completeness
 
             foreach (var template in templates)
             {
-                // Вимога - за категорією ЦІЄЇ людини, як у матриці. Раніше цього
-                // не було, тож «н/п» для обмежено придатних читалось як «бракує».
                 var requirement = ICompletenessService.Resolve(template, fitnessCategory);
                 var cell = await GetCellAsync(recipientId, template.TemplateId);
 
@@ -445,8 +412,6 @@ namespace GenDoc.Services.Completeness
 
             foreach (var status in statuses)
             {
-                // «Не потрібен» для цієї людини не генеруємо: документ ліг би в
-                // архів, а в матриці його колонка навіть не показується.
                 if (status.Requirement == TemplateRequirement.NotApplicable) { skipped++; continue; }
                 if (status.HasContent) { skipped++; continue; }
 
@@ -471,15 +436,12 @@ namespace GenDoc.Services.Completeness
             return await db.GenerationPackages.OrderBy(p => p.Name).Select(p => (int?)p.Id).FirstOrDefaultAsync();
         }
 
-        // Бейдж навігації: застарілі + відсутні обов'язкові по активному набору з дефолтним пакетом.
         public async Task<int> GetBadgeCountAsync()
         {
             var breakdown = await GetBadgeBreakdownAsync();
             return breakdown.Missing + breakdown.Stale;
         }
 
-        // Ті самі два числа окремо: бейдж навігації складає їх, а домашня картка
-        // показує роздільно - «бракує» і «застарілих» це різні дії оператора.
         public async Task<(int Missing, int Stale)> GetBadgeBreakdownAsync()
         {
             var intake = _intakeAccessor.ActiveIntake;
@@ -495,12 +457,6 @@ namespace GenDoc.Services.Completeness
             {
                 foreach (var template in data.Templates)
                 {
-                    // Бейдж дорівнює рівно тому, на що на екрані є кнопки:
-                    // «Згенерувати все, чого бракує» (обов'язкові персональні) і
-                    // «Перегенерувати застарілі» (обов'язкові, що застаріли).
-                    // Раніше сюди потрапляли ще й застарілі «н/п», яких матриця
-                    // не показує, і групові, яких кнопка не чіпає, тож число не
-                    // зводилось до нуля ніколи (аудит 2026-08-28).
                     if (ICompletenessService.Resolve(template, person.FitnessCategory) != TemplateRequirement.Required)
                         continue;
 
@@ -525,15 +481,11 @@ namespace GenDoc.Services.Completeness
             return await GetPackageLinksInternalAsync(db, packageId, includeGroup: true);
         }
 
-        /// <param name="includeSheets">Додати відомості Excel як колонки. Лише
-        /// для МАТРИЦІ: діалог «Вимоги» веде їх окремою секцією з фільтром
-        /// придатності, і в списку шаблонів вони були б дублем.</param>
         private static async Task<List<MatrixTemplateInfo>> GetPackageLinksInternalAsync(
             AppDbContext db, int packageId, bool includeGroup, bool includeSheets = false)
         {
             var query = db.GenerationPackageTemplates
                 .Where(pt => pt.GenerationPackageId == packageId && pt.Template != null && pt.Template.DeletedAt == null);
-            // Вада 1.4: груповий шаблон у персональній матриці давав порожню колонку в кожного.
             if (!includeGroup) query = query.Where(pt => pt.Template!.Kind != TemplateKind.Group);
 
             var links = await query
@@ -546,15 +498,6 @@ namespace GenDoc.Services.Completeness
 
             if (!includeSheets) return links;
 
-            // Відомості Excel («котлове», «зброя») - теж колонки: це один
-            // документ на весь склад, і клітинка каже, чи людина в ньому. Доти
-            // їх у матриці не було взагалі, і побачити їх можна було лише в
-            // архіві, перемикаючи фільтр (вимога користувача 2026-08-31).
-            //
-            // Вимогу задає не матриця вимог пакета, а ФІЛЬТР ПРИДАТНОСТІ на
-            // зв'язку: відомість зобов'язана охопити рівно тих, кого охоплює
-            // фільтр. Інакше обмежено придатний світився б червоним у
-            // відомості, яка його свідомо не бере.
             var sheets = await db.GenerationPackageExportTemplates
                 .Where(pt => pt.GenerationPackageId == packageId
                              && pt.ExportTemplate != null && pt.ExportTemplate.DeletedAt == null)
@@ -590,8 +533,6 @@ namespace GenDoc.Services.Completeness
                 .Where(t => t.IsGroup).ToList();
             if (groupTemplates.Count == 0) return new List<PackageGroupDocumentStatus>();
 
-            // Відомість набору або «спільна» (IntakeId = null - склад із кількох наборів
-            // чи постійний склад): спершу своя, інакше спільна.
             var ids = groupTemplates.Select(t => t.TemplateId).ToList();
             var docs = await db.GeneratedGroupDocuments
                 .Where(g => g.TemplateId != null && ids.Contains(g.TemplateId.Value) && g.IsCurrent
@@ -658,9 +599,6 @@ namespace GenDoc.Services.Completeness
 
                 foreach (var row in rows)
                 {
-                    // FirstOrDefault, а не First: рядок може посилатись на зв'язок,
-                    // якого вже нема (видалили в паралельному сеансі) - тоді просто
-                    // створюємо його заново, а не валимо весь діалог винятком.
                     var link = row.LinkId is int linkId ? existing.FirstOrDefault(l => l.Id == linkId) : null;
 
                     if (link is not null)
@@ -714,7 +652,6 @@ namespace GenDoc.Services.Completeness
         };
     }
 
-    // Тонка обгортка над ActiveIntakeState, щоб сервіс не тягнув VM-залежності.
     public interface IIntakeServiceAccessor
     {
         Intake? ActiveIntake { get; }

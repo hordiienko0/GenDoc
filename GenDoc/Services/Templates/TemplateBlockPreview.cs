@@ -7,21 +7,14 @@ namespace GenDoc.Services.Templates
     public enum PreviewRunKind
     {
         Text,
-        /// <summary>Значення підставлене з бази - акцентна заливка за легендою макета.</summary>
         DbValue,
-        /// <summary>Тег, який оператор заповнить на генерації - застережлива заливка.</summary>
         ManualValue
     }
 
     public record PreviewRun(string Text, PreviewRunKind Kind);
 
-    /// <summary>Або рядок тексту, або таблиця: у відомості прев'ю мусить показати
-    /// сітку, у документі - суцільний текст, а порядок блоків спільний.</summary>
     public abstract record PreviewElement;
 
-    /// <summary>Style - той самий розв'язаний стиль, який поклав би writer;
-    /// окремого enum вирівнювання прев'ю більше не тримає, інакше він розійшовся
-    /// б із моделлю.</summary>
     public record PreviewLine(IReadOnlyList<PreviewRun> Runs, ResolvedBlockStyle Style) : PreviewElement;
 
     public record PreviewTable(
@@ -29,9 +22,6 @@ namespace GenDoc.Services.Templates
         IReadOnlyList<IReadOnlyList<PreviewRun>> Cells,
         ResolvedBlockStyle Style) : PreviewElement;
 
-    /// <summary>Рядок аркуша у попередньому перегляді відомості. IsMerged - смуга
-    /// на всю ширину (заголовок, абзац, підпис): у книзі це об'єднані клітинки,
-    /// тож і на екрані вона одна.</summary>
     public record SheetPreviewRow(
         int Number,
         bool IsMerged,
@@ -40,17 +30,10 @@ namespace GenDoc.Services.Templates
         bool IsTableHeader = false,
         bool IsTemplateRow = false);
 
-    /// <summary>Аркуш як його побачить оператор в Excel: літери колонок, номери
-    /// рядків і вміст клітинок.</summary>
     public record SheetPreview(
         IReadOnlyList<string> ColumnLetters,
         IReadOnlyList<SheetPreviewRow> Rows);
 
-    /// <summary>
-    /// Прев'ю рендериться з тієї самої моделі блоків, що й .docx, а не з готових байтів:
-    /// інакше воно неминуче відставало б від документа. Розкладка рядків тут мусить
-    /// повторювати TemplateBlockDocxWriter - це його дзеркало на екрані.
-    /// </summary>
     public static class TemplateBlockPreview
     {
         public const string ManualPlaceholder = "‹вводиться при генерації›";
@@ -72,11 +55,6 @@ namespace GenDoc.Services.Templates
             return elements;
         }
 
-        /// <summary>
-        /// Прев'ю відомості як аркуша: рядки нумеруються тією самою розкладкою
-        /// (TemplateSheetLayout), за якою TemplateBlockXlsxWriter кладе клітинки,
-        /// тож номер рядка на екрані дорівнює номеру рядка у відкритій книзі.
-        /// </summary>
         public static SheetPreview BuildSheet(
             IReadOnlyList<TemplateBlock> blocks,
             IReadOnlyDictionary<string, string> values,
@@ -93,8 +71,6 @@ namespace GenDoc.Services.Templates
 
                 if (block.Kind == TemplateBlockKind.Table && block.Table is { } table)
                 {
-                    // Ті самі два стилі, які TemplateBlockXlsxWriter кладе в шапку
-                    // й у рядок-шаблон.
                     rows.Add(new SheetPreviewRow(
                         placement.FirstRow, IsMerged: false,
                         BlockStyleDefaults.ForTableHeader(style, BlockAlignment.Center),
@@ -124,14 +100,12 @@ namespace GenDoc.Services.Templates
             return new SheetPreview(letters, rows);
         }
 
-        /// <summary>Смуги на всю ширину - заголовок, гриф, абзац, підписи.</summary>
         private static IEnumerable<PreviewLine> BannerLines(
             TemplateBlock block,
             IReadOnlyDictionary<string, string> values,
             IReadOnlyDictionary<int, SignatoryInfo>? signatories)
             => Render(block, values, signatories).OfType<PreviewLine>();
 
-        /// <summary>Усі теги документа - з них будується перелік мапінгів для підстановки.</summary>
         public static IReadOnlyList<string> CollectTags(TemplateBuilderDocument document)
         {
             var tags = new List<string>();
@@ -168,8 +142,6 @@ namespace GenDoc.Services.Templates
             IReadOnlyDictionary<string, string> values,
             IReadOnlyDictionary<int, SignatoryInfo>? signatories)
         {
-            // Вирівнювання і жирність беруться з того самого розв'язувача, що
-            // годує writer'ів - прев'ю не має власної копії правил.
             var style = BlockStyleDefaults.Resolve(block.Kind, block.Style);
 
             switch (block.Kind)
@@ -183,10 +155,6 @@ namespace GenDoc.Services.Templates
                     yield return new PreviewLine(Substitute(block.Text ?? string.Empty, values), style);
                     break;
 
-                // Розбивається на рядки, як Header і Paragraph: TemplateSheetLayout
-                // резервує під блок LineCount(Text) рядків, і xlsx-writer стільки
-                // й пише. Один рядок із переносом усередині означав, що на екрані
-                // блок займає рядок, а в книзі - два (аудит 2026-08-28).
                 case TemplateBlockKind.DateAndCity:
                     foreach (var line in SplitLines(block.Text))
                         yield return new PreviewLine(Substitute(line, values), style);
@@ -203,8 +171,6 @@ namespace GenDoc.Services.Templates
                     break;
 
                 case TemplateBlockKind.Table when block.Table is { } table:
-                    // Один рядок даних: у відомості рядок-шаблон клонується по
-                    // одному на людину, тож прев'ю показує його на тестовій особі.
                     yield return new PreviewTable(
                         table.Columns.Select(c => c.Title).ToList(),
                         table.Columns.Select(c => Substitute(c.Cell, values)).ToList(),
@@ -224,10 +190,6 @@ namespace GenDoc.Services.Templates
 
             var runs = new List<PreviewRun>();
 
-            // Склеювання - дзеркало writer'ів: порожні частини викидаються, між
-            // рештою рівно один пробіл. Прев'ю додавало пробіли безумовно й
-            // показувало «Начальник курсу:  ______ » - подвійний після двокрапки
-            // й хвостовий, - коли підписанта не обрано (аудит 2026-08-28).
             void Space()
             {
                 if (runs.Count > 0) runs.Add(new PreviewRun(" ", PreviewRunKind.Text));
@@ -241,8 +203,6 @@ namespace GenDoc.Services.Templates
                 runs.Add(new PreviewRun(person!.Rank, PreviewRunKind.DbValue));
             }
 
-            // Порожні місця під ручний підпис - рівно те, що зробить і writer,
-            // коли підписанта не обрано.
             Space();
             runs.Add(new PreviewRun(SignatureRule, PreviewRunKind.Text));
 
@@ -282,8 +242,6 @@ namespace GenDoc.Services.Templates
             if (sourceType == MappingSourceType.Manual)
                 return new PreviewRun(ManualPlaceholder, PreviewRunKind.ManualValue);
 
-            // Поле є в базі, але в тестової особи порожнє - показуємо сам тег, а не
-            // порожнечу: інакше слово просто зникає, і причину не видно.
             var value = values.TryGetValue(tag, out var resolved) && !string.IsNullOrWhiteSpace(resolved)
                 ? resolved
                 : tag;

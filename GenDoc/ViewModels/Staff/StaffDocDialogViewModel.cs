@@ -24,7 +24,6 @@ namespace GenDoc.ViewModels.Staff
         [ObservableProperty] private bool isChecked;
     }
 
-    // Kind == null - генерація «в догонку» (без дат, без StaffEvent, лише шаблони PerRecipient).
     public partial class StaffDocDialogViewModel : DialogViewModelBase
     {
         private readonly IGenerationService _generationService;
@@ -90,8 +89,6 @@ namespace GenDoc.ViewModels.Staff
             PeopleText = string.Join(", ", people.Select(p => p.FullName));
 
             Templates.Clear();
-            // Лише шаблони постійного складу: раніше тут показувався весь перелік
-            // підряд, і серед нього були шаблони наборів, які сюди не стосуються.
             const Models.Enums.TemplateAudience audience = Models.Enums.TemplateAudience.PermanentStaff;
 
             var source = kind is null

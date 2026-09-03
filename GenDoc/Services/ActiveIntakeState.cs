@@ -4,13 +4,6 @@ using GenDoc.Services.Intakes;
 
 namespace GenDoc.Services
 {
-    // Singleton-стан активного набору для статус-рядка й екрана «Особовий склад».
-    //
-    // Активний набір ОДИН на всю базу, а не по профілю (рішення користувача
-    // 2026-08-31). Раніше кожен профіль міг обрати собі свій через «Зробити
-    // моїм», і два курсові бачили на одному екрані різні числа. Тепер набір
-    // визначають дати: GetActiveAsync сам переводить Planned → Active →
-    // Completed і віддає найсвіжіший активний.
     public class ActiveIntakeState
     {
         private readonly IIntakeService _intakeService;
@@ -35,9 +28,6 @@ namespace GenDoc.Services
 
         public bool HasActive => Current is not null;
 
-        // Скільки днів набору минуло і скільки їх усього - інклюзивний підрахунок
-        // (день старту й день завершення рахуються обидва), спільний для
-        // статус-рядка й картки набору на «Мій набір» (5/6) - формулу не дублюємо.
         public static (int Day, int Total) DayOfTotal(Intake intake, DateOnly today)
         {
             var total = intake.DateEnd.DayNumber - intake.DateStart.DayNumber + 1;

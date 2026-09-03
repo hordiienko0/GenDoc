@@ -57,7 +57,6 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Шапка -->
         <Grid Grid.Row="0" Margin="0,0,0,22">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
@@ -76,8 +75,6 @@
             </StackPanel>
 
             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                <!-- Ширше й підказка коротша: попередній варіант обрізався
-                     кнопкою «+ Додати кімнату» на середині слова. -->
                 <Grid Width="320" Margin="0,0,10,0">
                     <TextBox x:Name="SearchTextBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                              Padding="10,10"/>
@@ -89,7 +86,6 @@
             </StackPanel>
         </Grid>
 
-        <!-- Вміст: сітка карток (мін. 480) + панель деталей -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" MinWidth="480"/>
@@ -128,7 +124,6 @@
                                     </Border.InputBindings>
                                     <Grid>
 
-                                        <!-- Режим перегляду -->
                                         <StackPanel Visibility="{Binding IsNotEditing, Converter={StaticResource BoolToVisibility}}">
                                             <Grid Margin="0,0,0,10">
                                                 <Grid.ColumnDefinitions>
@@ -161,9 +156,6 @@
                                                                 <DataTrigger Binding="{Binding IsOverCapacity}" Value="True">
                                                                     <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
                                                                 </DataTrigger>
-                                                                <!-- Рівно повна: «6 / 6» досі виглядало так само,
-                                                                     як «4 / 6», і побачити з сітки, куди вже нікого
-                                                                     не поселиш, було не можна. -->
                                                                 <DataTrigger Binding="{Binding IsFull}" Value="True">
                                                                     <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
                                                                     <Setter Property="FontWeight" Value="Bold"/>
@@ -216,7 +208,6 @@
                                             </StackPanel>
                                         </StackPanel>
 
-                                        <!-- Режим редагування -->
                                         <StackPanel Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibility}}">
                                             <TextBlock Text="Корпус" Style="{StaticResource RoomFieldLabelStyle}"/>
                                             <TextBox Text="{Binding BuildingInput, UpdateSourceTrigger=PropertyChanged}"
@@ -253,11 +244,9 @@
                 </ScrollViewer>
             </Grid>
 
-            <!-- Роздільник -->
             <Border Grid.Column="1" Width="1" Background="{StaticResource BorderLineBrush}" Margin="20,0"
                     Visibility="{Binding IsPanelOpen, Converter={StaticResource BoolToVisibility}}"/>
 
-            <!-- Панель деталей кімнати -->
             <roomsView:RoomDetailsPanel Grid.Column="2"
                                          Visibility="{Binding IsPanelOpen, Converter={StaticResource BoolToVisibility}}"/>
         </Grid>

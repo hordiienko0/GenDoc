@@ -4,12 +4,6 @@ using GenDoc.ViewModels.Templates;
 
 namespace GenDoc.Tests.Templates;
 
-// Поділ за аудиторією працював у ДАНИХ (Template.Audience, схема v23) - «Видати
-// документ» показує лише шаблони постійного складу, - але на екрані обидві
-// аудиторії лежали одним списком, і зрозуміти, який шаблон куди піде, було ніяк.
-//
-// Групи - це ВИДИ над однією колекцією, тому рядок при переході між ними
-// лишається тим самим об'єктом: вибір і завантажений мапінг не губляться.
 public class TemplateAudienceGroupsTests
 {
     private static DocxTemplateListItemViewModel Row(int id, string name, TemplateAudience audience) =>
@@ -43,9 +37,6 @@ public class TemplateAudienceGroupsTests
         Assert.Equal("Атестація офіцера", row.Name);
     }
 
-    // Головне, заради чого групи зроблені видами: перемикання аудиторії
-    // переносить рядок з однієї групи в іншу, і це ТОЙ САМИЙ об'єкт - тобто
-    // вибір і завантажений мапінг переїжджають разом із ним.
     [Fact]
     public void SwitchingAudience_MovesTheSameRowBetweenGroups()
     {

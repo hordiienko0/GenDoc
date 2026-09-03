@@ -26,8 +26,6 @@ namespace GenDoc.ViewModels.Recipients
         private readonly IDialogService _dialogService;
         private readonly Services.Generation.IManualTagFormBuilder _manualTagFormBuilder;
 
-        /// <summary>Ключ, під яким запам'ятовуються минулі значення саме для
-        /// цього місця - щоб вони не змішувалися з іншими екранами.</summary>
         private const string ManualTagContextKey = "recipients-export";
         private readonly IServiceProvider _serviceProvider;
         private readonly DispatcherTimer _searchDebounceTimer;
@@ -204,7 +202,6 @@ namespace GenDoc.ViewModels.Recipients
             var manualValues = new Dictionary<string, string>();
             if (manualTags.Count > 0)
             {
-                // Та сама форма, що в генерації: дати пікером, тексти з минулого разу.
                 var form = await _manualTagFormBuilder.BuildAsync(manualTags, ManualTagContextKey);
                 var manualDialog = new ManualValuesDialogViewModel(form);
                 if (_dialogService.ShowDialog(manualDialog, Application.Current.MainWindow) != true) return;
@@ -251,8 +248,6 @@ namespace GenDoc.ViewModels.Recipients
             };
             if (dialog.ShowDialog() != true) return;
 
-            // Та сама вибірка, що зараз у гріді (пошук/сортування враховані) -
-            // а не весь особовий склад.
             var items = _recipientService.SearchEntities(SearchText, SortColumn, SortDescending);
 
             var columns = new List<ExportColumn<Recipient>>

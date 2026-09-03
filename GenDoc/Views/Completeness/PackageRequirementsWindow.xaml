@@ -64,8 +64,6 @@
             </StackPanel>
         </Border>
 
-        <!-- Уся форма прокручується як одне ціле: список росте вниз, а «+ Додати…» іде
-             одразу під ним (раніше список займав * і лишав пів вікна порожнім). -->
         <ScrollViewer VerticalScrollBarVisibility="Auto">
         <Grid Margin="16,12">
             <Grid.RowDefinitions>
@@ -107,7 +105,6 @@
 
                                     <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="12.5" VerticalAlignment="Center"
                                                Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"><TextBlock.ToolTip><TextBlock><Run Text="{Binding Name, Mode=OneWay}"/><Run><Run.Style><Style TargetType="Run"><Setter Property="Text" Value=" (груповий - формується на весь склад у «Генерації»)"/><Style.Triggers><DataTrigger Binding="{Binding IsGroup}" Value="False"><Setter Property="Text" Value=""/></DataTrigger></Style.Triggers></Style></Run.Style></Run></TextBlock></TextBlock.ToolTip></TextBlock>
-
 
                                     <UniformGrid Grid.Column="1" Columns="3" VerticalAlignment="Center">
                                         <Button Content="Обов'язк."

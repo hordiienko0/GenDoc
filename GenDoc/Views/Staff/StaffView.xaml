@@ -53,14 +53,12 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Шапка -->
         <StackPanel Grid.Row="0" Margin="0,0,0,14">
             <TextBlock Text="Постійний склад" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
             <TextBlock Text="Офіцери, прапорщики та цивільний персонал - документи поза наборами" FontSize="12"
                        Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
         </StackPanel>
 
-        <!-- Фільтри -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
             <ComboBox Width="160" Margin="0,0,8,0" ItemsSource="{Binding UnitOptions}"
                       SelectedItem="{Binding SelectedUnit}" DisplayMemberPath="Label"/>
@@ -73,7 +71,6 @@
             <Button Content="+ Додати" Command="{Binding AddPersonCommand}" Margin="8,0,0,0"/>
         </StackPanel>
 
-        <!-- Панель вибору -->
         <Border Grid.Row="2" Background="{StaticResource AccentSoftBrush}" BorderBrush="{StaticResource SkyBrush}"
                 BorderThickness="1" Padding="12,7" Margin="0,0,0,10"
                 Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
@@ -93,7 +90,6 @@
             </StackPanel>
         </Border>
 
-        <!-- Таблиця + бічна панель швидкого оформлення -->
         <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
@@ -107,8 +103,6 @@
                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>
 
-                    <!-- Клік по рядку відкриває картку - той самий жест, що і в
-                         «Особовому складі» (PeopleGrid_MouseLeftButtonUp). -->
                     <DataGrid x:Name="StaffGrid" ItemsSource="{Binding Rows}" AutoGenerateColumns="False" IsReadOnly="True"
                               CanUserSortColumns="False" EnableRowVirtualization="True"
                               CanUserResizeColumns="True" SelectionMode="Single"
@@ -117,10 +111,6 @@
                               Visibility="{Binding HasRows, Converter={StaticResource BoolToVisibility}}">
                         <DataGrid.RowStyle>
                             <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
-                                <!-- ContextMenu живе у власному піддереві - ані RelativeSource AncestorType, ані
-                                     ElementName з кореня UserControl його не дістають, коли меню задане через
-                                     Setter (не інлайном у видимому дереві). Tag рядка несе ViewModel;
-                                     PlacementTarget у прив'язках MenuItem - сам рядок. -->
                                 <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=DataGrid}}"/>
                                 <Setter Property="ContextMenu">
                                     <Setter.Value>
@@ -147,19 +137,6 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
 
-                            <!-- Тут ПІБ повний («Пономаренко Сергій Олександрович»), тому
-                                 частка більша, ніж в інших списках; підказка на кожній
-                                 колонці гарантує, що обрізане читається повністю. -->
-                            <!-- Тут ПІБ ПОВНИЙ («Пономаренко Сергій Олександрович»), тому
-                                 змінних полів два - ПІБ і посада, і частки між ними
-                                 доречні. Звання фіксоване з тієї ж причини, що й у
-                                 «Особовому складі». -->
-                            <!-- MinWidth обов'язковий: зіркова колонка стискається
-                                 до НУЛЯ, коли решті не вистачає місця, і з
-                                 відкритою карткою праворуч ПІБ зникав зі списку
-                                 зовсім - лишалися саме лише звання й посада
-                                 (побачено живим прогоном 2026-08-31). Тепер
-                                 замість зникнення - горизонтальна прокрутка. -->
                             <DataGridTextColumn Header="ПІБ" Binding="{Binding FullName}" Width="2.1*" MinWidth="210"
                                                  ElementStyle="{StaticResource TruncatedCellStyle}"/>
                             <DataGridTextColumn Header="Звання" Binding="{Binding RankShort}" Width="132">
@@ -172,9 +149,6 @@
                             <DataGridTextColumn Header="Посада" Binding="{Binding Position}" Width="1.8*" MinWidth="150"
                                                  ElementStyle="{StaticResource TruncatedCellStyle}"/>
 
-                            <!-- «КО» у 40 px не вміщалось навіть як заголовок і читалось
-                                 «К…» - з обрізаної літери зрозуміти, що це ознака курсового
-                                 офіцера, неможливо. Повний підпис і підказка. -->
                             <DataGridTemplateColumn Header="Курсовий офіцер" Width="128">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
@@ -206,9 +180,6 @@
                 </Grid>
             </Border>
 
-            <!-- Швидке оформлення. Вилазить лише коли когось обрано: усі дії всередині
-                 однаково вимагають вибору (CanExecute = HasSelection), тож порожня
-                 плашка просто з'їдала ширину списку. Колонка Auto - згортається в нуль. -->
             <Border Grid.Column="1" Width="296" Background="{StaticResource PanelBrush}"
                     BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,1,1" Margin="-1,0,0,0"
                     Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
@@ -291,12 +262,6 @@
                 </DockPanel>
             </Border>
 
-            <!-- КАРТКА ЛЮДИНИ. Розкладка - як в «Особовому складі»: перегляд і
-                 редагування це дві візуалізації одного значення, що
-                 перемикаються прапорцем IsEditing (стилі CardReadValueStyle /
-                 CardEditFieldStyle - глобальні, з Theme.xaml).
-                 Колонка Auto: коли картки немає, вона згортається в нуль і
-                 список забирає всю ширину. -->
             <Border Grid.Column="2" Width="330" Background="{StaticResource PanelBrush}"
                     BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,1,1" Margin="-1,0,0,0"
                     Visibility="{Binding HasCard, Converter={StaticResource BoolToVisibility}}">
@@ -368,8 +333,6 @@
                             <TextBox Text="{Binding Phone, UpdateSourceTrigger=PropertyChanged}"
                                      Style="{StaticResource CardEditFieldStyle}"/>
 
-                            <!-- Ознака, заради якої розділ і потрібен: підписантом
-                                 відомостей може стати лише курсовий офіцер. -->
                             <CheckBox Content="Курсовий офіцер" Margin="0,16,0,0"
                                       IsChecked="{Binding IsCourseOfficer}"
                                       IsEnabled="{Binding IsEditing}"/>

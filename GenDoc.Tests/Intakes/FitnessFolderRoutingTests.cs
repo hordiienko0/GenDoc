@@ -4,11 +4,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Intakes;
 
-// Папки набору - це класифікація за придатністю, тож у кожної категорії мусить
-// бути свій дім, а людина мусить переїжджати за зміною статусу. Раніше
-// розкладання відбувалося лише при імпорті, і то в три папки: усе, що не
-// «придатний»/«обмежено придатний», осідало в «Усіх» (рішення користувача
-// 2026-08-31 - завести окрему папку для незаповненої категорії).
 public class FitnessFolderRoutingTests
 {
     [Theory]
@@ -21,20 +16,15 @@ public class FitnessFolderRoutingTests
     public void EachCategoryHasItsOwnFolder(string? category, string expected)
         => Assert.Equal(expected, IntakeFitnessFolders.FolderNameFor(category));
 
-    // Регістр у картках плаває, а порівняння кирилиці мусить іти в пам'яті.
     [Theory]
     [InlineData("Придатний", IntakeFolderNames.Fit)]
     [InlineData("ОБМЕЖЕНО ПРИДАТНИЙ", IntakeFolderNames.LimitedFit)]
     public void CategoryMatchingIgnoresCase(string category, string expected)
         => Assert.Equal(expected, IntakeFitnessFolders.FolderNameFor(category));
 
-    // Незнайоме значення - не привід загубити людину: воно поводиться як
-    // незаповнене.
     [Fact]
     public void AnUnknownCategoryBehavesLikeAnEmptyOne()
         => Assert.Equal(IntakeFolderNames.NoCategory, IntakeFitnessFolders.FolderNameFor("щось інше"));
-
-    // ─── Пошук і створення папки в базі ──────────────────────────────────────
 
     private static (int IntakeId, int AllNodeId) SeedIntakeWithAllFolderOnly(TestDb db)
     {
@@ -69,9 +59,6 @@ public class FitnessFolderRoutingTests
         return (intake.Id, all.Id);
     }
 
-    // Наявні набори створювалися до появи цих папок. Замість разової міграції
-    // папка дописується тоді, коли вона вперше знадобилась, - так старий набір
-    // теж починає розкладати людей, без окремої дії користувача.
     [Fact]
     public void AMissingFolderIsCreatedOnFirstUse()
     {
@@ -117,8 +104,6 @@ public class FitnessFolderRoutingTests
         Assert.Single(ctx.OrgNodes.Where(n => n.Name == IntakeFolderNames.Unfit).ToList());
     }
 
-    // Набір без папки «Всі» - неможливий у нормі, але база могла постраждати.
-    // Краще нічого не робити, ніж розкидати людей по корені дерева.
     [Fact]
     public void AnIntakeWithoutTheAllFolderResolvesToNothing()
     {

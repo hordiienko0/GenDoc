@@ -7,8 +7,6 @@ using GenDoc.Services.Navigation;
 
 namespace GenDoc.ViewModels.Generation;
 
-// Картка підсумку прогону (2.4): замість двох MessageBox - числа, список проблем
-// і дві дії. Використовується на екрані «Генерація» і в діалозі «Згенерувати документ…».
 public partial class GenerationResultViewModel : ObservableObject
 {
     public GenerationResultViewModel(RunResult result, string outputFolder)

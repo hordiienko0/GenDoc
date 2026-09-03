@@ -45,19 +45,10 @@ namespace GenDoc.Services.Recipients
             db.SaveChanges();
         }
 
-        // Матеріалізуємо сутності одразу (ToList) - подальший пошук за словами
-        // і форматування кімнати виконуються в пам'яті на C#, EF Core/SQLite
-        // не повинен транслювати динамічне розбиття рядка на слова в SQL.
-        // Спільна точка для UI-списку (Search) і експорту (SearchEntities) - обидва
-        // повинні бачити однакову вибірку з урахуванням активного пошуку/сортування.
         private List<Recipient> QueryEntities(string? searchText, RecipientSortColumn sortColumn, bool sortDescending)
         {
             using var db = _dbFactory.CreateDbContext();
 
-            // Weapons/OrgNode потрібні експорту за шаблоном (поля «Зброя: …»): lazy
-            // loading вимкнено, тож без Include колекція приходить порожньою і
-            // колонки зі зброєю мовчки лишаються пустими. Той самий набір Include,
-            // що й у GenerationService.LoadRosterRecipients.
             var entities = db.Recipients
                 .Include(r => r.Unit)
                 .Include(r => r.Room)
@@ -260,9 +251,6 @@ namespace GenDoc.Services.Recipients
             if (isNew) db.Recipients.Add(recipient);
             db.SaveChanges();
 
-            // Id щойно вставленого рядка повертається у модель: інакше викликач
-            // не знає, кого саме створив, і не може ні перечитати картку, ні
-            // виділити її в списку.
             model.Id = recipient.Id;
 
             var newSnapshot = BuildSnapshot(recipient);
@@ -292,8 +280,6 @@ namespace GenDoc.Services.Recipients
             if (string.IsNullOrWhiteSpace(unitName)) return null;
             var name = unitName.Trim();
 
-            // Те саме правило, що й для кімнат: «Перша Рота» і «перша рота» -
-            // один підрозділ, тож порівнюємо в пам'яті.
             var existing = db.Units.AsEnumerable()
                 .FirstOrDefault(u => UkrainianCollation.IgnoreCase.Equals(u.Name, name));
             if (existing is not null) return existing.Id;
@@ -310,8 +296,6 @@ namespace GenDoc.Services.Recipients
             var b = building.Trim();
             var n = number.Trim();
 
-            // Порівняння в пам'яті, не запитом: SQLite вважав би «Корпус А» і
-            // «корпус а» різними кімнатами й плодив дублі (аудит 2026-08-28).
             var existing = db.Rooms.AsEnumerable()
                 .FirstOrDefault(r => UkrainianCollation.IgnoreCase.Equals(r.Building, b)
                                   && UkrainianCollation.IgnoreCase.Equals(r.Number, n));

@@ -5,8 +5,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Import;
 
-// Зіставлення колонок і нумерація рядків. Три дефекти з аудиту 2026-08-28,
-// кожен тихий: файл імпортується «успішно», а в базі не те, що у файлі.
 public class ImportColumnMappingTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), $"gendoc-map-{Guid.NewGuid():N}");
@@ -24,10 +22,6 @@ public class ImportColumnMappingTests : IDisposable
         return ImportService.AutoMapHeader(header, ref noteAssigned);
     }
 
-    // Реальні файли підписують колонку командира по-різному, і половина
-    // варіантів містить «ПІБ». Правило «піб» стояло вище за «командир», тож
-    // колонка командира ставала колонкою ПІБ - і людей звали іменами їхніх
-    // командирів.
     [Theory]
     [InlineData("Командир (ПІБ та телефон)")]
     [InlineData("Командир підрозділу (ПІБ, телефон)")]
@@ -36,7 +30,6 @@ public class ImportColumnMappingTests : IDisposable
     public void CommanderColumn_DoesNotHijackTheFullNameField(string header)
         => Assert.Equal(ImportTargetField.CommanderContact, Map(header));
 
-    // Захист від зворотного перекосу: власне ПІБ має лишитись ПІБ.
     [Theory]
     [InlineData("ПІБ")]
     [InlineData("ПІБ (повністю)")]
@@ -47,9 +40,6 @@ public class ImportColumnMappingTests : IDisposable
     public void ForeignLanguageNameColumn_StillWinsOverFullName()
         => Assert.Equal(ImportTargetField.NameTransliterated, Map("ПІБ на іноземній мові"));
 
-    // Два стовпці, зіставлені з тим самим полем: у ParseRows словник
-    // перезаписувався останнім стовпцем, і ПОРОЖНІЙ дубль стирав заповнене
-    // значення. Перемагає перше непорожнє.
     [Fact]
     public void DuplicateMapping_KeepsTheFilledColumn()
     {
@@ -88,9 +78,6 @@ public class ImportColumnMappingTests : IDisposable
         Assert.Equal("Тест", person.FirstName);
     }
 
-    // «Рядок N» у звіті мусить збігатися з номером рядка в Excel, інакше
-    // оператор іде виправляти не той рядок. RowsUsed() пропускає порожні
-    // рядки, а номер рахувався як «порядковий + 2».
     [Fact]
     public void RowNumbersInTheReport_MatchTheWorksheet()
     {
@@ -100,7 +87,6 @@ public class ImportColumnMappingTests : IDisposable
             var ws = wb.AddWorksheet("Люди");
             ws.Cell(1, 1).Value = "ПІБ";
             ws.Cell(2, 1).Value = "ПЕРШЕНКО Перший Першович";
-            // рядок 3 порожній - RowsUsed() його не поверне
             ws.Cell(4, 1).Value = "ЧЕТВЕРТЕНКО Четвертий Четвертович";
             wb.SaveAs(path);
         }
@@ -118,9 +104,6 @@ public class ImportColumnMappingTests : IDisposable
         Assert.Equal(4, previews[1].RowNumber);
     }
 
-    // Гілку обрав оператор, тож підрозділ із файлу нікуди людину не кладе.
-    // ResolveOrgNode усе одно створював вузол під коренем - у дереві з'являлися
-    // папки, у яких ніколи нікого немає.
     [Fact]
     public void ChosenBranch_DoesNotCreateAFolderForTheUnitFromTheFile()
     {
@@ -186,12 +169,6 @@ public class ImportColumnMappingTests : IDisposable
         Assert.Equal(branchId, person.OrgNodeId);
     }
 
-    // Постійний склад свідомо НЕ входить у це правило: майстер не дає йому
-    // обрати гілку, тож колонка «Підрозділ» у файлі - єдиний сигнал про місце
-    // в дереві, і папку за нею треба створити.
-
-    // «Підрозділ» у файлі лишається робочим там, де він і вирішує - у старому
-    // режимі без майстра. Тут папка МАЄ з'явитись.
     [Fact]
     public void FileDrivenImport_StillCreatesTheFolderForTheUnitFromTheFile()
     {

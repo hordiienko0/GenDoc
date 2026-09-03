@@ -2,10 +2,6 @@ namespace GenDoc.Services.Templates;
 
 public record TemplateFieldOption(string FieldName, string DisplayName);
 
-// Повний перелік полів, доступних для ручного перепризначення мітки у
-// ComboBox-і мапінгу (Views/Templates). FieldName зберігається як рядок у
-// TemplateFieldMapping.FieldName - узгоджено зі значеннями, які повертає
-// DocumentGenerationService при побудові словника значень (Етап 3).
 public static class TemplateFieldCatalog
 {
     public static readonly IReadOnlyList<TemplateFieldOption> RecipientFields = new List<TemplateFieldOption>

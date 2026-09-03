@@ -109,14 +109,6 @@ namespace GenDoc.Services.Personnel
                 db.Recipients.Add(recipient);
             }
 
-            // Категорія придатності визначає папку в дереві набору, тож зміна
-            // категорії - це переїзд. Раніше розкладав лише імпорт, і людина,
-            // якій змінили придатність у картці, лишалася в старій папці:
-            // дерево показувало одне, картка - інше.
-            //
-            // Рухаємо ЛИШЕ на зміну категорії. Інакше кожне збереження (правка
-            // телефону, кімнати) висмикувало б людину з папки, куди курсовий
-            // переставив її руками через «Перемістити до…».
             var fitnessChanged = !UkrainianCollation.IgnoreCase.Equals(
                 previousFitness ?? string.Empty, recipient.FitnessCategory ?? string.Empty);
 
@@ -207,8 +199,6 @@ namespace GenDoc.Services.Personnel
             var b = building.Trim();
             var n = number.Trim();
 
-            // Порівняння в пам'яті, не запитом: SQLite вважав би «Корпус А» і
-            // «корпус а» різними кімнатами й плодив дублі (аудит 2026-08-28).
             var existing = (await db.Rooms.ToListAsync())
                 .FirstOrDefault(r => UkrainianCollation.IgnoreCase.Equals(r.Building, b)
                                   && UkrainianCollation.IgnoreCase.Equals(r.Number, n));

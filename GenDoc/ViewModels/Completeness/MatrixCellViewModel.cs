@@ -8,8 +8,6 @@ namespace GenDoc.ViewModels.Completeness
 {
     public enum MatrixCellState { Present, PresentStale, MissingRequired, MissingOptional, NotApplicable, RosterUnknown }
 
-    // Клітинка сама несе команди - динамічні шаблони колонок не бачать
-    // DataContext екрана; ElementName у згенерованому в коді XAML не працює.
     public partial class MatrixCellViewModel : ObservableObject
     {
         private readonly ICellActionCoordinator _coordinator;
@@ -30,11 +28,8 @@ namespace GenDoc.ViewModels.Completeness
         public int TemplateId { get; }
         public string FitnessCategory { get; }
 
-        // Групова колонка (v25): DocumentId - це GeneratedGroupDocument, дії обмежені «Відкрити».
         public bool IsGroupColumn { get; }
 
-        // Обов'язковість резолвиться при побудові рядка і не залежить від наявності документа -
-        // «n з m» рахує лише Required, незалежно від State.
         public TemplateRequirement Requirement { get; }
 
         [ObservableProperty]
@@ -58,14 +53,8 @@ namespace GenDoc.ViewModels.Completeness
         [ObservableProperty]
         private DocumentSourceType sourceType;
 
-        // «Документ узагалі є?» - для показу меню, версії, посилання на файл.
         public bool IsPresent => State is MatrixCellState.Present or MatrixCellState.PresentStale;
 
-        // «Зараховано до готовності?» - НАЯВНИЙ І НЕ ЗАСТАРІЛИЙ. Саме це число
-        // йде в «N з M» і в «Пакет повний». Раніше рядок рахував застарілий як
-        // наявний, а зведення по набору - ні, і два екрани про той самий набір
-        // суперечили один одному: «Пакет повний» поруч із «Перегенерувати
-        // застарілі (4)» і 60 % на картці набору (аудит 2026-08-28).
         public bool IsSatisfied => State == MatrixCellState.Present;
         public bool IsStale => State == MatrixCellState.PresentStale;
         public bool IsMissingRequired => State == MatrixCellState.MissingRequired;
@@ -85,9 +74,6 @@ namespace GenDoc.ViewModels.Completeness
             _ => string.Empty
         };
 
-        // Кольори читаються з App.Resources за ключем (жодного хардкоду hex) - обчислюються тут,
-        // а не в XAML-шаблоні клітинки, бо StaticResource усередині XamlReader.Parse-фрагмента
-        // не гарантовано резолвиться (немає контексту резолюції ресурсів на момент парсингу).
         public Brush Background => State switch
         {
             MatrixCellState.Present => Res("SuccessSoftBrush"),
@@ -119,11 +105,6 @@ namespace GenDoc.ViewModels.Completeness
         public Brush DashedBorderBrush => ShowDashedBorder ? Res("WarningBrush") : Brushes.Transparent;
 
         public Visibility VersionVisibility => string.IsNullOrEmpty(VersionText) ? Visibility.Collapsed : Visibility.Visible;
-        // Кожен пункт меню показується рівно тоді, коли він працює. Раніше
-        // чотири пункти ділили одну PresentMenuVisibility, тож у груповій
-        // клітинці (а це й відомості) з них працював лише «Відкрити», а решта
-        // три висіли неактивними - меню виглядало зламаним
-        // (побачено живим прогоном 2026-08-31).
         public Visibility OpenMenuVisibility => Show(CanOpen);
         public Visibility RegenerateMenuVisibility => Show(CanRegenerate);
         public Visibility HistoryMenuVisibility => Show(CanHistory);
@@ -132,16 +113,12 @@ namespace GenDoc.ViewModels.Completeness
 
         private static Visibility Show(bool can) => can ? Visibility.Visible : Visibility.Collapsed;
 
-        /// <summary>Меню не відкривається взагалі, коли в ньому не було б жодного
-        /// пункту. Рахується з тих самих можливостей, що й видимість пунктів, -
-        /// інакше з появою нової дії список довелося б правити у двох місцях.</summary>
         public bool HasMenu => CanOpen || CanRegenerate || CanHistory || CanSaveAs || CanGenerate;
 
         private static Brush Res(string key)
             => Application.Current.Resources[key] as Brush ?? Brushes.Transparent;
 
         public bool CanOpen => (IsPresent || IsRosterUnknown) && HasContent;
-        // Групові: лише «Відкрити» - генерація, історія і збереження живуть в «Архів → Групові» та «Генерації».
         public bool CanSaveAs => IsPresent && HasContent && !IsGroupColumn;
         public bool CanRegenerate => IsPresent && SourceType == DocumentSourceType.Generated && !IsGroupColumn;
         public bool CanHistory => IsPresent && !IsGroupColumn;
@@ -162,7 +139,6 @@ namespace GenDoc.ViewModels.Completeness
         [RelayCommand(CanExecute = nameof(CanSaveAs))]
         private Task SaveAsAsync() => _coordinator.SaveAsAsync(this);
 
-        // Викликається рівно раз при побудові рядка (не в getter - віртуалізація смикає getter-и багаторазово).
         public void Initialize(Services.Completeness.MatrixDocDto? doc)
         {
             if (Requirement == TemplateRequirement.NotApplicable)
@@ -226,7 +202,6 @@ namespace GenDoc.ViewModels.Completeness
         }
     }
 
-    // Реалізується CompletenessViewModel - клітинка делегує дії координатору.
     public interface ICellActionCoordinator
     {
         Task OpenAsync(MatrixCellViewModel cell);

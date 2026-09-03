@@ -1,7 +1,5 @@
 namespace GenDoc.Models
 {
-    // Учасник групового документа: хто був у складі відомості/групового рапорту
-    // на момент генерації (2026-08-20). Кожна версія документа має власний склад.
     public class GeneratedGroupDocumentRecipient
     {
         public int Id { get; set; }

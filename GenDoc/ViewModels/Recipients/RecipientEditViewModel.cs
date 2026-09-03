@@ -82,7 +82,6 @@ public partial class RecipientEditViewModel : ObservableObject
     [ObservableProperty] private string? roomNumber;
     [ObservableProperty] private bool isCourseOfficer;
 
-    // Анкетні дані (прикомандировані) - Б.4
     [ObservableProperty] private string? nationality;
     [ObservableProperty] private string? vos;
     [ObservableProperty] private DateTime? courseArrivalDate;
@@ -108,7 +107,6 @@ public partial class RecipientEditViewModel : ObservableObject
     [ObservableProperty] private string? originUnit;
     [ObservableProperty] private string? vehicle;
 
-    // Уточнення відмінків - Part F
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsGenderMale))]
     [NotifyPropertyChangedFor(nameof(IsGenderFemale))]

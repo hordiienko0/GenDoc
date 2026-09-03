@@ -11,7 +11,6 @@ namespace GenDoc.Services.Generation
     {
         private static readonly Regex PlaceholderRegex = new(@"\{\{[^{}]+\}\}", RegexOptions.Compiled);
 
-        // Зарезервовані теги для «аркуш на кожну дату періоду».
         internal const string PeriodTag = "{{період}}";
         internal const string DateSheetTag = "{{дата_аркуша}}";
 
@@ -28,8 +27,6 @@ namespace GenDoc.Services.Generation
         {
             try
             {
-                // Копія байтів - MemoryStream(byte[]) інакше пише напряму у переданий
-                // масив (кеш шаблону), а його не можна мутувати між генераціями.
                 using var stream = new MemoryStream();
                 stream.Write(templateContent, 0, templateContent.Length);
                 stream.Position = 0;
@@ -39,7 +36,6 @@ namespace GenDoc.Services.Generation
 
                 if (!usesPlaceholders)
                 {
-                    // Стара header-driven поведінка - лише перший аркуш, як і раніше.
                     FillByHeaderColumns(workbook.Worksheets.First(), mappings, roster);
                 }
                 else if (repeatSheetPerDate)
@@ -86,7 +82,6 @@ namespace GenDoc.Services.Generation
                             courseOfficerSignature, perSheetValues, unfilledTags);
                     }
 
-                    // Інші (довідкові) аркуші книги - заповнити один раз, без клонування.
                     var clonedNameSet = new HashSet<string>(clonedNames.Select(c => c.Name));
                     foreach (var sheet in workbook.Worksheets.Where(s => !clonedNameSet.Contains(s.Name)))
                     {
@@ -97,9 +92,6 @@ namespace GenDoc.Services.Generation
                 }
                 else
                 {
-                    // Кожен аркуш книги - аркуші без тегів у templateRowIndex просто
-                    // не отримають клонованих рядків (перевірка всередині), але й досі
-                    // отримають підстановку "зовнішніх" (org/manual) тегів, якщо є.
                     foreach (var sheet in workbook.Worksheets)
                     {
                         FillSheetByPlaceholders(
@@ -119,8 +111,6 @@ namespace GenDoc.Services.Generation
             }
         }
 
-        // "03.08.2026-07.08.2026, 09.08.2026" → відсортований список унікальних дат.
-        // Діапазони через дефіс, перелік через кому; кожна дата - дд.мм.рррр.
         internal static List<DateOnly> ParsePeriodDates(string raw)
         {
             var segments = raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
@@ -167,8 +157,6 @@ namespace GenDoc.Services.Generation
             return result.OrderBy(d => d).ToList();
         }
 
-        // Стара header-driven поведінка - без жодних стильових властивостей, лише
-        // значення в жорстко визначений рядок 2, як і раніше.
         private static void FillByHeaderColumns(IXLWorksheet sheet, List<ExportTemplateColumnMapping> mappings, IReadOnlyList<Recipient> items)
         {
             var row = 2;
@@ -199,10 +187,6 @@ namespace GenDoc.Services.Generation
             }
         }
 
-        // Один аркуш: якщо в templateRowIndex справді є хоч один з очікуваних тегів -
-        // клонує рядок по одному на людину (як і раніше). Якщо ні - це довідковий
-        // аркуш (напр. "Слухачі"): рядки не чіпаємо, лише підставляємо org/manual-теги
-        // будь-де на аркуші.
         private static void FillSheetByPlaceholders(
             IXLWorksheet sheet,
             List<ExportTemplateColumnMapping> mappings,
@@ -223,7 +207,7 @@ namespace GenDoc.Services.Generation
                 sheet.Cell(t, m.ColumnIndex).GetString().Contains(m.PlaceholderTag, StringComparison.Ordinal));
 
             var excludeFrom = t;
-            var excludeTo = t - 1; // порожній діапазон - за замовчуванням нічого не виключає
+            var excludeTo = t - 1;
 
             if (hasRowTemplate)
             {
@@ -243,8 +227,6 @@ namespace GenDoc.Services.Generation
 
                     string ResolveOne(ExportTemplateColumnMapping mapping)
                     {
-                        // Загальна оцінка - середнє по GradeRandom34-колонках ЦЬОГО рядка,
-                        // а не самостійне поле r-> ... - потребує сусідніх колонок мапінгу.
                         if (mapping.SourceType == MappingSourceType.Recipient &&
                             mapping.FieldKey == nameof(ExportFieldKey.GradeOverall34))
                         {
@@ -295,16 +277,8 @@ namespace GenDoc.Services.Generation
             CollectResidualUnfilledTags(sheet, unfilledTags);
         }
 
-        // Стабільна "випадкова" оцінка 3 або 4: той самий (RecipientId, ColumnIndex)
-        // завжди дає те саме число - і між перегенераціями, і між колонками рядка
-        // відрізняється, бо колонка теж входить у seed.
         internal static int ComputeGradeRandom34(int recipientId, int columnIndex)
         {
-            // ВЛАСНИЙ детермінований хеш, а не HashCode.Combine: той у .NET
-            // рандомізований на кожен процес (документована гарантія), тож
-            // «стабільна» оцінка мінялась після кожного перезапуску застосунку -
-            // включно з уже роздрукованими відомостями (аудит 2026-08-28).
-            // FNV-1a на двох числах: дешево, детерміновано, добре розсіює.
             unchecked
             {
                 const uint offset = 2166136261;
@@ -336,16 +310,8 @@ namespace GenDoc.Services.Generation
             return courseOfficerSignature;
         }
 
-        // Вставляє insertedCount порожніх рядків під шаблонним рядком і клонує туди
-        // його вміст/стиль - усе нижче (підсумки, блок підписів) зсувається разом
-        // з об'єднаннями. ClosedXML сам зсуває більшість merged-діапазонів при
-        // InsertRowsBelow, але про всяк випадок звіряємо адреси й довиправляємо
-        // ті, що лишились на старому місці.
         private static void InsertClonedRows(IXLWorksheet sheet, int templateRow, int insertedCount)
         {
-            // Об'єднання, що лежать ЦІЛКОМ у межах шаблонного рядка (напр. підпис на
-            // всю ширину) - CopyTo(row) не гарантує перенесення стану merge, тому
-            // повторно застосовуємо їх на кожному клоні за тими самими колонками.
             var inRowMergeColumnSpans = sheet.MergedRanges
                 .Where(m => m.RangeAddress.FirstAddress.RowNumber == templateRow && m.RangeAddress.LastAddress.RowNumber == templateRow)
                 .Select(m => (m.RangeAddress.FirstAddress.ColumnNumber, m.RangeAddress.LastAddress.ColumnNumber))
@@ -398,9 +364,6 @@ namespace GenDoc.Services.Generation
             {
                 cell.Value = date;
             }
-            // Провідний нуль означає, що це не число, а код: телефон, ВОС,
-            // особовий номер. Excel мовчки зрізав би нуль, і в надрукованій
-            // відомості лишався б неправильний номер (аудит 2026-08-28).
             else if (!HasLeadingZero(raw)
                      && int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var intValue))
             {
@@ -437,9 +400,6 @@ namespace GenDoc.Services.Generation
                 .Where(c => c.Address.RowNumber < excludeFromRow || c.Address.RowNumber > excludeToRow)
                 .ToList();
 
-            // Довідкові аркуші (напр. "Слухачі") не містять теги, мапнуті лише
-            // для іншого аркуша - рахуємо "незаповненим" тег лише тоді, коли він
-            // справді присутній хоч в одній клітинці ЦЬОГО аркуша.
             var relevantMappings = outsideMappings
                 .Where(m => cellsOutsideRowTemplate.Any(c => c.GetString().Contains(m.PlaceholderTag, StringComparison.Ordinal)))
                 .ToList();
@@ -575,9 +535,6 @@ namespace GenDoc.Services.Generation
                 ? $"{w.Name} № {w.SerialNumber}".Trim()
                 : string.Empty,
             ExportFieldKey.GradeRandom34 => ComputeGradeRandom34(r.Id, columnIndex).ToString(CultureInfo.InvariantCulture),
-            // GradeOverall34/CourseOfficerSignature обробляються окремо в
-            // FillSheetByPlaceholders - потребують сусідніх колонок рядка /
-            // даних поза поточним ростером відповідно.
             _ => string.Empty
         };
 

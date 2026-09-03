@@ -3,13 +3,6 @@ using GenDoc.Services.Generation;
 
 namespace GenDoc.Tests.Generation;
 
-// Теги приходять із БД у полі PlaceholderTag - а там вони записані З ДУЖКАМИ
-// ({{звання_підписанта}}), бо сканер кладе match.Value регексу цілком. Константи
-// ж і префіли писалися без дужок, тому жодне порівняння не збігалося:
-// підписант ставав парою звичайних текстових полів, а дата - рядком без пікера.
-//
-// Мовчазна вада: форма показувалась, значення підставлялись, просто вручну - і
-// саме тому її не було видно ні з коду, ні з тестів.
 public class ManualTagBraceFormatTests
 {
     [Fact]
@@ -60,9 +53,6 @@ public class ManualTagBraceFormatTests
         Assert.Equal(arrival.AddDays(1), ManualTagClassifier.PrefillDate("{{дата_зарахування}}", arrival));
     }
 
-    // Найтихіша половина вади: навіть обраний підписант не доїхав би до
-    // документа, бо форма кладе значення під ключем БЕЗ дужок, а генерація
-    // шукає його за PlaceholderTag - тобто з дужками.
     [Fact]
     public void GetValues_ReturnsSignerUnderTheSameKeyTheTemplateUses()
     {

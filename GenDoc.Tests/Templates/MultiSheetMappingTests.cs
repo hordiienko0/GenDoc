@@ -4,15 +4,10 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Templates;
 
-// Відомість конструктора може мати кілька аркушів, а SyncExportMappings читав
-// лише `Worksheets.First()`: теги з другого аркуша не діставали мапінгу, тобто
-// на генерації лишалися сирими {{тегами}} у готовій книзі (аудит 2026-08-28).
 public class MultiSheetMappingTests
 {
     private static TemplateBuilderService NewService(TestDb db) => new(db.Factory, new FakeAuditLog());
 
-    // Аркуш 1 - таблиця з рядком-шаблоном; аркуш 2 - смуга з тегом рівня
-    // документа. Обидва теги мусять опинитися в мапінгах.
     private static TemplateBuilderDocument TwoSheets() => new(
         new[]
         {
@@ -54,8 +49,6 @@ public class MultiSheetMappingTests
         Assert.Equal(1, perPerson.ColumnIndex);
     }
 
-    // Той самий тег на обох аркушах - один мапінг, а не два: інакше екран
-    // «Мітки» показував би дублі, яких оператор не може розрізнити.
     [Fact]
     public void TheSameTagOnBothSheets_GivesOneMapping()
     {
@@ -82,9 +75,6 @@ public class MultiSheetMappingTests
         Assert.Single(template.ColumnMappings, m => m.PlaceholderTag == "{{номер_вч}}");
     }
 
-    // Рядок-шаблон у книзі один на всі аркуші. Тег, що на ДРУГОМУ аркуші
-    // випадково стоїть у рядку з тим самим номером, не має вдавати пер-людинну
-    // колонку - інакше він клонувався б разом із рядком.
     [Fact]
     public void TagAtTheSameRowNumberOnAnotherSheet_IsNotTreatedAsPerPerson()
     {
@@ -94,11 +84,8 @@ public class MultiSheetMappingTests
         var document = new TemplateBuilderDocument(
             new[]
             {
-                // Аркуш 1: шапка в рядку 1, рядок-шаблон у рядку 2.
                 new TemplateBlock(TemplateBlockKind.Table, Table: new TableSpec(
                     new[] { new TableColumn("Прізвище", "{{піб}}") }, RepeatPerPerson: true)),
-                // Аркуш 2: рядок 1 - заголовок, рядок 2 - той самий номер, що й
-                // рядок-шаблон на аркуші 1.
                 new TemplateBlock(TemplateBlockKind.Title, "Додаток", SheetIndex: 1),
                 new TemplateBlock(TemplateBlockKind.Paragraph, "Склав {{посада_командира}}", SheetIndex: 1)
             },

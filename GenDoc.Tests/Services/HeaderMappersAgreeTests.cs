@@ -4,11 +4,6 @@ using GenDoc.Services.Import;
 
 namespace GenDoc.Tests.Services;
 
-// Заголовки колонок розпізнають ДВА мапери: ImportService.AutoMapHeader (файл,
-// який завантажують) і ExportTemplateService.AutoMapExportHeader (книга, у яку
-// вивантажують). Вони мусять читати ті самі назви однаково - про це прямо
-// написано в HeaderNormalization, - але слідкувати за цим не було чому, і вони
-// розійшлися: правило «командир» підняли лише в імпорті (аудит 2026-08-28).
 public class HeaderMappersAgreeTests
 {
     private static ImportTargetField Import(string header)
@@ -20,8 +15,6 @@ public class HeaderMappersAgreeTests
     private static ExportFieldKey Export(string header)
         => ExportTemplateService.AutoMapHeaderForTests(header);
 
-    // Пари «те саме поле в двох переліках». Не всі поля мають двійника - тут
-    // лише ті, що є в обох.
     public static IEnumerable<object[]> SharedHeaders => new[]
     {
         new object[] { "Командир (ПІБ та телефон)", ImportTargetField.CommanderContact, ExportFieldKey.CommanderContact },
@@ -49,9 +42,6 @@ public class HeaderMappersAgreeTests
         Assert.Equal(exportField, Export(header));
     }
 
-    // HeaderNormalization прибирає дефіси, а правила писані через пробіл - тож
-    // «По-батькові» переставало зіставлятися взагалі й колонка мовчки
-    // пропадала і при імпорті, і при вивантаженні.
     [Theory]
     [InlineData("По-батькові")]
     [InlineData("по-батькові")]

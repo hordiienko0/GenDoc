@@ -43,10 +43,6 @@ public class TemplateBlockXlsxWriterTests
         Assert.Equal(3, result.TemplateRowIndex);
     }
 
-    // Головне про Excel-режим: зібрана книга мусить читатись наявним конвеєром
-    // так само, як книга, завантажена файлом. Тому рядок-шаблон, який знайде
-    // ExportTemplateService, має збігтися з тим, який порахував writer - інакше
-    // клонувався б заголовок, а рядок даних лишався б порожнім.
     [Fact]
     public void Template_row_matches_the_one_the_upload_scanner_would_find()
     {
@@ -67,13 +63,11 @@ public class TemplateBlockXlsxWriterTests
 
         var sheet = SheetOf(result.Content);
 
-        // Заголовок і рядок підпису - на всю ширину таблиці, а не в першу колонку.
         Assert.Contains(sheet.MergedRanges, m =>
             m.RangeAddress.FirstAddress.RowNumber == 1 && m.RangeAddress.LastAddress.ColumnNumber == 3);
         Assert.Contains(sheet.MergedRanges, m =>
             m.RangeAddress.FirstAddress.RowNumber == 4 && m.RangeAddress.LastAddress.ColumnNumber == 3);
 
-        // Підписанта не передали - лишається місце під ручний підпис.
         Assert.Equal("Склав: _______________", sheet.Cell(4, 1).GetString());
     }
 
@@ -89,8 +83,6 @@ public class TemplateBlockXlsxWriterTests
         Assert.Equal("Склав: майор _______________ Даниленко Є. О.", sheet.Cell(4, 1).GetString());
     }
 
-    // Тег у клітинці мусить лишитись текстом: "{{номер}}" схожий на що завгодно,
-    // але підстановка на генерації працює лише з рядком.
     [Fact]
     public void Tags_stay_plain_text()
     {
@@ -100,8 +92,6 @@ public class TemplateBlockXlsxWriterTests
         Assert.Equal("{{номер}}", sheet.Cell(3, 1).GetString());
     }
 
-    // Аркуші: блоки розкладаються за SheetIndex, назви беруться з документа,
-    // а рядок-шаблон у книзі один - той, що на аркуші з таблицею.
     [Fact]
     public void Blocks_go_to_their_own_sheets()
     {
@@ -124,7 +114,6 @@ public class TemplateBlockXlsxWriterTests
         Assert.Equal("ДОВІДКОВО", workbook.Worksheet("Довідка").Cell(1, 1).GetString());
         Assert.Equal("Військова частина {{номер_вч}}", workbook.Worksheet("Довідка").Cell(2, 1).GetString());
 
-        // Рядок-шаблон - з аркуша, де є таблиця.
         Assert.Equal(3, result.TemplateRowIndex);
     }
 

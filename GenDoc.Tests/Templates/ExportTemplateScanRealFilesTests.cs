@@ -8,16 +8,10 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Templates;
 
-// Рядок-шаблон - той, що описує ОДНУ людину і клонується на кожного зі списку.
-// Помилка тут дає найгучніший симптом: шапка розмножується на всіх слухачів.
 public class ExportTemplateScanRealFilesTests
 {
     private static readonly Regex TagRegex = new(@"\{\{[^{}]+\}\}", RegexOptions.Compiled);
 
-    // Лише теги, що реально трапляються в цих трьох XLSX-файлах. Навмисно не
-    // включаємо DOCX-side ручні теги ({{дата_прибуття}}, {{звання_підписанта}}
-    // тощо) - за ними стежать тести DOCX-скану; надто широкий білий список тут
-    // мовчки відкрив би саме ту пастку, проти якої існує цей тест.
     private static readonly HashSet<string> ManualTagWhitelist = new(StringComparer.Ordinal)
     {
         "{{дата_аркуша}}",
@@ -36,20 +30,10 @@ public class ExportTemplateScanRealFilesTests
     public void Dopusk_TemplateRowIsTheDataRow_NotTheHeader()
         => Assert.Equal(7, FindRow(TemplateFixtures.DopuskXlsx));
 
-    // Пін: у справжньому файлі рядком-шаблоном визначається рядок 10 (дані), а не
-    // рядок 5/6 з номером в/ч чи описом підрозділу. Це не розрізняє «найбільше
-    // тегів людини» від «найбільше тегів загалом» - на цьому файлі обидва правила
-    // дають ту саму відповідь; за розрізнення цих двох правил відповідає синтетичний
-    // тест FindTemplateRow_RowWithMoreManualTags_LosesToRowWithRecipientTags.
     [Fact]
     public void Zalik_TemplateRowIsTheDataRow_NotTheUnitNumberRow()
         => Assert.Equal(10, FindRow(TemplateFixtures.ZalikXlsx));
 
-    // Пін: у справжньому файлі рядком-шаблоном визначається рядок 9 (дані), хоча в
-    // ньому лише ОДИН тег людини ({{піб_ініціали}}). Це не розрізняє «найбільше
-    // тегів людини» від «найбільше тегів загалом» - на цьому файлі обидва правила
-    // дають ту саму відповідь; за розрізнення цих двох правил відповідає синтетичний
-    // тест FindTemplateRow_RowWithMoreManualTags_LosesToRowWithRecipientTags.
     [Fact]
     public void Rozdavalna_TemplateRowIsTheDataRow_DespiteSingleRecipientTag()
         => Assert.Equal(9, FindRow(TemplateFixtures.RozdavalnaXlsx));
@@ -87,8 +71,6 @@ public class ExportTemplateScanRealFilesTests
             + string.Join(", ", unexpectedManual));
     }
 
-    // Друга половина тієї самої пастки: у header-driven шаблоні колонка, чий
-    // заголовок не розпізнано, тихо отримує ExportFieldKey.Empty.
     [Fact]
     public void AnketniDani_EveryHeaderColumnIsRecognised()
     {

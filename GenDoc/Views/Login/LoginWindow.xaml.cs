@@ -12,9 +12,6 @@ public partial class LoginWindow : Window
 {
     private readonly LoginViewModel _viewModel;
 
-    /// <summary>Версія в підвалі картки входу. Береться зі складання, а не
-    /// пишеться рядком у розмітці: інакше вона розійдеться з реальною при
-    /// першому ж релізі й буде брехати оператору.</summary>
     public string AppVersionText
     {
         get

@@ -25,14 +25,11 @@ namespace GenDoc.ViewModels.Personnel
         public int Id { get; }
         public string Name { get; }
         public string Group { get; }
-        // Excel-відомість (ExportTemplate) - окрема таблиця з власними Id.
         public bool IsExport { get; }
 
         [ObservableProperty] private bool isChecked;
     }
 
-    // «Згенерувати документ…» з картки особи або для обраних у списку (2.2):
-    // обрати шаблони → ручні поля (наявна форма) → генерація в типову теку → підсумок.
     public partial class GenerateDocumentsDialogViewModel : DialogViewModelBase
     {
         private const string ManualTagContextKey = "generate-documents-dialog";
@@ -97,13 +94,9 @@ namespace GenDoc.ViewModels.Personnel
                 ? (await _completenessService.GetPackageLinksAsync(pid)).Where(l => !l.IsGroup).ToList()
                 : new List<MatrixTemplateInfo>();
             var packageTemplateIds = packageLinks.Select(l => l.TemplateId).ToList();
-            // Шаблон типового пакета - у списку завжди, навіть якщо його аудиторія інша:
-            // він у пакеті, отже стосується цих людей.
             foreach (var link in packageLinks.Where(l => all.All(t => t.Id != l.TemplateId)))
                 all = all.Append((link.TemplateId, link.Name)).ToList();
 
-            // Excel-відомості з тегами - такі ж шаблони для курсового, лише на обраних
-            // людей формується один аркуш, а не документ на кожного.
             var exports = _generationService.GetAllExportTemplates();
 
             Templates.Clear();
@@ -114,9 +107,6 @@ namespace GenDoc.ViewModels.Personnel
             }
         }
 
-        // Спочатку шаблони типового пакета (у його порядку), далі решта Word за назвою,
-        // далі Excel-відомості; групових Word тут нема - GetPerRecipientTemplates
-        // повертає лише персональні.
         internal static List<TemplateChoiceItem> OrderTemplates(
             IReadOnlyList<(int Id, string Name)> all, IReadOnlyList<int> defaultPackageTemplateIds,
             IReadOnlyList<(int Id, string Name)>? exportTemplates = null)
@@ -180,7 +170,6 @@ namespace GenDoc.ViewModels.Personnel
             }
         }
 
-        // Діалог модальний: спершу закриваємо, потім переходимо в архів.
         [RelayCommand]
         private void ShowInArchiveAndClose()
         {

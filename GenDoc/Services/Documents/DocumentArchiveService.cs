@@ -12,17 +12,10 @@ namespace GenDoc.Services.Documents
     {
         private const int DefaultMaxDocumentSizeKb = 5120;
 
-        // Легасі-записи (HasContent = false) не мають збережених байтів файлу -
-        // лише метадані. Одне спільне повідомлення для всіх точок, де це виявляється.
         private const string NoContentMessage =
             "Файл цього документа не збережено в архіві - доступні лише його дані. " +
             "Сформуйте документ наново або завантажте файл вручну.";
 
-        // Рядок-батько (GeneratedDocument / GeneratedGroupDocument) міг зникнути між
-        // тим, як список відкрили, і тим, як користувач клікнув по рядку (видалення
-        // в іншому сеансі). FirstAsync у цьому випадку падав з InvalidOperationException
-        // ("Sequence contains no elements"), і той текст ішов прямо в MessageBox -
-        // те саме "сире" повідомлення, яке цей набір фіксів мав прибрати.
         private const string RecordGoneMessage =
             "Цей документ уже відсутній в архіві - можливо, його видалили в іншому сеансі. " +
             "Оновіть список і спробуйте ще раз.";
@@ -55,13 +48,6 @@ namespace GenDoc.Services.Documents
 
         private static IQueryable<GeneratedDocument> ApplyFilter(AppDbContext db, ArchiveFilter filter)
         {
-            // IgnoreQueryFilters - бо документ переживає людину: коли людину прибрали
-            // в кошик, глобальний фільтр м'якого видалення вимикав її рядок, а зв'язок
-            // GeneratedDocument→Recipient обов'язковий (RecipientId не nullable), тож EF
-            // будував INNER JOIN і документ зникав зі списку. Лічильник при цьому нічого
-            // не з'єднував і рахував його далі - звідси «351 документів» над порожньою
-            // таблицею. Власне м'яке видалення документа задаємо явно, щоб і список, і
-            // лічильник бачили однакову вибірку.
             var query = db.GeneratedDocuments
                 .IgnoreQueryFilters()
                 .Where(g => g.DeletedAt == null && g.IsCurrent);
@@ -92,10 +78,6 @@ namespace GenDoc.Services.Documents
                     g.Id,
                     g.RecipientId,
                     g.TemplateId,
-                    // Дані людини й шаблону - підзапитом за ключем, а не через навігацію:
-                    // обов'язкові зв'язки EF з'єднує через INNER JOIN, і рядок-сирота
-                    // (людина в кошику або взагалі відсутня) забирає документ зі списку.
-                    // Той самий прийом уже застосовано нижче для номера набору.
                     db.Recipients.IgnoreQueryFilters()
                         .Where(r => r.Id == g.RecipientId).Select(r => r.LastName).FirstOrDefault() ?? "-",
                     db.Recipients.IgnoreQueryFilters()
@@ -212,11 +194,6 @@ namespace GenDoc.Services.Documents
 
             foreach (var id in documentIds)
             {
-                // IgnoreQueryFilters - з тієї ж причини, що в ApplyFilter: обидва
-                // зв'язки обов'язкові, тож людина чи шаблон у кошику робили з
-                // Include INNER JOIN, рядок зникав і FirstAsync падав сирим
-                // «Sequence contains no elements» просто посеред циклу експорту
-                // (аудит 2026-08-28).
                 var doc = await db.GeneratedDocuments
                     .IgnoreQueryFilters()
                     .Include(g => g.Recipient)
@@ -304,10 +281,6 @@ namespace GenDoc.Services.Documents
             var doc = await db.GeneratedDocuments
                 .Include(g => g.Recipient!).ThenInclude(r => r.Unit)
                 .Include(g => g.Recipient!).ThenInclude(r => r.Room)
-                // Без OrgNode і Weapons перегенерація писала у файл ПОРОЖНІ поля
-                // зброї, після чого SourceHash сходився і матриця вважала
-                // документ свіжим - дані губились мовчки. Перелік той самий, що
-                // в RecipientHashSources.
                 .Include(g => g.Recipient!).ThenInclude(r => r.OrgNode)
                 .Include(g => g.Recipient!).ThenInclude(r => r.Weapons)
                 .FirstAsync(g => g.Id == documentId);
@@ -316,12 +289,6 @@ namespace GenDoc.Services.Documents
             if (template is null || doc.Recipient is null)
                 return new ArchiveOpResult(false, "Шаблон видалено - перегенерація неможлива");
 
-            // Груповий шаблон формує один документ для всього складу одразу - у нього
-            // нема поняття "документ цієї людини", тож перегенерація архівного запису
-            // для окремого одержувача для нього безглузда. Без цієї перевірки
-            // GenerateOne отримав би такий шаблон і, знайшовши в ньому маркер
-            // повторюваного блоку, відмовив би - але з повідомленням про маркер, а не
-            // про справжню причину (шаблон обрано не туди).
             if (template.Kind == TemplateKind.Group)
                 return new ArchiveOpResult(false,
                     $"Шаблон «{template.Name}» - груповий: він формує один документ для всього складу, "
@@ -356,7 +323,6 @@ namespace GenDoc.Services.Documents
             }
         }
 
-        // Нова версія пари (Recipient, Template): стара актуальна гаситься, нова - IsCurrent.
         private async Task AddVersionAsync(
             AppDbContext db, GeneratedDocument previous, byte[] bytes, string fileName,
             DocumentSourceType sourceType, string? sourceHash = null)
@@ -443,12 +409,6 @@ namespace GenDoc.Services.Documents
         {
             using var db = _dbFactory.CreateDbContext();
 
-            // Проєкція дзеркалить QueryAsync: зв'язані сутності беремо ПІДЗАПИТОМ
-            // з IgnoreQueryFilters, а не навігацією. Через навігацію обов'язковий
-            // зв'язок дає INNER JOIN, тож людина чи шаблон у кошику прибирали
-            // рядок цілком - метод повертав null, RefreshRowsAsync тихо нічого не
-            // оновлював, і в таблиці лишалась стара версія, ніби дію не виконано
-            // (аудит 2026-08-28). Захисні «!= null ? … : "-"» тут були мертві.
             return await db.GeneratedDocuments
                 .IgnoreQueryFilters()
                 .Where(g => g.DeletedAt == null
@@ -533,7 +493,6 @@ namespace GenDoc.Services.Documents
         public async Task DeleteAttachmentAsync(int attachmentId)
         {
             using var db = _dbFactory.CreateDbContext();
-            // Вкладення могли прибрати в іншому сеансі - тоді видаляти вже нічого.
             var attachment = await db.DocumentAttachments.FirstOrDefaultAsync(a => a.Id == attachmentId);
             if (attachment is null) return;
 
@@ -548,8 +507,6 @@ namespace GenDoc.Services.Documents
         public async Task<int> MakeCurrentAsync(int versionDocumentId)
         {
             using var db = _dbFactory.CreateDbContext();
-            // 0 - «нічого не зробили»: версію могли видалити в іншому сеансі, і
-            // сире «Sequence contains no elements» тут ні про що не каже.
             var target = await db.GeneratedDocuments.FirstOrDefaultAsync(g => g.Id == versionDocumentId);
             if (target is null) return 0;
 
@@ -581,8 +538,6 @@ namespace GenDoc.Services.Documents
 
                 if (doc.IsCurrent)
                 {
-                    // Попередня жива версія стає актуальною - anti-дубль генерації
-                    // бачить пару зайнятою; якщо живих версій нема, пара вільна.
                     doc.IsCurrent = false;
                     var previous = await db.GeneratedDocuments
                         .Where(g => g.RecipientId == doc.RecipientId && g.TemplateId == doc.TemplateId
@@ -622,7 +577,6 @@ namespace GenDoc.Services.Documents
             doc.DeletedAt = null;
             doc.DeletedBy = null;
 
-            // Відновлений стає актуальним, якщо його версія найвища серед живих.
             var maxAliveVersion = await db.GeneratedDocuments
                 .Where(g => g.RecipientId == doc.RecipientId && g.TemplateId == doc.TemplateId && g.Id != doc.Id)
                 .MaxAsync(g => (int?)g.Version) ?? 0;
@@ -648,7 +602,6 @@ namespace GenDoc.Services.Documents
             using var db = _dbFactory.CreateDbContext();
             var query = db.GenerationPackageRuns.AsNoTracking();
 
-            // Запуски без набору (постійний склад) показуємо разом із набором - інакше їх не видно ніде.
             if (intakeId is int i) query = query.Where(r => r.IntakeId == i || r.IntakeId == null);
             if (year is int y) query = query.Where(r => r.RunAt.Year == y);
             if (userId is int u) query = query.Where(r => r.RunByUserId == u);
@@ -686,10 +639,6 @@ namespace GenDoc.Services.Documents
                     "згенеровано", false, g.SizeBytes, g.Id, g.HasContent, g.FileName))
                 .ToListAsync();
 
-            // Помилки не персистяться порядково - відновлюємо з Summary запуску.
-            // Нові запуски пишуть туди JSON-масив RunIssue; запуски, зроблені до
-            // переходу на JSON, лишили в цій колонці звичайний текст - для них
-            // працює запасний парсер рядків «ПІБ / Шаблон: помилка».
             var summary = await db.GenerationPackageRuns
                 .Where(r => r.Id == runId).Select(r => r.Summary).FirstOrDefaultAsync();
 
@@ -706,7 +655,6 @@ namespace GenDoc.Services.Documents
             }
             else if (!string.IsNullOrWhiteSpace(summary))
             {
-                // Запуски, зроблені до переходу на JSON: старий текстовий формат.
                 foreach (var line in summary.Split('\n', StringSplitOptions.RemoveEmptyEntries))
                 {
                     var parts = line.Split(':', 2);
@@ -722,12 +670,6 @@ namespace GenDoc.Services.Documents
             return items;
         }
 
-        // ── Групові документи ───────────────────────────────────────────
-
-        // Серія версій групового документа визначається ПАРОЮ ключів, бо один
-        // з них завжди null: XLSX-відомість тримається на ExportTemplateId,
-        // груповий DOCX - на TemplateId. Порівняння лише за ExportTemplateId
-        // означало `IS NULL` і зачіпало всі групові DOCX усіх шаблонів одразу.
         private static IQueryable<GeneratedGroupDocument> SameGroupSeries(
             IQueryable<GeneratedGroupDocument> source, int? exportTemplateId, int? templateId, int? intakeId)
             => source.Where(g =>
@@ -821,8 +763,6 @@ namespace GenDoc.Services.Documents
             return new ArchiveOpResult(true, null);
         }
 
-
-        // 2.5: друк - ті самі байти, що й «Відкрити», але через shell-verb print.
         public async Task<ArchiveOpResult> PrintAsync(int documentId)
         {
             using var db = _dbFactory.CreateDbContext();
@@ -842,8 +782,6 @@ namespace GenDoc.Services.Documents
         public async Task<List<GroupParticipantDto>> GetGroupParticipantsAsync(int groupDocumentId)
         {
             using var db = _dbFactory.CreateDbContext();
-            // IgnoreQueryFilters: людину могли м'яко видалити після генерації -
-            // зі складу наказу вона від цього не зникає.
             var rows = await db.GeneratedGroupDocumentRecipients
                 .IgnoreQueryFilters()
                 .Where(p => p.GeneratedGroupDocumentId == groupDocumentId)
@@ -892,10 +830,6 @@ namespace GenDoc.Services.Documents
 
             var bytes = _watermarkService.Apply(content.Content, doc.FileName);
 
-            // FileName групового документа - це ВІДНОСНИЙ ШЛЯХ (ForGroup кладе
-            // позначку прогону в ім'я файлу, а тека - «Спільні/шаблон»), тож
-            // пакетний експорт складає його з обраною текою. Без створення підтек
-            // запис падав на першому ж рядку, як у SaveManyAsync (аудит 2026-08-28).
             var targetFolder = Path.GetDirectoryName(targetPath);
             if (!string.IsNullOrEmpty(targetFolder)) Directory.CreateDirectory(targetFolder);
 
@@ -938,10 +872,6 @@ namespace GenDoc.Services.Documents
         public async Task<List<GroupVersionDto>> GetGroupVersionsAsync(int? exportTemplateId, int? docxTemplateId)
         {
             using var db = _dbFactory.CreateDbContext();
-            // Обидві групові фази зараз пишуть IntakeId = null, тож intakeId: null тут
-            // збігається з реальними даними - але важливо, що це той самий SameGroupSeries,
-            // яким керуються DeleteGroupAsync/MakeGroupCurrentAsync/RestoreGroupAsync,
-            // а не окреме, здатне розійтися визначення "та сама серія".
             return await SameGroupSeries(db.GeneratedGroupDocuments, exportTemplateId, docxTemplateId, intakeId: null)
                 .OrderByDescending(g => g.Version)
                 .Select(g => new GroupVersionDto(

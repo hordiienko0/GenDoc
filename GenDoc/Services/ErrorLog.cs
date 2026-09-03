@@ -3,8 +3,6 @@ using System.Text;
 
 namespace GenDoc.Services
 {
-    // Журнал необроблених помилок: %LOCALAPPDATA%\GenDoc\logs\error-YYYY-MM-DD.log.
-    // Чисті Format/FilePathFor покриті тестами; Write - тонка обгортка.
     public static class ErrorLog
     {
         public static string DefaultDirectory => Path.Combine(
@@ -32,8 +30,6 @@ namespace GenDoc.Services
             return sb.ToString();
         }
 
-        // Повертає шлях до файлу, в який записано. Ніколи не кидає: якщо не вдалося
-        // записати - повертає шлях, а помилку ковтає (ми вже всередині обробника помилки).
         public static string Write(Exception ex, string? user, string? directory = null)
         {
             var dir = directory ?? DefaultDirectory;

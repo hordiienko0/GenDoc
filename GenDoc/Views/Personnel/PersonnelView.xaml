@@ -33,9 +33,6 @@
             <Setter Property="Padding" Value="0,6"/>
         </Style>
 
-        <!-- CardReadValueStyle і CardEditFieldStyle переїхали в Theme.xaml:
-             їх ділять «Особовий склад» і «Постійний склад», а посилання на
-             чужий локальний ресурс мовчки не резолвиться. -->
         <Style x:Key="CardEditGridStyle" TargetType="Grid">
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsEditing}" Value="False">
@@ -178,9 +175,6 @@
                         </Style>
                     </TextBlock.Style>
                 </TextBlock>
-                <!-- «0 / 33» саме по собі читається як помилка. Розшифровка -
-                     у підказці: роздувати гілку підписом не можна, а лишати
-                     два числа без пояснення теж. -->
                 <TextBlock Grid.Column="2" Text="{Binding CountLabel}" FontSize="10.5"
                            ToolTip="{Binding CountTooltip}"
                            Foreground="{StaticResource TextSecondaryBrush}"
@@ -197,7 +191,6 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <!-- ПАНЕЛЬ ДЕРЕВА -->
             <Border Grid.Column="0" Background="{StaticResource PanelBrush}"
                     BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1">
                 <DockPanel>
@@ -271,7 +264,6 @@
                 </DockPanel>
             </Border>
 
-            <!-- СПИСОК -->
             <Grid Grid.Column="1" Margin="18,0,0,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -362,20 +354,6 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
 
-                                <!-- Частки підібрані під РЕАЛЬНИЙ вміст: у ПІБ тут коротка
-                                     форма («БЕНІШ С.С.»), а звання й посади - довгі
-                                     («молодший лейтенант», «Начальник служби…»), і саме вони
-                                     обрізалися на пів слова, доки ПІБ тримав зайву ширину. -->
-                                <!-- Ширини детерміновані, а не поділені частками. Частки тут
-                                     перетягували ковдру: варто було додати місця посаді, як
-                                     обрізалося прізвище, і навпаки.
-                                     ПІБ у цьому списку - коротка форма («ЗАДНІПРЯНЕЦЬ С.С.»),
-                                     звання після скорочення теж має відомий максимум
-                                     («мол. лейтенант»), тож обидві фіксовані. Єдине справді
-                                     змінне поле - посада, вона одна й забирає решту.
-                                     MinWidth не ставимо: він виштовхує таблицю за край вікна
-                                     й вмикає горизонтальну прокрутку, а в головному списку
-                                     вона гірша за багатокрапку з підказкою. -->
                                 <DataGridTextColumn Header="ПІБ" Binding="{Binding ShortName}" Width="1.75*">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock" BasedOn="{StaticResource TruncatedCellStyle}">
@@ -384,12 +362,6 @@
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
-                                <!-- Скорочене звання, ПОВНЕ - у підказці. Так колонка
-                                     перестала обрізатись і віддала ширину прізвищу. -->
-                                <!-- Фіксована, а не частка: після скорочення перелік звань
-                                     замкнений і найдовше з них («мол. лейтенант») має відому
-                                     ширину. Частка ж відбирала б місце в ПІБ на кожному
-                                     новому стовпці. -->
                                 <DataGridTextColumn Header="ЗВАННЯ" Binding="{Binding RankShort}" Width="1.15*">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock" BasedOn="{StaticResource TruncatedCellStyle}">
@@ -405,7 +377,6 @@
                                     <DataGridTemplateColumn.CellTemplate>
                                         <DataTemplate>
                                             <Grid>
-                                                <!-- Категорія відсутня - лишається прочерк без бейджа -->
                                                 <TextBlock Text="{Binding FitnessDisplay}" VerticalAlignment="Center"
                                                            Visibility="{Binding HasFitness, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}"/>
                                                 <Border Padding="7,2" HorizontalAlignment="Left" VerticalAlignment="Center"
@@ -460,7 +431,6 @@
             </Grid>
         </Grid>
 
-        <!-- ВИСУВНА КАРТКА (overlay поверх списку) -->
         <Border HorizontalAlignment="Right" Width="380"
                 Background="{StaticResource PanelBrush}"
                 BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1,0,0,0"
@@ -637,7 +607,6 @@
                                 </TextBlock.Style>
                             </TextBlock>
 
-                            <!-- 2.2: будь-який шаблон для цієї особи, не лише типовий пакет -->
                             <Button Content="Згенерувати документ…" Style="{StaticResource SecondaryButtonStyle}"
                                     HorizontalAlignment="Stretch" Margin="0,0,0,10"
                                     Command="{Binding GenerateAnyDocumentCommand}"/>
@@ -704,7 +673,6 @@
                                                             </Style>
                                                         </TextBlock.Style>
                                                     </TextBlock>
-                                                    <!-- 2.5: друк із картки -->
                                                     <TextBlock Text="Друк" FontSize="11.5" FontWeight="Bold" Margin="0,0,13,0" Cursor="Hand"
                                                                Foreground="{StaticResource AccentBrush}">
                                                         <TextBlock.InputBindings>

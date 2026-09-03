@@ -12,11 +12,8 @@ using Microsoft.Win32;
 
 namespace GenDoc.ViewModels.Import;
 
-/// <summary>Набір у списку кроку «Набір і гілка».</summary>
 public record IntakeOption(int Id, int RootOrgNodeId, string Display);
 
-/// <summary>Гілка всередині набору. Дерево подається пласким списком із Depth -
-/// рівнів тут одиниці, а пласким списком його простіше і малювати, і вибирати.</summary>
 public partial class BranchOptionViewModel : ObservableObject
 {
     public BranchOptionViewModel(int id, string name, int depth, int peopleCount)
@@ -32,7 +29,6 @@ public partial class BranchOptionViewModel : ObservableObject
     public int Depth { get; }
     public int PeopleCount { get; }
 
-    /// <summary>Відступ за рівнем - те саме дерево, що в макеті.</summary>
     public Thickness Indent => new(12 + Depth * 18, 0, 0, 0);
 
     [ObservableProperty]
@@ -76,9 +72,6 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
     [ObservableProperty]
     private int issueCount;
 
-    // ─── Кроки майстра ───────────────────────────────────────────────────────
-    // За макетом видно РІВНО ОДИН крок; смуга кроків угорі лише показує, де ми.
-
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsStep1))]
     [NotifyPropertyChangedFor(nameof(IsStep2))]
@@ -98,8 +91,6 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
     public bool IsStep4 => CurrentStep == 4;
     public bool IsNotStep4 => CurrentStep != 4;
 
-    // Стан кружків смуги кроків. Рахується тут, а не тригерами в XAML: чотири
-    // кроки × три стани тригерами перетворюються на стіну розмітки.
     public string Step1State => StateOf(1);
     public string Step2State => StateOf(2);
     public string Step3State => StateOf(3);
@@ -117,26 +108,17 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
 
     private string StateOf(int step) => step < CurrentStep ? "done" : step == CurrentStep ? "current" : string.Empty;
 
-    // Залитий кружок (пройдений або поточний) вимагає білої цифри.
     private string FillOf(int step) => step <= CurrentStep ? "filled" : string.Empty;
 
     private string LabelOf(int step) => step == CurrentStep ? "active" : string.Empty;
 
-    /// <summary>«Рядків: 50 · готово 44 · конфліктів 2 · помилок 4» - рядок із
-    /// макета над таблицею перевірки.</summary>
     public string RowStatsText =>
         $"Рядків: {TotalRows} · готово {ReadyCount} · потребують уваги {IssueCount}";
 
     public bool CanGoBack => CurrentStep > 1;
 
-    /// <summary>Незавершений майстер: файл обрано, колонки зіставлено, але
-    /// імпорт ще не запущено. Після успішного прогону Reset() гасить прапорець
-    /// сам, тож guard мовчить.</summary>
     public bool HasPendingWork => HasFile;
 
-    /// <summary>Тут нема чого «зберігати» - є що втратити, тож питання інше, ніж
-    /// у картці особи: два варіанти, без «Так/Ні/Скасувати». До цього перехід у
-    /// інший розділ скидав зіставлення колонок мовчки (аудит 2026-08-28).</summary>
     public Task<bool> TryLeaveAsync()
     {
         if (!HasPendingWork) return Task.FromResult(true);
@@ -151,8 +133,6 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
         return Task.FromResult(true);
     }
 
-    /// <summary>Далі не пускаємо без файлу, а з кроку «Набір і гілка» - без
-    /// обраного набору: інакше крок нічого не вирішує.</summary>
     public bool CanGoNext => CurrentStep switch
     {
         1 => HasFile,
@@ -176,8 +156,6 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
         CurrentStep--;
     }
 
-    // ─── Крок 2: набір і гілка ───────────────────────────────────────────────
-
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanGoNext))]
     [NotifyPropertyChangedFor(nameof(IsIntakeChoiceVisible))]
@@ -188,8 +166,6 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
     [NotifyPropertyChangedFor(nameof(IsIntakeChoiceVisible))]
     private bool targetNewIntake;
 
-    /// <summary>Постійний склад у макеті не намальовано, але це наявна
-    /// можливість застосунку - вона лишається третім вибором, а не зникає.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanGoNext))]
     [NotifyPropertyChangedFor(nameof(IsIntakeChoiceVisible))]
@@ -241,8 +217,6 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
         SelectedIntake ??= Intakes.FirstOrDefault();
     }
 
-    /// <summary>Гілки обраного набору. Піддерево беремо по materialized path
-    /// кореня - так само, як це робить дерево підрозділів.</summary>
     [RelayCommand]
     private async Task LoadBranchesAsync()
     {
@@ -276,9 +250,6 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
     [ObservableProperty]
     private ObservableCollection<ImportPreviewRowViewModel> preview = new();
 
-    // Повний перелік перевірених рядків. Preview показує лише перші вісім, а
-    // перенесення мусить діяти на всі - інакше дубль, що не потрапив у видиму
-    // вісімку, лишався б недосяжним, і функція працювала б через раз.
     private List<ImportRowPreview> _validatedRows = new();
 
     [ObservableProperty]
@@ -290,8 +261,6 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
     [ObservableProperty]
     private string moveAllText = string.Empty;
 
-    /// <summary>Перемикач «перенести всі дублі». Діє на ВЕСЬ файл, не лише на
-    /// видимі рядки - тому поруч завжди стоїть точна кількість.</summary>
     [ObservableProperty]
     private bool moveAllDuplicates;
 
@@ -317,9 +286,6 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
     [ObservableProperty]
     private bool hasSkippedRows;
 
-    /// <summary>Ціль імпорту з кроку «Набір і гілка». «Створити новий набір» поки
-    /// що не створює його тут - набір заводиться в розділі «Набори», тож цей
-    /// вибір лишає ціль виведеною з файлу, а не мовчки кладе людей не туди.</summary>
     private ImportTarget BuildTarget()
     {
         if (TargetPermanentStaff) return new ImportTarget(ImportTargetKind.PermanentStaff);
@@ -349,8 +315,6 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
 
         var moveRowNumbers = _validatedRows.Where(r => r.Move).Select(r => r.RowNumber).ToList();
 
-        // Перенесення пише в НАЯВНІ картки, тож питаємо про нього окремо й
-        // прямо: наслідки в нього інші, ніж у вставки нових рядків.
         var question = moveRowNumbers.Count == 0
             ? $"Імпортувати {ReadyCount} записів?"
             : $"Імпортувати {ReadyCount} записів і перенести {moveRowNumbers.Count} людей, "
@@ -378,8 +342,6 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
         Reset();
     }
 
-    // Самих лише перенесень достатньо: файл може не містити жодного нового
-    // рядка, а бути саме списком тих, кого переводять у інший набір.
     private bool CanRunImport() => HasFile && (ReadyCount > 0 || MoveCount > 0);
 
     private void LoadFile(string filePath)
@@ -416,8 +378,6 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
         ReadyCount = rows.Count(r => r.Status is ImportRowStatus.Ok or ImportRowStatus.Warning);
         IssueCount = rows.Count(r => r.Status is ImportRowStatus.Error or ImportRowStatus.Duplicate);
 
-        // Зміна мапінгу колонок перебудовує перевірку з нуля, тож позначки
-        // перенесення скидаються разом із рядками - вони більше не про ті дані.
         _validatedRows = rows;
         MoveAllDuplicates = false;
 
@@ -446,9 +406,6 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
 
     private int MoveCount => _validatedRows.Count(r => r.Move);
 
-    // Кнопка мусить називати обидві дії: інакше при нулі нових рядків вона
-    // читалась би як «Імпортувати 0 записів» і виглядала б зламаною, хоча
-    // перенесення відбудеться.
     private void UpdateImportButton()
     {
         var moving = MoveCount;

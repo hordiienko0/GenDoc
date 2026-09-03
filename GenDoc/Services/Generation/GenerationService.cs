@@ -45,9 +45,6 @@ namespace GenDoc.Services.Generation
                 .ToList();
         }
 
-        // Аудиторія розділяє видимість: шаблон постійного складу не має
-        // з'являтися у звичайній генерації й пакетах, і навпаки. Замовчування
-        // Intake - усі наявні виклики лишаються при старому наборі шаблонів.
         public List<(int Id, string Name)> GetAllTemplates(
             Models.Enums.TemplateAudience audience = Models.Enums.TemplateAudience.Intake)
         {
@@ -244,8 +241,6 @@ namespace GenDoc.Services.Generation
             return CollectManualTags(db, templateIds, exportTemplateIds);
         }
 
-        // Спільне для пакета й вибіркової генерації: ручні теги Word-шаблонів (поза
-        // повторюваними блоками) і Excel-відомостей, без дублів, у порядку шаблонів.
         private static List<string> CollectManualTags(
             AppDbContext db, IReadOnlyList<int> templateIds, IReadOnlyList<int> exportTemplateIds)
         {
@@ -292,9 +287,6 @@ namespace GenDoc.Services.Generation
                 && m.FieldKey == nameof(ExportFieldKey.CourseOfficerSignature));
         }
 
-        /// <summary>Чи просить бодай одна відомість пакета підпис курсового
-        /// офіцера. Дропліст на екрані генерації показується лише за цим -
-        /// пакету, якому підпис не потрібен, зайве поле ні до чого.</summary>
         public bool PackageNeedsCourseOfficer(int packageId)
         {
             using var db = _dbFactory.CreateDbContext();
@@ -308,17 +300,12 @@ namespace GenDoc.Services.Generation
                 && m.FieldKey == nameof(ExportFieldKey.CourseOfficerSignature));
         }
 
-        /// <summary>
-        /// Останній запуск разом із назвою пакета. З'єднання ВНУТРІШНЄ навмисно:
-        /// пакет могли видалити після запуску, і запис прогону лишається сиротою -
-        /// показувати його не можна, бо кнопка «відкрити пакет» вела б у нікуди.
-        /// </summary>
         public LastRunInfo? GetLastRun()
         {
             using var db = _dbFactory.CreateDbContext();
 
             return db.GenerationPackageRuns
-                .Where(r => r.GenerationPackageId != null) // вибіркові прогони без пакета - не «повторити пакет»
+                .Where(r => r.GenerationPackageId != null)
                 .OrderByDescending(r => r.RunAt)
                 .ThenByDescending(r => r.Id)
                 .Join(db.GenerationPackages,
@@ -336,8 +323,6 @@ namespace GenDoc.Services.Generation
             return db.Recipients.Count();
         }
 
-        // Один шлях із прогоном: LoadRosterRecipients - єдине місце, де живуть
-        // правила відбору, тож лічильник не може розійтися з фактом.
         public int GetRecipientCount(RosterSelection selection)
         {
             using var db = _dbFactory.CreateDbContext();
@@ -389,7 +374,6 @@ namespace GenDoc.Services.Generation
                 GenerationPackageId = packageId,
                 RunAt = DateTime.Now,
                 RunByUserId = _currentUserContext.CurrentUserId ?? 0,
-                // Вада 1.1: без IntakeId вкладка «Запуски» (фільтр за набором) була порожня.
                 IntakeId = RunIntakeResolver.Resolve(recipients.Select(r => r.IntakeId))
             };
             db.GenerationPackageRuns.Add(run);
@@ -403,8 +387,6 @@ namespace GenDoc.Services.Generation
             var xlsx = RunXlsxPhase(db, exportLinks, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress, courseOfficerId);
             var docxGroup = RunDocxGroupPhase(db, groupDocxTemplates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress);
 
-            // Раніше писали лише лічильники docx-фази - помилки XLSX і групового
-            // DOCX ставали невидимими на екрані «Запуски». Тепер підсумовуємо всі три.
             run.GeneratedCount = docx.Generated + xlsx.Generated + docxGroup.Generated;
             run.SkippedCount = docx.Skipped + xlsx.Skipped + docxGroup.Skipped;
             run.ErrorCount = docx.Errors + xlsx.Errors + docxGroup.Errors;
@@ -445,14 +427,8 @@ namespace GenDoc.Services.Generation
 
             var templates = requested.Where(t => t.Kind == TemplateKind.PerRecipient).ToList();
 
-            // Групові Word-шаблони теж треба вміти згенерувати вибірково: інакше
-            // «Комплектність» могла попросити відсутню відомість, але не
-            // відсутній груповий наказ - обидва ж один документ на весь склад
-            // (вимога користувача 2026-09-01).
             var groupTemplates = requested.Where(t => t.Kind == TemplateKind.Group).ToList();
 
-            // Excel-відомості - через ті самі «зв'язки», що й у пакеті, але тимчасові
-            // (не в БД): RunXlsxPhase бере з них лише шаблон і фільтр придатності.
             var exportTemplates = db.ExportTemplates
                 .Where(t => exportTemplateIds.Contains(t.Id))
                 .AsNoTracking()
@@ -509,9 +485,6 @@ namespace GenDoc.Services.Generation
                 docxGroup.Generated, docxGroup.Skipped, docxGroup.Errors, run.Id, issues);
         }
 
-        // Особовий склад для запуску: весь або лише позначені, завжди звужений
-        // фільтром придатності, "лише постійний склад" (IntakeId == null), категоріями
-        // звань і/або конкретними званнями - усе через AND.
         private static List<Recipient> LoadRosterRecipients(AppDbContext db, RosterSelection selection)
         {
             IQueryable<Recipient> query = db.Recipients.WithHashSources();
@@ -541,8 +514,6 @@ namespace GenDoc.Services.Generation
 
         private sealed record DocxPhaseResult(int Generated, int Skipped, int Errors, List<RunIssue> Issues);
 
-        // Phase A - по одному документу на людину. Чистий перенос попередньої логіки RunPackage,
-        // без змін поведінки: anti-дубль за (RecipientId, TemplateId), версійність, SourceHash.
         private DocxPhaseResult RunDocxPhase(
             AppDbContext db,
             List<Template> templates,
@@ -560,9 +531,6 @@ namespace GenDoc.Services.Generation
                 t => t.Id,
                 t => db.TemplateFieldMappings.Where(m => m.TemplateId == t.Id).ToList());
 
-            // Anti-дубль: лише актуальні живі документи (видалені відсікає query filter).
-            // Тримаємо саме ім'я файлу, а не просто факт наявності запису - пропустити
-            // можна тільки тоді, коли файл реально лежить у цільовій теці (див. ExistsInOutputFolder).
             var existingFileNames = db.GeneratedDocuments
                 .Where(g => g.IsCurrent)
                 .Select(g => new { g.RecipientId, g.TemplateId, g.FileName })
@@ -681,8 +649,6 @@ namespace GenDoc.Services.Generation
 
         private sealed record XlsxPhaseResult(int Generated, int Skipped, int Errors, List<RunIssue> Issues);
 
-        // Phase B - один документ на весь список людей (форма-відомість). Немає єдиного
-        // Recipient, тому anti-дубль тримається на RosterHash складу, а не на парі (Recipient, Template).
         private XlsxPhaseResult RunXlsxPhase(
             AppDbContext db,
             List<GenerationPackageExportTemplate> exportLinks,
@@ -711,8 +677,6 @@ namespace GenDoc.Services.Generation
 
                 progress.Report($"Групова відомість «{template.Name}»…");
 
-                // Старшинство звання, потім прізвище/ім'я за українською абеткою -
-                // так само, як у джерельному паперовому звіті.
                 var roster = RosterOrdering.Apply(
                         allRecipients.Where(r => FitnessCategoryHelper.Matches(link.FitnessFilter, r.FitnessCategory)))
                     .ToList();
@@ -735,11 +699,6 @@ namespace GenDoc.Services.Generation
                     var rosterEntries = roster.Select(r => (r.Id, SourceHash: ComputeRecipientSourceHash(mappings, r, orgSettings))).ToList();
                     var rosterHash = _documentHashService.ComputeRosterHash(template.Id, rosterEntries);
 
-                    // ВСІ поточні, не один: гасіння через FirstOrDefault лишало
-                    // другий «поточний» рядок, якщо він якось з'явився, і з
-                    // кожним прогоном їх ставало більше. У справжній базі так
-                    // накопичилось три - і «Комплектність» брала з них
-                    // найстаріший (2026-09-01).
                     var currents = db.GeneratedGroupDocuments
                         .Where(g => g.ExportTemplateId == template.Id && g.IntakeId == null && g.IsCurrent)
                         .ToList();
@@ -752,17 +711,10 @@ namespace GenDoc.Services.Generation
                         continue;
                     }
 
-                    // Обраний оператором підписант має перевагу; авто-вибір лишився
-                    // лише для викликів без інтерфейсу (там питати нема кого).
                     var courseOfficerSignature = courseOfficerId is int chosenId
                         ? Services.CourseOfficerSignature.BuildFor(db, chosenId)
                         : Services.CourseOfficerSignature.Build(db);
 
-                    // Відомість, що просить підпис курсового офіцера, без нього не
-                    // має сенсу: раніше тег тихо падав у unfilledTags, документ
-                    // виходив із порожнім місцем підпису - і цього ніхто не бачив,
-                    // доки папір не йшов далі. Краще зупинити цю одну відомість і
-                    // сказати вголос; решта пакета генерується як звичайно.
                     if (mappings.Any(m => m.FieldKey == nameof(ExportFieldKey.CourseOfficerSignature))
                         && string.IsNullOrEmpty(courseOfficerSignature))
                     {
@@ -815,7 +767,6 @@ namespace GenDoc.Services.Generation
                         HasContent = true,
                         Content = new GeneratedGroupDocumentContent { Content = result.Content }
                     };
-                    // Склад на момент генерації (v25) - «Комплектність» посилається саме сюди.
                     foreach (var person in roster)
                         groupDoc.Recipients.Add(new GeneratedGroupDocumentRecipient { RecipientId = person.Id });
                     db.GeneratedGroupDocuments.Add(groupDoc);
@@ -837,8 +788,6 @@ namespace GenDoc.Services.Generation
 
             string ComputeRecipientSourceHash(List<ExportTemplateColumnMapping> mappings, Recipient r, OrganizationSettings? org)
             {
-                // Той самий підхід, що ComputeSourceHash для docx: тільки автоматичні
-                // (не Manual) значення визначають, чи "застаріла" людина у відомості.
                 var auto = mappings.Where(m => m.SourceType != MappingSourceType.Manual);
                 return string.Join("|", auto
                     .OrderBy(m => m.PlaceholderTag, StringComparer.Ordinal)
@@ -855,9 +804,6 @@ namespace GenDoc.Services.Generation
 
         private sealed record DocxGroupPhaseResult(int Generated, int Skipped, int Errors, List<RunIssue> Issues);
 
-        // Phase C - груповий DOCX (Template.Kind == Group): один документ на весь
-        // список, з повторюваним блоком. Анти-дубль так само на RosterHash, як і в
-        // Phase B (xlsx), але прив'язка - TemplateId, а не ExportTemplateId.
         private DocxGroupPhaseResult RunDocxGroupPhase(
             AppDbContext db,
             List<Template> groupTemplates,
@@ -876,8 +822,6 @@ namespace GenDoc.Services.Generation
             var errors = 0;
             var issues = new List<RunIssue>();
 
-            // Старшинство звання, потім прізвище/ім'я за українською абеткою -
-            // так само, як у джерельному паперовому звіті.
             var roster = RosterOrdering.Apply(allRecipients).ToList();
 
             var intakeNames = LoadIntakeNames(db);
@@ -910,7 +854,6 @@ namespace GenDoc.Services.Generation
                         .ToList();
                     var rosterHash = _documentHashService.ComputeRosterHash(template.Id, rosterEntries);
 
-                    // ВСІ поточні, не один - причина та сама, що у відомостях.
                     var currents = db.GeneratedGroupDocuments
                         .Where(g => g.TemplateId == template.Id && g.IntakeId == null && g.IsCurrent)
                         .ToList();
@@ -964,7 +907,6 @@ namespace GenDoc.Services.Generation
                         HasContent = true,
                         Content = new GeneratedGroupDocumentContent { Content = bytes }
                     };
-                    // Склад на момент генерації (v25) - «Комплектність» посилається саме сюди.
                     foreach (var person in roster)
                         groupDoc.Recipients.Add(new GeneratedGroupDocumentRecipient { RecipientId = person.Id });
                     db.GeneratedGroupDocuments.Add(groupDoc);
@@ -1069,7 +1011,6 @@ namespace GenDoc.Services.Generation
             _ => string.Empty
         };
 
-        // Перша одиниця зброї людини (за Id - порядок додавання), або null, якщо нема.
         private static Weapon? FirstWeapon(Recipient r) => r.Weapons.OrderBy(w => w.Id).FirstOrDefault();
 
         private static string FormatFullNameAccusative(Recipient r)
@@ -1113,26 +1054,15 @@ namespace GenDoc.Services.Generation
             return string.IsNullOrWhiteSpace(room.Building) ? room.Number : $"{room.Building} {room.Number}";
         }
 
-        // Наявність запису в архіві БД сама по собі - НЕ привід пропустити генерацію:
-        // користувач міг обрати іншу теку, перенести або видалити файли. Якщо в
-        // цільовій теці файлу нема - документ треба сформувати знову, інакше запуск
-        // мовчки завершується з «усе пропущено» і порожньою текою.
         internal static bool ExistsInOutputFolder(string outputFolder, string? fileName)
             => !string.IsNullOrWhiteSpace(fileName)
                && File.Exists(Path.Combine(outputFolder, fileName));
 
-        /// <summary>Позначка прогону для цього запуску. Час у ній з'являється
-        /// лише тоді, коли папка з сьогоднішньою датою вже десь є - тобто це
-        /// другий прогін за день і без часу він затер би перший.</summary>
         internal static string ResolveRunStamp(string outputFolder)
         {
             var now = DateTime.Now;
             var dateFolder = now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
-            // Ознаку шукаємо і серед ТЕК, і серед ФАЙЛІВ: персональна розкладка
-            // кладе дату рівнем теки (ForPerson), а групова - в ім'я файлу
-            // (ForGroup). Дивитись лише на теки означало, що пакет із самих
-            // відомостей другого прогону за день не помічав і затирав перший.
             var alreadyUsed = Directory.Exists(outputFolder)
                 && (Directory.EnumerateDirectories(outputFolder, dateFolder, SearchOption.AllDirectories).Any()
                     || Directory.EnumerateFiles(outputFolder, dateFolder + ".*", SearchOption.AllDirectories).Any());
@@ -1140,35 +1070,24 @@ namespace GenDoc.Services.Generation
             return DocumentFolderLayout.RunStamp(now, alreadyUsed);
         }
 
-        /// <summary>Назви наборів для верхнього рівня папок. Одним запитом перед
-        /// циклом: у циклі є лише IntakeId, і запит на кожен документ був би
-        /// сотнями звернень до БД заради кількох різних рядків.</summary>
         private static Dictionary<int, string> LoadIntakeNames(AppDbContext db)
             => db.Intakes.IgnoreQueryFilters()
                 .Select(i => new { i.Id, i.DisplayNumber })
                 .AsEnumerable()
                 .ToDictionary(i => i.Id, i => i.DisplayNumber);
 
-        /// <summary>Набори людей у відомості - саме з них виводиться її папка.</summary>
         private static IEnumerable<string?> IntakeNamesOf(
             IEnumerable<Recipient> roster, Dictionary<int, string> intakeNames)
             => roster.Select(r => r.IntakeId is int id && intakeNames.TryGetValue(id, out var name)
                 ? name
                 : null);
 
-        /// <summary>Тека призначення під відносний шлях. Раніше всі файли лягали
-        /// в одну обрану теку, і створювати нічого не було треба; з розкладкою по
-        /// папках перший же документ упав би на неіснуючій теці.</summary>
         private static void EnsureFolder(string outputPath)
         {
             var folder = Path.GetDirectoryName(outputPath);
             if (!string.IsNullOrEmpty(folder)) Directory.CreateDirectory(folder);
         }
 
-        // Персональний документ: «Набір №15\Акт приймання\ПРІЗВИЩЕ Ім'я.docx».
-        // Повертає ВІДНОСНИЙ ШЛЯХ, а не саме лише ім'я: розкладку по папках
-        // рахує DocumentFolderLayout - одне місце і для диска, і для дерева в
-        // архіві. Без дати - документ прив'язаний до людини, а не до дня.
         private static string BuildFileName(
             Recipient recipient, string templateName, string? intakeName, string runStamp,
             HashSet<string> usedFileNames)
@@ -1180,9 +1099,6 @@ namespace GenDoc.Services.Generation
             return MakeUnique(placement, usedFileNames, ".docx");
         }
 
-        // Групова відомість: «Набір №15\Залік Додаток 8\2026-08-06.xlsx».
-        // Набір виводиться зі складу відомості - сам груповий документ наборові
-        // не належить (IntakeId == null у запитах нижче).
         private static string BuildGroupFileName(
             string templateName, IEnumerable<string?> memberIntakeNames, string runStamp,
             HashSet<string> usedFileNames, string extension = ".xlsx")
@@ -1193,9 +1109,6 @@ namespace GenDoc.Services.Generation
             return MakeUnique(placement, usedFileNames, extension);
         }
 
-        // Унікальність тепер по ВІДНОСНОМУ ШЛЯХУ, а не по імені: два однойменні
-        // документи в різних папках більше не конфліктують, і суфікс (2) не
-        // з'являється там, де його не треба.
         private static string MakeUnique(
             DocumentPlacement placement, HashSet<string> usedFileNames, string extension)
         {

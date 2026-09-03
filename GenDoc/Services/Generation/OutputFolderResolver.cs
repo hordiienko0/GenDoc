@@ -2,8 +2,6 @@ using System.IO;
 
 namespace GenDoc.Services.Generation
 {
-    // Тека, куди лягають документи, якщо оператор не обрав іншої: налаштування або
-    // «Документи\GenDoc». Чиста функція - перевантаження з явним коренем для тестів.
     public static class OutputFolderResolver
     {
         public const string DefaultSubfolder = "GenDoc";

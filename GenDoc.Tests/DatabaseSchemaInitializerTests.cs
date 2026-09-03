@@ -5,10 +5,6 @@ using Microsoft.Data.Sqlite;
 
 namespace GenDoc.Tests;
 
-// Найризикованіша частина схеми v12: перебудова GeneratedGroupDocuments (стара таблиця
-// мала ExportTemplateId NOT NULL, без TemplateId). Перевіряємо на звичайному
-// (незашифрованому) SQLite, що дані й дочірній вміст переживають перебудову, а
-// зовнішній ключ ON DELETE CASCADE не спрацьовує під час DROP TABLE.
 public class DatabaseSchemaInitializerTests
 {
     [Fact]
@@ -22,7 +18,6 @@ public class DatabaseSchemaInitializerTests
 
         DatabaseSchemaInitializer.MigrateGeneratedGroupDocumentsForDocxSupport((DbConnection)connection);
 
-        // Колонка TemplateId з'явилась, стара колонка ExportTemplateId - тепер nullable.
         var columns = DatabaseSchemaInitializer.GetExistingColumns((DbConnection)connection, "GeneratedGroupDocuments");
         Assert.Contains("TemplateId", columns);
         Assert.Contains("ExportTemplateId", columns);
@@ -36,10 +31,9 @@ public class DatabaseSchemaInitializerTests
             Assert.Equal(7L, reader.GetInt64(1));
             Assert.True(reader.IsDBNull(2));
             Assert.Equal("test.xlsx", reader.GetString(3));
-            Assert.False(reader.Read()); // рівно один рядок
+            Assert.False(reader.Read());
         }
 
-        // Дочірній вміст НЕ мав каскадно видалитись під час DROP TABLE/перебудови.
         using (var cmd = connection.CreateCommand())
         {
             cmd.CommandText = """SELECT COUNT(*) FROM "GeneratedGroupDocumentContents" WHERE "GeneratedGroupDocumentId" = 1;""";
@@ -47,7 +41,6 @@ public class DatabaseSchemaInitializerTests
             Assert.Equal(1, count);
         }
 
-        // Можна вставити новий рядок groupового DOCX: ExportTemplateId = NULL, TemplateId заповнено.
         using (var cmd = connection.CreateCommand())
         {
             cmd.CommandText = """
@@ -66,8 +59,6 @@ public class DatabaseSchemaInitializerTests
         }
     }
 
-    // Ідемпотентність: якщо міграцію вже застосовано (TemplateId є), повторний виклик
-    // не повинен нічого ламати чи дублювати.
     [Fact]
     public void MigrateGeneratedGroupDocumentsForDocxSupport_AlreadyMigrated_IsNoOp()
     {
@@ -78,7 +69,7 @@ public class DatabaseSchemaInitializerTests
         InsertOldRow(connection, id: 1, exportTemplateId: 7);
 
         DatabaseSchemaInitializer.MigrateGeneratedGroupDocumentsForDocxSupport((DbConnection)connection);
-        DatabaseSchemaInitializer.MigrateGeneratedGroupDocumentsForDocxSupport((DbConnection)connection); // повторно
+        DatabaseSchemaInitializer.MigrateGeneratedGroupDocumentsForDocxSupport((DbConnection)connection);
 
         using var cmd = connection.CreateCommand();
         cmd.CommandText = """SELECT COUNT(*) FROM "GeneratedGroupDocuments";""";
@@ -86,9 +77,6 @@ public class DatabaseSchemaInitializerTests
         Assert.Equal(1, count);
     }
 
-    // Реальний збій: у робочій базі таблиця Weapons з'явилась з проміжного білда без
-    // RawText. CREATE TABLE її вже не перестворює, тож EF валився на генерації з
-    // 'no such column: w.RawText'. Ensure* мусить дорощувати колонки, а не лише створювати.
     [Fact]
     public void EnsureWeaponVehicleTables_ExistingTableWithoutRawText_AddsMissingColumns()
     {
@@ -126,7 +114,6 @@ public class DatabaseSchemaInitializerTests
         Assert.Contains("DeletedAt", columns);
         Assert.Contains("DeletedBy", columns);
 
-        // Наявні дані не втрачені, і запит із новою колонкою тепер виконується.
         using (var cmd = connection.CreateCommand())
         {
             cmd.CommandText = """SELECT "Name", "SerialNumber", "RawText" FROM "Weapons" WHERE "Id" = 1;""";
@@ -137,7 +124,6 @@ public class DatabaseSchemaInitializerTests
             Assert.True(reader.IsDBNull(2));
         }
 
-        // Вставка з RawText - те, що робить імпорт зброї.
         using (var cmd = connection.CreateCommand())
         {
             cmd.CommandText = """
@@ -148,7 +134,6 @@ public class DatabaseSchemaInitializerTests
         }
     }
 
-    // Чиста база: таблиці створюються з нуля вже повними, повторний виклик - no-op.
     [Fact]
     public void EnsureWeaponVehicleTables_FreshDatabase_CreatesTablesAndIsIdempotent()
     {
@@ -156,7 +141,7 @@ public class DatabaseSchemaInitializerTests
         connection.Open();
 
         DatabaseSchemaInitializer.EnsureWeaponVehicleTables((DbConnection)connection);
-        DatabaseSchemaInitializer.EnsureWeaponVehicleTables((DbConnection)connection); // повторно
+        DatabaseSchemaInitializer.EnsureWeaponVehicleTables((DbConnection)connection);
 
         var weaponColumns = DatabaseSchemaInitializer.GetExistingColumns((DbConnection)connection, "Weapons");
         Assert.Contains("RawText", weaponColumns);
@@ -165,17 +150,10 @@ public class DatabaseSchemaInitializerTests
         Assert.Contains("Model", vehicleColumns);
         Assert.Contains("PlateNumber", vehicleColumns);
 
-        // Жодна колонка не продубльована повторним викликом.
         Assert.Equal(weaponColumns.Count, DatabaseSchemaInitializer
             .GetExistingColumns((DbConnection)connection, "Weapons").Count);
     }
 
-    // v21: конструктору потрібне джерело блоків поруч із байтами .docx. Колонка
-    // додається до наявної таблиці з даними, тож мусить бути nullable - інакше
-    // Поділ шаблонів на набори й постійний склад. Найважливіше тут - що наявні
-    // шаблони дістають Audience = 0 (набори), тобто лишаються там, де були:
-    // мовчазне переселення половини шаблонів у постійний склад помітили б не
-    // одразу. NOT NULL без DEFAULT SQLite узагалі не дав би додати.
     [Fact]
     public void TemplateColumnsV23_AddsAudienceAndKeepsExistingTemplatesInIntake()
     {
@@ -201,7 +179,7 @@ public class DatabaseSchemaInitializerTests
         DatabaseSchemaInitializer.AddMissingColumns(
             (DbConnection)connection, "Templates", DatabaseSchemaInitializer.TemplateColumnsV23);
         DatabaseSchemaInitializer.AddMissingColumns(
-            (DbConnection)connection, "Templates", DatabaseSchemaInitializer.TemplateColumnsV23); // повторно
+            (DbConnection)connection, "Templates", DatabaseSchemaInitializer.TemplateColumnsV23);
 
         var columns = DatabaseSchemaInitializer.GetExistingColumns((DbConnection)connection, "Templates");
         Assert.Contains("Audience", columns);
@@ -215,7 +193,6 @@ public class DatabaseSchemaInitializerTests
         }
     }
 
-    // SQLite не дасть ADD COLUMN без DEFAULT.
     [Fact]
     public void TemplateColumnsV21_AddsBuilderJsonToExistingTemplates()
     {
@@ -248,13 +225,11 @@ public class DatabaseSchemaInitializerTests
         DatabaseSchemaInitializer.AddMissingColumns(
             (DbConnection)connection, "Templates", DatabaseSchemaInitializer.TemplateColumnsV21);
         DatabaseSchemaInitializer.AddMissingColumns(
-            (DbConnection)connection, "Templates", DatabaseSchemaInitializer.TemplateColumnsV21); // повторно
+            (DbConnection)connection, "Templates", DatabaseSchemaInitializer.TemplateColumnsV21);
 
         var columns = DatabaseSchemaInitializer.GetExistingColumns((DbConnection)connection, "Templates");
         Assert.Contains("BuilderJson", columns);
 
-        // Шаблон, завантажений файлом, лишається з порожнім джерелом - саме за цим
-        // конструктор і відрізняє «своє» від чужого .docx.
         using (var cmd = connection.CreateCommand())
         {
             cmd.CommandText = """SELECT "Name", "BuilderJson" FROM "Templates" WHERE "Id" = 1;""";
@@ -274,8 +249,6 @@ public class DatabaseSchemaInitializerTests
         }
     }
 
-    // v22 - парна до v21, але для відомостей: ExportTemplates уже жила в базі до
-    // конструктора, тож колонка додається до наявної таблиці з даними.
     [Fact]
     public void ExportTemplateColumnsV22_AddsBuilderJsonToExistingExportTemplates()
     {
@@ -311,7 +284,7 @@ public class DatabaseSchemaInitializerTests
         DatabaseSchemaInitializer.AddMissingColumns(
             (DbConnection)connection, "ExportTemplates", DatabaseSchemaInitializer.ExportTemplateColumnsV22);
         DatabaseSchemaInitializer.AddMissingColumns(
-            (DbConnection)connection, "ExportTemplates", DatabaseSchemaInitializer.ExportTemplateColumnsV22); // повторно
+            (DbConnection)connection, "ExportTemplates", DatabaseSchemaInitializer.ExportTemplateColumnsV22);
 
         Assert.Contains("BuilderJson",
             DatabaseSchemaInitializer.GetExistingColumns((DbConnection)connection, "ExportTemplates"));
@@ -326,8 +299,6 @@ public class DatabaseSchemaInitializerTests
         }
     }
 
-    // v26: пер-профільний стан користувача (мій набір, останній пакет, фільтр «Мої» в
-    // архіві, дані «з минулого разу»). Чиста база - таблиця створюється одразу повною.
     [Fact]
     public void EnsureUserSettingsTable_FreshDatabase_CreatesTableAndIsIdempotent()
     {
@@ -339,7 +310,7 @@ public class DatabaseSchemaInitializerTests
             """);
 
         DatabaseSchemaInitializer.EnsureUserSettingsTable((DbConnection)connection);
-        DatabaseSchemaInitializer.EnsureUserSettingsTable((DbConnection)connection); // повторно
+        DatabaseSchemaInitializer.EnsureUserSettingsTable((DbConnection)connection);
 
         var columns = DatabaseSchemaInitializer.GetExistingColumns((DbConnection)connection, "UserSettings");
         Assert.Contains("UserProfileId", columns);
@@ -352,13 +323,10 @@ public class DatabaseSchemaInitializerTests
         Exec(connection, """INSERT INTO "UserSettings" ("UserProfileId") VALUES (1);""");
         Assert.Equal(0L, Scalar(connection, """SELECT "ArchiveMineOnly" FROM "UserSettings" WHERE "UserProfileId" = 1"""));
 
-        // Унікальний індекс: другий рядок для того самого користувача заборонено.
         Assert.Throws<SqliteException>(() =>
             Exec(connection, """INSERT INTO "UserSettings" ("UserProfileId") VALUES (1);"""));
     }
 
-    // Реальний ризик як з Weapons: якщо проміжний білд уже створив таблицю без частини
-    // колонок, CREATE TABLE її не дорощує - потрібен AddMissingColumns-хвіст.
     [Fact]
     public void EnsureUserSettingsTable_ExistingTableMissingColumns_AddsMissingColumns()
     {
@@ -383,15 +351,9 @@ public class DatabaseSchemaInitializerTests
         Assert.Contains("ActiveIntakeId", columns);
         Assert.Contains("LastPackageId", columns);
 
-        // Наявний рядок не втрачено, ArchiveMineOnly дістав DEFAULT 0.
         Assert.Equal(0L, Scalar(connection, """SELECT "ArchiveMineOnly" FROM "UserSettings" WHERE "Id" = 1"""));
     }
 
-    // Та сама пастка, але для ОБМЕЖЕННЯ, а не колонки: CREATE UNIQUE INDEX стояв
-    // усередині if (!TableExists), тож на «вилікуваній» таблиці індексу не було
-    // ніколи. UserSettingsService робить find-or-insert без транзакції, і без
-    // індексу профіль тихо отримував ДВА рядки: читався один, запис ішов в інший,
-    // і «мій набір» довільно не зберігався (аудит 2026-08-28).
     [Fact]
     public void EnsureUserSettingsTable_ExistingTableWithoutIndex_GetsUniqueIndex()
     {
@@ -413,13 +375,6 @@ public class DatabaseSchemaInitializerTests
             Exec(connection, """INSERT INTO "UserSettings" ("UserProfileId") VALUES (1);"""));
     }
 
-    // Ідемпотентний хвіст EnsureInitialized мусить дорощувати КОЖНУ колонку, а не
-    // лише ті, що прийшли з v5 і пізніше. Колонки v2 (анкета), v3 (реквізити
-    // організації) і v4 (кімнати) були тільки в одноразових гілках, тож на базі з
-    // SchemaVersions >= 4 без них жодна гілка вже не спрацьовувала, а безумовний
-    // UPDATE OrganizationSettings падав з «no such column» при кожному вході.
-    // Колонки саме МІГРАЦІЙНІ (v2-v4), а не ті, що їх створює EnsureCreated з
-    // моделі на чистій базі: Rooms.Building існує з v1, а от Rooms.Note додала v4.
     [Theory]
     [InlineData("Recipients", "Nationality")]
     [InlineData("OrganizationSettings", "HrOfficerFullName")]
@@ -428,7 +383,7 @@ public class DatabaseSchemaInitializerTests
     public void IdempotentTail_CoversColumnsFromEveryVersion(string table, string column)
     {
         var source = File.ReadAllText(SchemaInitializerSourcePath());
-        var tailStart = source.IndexOf("// Ідемпотентно, як EnsureExportTemplateTables", StringComparison.Ordinal);
+        var tailStart = source.IndexOf("        EnsureOrgTables(db);", StringComparison.Ordinal);
         Assert.True(tailStart > 0, "Не знайдено ідемпотентний хвіст EnsureInitialized");
 
         var tail = source[tailStart..];
@@ -470,7 +425,6 @@ public class DatabaseSchemaInitializerTests
 
         using (var cmd = connection.CreateCommand())
         {
-            // Схема v11 - точна копія CREATE TABLE до цієї міграції.
             cmd.CommandText = """
                 CREATE TABLE "GeneratedGroupDocuments" (
                     "Id" INTEGER NOT NULL CONSTRAINT "PK_GeneratedGroupDocuments" PRIMARY KEY AUTOINCREMENT,
@@ -530,8 +484,6 @@ public class DatabaseSchemaInitializerTests
         }
     }
 
-    // Вада 1.1, старі дані: запуски до виправлення мають IntakeId = NULL. Бекфіл
-    // бере найчастіший IntakeId серед документів прогону; без документів лишає NULL.
     [Fact]
     public void BackfillRunIntakeIds_TakesMostFrequentIntakeOfRunDocuments()
     {
@@ -547,16 +499,13 @@ public class DatabaseSchemaInitializerTests
             """);
 
         DatabaseSchemaInitializer.BackfillRunIntakeIds((DbConnection)connection);
-        DatabaseSchemaInitializer.BackfillRunIntakeIds((DbConnection)connection); // ідемпотентно
+        DatabaseSchemaInitializer.BackfillRunIntakeIds((DbConnection)connection);
 
         Assert.Equal(4L, Scalar(connection, """SELECT "IntakeId" FROM "GenerationPackageRuns" WHERE "Id" = 1"""));
         Assert.Equal(DBNull.Value, Scalar(connection, """SELECT "IntakeId" FROM "GenerationPackageRuns" WHERE "Id" = 2"""));
-        Assert.Equal(9L, Scalar(connection, """SELECT "IntakeId" FROM "GenerationPackageRuns" WHERE "Id" = 3""")); // вже заповнений - не чіпати
+        Assert.Equal(9L, Scalar(connection, """SELECT "IntakeId" FROM "GenerationPackageRuns" WHERE "Id" = 3"""));
     }
 
-    // v24: запуск «Вибірково» (2.2) не має пакета, а колонка була NOT NULL. SQLite не
-    // знімає NOT NULL через ALTER - перебудова таблиці; дані й зовнішні ключі документів
-    // (RunId → Id) лишаються.
     [Fact]
     public void MigrateGenerationPackageRunsForAdHocRuns_MakesPackageNullableAndKeepsRows()
     {
@@ -584,7 +533,7 @@ public class DatabaseSchemaInitializerTests
             """);
 
         DatabaseSchemaInitializer.MigrateGenerationPackageRunsForAdHocRuns((DbConnection)connection);
-        DatabaseSchemaInitializer.MigrateGenerationPackageRunsForAdHocRuns((DbConnection)connection); // ідемпотентно
+        DatabaseSchemaInitializer.MigrateGenerationPackageRunsForAdHocRuns((DbConnection)connection);
 
         Assert.Equal(1L, Scalar(connection, """SELECT COUNT(*) FROM "GenerationPackageRuns" WHERE "Id" = 1 AND "GenerationPackageId" = 7 AND "IntakeId" = 4"""));
         Exec(connection, """INSERT INTO "GenerationPackageRuns" ("GenerationPackageId","RunAt","RunByUserId","GeneratedCount","SkippedCount","ErrorCount") VALUES (NULL, '2026-08-19', 1, 0, 0, 0);""");

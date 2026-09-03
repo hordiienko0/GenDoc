@@ -4,8 +4,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Archive;
 
-// «Мої» в архіві: фільтр по автору на групових і запусках
-// (вкладка «Документи» вже вміє ArchiveFilter.UserId - її покривають наявні тести).
 public class ArchiveMineFilterTests
 {
     private static (int U1, int U2) Seed(TestDb db)

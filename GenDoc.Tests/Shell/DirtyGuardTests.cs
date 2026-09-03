@@ -11,9 +11,6 @@ using GenDoc.ViewModels.Templates.Builder;
 
 namespace GenDoc.Tests.Shell;
 
-// Dirty-guard був лише в «Особовому складі»: конструктор шаблонів, майстер
-// імпорту й налаштування втрачали роботу мовчки при переході в інший розділ,
-// а закриття вікна не питало взагалі нікого (аудит 2026-08-28).
 public class DirtyGuardTests
 {
     private sealed class StubBuilderService : ITemplateBuilderService
@@ -35,8 +32,6 @@ public class DirtyGuardTests
         }
     }
 
-    // ─── Розділи, що мають знати про незбережену роботу ───────────────────────
-
     public static IEnumerable<object[]> GuardedSections => new[]
     {
         new object[] { typeof(PersonnelViewModel) },
@@ -51,8 +46,6 @@ public class DirtyGuardTests
         => Assert.True(typeof(IGuardedSection).IsAssignableFrom(sectionType),
             $"{sectionType.Name} тримає незбережену роботу, але не реалізує IGuardedSection - "
             + "перехід в інший розділ мовчки її втратить.");
-
-    // ─── Налаштування ────────────────────────────────────────────────────────
 
     private static SettingsViewModel NewSettings(TestDb db)
     {
@@ -99,15 +92,11 @@ public class DirtyGuardTests
         var vm = NewSettings(db);
         vm.City = "Львів";
 
-        // SaveCore, а не команда: команда показує підтвердження, а модальне
-        // вікно в тест-хості валить процес.
         vm.SaveCore();
 
         Assert.False(vm.IsDirty);
     }
 
-    // Повернення значення руками - теж «чисто»: інакше guard питав би про
-    // зміни, яких уже немає.
     [Fact]
     public void Settings_AreCleanWhenTheValueIsTypedBack()
     {
@@ -118,8 +107,6 @@ public class DirtyGuardTests
 
         Assert.False(vm.IsDirty);
     }
-
-    // ─── Конструктор шаблонів ────────────────────────────────────────────────
 
     [Fact]
     public void Builder_IsCleanRightAfterStartingANewTemplate()
@@ -161,14 +148,11 @@ public class DirtyGuardTests
         vm.TemplateName = "Довідка";
         vm.Blocks[0].Text = "НАКАЗ";
 
-        // Тут команда безпечна: конструктор показує вікно лише на помилці.
         vm.SaveCommand.Execute(null);
 
         Assert.Equal(1, service.SaveCalls);
         Assert.False(vm.IsDirty);
     }
-
-    // ─── Майстер імпорту ─────────────────────────────────────────────────────
 
     private sealed class NullServiceProvider : IServiceProvider
     {
@@ -182,9 +166,6 @@ public class DirtyGuardTests
         new GenDoc.Services.OrgTree.OrgTreeService(
             db.Factory, new FakeAuditLog(), new FakeCurrentUser()));
 
-    // «Незбережене» тут - не поля картки, а сам незавершений майстер: обраний
-    // файл і зіставлення колонок. Після успішного прогону майстер сам себе
-    // скидає, тож і guard мовчить.
     [Fact]
     public void ImportWizard_HasNothingToLoseBeforeAFileIsChosen()
     {
@@ -203,12 +184,6 @@ public class DirtyGuardTests
         Assert.True(vm.HasPendingWork);
     }
 
-    // ─── Закриття вікна ──────────────────────────────────────────────────────
-
-    // Guard спрацьовував лише на перехід МІЖ розділами. Хрестик закривав вікно
-    // одразу, і незбережена картка гинула без запитання. Тест текстовий - як
-    // StaticBindingScopeTests: вікно WPF у xunit не створити (STA + повний
-    // граф сервісів), а сама помилка - у відсутньому обробнику.
     private static string RepoRoot()
     {
         var dir = new DirectoryInfo(AppContext.BaseDirectory);

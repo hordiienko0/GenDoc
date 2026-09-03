@@ -5,13 +5,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Completeness;
 
-// Знайдено на справжній базі 2026-09-01: у відомості «Допуск Додаток 5» було
-// ТРИ рядки з IsCurrent = true (v5, v6, v7). Матриця брала з них довільний,
-// натрапляла на найстаріший - зі складом, у якому теперішніх людей нема, - і
-// колонка лишалася порожньою, хоча генерація щоразу рапортувала успіх.
-//
-// Дублі накопичувались тому, що генерація гасила лише ОДИН попередній
-// «поточний» (FirstOrDefault). Два боки однієї біди, обидва закріплені тут.
 public class OneCurrentGroupDocumentTests
 {
     private sealed record Seeded(int IntakeId, int PackageId, int SheetId, int OldPersonId, List<int> NowPersonIds);
@@ -43,7 +36,6 @@ public class OneCurrentGroupDocumentTests
         ctx.ExportTemplates.Add(sheet);
         ctx.SaveChanges();
 
-        // «СТАРЕНКО» був у наборі колись і вже не з ним - як і в справжній базі.
         one.IntakeId = intake.Id;
         two.IntakeId = intake.Id;
 
@@ -80,17 +72,13 @@ public class OneCurrentGroupDocumentTests
         ctx.SaveChanges();
     }
 
-    // ─── Матриця не має губитись серед кількох «поточних» ────────────────────
-
     [Fact]
     public async Task WithSeveralCurrentDocumentsTheMatrixUsesTheNewest()
     {
         using var db = new TestDb();
         var s = Seed(db);
 
-        // Старий «поточний» зі складом, у якому теперішніх людей немає…
         AddCurrentDocument(db, s.SheetId, version: 5, new[] { s.OldPersonId });
-        // …і свіжий, що охоплює обох.
         AddCurrentDocument(db, s.SheetId, version: 7, s.NowPersonIds);
 
         var data = await TestServices.Completeness(db).BuildAsync(s.IntakeId, s.PackageId);
@@ -108,7 +96,6 @@ public class OneCurrentGroupDocumentTests
         using var db = new TestDb();
         var s = Seed(db);
 
-        // Порядок вставки зворотний - результат не має від нього залежати.
         AddCurrentDocument(db, s.SheetId, version: 9, s.NowPersonIds);
         AddCurrentDocument(db, s.SheetId, version: 4, new[] { s.OldPersonId });
 
@@ -118,15 +105,12 @@ public class OneCurrentGroupDocumentTests
         Assert.Equal(9, cell!.Version);
     }
 
-    // ─── Генерація не має лишати другого «поточного» ─────────────────────────
-
     [Fact]
     public void GeneratingClearsEveryPreviousCurrentDocument()
     {
         using var db = new TestDb();
         var s = Seed(db);
 
-        // Три «поточних» одразу - саме те, що знайшлося в справжній базі.
         AddCurrentDocument(db, s.SheetId, version: 5, new[] { s.OldPersonId });
         AddCurrentDocument(db, s.SheetId, version: 6, s.NowPersonIds);
         AddCurrentDocument(db, s.SheetId, version: 7, s.NowPersonIds);

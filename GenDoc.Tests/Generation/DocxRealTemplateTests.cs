@@ -48,9 +48,6 @@ public class DocxRealTemplateTests : IDisposable
     private static List<string> ParagraphTexts(string path)
     {
         using var doc = WordprocessingDocument.Open(path, false);
-        // Тіло щойно відкритого/побудованого документа завжди є - це гарантія
-        // структури docx, а не гіпотетичний випадок; кидаємо явно замість "!",
-        // щоб компілятор бачив ненульовість без придушення попередження.
         var body = doc.MainDocumentPart?.Document?.Body
             ?? throw new InvalidOperationException($"У документі відсутнє тіло (Body): {path}");
         return body
@@ -91,7 +88,6 @@ public class DocxRealTemplateTests : IDisposable
         Assert.Contains("ПА-77", text);
     }
 
-    // Порожнє значення має потрапити в UnfilledTags, а тег - не лишитись сирим.
     [Fact]
     public void IndividualRaport_EmptyValue_IsReportedAsUnfilled()
     {
@@ -142,11 +138,9 @@ public class DocxRealTemplateTests : IDisposable
 
         var paragraphs = ParagraphTexts(path);
 
-        // Маркерні абзаци зникли повністю.
         Assert.DoesNotContain(paragraphs, p => p.StartsWith("{{#", StringComparison.Ordinal));
         Assert.DoesNotContain(paragraphs, p => p.StartsWith("{{/", StringComparison.Ordinal));
 
-        // Кожна людина - свій абзац; останній закінчується крапкою, решта - крапкою з комою.
         var personParagraphs = paragraphs.Where(p => p.Contains("ШЕВЧЕНКО") || p.Contains("ФРАНКО") || p.Contains("ЛЕСЯ")).ToList();
         Assert.Equal(3, personParagraphs.Count);
         Assert.EndsWith(";", personParagraphs[0]);
@@ -182,8 +176,6 @@ public class DocxRealTemplateTests : IDisposable
         Assert.DoesNotContain("{{#список}}", text);
     }
 
-    // {{номер}} і {{кількість_осіб}} у справжньому шаблоні не трапляються -
-    // перевіряємо їх на синтетичному документі з таким самим блоком.
     [Fact]
     public void GroupBlock_ProvidesRowNumberAndPeopleCount()
     {
@@ -212,7 +204,6 @@ public class DocxRealTemplateTests : IDisposable
         using (var doc = WordprocessingDocument.Create(stream, DocumentFormat.OpenXml.WordprocessingDocumentType.Document))
         {
             doc.AddMainDocumentPart().Document = new Document(new Body());
-            // Тіло щойно створено рядком вище - гарантовано не null.
             var target = doc.MainDocumentPart?.Document?.Body
                 ?? throw new InvalidOperationException("Не вдалося створити тіло синтетичного документа.");
 
@@ -228,10 +219,6 @@ public class DocxRealTemplateTests : IDisposable
         return stream.ToArray();
     }
 
-    // Побічний наслідок переходу на обхід блокових дітей: якщо в тілі блоку
-    // лежить ціла таблиця, вона клонується на кожну людину - окрема таблиця на
-    // особу. Раніше це була відмова (Task 17), бо обхід був плоским і абзаци
-    // комірок мали інший батько, ніж маркери.
     [Fact]
     public void GroupBlockAroundTable_ClonesTheWholeTablePerPerson()
     {
@@ -258,11 +245,6 @@ public class DocxRealTemplateTests : IDisposable
         Assert.DoesNotContain("{{", ReadAllText(path));
     }
 
-    // Огляд перед злиттям гілки: об'єднана по вертикалі шапка - майже
-    // стандарт для списків особового складу - не бере участі в клонуванні
-    // (клонується вся таблиця цілком, а не її шапка), тож не повинна більше
-    // валити генерацію. Стара перевірка дивилась на будь-яке merge в тілі
-    // блоку, звужена - лише на комірки рядків, що самі клонуються.
     [Fact]
     public void GroupBlockAroundTable_WithMergedHeaderCell_GeneratesSuccessfully()
     {
@@ -320,8 +302,6 @@ public class DocxRealTemplateTests : IDisposable
 
             body.AppendChild(new Paragraph(new Run(new Text("{{#список}}"))));
 
-            // Тіло блоку - усередині комірки таблиці, тобто на іншому рівні,
-            // ніж маркери.
             var cell = new TableCell(new Paragraph(new Run(new Text("{{піб}}"))));
             body.AppendChild(new Table(new TableRow(cell)));
 

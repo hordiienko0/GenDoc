@@ -2,14 +2,6 @@ using GenDoc.ViewModels.Shell;
 
 namespace GenDoc.Tests.Shell;
 
-// «Комплектність» і «Особовий склад» перезавантажують список у стилі
-// «запустив і забув»: зміна набору, пакета чи вузла дерева не чекає на
-// попередній запит. Швидке перемикання лишало два запити в польоті, і
-// повільніший приходив ОСТАННІМ - на екрані опинявся список попереднього
-// вибору, тоді як комбо й дерево показували новий (аудит 2026-08-28).
-//
-// Скасувати сам запит нема чим - сервіси токена не приймають, - але й не
-// треба: досить не застосовувати відповідь, що вже застаріла.
 public class ReloadGenerationTests
 {
     [Fact]
@@ -46,8 +38,6 @@ public class ReloadGenerationTests
         Assert.False(generation.IsCurrent(first));
     }
 
-    // Головний випадок: перший запит повертається ОСТАННІМ. Саме він і псував
-    // екран, бо приходив уже після відповіді на актуальний вибір.
     [Fact]
     public async Task AStaleAnswerArrivingLast_IsNotApplied()
     {
@@ -77,7 +67,6 @@ public class ReloadGenerationTests
         Assert.Equal(new[] { "новий вибір" }, applied);
     }
 
-    // Звичайний порядок не ламається: один запит - одна відповідь.
     [Fact]
     public async Task AnAnswerToTheCurrentRequest_IsApplied()
     {
@@ -91,8 +80,6 @@ public class ReloadGenerationTests
         Assert.Equal(new[] { "вибір" }, applied);
     }
 
-    // Прапорець зайнятості гасить лише актуальний прогін: інакше перший, що
-    // завершився, прибирав би індикатор, поки другий ще працює.
     [Fact]
     public async Task OnlyTheCurrentRunClearsTheBusyFlag()
     {

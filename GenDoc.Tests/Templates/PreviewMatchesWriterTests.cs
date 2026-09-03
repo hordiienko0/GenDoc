@@ -6,10 +6,6 @@ using GenDoc.Services.Templates;
 
 namespace GenDoc.Tests.Templates;
 
-// Прев'ю конструктора рендериться з тієї самої моделі блоків, що й документ, -
-// саме щоб не відставати від нього. Але «з тієї самої моделі» ще не означає «за
-// тими самими правилами»: у трьох місцях правила розійшлися, і оператор бачив
-// на екрані не те, що потім відкривав (аудит 2026-08-28).
 public class PreviewMatchesWriterTests
 {
     private static readonly IReadOnlyDictionary<string, string> NoValues =
@@ -38,12 +34,6 @@ public class PreviewMatchesWriterTests
     private static string RowText(SheetPreviewRow row)
         => string.Concat(row.Cells.SelectMany(c => c).Select(r => r.Text));
 
-    // ─── 1. «Дата і місто» з кількох рядків ──────────────────────────────────
-
-    // TemplateSheetLayout резервує під цей блок LineCount(Text) рядків, і
-    // xlsx-writer стільки й пише. Прев'ю (як і docx-writer) віддавало ОДИН
-    // рядок із переносом усередині: на екрані блок займав один рядок, у книзі -
-    // два, а в Word перенос узагалі зникав, бо Word ігнорує \n усередині <w:t>.
     private static readonly TemplateBuilderDocument TwoLineDateAndCity = new(
         new[]
         {
@@ -83,8 +73,6 @@ public class PreviewMatchesWriterTests
         Assert.Equal(new[] { "м. Київ", "01.09.2026" }, paragraphs);
     }
 
-    // Захист від зворотного перекосу: «Заголовок» навмисно НЕ розбивається -
-    // під нього розкладка резервує рівно один рядок.
     [Fact]
     public void MultilineTitle_StillTakesExactlyOneRow()
     {
@@ -94,11 +82,6 @@ public class PreviewMatchesWriterTests
         Assert.Single(TemplateBlockPreview.BuildSheet(blocks, NoValues).Rows);
     }
 
-    // ─── 2. Підпис без обраного підписанта ───────────────────────────────────
-
-    // Writer склеює лише непорожні частини: «Начальник курсу: _____». Прев'ю
-    // додавало пробіли безумовно й показувало «Начальник курсу:  _____ » -
-    // подвійний пробіл після двокрапки й хвостовий.
     [Fact]
     public void SignatureWithoutASignatory_ReadsTheSameInThePreviewAndInTheDocument()
     {
@@ -135,8 +118,6 @@ public class PreviewMatchesWriterTests
         Assert.Equal(paragraph, LineText(previewLine));
     }
 
-    // Порожня посада - писати «: _____» безглуздо, але правило одне на прев'ю
-    // й writer, тож достатньо, щоб вони не розходились.
     [Fact]
     public void SignatureWithAnEmptyCaption_StillReadsTheSameInBoth()
     {
@@ -153,8 +134,6 @@ public class PreviewMatchesWriterTests
         Assert.Equal(paragraph, LineText(previewLine));
     }
 
-    // Відомість і документ підписують однаково - це записано в коментарі
-    // xlsx-writer'а, але тестом закріплено не було.
     [Fact]
     public void SignatureReadsTheSameInTheWorkbookAsInTheDocument()
     {

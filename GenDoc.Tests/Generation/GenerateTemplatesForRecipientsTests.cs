@@ -6,8 +6,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.Tests.Generation;
 
-// 2.2: документ на 1-3 людей з будь-якого шаблону - без пакета. Той самий конвеєр,
-// що й RunPackage (розкладка по теках, версії, архів), але запуск без GenerationPackageId.
 public class GenerateTemplatesForRecipientsTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), $"gendoc-adhoc-{Guid.NewGuid():N}");
@@ -95,8 +93,6 @@ public class GenerateTemplatesForRecipientsTests : IDisposable
         Assert.Equal(2, check.GeneratedDocuments.Single(g => g.IsCurrent).Version);
     }
 
-    // Excel-відомість для курсового - такий самий шаблон: на обраних людей формується
-    // один аркуш (рядок на особу), без пакета, з тим самим записом прогону.
     [Fact]
     public void ExcelSheet_ForSelectedPeople_GeneratesOneWorkbookWithRowPerPerson()
     {
@@ -133,7 +129,6 @@ public class GenerateTemplatesForRecipientsTests : IDisposable
 
         using var check = db.Factory.CreateDbContext();
         Assert.Equal(1, check.GeneratedGroupDocuments.Count(g => g.RunId == result.RunId));
-        // v25: склад відомості записано - рівно ті двоє, кого обрали.
         var participants = check.GeneratedGroupDocumentRecipients.Select(p => p.RecipientId).OrderBy(i => i).ToList();
         Assert.Equal(peopleIds.Take(2).OrderBy(i => i), participants);
     }

@@ -19,7 +19,6 @@ public partial class PersonnelView : UserControl
             await vm.InitializeAsync();
     }
 
-    // ПКМ спершу виділяє вузол, потім відкривається меню (як у провіднику).
     private void OrgTree_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
         var item = FindAncestor<TreeViewItem>(e.OriginalSource as DependencyObject);
@@ -30,7 +29,6 @@ public partial class PersonnelView : UserControl
         }
     }
 
-    // Клік по рядку відкриває картку; клік по чекбоксу - ні.
     private void PeopleGrid_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (FindAncestor<CheckBox>(e.OriginalSource as DependencyObject) is not null) return;

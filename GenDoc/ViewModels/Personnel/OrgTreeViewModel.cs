@@ -13,7 +13,6 @@ namespace GenDoc.ViewModels.Personnel
 {
     public enum TreeFilterMode { Active, All, Archived }
 
-    // Singleton: тримає стан дерева (розгорнутість, виділення) між перемиканнями розділів.
     public partial class OrgTreeViewModel : ObservableObject
     {
         private readonly IOrgTreeService _orgTreeService;
@@ -46,7 +45,6 @@ namespace GenDoc.ViewModels.Personnel
 
         public ObservableCollection<OrgNodeViewModel> RootNodes { get; } = new();
 
-        // Перевірка незбережених змін картки перед зміною контексту; ставить PersonnelViewModel.
         public Func<Task<bool>>? LeaveGuard { get; set; }
 
         public event Action<OrgNodeViewModel?>? SelectedNodeChanged;
@@ -226,7 +224,6 @@ namespace GenDoc.ViewModels.Personnel
             SelectedNodeChanged?.Invoke(node);
         }
 
-        // Ланцюжок назв від кореня до вузла (для брейдкрамба й тултипів).
         public List<OrgNodeViewModel> GetAncestryChain(OrgNodeViewModel node)
         {
             var chain = new List<OrgNodeViewModel>();

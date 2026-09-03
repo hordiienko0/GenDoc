@@ -42,14 +42,12 @@ namespace GenDoc.Services.Staff
 
             var staffIds = staff.Select(s => s.Id).ToList();
 
-            // Один груповий запит на кількість документів для всіх - не в циклі.
             var docCounts = await db.GeneratedDocuments
                 .Where(g => g.IsCurrent && staffIds.Contains(g.RecipientId))
                 .GroupBy(g => g.RecipientId)
                 .Select(g => new { RecipientId = g.Key, Count = g.Count() })
                 .ToDictionaryAsync(x => x.RecipientId, x => x.Count);
 
-            // Активний на сьогодні період (якщо є) для кожної людини - теж один запит.
             var activeEvents = await db.StaffEvents
                 .Where(e => staffIds.Contains(e.RecipientId) && e.DateStart <= today && e.DateEnd >= today)
                 .ToListAsync();
@@ -134,7 +132,6 @@ namespace GenDoc.Services.Staff
             }
         }
 
-        // Генерація «в догонку»: без оформлення StaffEvent, для окремих людей і шаблонів PerRecipient.
         public async Task<int> GenerateDocumentsAsync(
             IReadOnlyList<int> recipientIds, IReadOnlyList<int> templateIds, Dictionary<string, string> manualValues)
         {
@@ -157,8 +154,6 @@ namespace GenDoc.Services.Staff
             return generated;
         }
 
-        // Профільні значення накладаються на глобальні по ключах - те саме
-        // правило, що в ManualTagFormBuilder (аудит 2026-08-28).
         public async Task<Dictionary<string, string>> GetLastManualValuesAsync()
         {
             var user = (await _userSettings.GetForCurrentUserAsync()).LastManualValuesJson;

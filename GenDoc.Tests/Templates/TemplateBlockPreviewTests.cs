@@ -3,8 +3,6 @@ using GenDoc.Services.Templates;
 
 namespace GenDoc.Tests.Templates;
 
-// Прев'ю - дзеркало TemplateBlockDocxWriter на екрані. Тут перевіряємо саме те, що
-// бачить оператор: звідки взялося кожне значення (легенда «з бази» / «вручну»).
 public class TemplateBlockPreviewTests
 {
     private static readonly Dictionary<string, string> NoValues = new();
@@ -50,8 +48,6 @@ public class TemplateBlockPreviewTests
         Assert.Equal(new[] { "солдат", "ТКАЧЕНКО Олег Юрійович" }, fromDb);
     }
 
-    // Порожнє значення показуємо самим тегом: інакше слово просто зникає з прев'ю
-    // і незрозуміло, чи то поле не заповнене, чи то мітку не розпізнано.
     [Fact]
     public void Empty_database_value_shows_the_tag_itself()
     {
@@ -81,8 +77,6 @@ public class TemplateBlockPreviewTests
 
         var lines = Lines(document, NoValues);
 
-        // Гриф - праворуч і окремим рядком на кожен перенос, заголовок - по центру
-        // й напівжирний, абзац - за шириною: рівно як пише writer.
         Assert.Equal(4, lines.Count);
         Assert.Equal(BlockAlignment.Right, lines[0].Style.Alignment);
         Assert.Equal("Начальник курсу", lines[1].Runs.Single().Text);
@@ -106,19 +100,12 @@ public class TemplateBlockPreviewTests
 
         var runs = Assert.Single(Lines(document, NoValues, signatories)).Runs;
 
-        // Перевіряється зібраний рядок, а не текст окремих прогонів: пробіли між
-        // частинами тепер розставляє те саме правило, що й у writer'ів (порожні
-        // частини викидаються, між рештою - рівно один пробіл). Стара перевірка
-        // «runs[0] == "Прийняв: "» закріплювала якраз ті зайві пробіли, через
-        // які прев'ю розходилось із документом (аудит 2026-08-28).
         Assert.StartsWith("Прийняв: ", string.Concat(runs.Select(r => r.Text)));
         Assert.Equal(new[] { "майор", "Даниленко Є. О." },
             runs.Where(r => r.Kind == PreviewRunKind.DbValue).Select(r => r.Text));
         Assert.Contains(runs, r => r.Text.Contains("____"));
     }
 
-    // Excel-режим: прев'ю показує сітку з одним рядком даних - рівно тим рядком,
-    // який на генерації клонується по одному на людину.
     [Fact]
     public void Table_becomes_a_grid_with_one_substituted_row()
     {
@@ -138,7 +125,6 @@ public class TemplateBlockPreviewTests
         Assert.Equal("солдат", Assert.Single(table.Cells[0]).Text);
         Assert.Equal(PreviewRunKind.DbValue, table.Cells[0][0].Kind);
 
-        // Ручний тег у колонці лишається плашкою - так само, як у тексті документа.
         Assert.Equal(PreviewRunKind.ManualValue, Assert.Single(table.Cells[1]).Kind);
     }
 

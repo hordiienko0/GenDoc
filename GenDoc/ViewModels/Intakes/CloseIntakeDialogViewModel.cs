@@ -67,7 +67,6 @@ namespace GenDoc.ViewModels.Intakes
         [RelayCommand]
         private void Cancel() => CloseDialog(false);
 
-        // Закриває діалог без підтвердження і перекидає на матрицю комплектності набору.
         [RelayCommand]
         private void ViewMatrix()
         {

@@ -4,10 +4,6 @@ using GenDoc.ViewModels.Completeness;
 
 namespace GenDoc.Tests;
 
-// MatrixTemplateInfo.LinkId - не-nullable int, тож щойно доданий у діалозі шаблон
-// приходить із сентинелом 0. Якщо він не перетвориться на null, збереження бере
-// гілку «оновити наявний зв'язок» і падає з "Sequence contains no matching element"
-// на пошуку зв'язку з Id = 0.
 public class RequirementTemplateRowViewModelTests
 {
     [Fact]

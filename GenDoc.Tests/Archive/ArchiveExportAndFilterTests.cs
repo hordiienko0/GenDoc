@@ -15,15 +15,10 @@ public class ArchiveExportAndFilterTests : IDisposable
         if (Directory.Exists(_outputFolder)) Directory.Delete(_outputFolder, recursive: true);
     }
 
-    // Дві людини з однаковим ПІБ у різних гілках дерева - перевіряє і підтеки
-    // з OrgPathSnapshot, і розв'язання колізії імен файлів.
     private static List<int> SeedTwoDocumentsWithSameName(TestDb db, string? orgPathA, string? orgPathB)
     {
         using var ctx = db.Factory.CreateDbContext();
 
-        // GeneratedDocument.GeneratedByUserId - обов'язковий FK на UserProfile.
-        // Користувача з Id=1 тут не існує, поки не заведемо його самі
-        // (FakeCurrentUser лише підмінює контекст виконання, у БД нічого не пише).
         var user = new UserProfile
         {
             FullName = "Тест Тестович", PasswordHash = "x", CreatedAt = DateTime.Now
@@ -85,7 +80,6 @@ public class ArchiveExportAndFilterTests : IDisposable
         Assert.True(Directory.Exists(Path.Combine(_outputFolder, "Курс 3")));
     }
 
-    // Однакова підтека + однакове ім'я → друге має отримати суфікс, а не затерти перше.
     [Fact]
     public async Task SaveManyAsync_NameCollisionInSameFolder_AddsNumericSuffix()
     {
@@ -101,7 +95,6 @@ public class ArchiveExportAndFilterTests : IDisposable
         Assert.Contains(files, f => Path.GetFileNameWithoutExtension(f).EndsWith("_2", StringComparison.Ordinal));
     }
 
-    // Легасі-запис без збереженого вмісту має дати рядок помилки, а не впасти.
     [Fact]
     public async Task SaveManyAsync_DocumentWithoutStoredContent_ReportsErrorLineInsteadOfThrowing()
     {

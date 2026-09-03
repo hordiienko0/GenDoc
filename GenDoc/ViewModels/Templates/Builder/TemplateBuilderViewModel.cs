@@ -14,10 +14,8 @@ using Microsoft.Win32;
 
 namespace GenDoc.ViewModels.Templates.Builder;
 
-/// <summary>Кнопка «Додати блок» у лівій палітрі.</summary>
 public record BlockPaletteItem(TemplateBlockKind Kind, string Icon, string Label);
 
-/// <summary>Вкладка аркуша книги.</summary>
 public partial class SheetTabViewModel : ObservableObject
 {
     public SheetTabViewModel(int index, string name)
@@ -35,18 +33,11 @@ public partial class SheetTabViewModel : ObservableObject
     private bool isCurrent;
 }
 
-/// <summary>Розв'язаний стиль блока у величинах WPF - щоб XAML не тримав власних
-/// конвертерів. Незадані гарнітура й кегль малюються як Times New Roman 11: це те,
-/// що writer кладе в книгу, і те, на що схожий документ; типовий Segoe UI оболонки
-/// робив би прев'ю документа несхожим на документ.</summary>
 public class PreviewStyleViewModel
 {
     public const string FallbackFont = "Times New Roman";
     public const double FallbackSize = 11;
 
-    /// <summary>Пункт - 1/72 дюйма, а FontSize у WPF - 1/96. Без перерахунку
-    /// 14-й кегль на екрані виглядав би дрібнішим за свої 14 пунктів, і різниця
-    /// між розмірами читалася б слабше, ніж вона є в документі.</summary>
     private const double PointsToPixels = 96.0 / 72.0;
 
     private static readonly SolidColorBrush DefaultForeground = CreateFrozen(Color.FromRgb(0x11, 0x11, 0x11));
@@ -74,8 +65,6 @@ public class PreviewStyleViewModel
     public Brush Foreground { get; }
     public TextAlignment Alignment { get; }
 
-    /// <summary>Колір лежить у моделі як RRGGBB. Зіпсоване значення не має валити
-    /// екран - тоді просто типовий колір тексту.</summary>
     private static Brush Parse(string? hex)
     {
         if (string.IsNullOrWhiteSpace(hex)) return DefaultForeground;
@@ -90,8 +79,6 @@ public class PreviewStyleViewModel
         }
     }
 
-    // Заморожена кисть: прев'ю перебудовується на кожне натискання клавіші,
-    // і незаморожені кисті тут накопичуються сотнями.
     private static SolidColorBrush CreateFrozen(Color color)
     {
         var brush = new SolidColorBrush(color);
@@ -100,8 +87,6 @@ public class PreviewStyleViewModel
     }
 }
 
-/// <summary>Рядок попереднього перегляду: набір ділянок тексту з різними заливками
-/// (з бази / вручну при генерації) - саме так їх розрізняє легенда макета.</summary>
 public class PreviewLineViewModel
 {
     public PreviewLineViewModel(PreviewLine line)
@@ -114,7 +99,6 @@ public class PreviewLineViewModel
     public PreviewStyleViewModel Style { get; }
 }
 
-/// <summary>Рядок аркуша в попередньому перегляді відомості.</summary>
 public class SheetRowViewModel
 {
     public SheetRowViewModel(SheetPreviewRow row)
@@ -135,8 +119,6 @@ public class SheetRowViewModel
     public PreviewStyleViewModel Style { get; }
 }
 
-/// <summary>Сітка відомості в попередньому перегляді: шапка і один рядок даних -
-/// той, що на генерації клонується по одному на людину.</summary>
 public class PreviewTableViewModel
 {
     public PreviewTableViewModel(PreviewTable table)
@@ -170,8 +152,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
         Blocks.CollectionChanged += OnBlocksChanged;
     }
 
-    /// <summary>У відомості гриф і рядок дати зайві, а таблиця - головне; у документі
-    /// Word набір ширший.</summary>
     private static readonly IReadOnlyList<BlockPaletteItem> WordPalette = new[]
     {
         new BlockPaletteItem(TemplateBlockKind.Header, "▤", "Шапка (гриф)"),
@@ -193,7 +173,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
     public IReadOnlyList<BlockPaletteItem> BlockPalette
         => Mode == TemplateBuilderMode.Excel ? ExcelPalette : WordPalette;
 
-    /// <summary>Для пунктирної картки «+ Додати блок» під переліком.</summary>
     public BlockPaletteItem ParagraphPaletteItem
         => BlockPalette.First(b => b.Kind == TemplateBlockKind.Paragraph);
 
@@ -201,27 +180,19 @@ public partial class TemplateBuilderViewModel : ObservableObject
 
     public IReadOnlyList<BuilderSignatory> Signatories { get; }
 
-    /// <summary>Усі блоки документа - з усіх аркушів. У центрі показуються лише
-    /// блоки поточного аркуша (VisibleBlocks).</summary>
     public ObservableCollection<BuilderBlockViewModel> Blocks { get; } = new();
 
     public ObservableCollection<BuilderBlockViewModel> VisibleBlocks { get; } = new();
 
     public ObservableCollection<SheetTabViewModel> Sheets { get; } = new();
 
-    /// <summary>Заголовок над попереднім переглядом відомості: діапазон клітинок і
-    /// номер рядка-шаблону - те, що оператор побачить, відкривши книгу в Excel.</summary>
     [ObservableProperty]
     private string? sheetRangeCaption;
 
     public ObservableCollection<BuilderTestPerson> TestPeople { get; }
 
-    /// <summary>Рядки й таблиці впереміш - розкладку добирає типізований
-    /// DataTemplate у XAML. Word-режим.</summary>
     public ObservableCollection<object> PreviewItems { get; } = new();
 
-    /// <summary>Відомість показується сіткою аркуша: літери колонок і номери
-    /// рядків - ті самі, що будуть у відкритій книзі.</summary>
     public ObservableCollection<SheetRowViewModel> SheetRows { get; } = new();
 
     public ObservableCollection<string> SheetColumnLetters { get; } = new();
@@ -240,7 +211,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(CanSwitchMode))]
     private TemplateBuilderMode mode = TemplateBuilderMode.Word;
 
-    /// <summary>Аркуш, який редагується. У Word-режимі завжди 0.</summary>
     [ObservableProperty]
     private int currentSheetIndex;
 
@@ -248,55 +218,30 @@ public partial class TemplateBuilderViewModel : ObservableObject
 
     public bool IsExcelMode => Mode == TemplateBuilderMode.Excel;
 
-    /// <summary>Ширина панелі перегляду; змінюється роздільником.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(PreviewPanelWidth))]
     [NotifyPropertyChangedFor(nameof(PreviewPageWidth))]
     [NotifyPropertyChangedFor(nameof(PreviewTextWidth))]
     private double previewWidth = 340;
 
-    /// <summary>
-    /// Колонка перегляду ЗАВЖДИ явна, ніколи не Auto. Auto тут виявився не
-    /// зручністю, а джерелом цілого класу помилок: Grid міряє Auto-колонку
-    /// нескінченною шириною, а отже TextWrapping="Wrap" усередині не спрацьовує
-    /// взагалі - один довгий рядок без пробілів (чи таблиця на багато колонок)
-    /// роздував панель, доки вона не вилазила за край вікна. Ширина по вмісту не
-    /// варта того, щоб розкладка залежала від тексту, який вписав оператор.
-    /// </summary>
     public GridLength PreviewPanelWidth => new(PreviewWidth);
 
-    // Хром між шириною панелі й шириною самої сторінки: рамка панелі, поля
-    // сторінки й вертикальний прокрутник.
     private const double PreviewChrome = 40;
 
-    // Внутрішні поля сторінки (Padding="24,26").
     private const double PreviewPagePadding = 48;
 
-    /// <summary>Ширина білого аркуша. Рахується тут, а не прив'язкою до
-    /// ViewportWidth: колонка тепер явна, тож це проста арифметика без зворотного
-    /// зв'язку в розкладці.</summary>
     public double PreviewPageWidth => Math.Max(PreviewWidth - PreviewChrome, 160);
 
-    /// <summary>Ширина, на яку переносяться рядки тексту. Задається явно, бо
-    /// сторінка прокручується вбік заради широких таблиць, а при горизонтальній
-    /// прокрутці вміст міряється нескінченністю - без цієї стелі абзац витягнувся
-    /// б в один рядок замість переносу.</summary>
     public double PreviewTextWidth => Math.Max(PreviewPageWidth - PreviewPagePadding, 120);
 
     public const double PreviewMinWidth = 260;
     public const double PreviewMaxWidth = 900;
 
-    /// <summary>Режим фіксується назавжди, щойно шаблон збережено: Word живе в
-    /// Templates, відомість - в ExportTemplates, і перекинути запис з однієї
-    /// таблиці в іншу означало б загубити його зв'язки в пакетах і архіві.</summary>
     public bool CanSwitchMode => EditingTemplateId is null;
 
-    /// <summary>Лише для відомості: перший аркуш клонується на кожну дату з
-    /// ручного тега {{період}}.</summary>
     [ObservableProperty]
     private bool repeatSheetPerDate;
 
-    /// <summary>Заповнений - конструктор редагує наявний шаблон, а не створює новий.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanSwitchMode))]
     private int? editingTemplateId;
@@ -304,17 +249,10 @@ public partial class TemplateBuilderViewModel : ObservableObject
     [ObservableProperty]
     private string? statusMessage;
 
-    /// <summary>Закрити конструктор і повернутись до переліку шаблонів.</summary>
     public event Action? RequestClose;
 
-    /// <summary>Шаблон збережено - перелік у «Шаблонах» треба перечитати.</summary>
     public event Action? Saved;
 
-    /// <summary>Стан складання на момент відкриття або останнього збереження.
-    /// Порівняння зі знімком, а не прапорець: скасувавши правку руками, оператор
-    /// не має отримувати запитання про зміни, яких уже немає. Знімок - той самий
-    /// JSON, що лягає в BuilderJson, тож «змінилось» означає рівно те, що
-    /// відрізнятиме збережений шаблон (аудит 2026-08-28).</summary>
     private string _snapshot = string.Empty;
 
     public bool IsDirty => CurrentSnapshot() != _snapshot;
@@ -346,7 +284,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
         RefreshPreview();
     }
 
-    /// <summary>false - у шаблону нема джерела блоків (завантажений файлом).</summary>
     public bool LoadTemplate(int templateId, TemplateBuilderMode mode)
     {
         var source = _builderService.Load(templateId, mode);
@@ -372,9 +309,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
         return true;
     }
 
-    /// <summary>Перемикання вкладки режиму. Набір блоків у Word і у відомості
-    /// різний, тож зібране складання починається спочатку - питаємо, поки є що
-    /// втрачати.</summary>
     [RelayCommand]
     private void SwitchMode(string? modeName)
     {
@@ -404,9 +338,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
         OnPropertyChanged(nameof(OpenExternallyButtonText));
         OnPropertyChanged(nameof(SubtitleText));
 
-        // Відомості потрібно ширше - але лише поки оператор не пересунув роздільник.
-        // Відомості потрібно ширше, ніж сторінці документа. Перемикання режиму
-        // й так починає складання заново, тож ширину задаємо беззастережно.
         PreviewWidth = value == TemplateBuilderMode.Excel ? 420 : 340;
     }
 
@@ -438,9 +369,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
         CurrentSheetIndex = sheet.Index;
     }
 
-    /// <summary>Прибирає останній аркуш разом з його блоками. Саме останній:
-    /// видалення з середини зсунуло б номери всіх наступних, а SheetIndex лежить
-    /// у збереженому JSON.</summary>
     [RelayCommand]
     private void RemoveLastSheet()
     {
@@ -463,8 +391,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
         CurrentSheetIndex = Sheets.Count - 1;
     }
 
-    /// <summary>Назва поточного аркуша - редагується прямо над переліком блоків,
-    /// без окремого діалогу перейменування.</summary>
     public string CurrentSheetName
     {
         get => CurrentSheetIndex < Sheets.Count ? Sheets[CurrentSheetIndex].Name : string.Empty;
@@ -565,7 +491,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
         }
     }
 
-    /// <summary>Клік по блоку робить його «редагованим» - акцентна рамка з макета.</summary>
     [RelayCommand]
     private void SelectBlock(BuilderBlockViewModel? block)
     {
@@ -591,7 +516,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
         }
     }
 
-    /// <summary>Назва кнопки залежить від режиму - «Експорт у docx» / «Експорт у xlsx».</summary>
     public string ExportButtonText => IsExcelMode ? "Експорт у xlsx" : "Експорт у docx";
 
     public string SubtitleText => IsExcelMode
@@ -629,18 +553,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
 
     public string OpenExternallyButtonText => IsExcelMode ? "Перегляд у Excel" : "Перегляд у Word";
 
-    /// <summary>
-    /// Показати документ таким, яким його побачить Word (чи Excel). Панель
-    /// перегляду - це наближення: вона не вміє ні реальних полів сторінки, ні
-    /// перенесення на наступну сторінку, ні того, як Word насправді розкладе
-    /// таблицю. Тому «як буде насправді» дивимось у самому Word.
-    ///
-    /// Це перегляд, а не редагування: зміни, зроблені у відкритому файлі, назад
-    /// у блоки НЕ повертаються. Розкласти довільно виправлений .docx назад у
-    /// типізовані блоки надійно неможливо, і мовчазна спроба це вгадати зіпсувала
-    /// б шаблон непомітно для оператора. Файл лягає в тимчасову теку саме тому,
-    /// що його правки нікуди не ведуть.
-    /// </summary>
     [RelayCommand]
     private void OpenExternally()
     {
@@ -660,7 +572,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
 
             File.WriteAllBytes(path, bytes);
 
-            // UseShellExecute - інакше .NET не знає, чим відкривати .docx.
             Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
 
             StatusMessage = "Відкрито для перегляду; правки у файлі назад у шаблон не повертаються.";
@@ -681,9 +592,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
         RequestClose?.Invoke();
     }
 
-    /// <summary>Єдина точка dirty-guard конструктора: «✕ Закрити», перехід в
-    /// інший розділ, закриття вікна. До цього складання гинуло мовчки в усіх
-    /// трьох випадках.</summary>
     public bool TryLeave()
     {
         if (!IsDirty) return true;
@@ -695,8 +603,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
         switch (result)
         {
             case MessageBoxResult.Yes:
-                // Save сам покаже, чого бракує (назва, блоки, таблиця у
-                // відомості), і нічого не збереже - тоді й виходити не можна.
                 Save();
                 return !IsDirty;
             case MessageBoxResult.No:
@@ -728,8 +634,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
 
         if (!IsExcelMode) return true;
 
-        // Без таблиці у відомості немає рядка-шаблону, а отже й самої відомості:
-        // на генерації вийшов би один аркуш із заголовком і без людей.
         var tables = Blocks.Where(b => b.IsTable).ToList();
         if (tables.Count == 0)
         {
@@ -747,9 +651,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
             return false;
         }
 
-        // Рушій клонує рядок-шаблон за одним номером на всю книгу, а «аркуш на
-        // кожну дату» розмножує саме ПЕРШИЙ аркуш. Тому таблиця мусить бути на
-        // ньому: інакше решта аркушів мовчки лишилась би без людей.
         if (tables[0].SheetIndex != 0)
         {
             MessageBox.Show(
@@ -766,8 +667,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
             return false;
         }
 
-        // Тег людини в рядку-шаблоні - те, за чим і рушій, і сканер завантаження
-        // впізнають рядок, який треба клонувати.
         var hasRecipientTag = tables[0].Columns.Any(c =>
             TemplateBlockPreview.CollectTags(new TemplateBuilderDocument(new[]
                 {
@@ -819,9 +718,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
 
     private void OnChildChanged(object? sender, PropertyChangedEventArgs e)
     {
-        // IsEditing - лише підсвітка картки, документ від неї не змінюється.
-        // LayoutCaption і Letter проставляє сам RefreshPreview: без цієї перевірки
-        // перерахунок розкладки запускав би сам себе нескінченно.
         if (e.PropertyName is null
             || BuilderBlockViewModel.NonDocumentProperties.Contains(e.PropertyName)
             || e.PropertyName == nameof(TableColumnViewModel.Letter)) return;
@@ -836,8 +732,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
 
         var document = ToDocument();
 
-        // У відомості прев'ю показує поточний аркуш, а не всю книгу: інакше блоки
-        // сусідніх аркушів злилися б в одну сторінку.
         if (IsExcelMode)
             document = document with { Blocks = document.Blocks.Where(b => b.SheetIndex == CurrentSheetIndex).ToList() };
 
@@ -850,8 +744,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
         var signatories = Signatories.ToDictionary(
             s => s.Id, s => new SignatoryInfo(s.Rank, s.ShortName));
 
-        // Відомість показуємо сіткою аркуша, а не сторінкою: оператору потрібно
-        // бачити саме клітинки - у якому рядку й під якою літерою що опиниться.
         SheetRows.Clear();
         SheetColumnLetters.Clear();
 
@@ -866,7 +758,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
 
         foreach (var element in TemplateBlockPreview.Build(document, values, signatories))
         {
-            // (розкладка вже проставлена вище - тут лише вміст сторінки)
             PreviewItems.Add(element switch
             {
                 PreviewTable table => new PreviewTableViewModel(table),
@@ -876,9 +767,6 @@ public partial class TemplateBuilderViewModel : ObservableObject
         }
     }
 
-    /// <summary>Підписує, що куди ляже на аркуші: рядки під кожним блоком, літери
-    /// колонок таблиці й діапазон аркуша. Числа беруться зі спільної розкладки -
-    /// тієї самої, за якою TemplateBlockXlsxWriter будує книгу.</summary>
     private void RefreshSheetLayout()
     {
         if (!IsExcelMode)

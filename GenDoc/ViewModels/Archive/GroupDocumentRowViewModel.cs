@@ -4,8 +4,6 @@ using GenDoc.Services.Documents;
 
 namespace GenDoc.ViewModels.Archive
 {
-    // Групова XLSX-відомість - на весь список людей, без RecipientId. Показується
-    // окремо від персональних документів, з кількістю осіб на бейджі замість ПІБ.
     public partial class GroupDocumentRowViewModel : ObservableObject
     {
         private static readonly CultureInfo Uk = CultureInfo.GetCultureInfo("uk-UA");

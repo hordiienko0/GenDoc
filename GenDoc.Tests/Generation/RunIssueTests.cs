@@ -2,19 +2,11 @@ using GenDoc.Services.Generation;
 
 namespace GenDoc.Tests.Generation;
 
-// RunIssue.TryDeserialize - єдине місце, чия робота полягає в тому, щоб пережити
-// будь-який вміст колонки GenerationPackageRun.Summary: без CHECK-обмеження, редагованої
-// вручну, з рантаймом System.Text.Json, який не перевіряє non-nullable параметри запису.
 public class RunIssueTests
 {
     [Fact]
     public void TryDeserialize_RejectsJsonArrayOfShapeMismatchedObjects()
     {
-        // "[{}]" - валідний JSON-масив, System.Text.Json охоче створює з нього
-        // RunIssue(null, null, null, null), хоча всі чотири параметри - string,
-        // а не string?. Якби це пройшло як "успіх", виклик у
-        // DocumentArchiveService.GetRunItemsAsync ("issue.Person.Length") впав би
-        // з NullReferenceException.
         var success = RunIssue.TryDeserialize("[{}]", out var issues);
 
         Assert.False(success);
@@ -37,11 +29,9 @@ public class RunIssueTests
         Assert.Equal(string.Empty, issue.Person);
         Assert.Equal("Зламана відомість", issue.TemplateName);
         Assert.Equal("текст помилки", issue.Message);
-        Assert.True(issue.IsError); // default лишається помилкою, якщо конструктор не каже інше
+        Assert.True(issue.IsError);
     }
 
-    // Інформаційна нотатка (пропуск через порожній склад, незаповнені теги при
-    // успішній генерації) мусить пережити серіалізацію-десеріалізацію з IsError = false.
     [Fact]
     public void TryDeserialize_RoundTripsInformationalIssue_WithIsErrorFalse()
     {
@@ -58,10 +48,6 @@ public class RunIssueTests
         Assert.Equal("не заповнено теги - {{дата}}", issue.Message);
     }
 
-    // Зворотна сумісність: JSON, записаний до появи поля IsError (усі запуски
-    // цієї гілки до цього фіксу), не містить його взагалі. System.Text.Json має
-    // підставити значення за замовчуванням параметра конструктора (true), а не
-    // відкинути валідний масив і піти в легасі-текстовий парсер.
     [Fact]
     public void TryDeserialize_AcceptsPayloadPredatingIsErrorField_DefaultsToError()
     {

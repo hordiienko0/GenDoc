@@ -5,18 +5,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Templates;
 
-/// <summary>
-/// DeletePackage ставить пакету DeletedAt, але рядки GenerationPackageTemplates
-/// не чіпає. TemplateService.Delete перевіряє використання проєкцією
-/// pt.GenerationPackage!.Name, до якої застосовується глобальний фільтр
-/// м'якого видалення - для видаленого пакета вона повертає null, тобто список
-/// «використовується в пакетах» стає списком з одного null.
-///
-/// Наслідок: створили пакет, додали шаблон, видалили пакет - і шаблон видалити
-/// вже неможливо НІКОЛИ, а повідомлення читається як «Неможливо видалити:
-/// шаблон використовується в пакетах: .» з порожнім переліком, тобто без
-/// жодної підказки, що робити (аудит 2026-08-28).
-/// </summary>
 public class DeleteTemplateAfterPackageRemovedTests
 {
     private static (TemplateService Templates, int TemplateId, int PackageId) Arrange(TestDb db)

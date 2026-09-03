@@ -2,7 +2,6 @@ namespace GenDoc.Services;
 
 public static class PluralHelper
 {
-    // Українська плюралізація: 1 кімната / 2 кімнати / 5 кімнат.
     public static string Pluralize(int count, string one, string few, string many)
     {
         var n = Math.Abs(count) % 100;

@@ -3,7 +3,6 @@ using System.Windows.Data;
 
 namespace GenDoc.Converters
 {
-    // MultiBinding: [0]=зайнято, [1]=місткість, [2]=ActualWidth контейнера -> ширина смуги заповненості.
     public class OccupancyToWidthConverter : IMultiValueConverter
     {
         public object Convert(object[] values, Type targetType, object? parameter, CultureInfo culture)

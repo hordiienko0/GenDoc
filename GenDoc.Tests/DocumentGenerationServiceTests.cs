@@ -8,8 +8,6 @@ namespace GenDoc.Tests;
 
 public class DocumentGenerationServiceTests
 {
-    // Плейсхолдер розбитий на три текстові вузли (типова ситуація в реальному Word-файлі
-    // після ручного редагування тексту всередині фігурних дужок).
     [Fact]
     public void ReplaceInParagraph_PlaceholderSplitAcrossThreeRuns_ReplacesWholeTag()
     {
@@ -27,7 +25,6 @@ public class DocumentGenerationServiceTests
         Assert.Empty(unfilled);
     }
 
-    // Заміна не повинна зсувати w:tab - таб має лишитись між двома замінами на своєму місці.
     [Fact]
     public void ReplaceInParagraph_PlaceholderAdjacentToTab_KeepsTabInPlace()
     {
@@ -47,7 +44,6 @@ public class DocumentGenerationServiceTests
         Assert.Equal("Y", runs[2].GetFirstChild<Text>()!.Text);
     }
 
-    // Два незалежні плейсхолдери в одному параграфі не повинні заважати один одному.
     [Fact]
     public void ReplaceInParagraph_TwoPlaceholdersInOneParagraph_BothReplacedIndependently()
     {
@@ -64,8 +60,6 @@ public class DocumentGenerationServiceTests
         Assert.Equal("ОДИН і ДВА", ConcatText(paragraph));
     }
 
-    // Значення, якого немає в словнику, потрапляє у список unfilled, а плейсхолдер
-    // замінюється на порожній рядок (а не лишається як текст {{тег}}).
     [Fact]
     public void ReplaceInParagraph_MissingValue_AddsToUnfilledAndClearsTag()
     {
@@ -79,8 +73,6 @@ public class DocumentGenerationServiceTests
         Assert.Equal(new[] { "{{невідомий}}" }, unfilled);
     }
 
-    // Наскрізний прогін через GenerateOne: плейсхолдер у тілі документа, в комірці таблиці,
-    // у колонтитулах - усі мають замінитись.
     [Fact]
     public void GenerateOne_ReplacesPlaceholdersInBodyTableAndHeaderFooter()
     {
@@ -118,7 +110,6 @@ public class DocumentGenerationServiceTests
         }
     }
 
-    // Шаблон без жодного плейсхолдера - текст не повинен змінитись взагалі.
     [Fact]
     public void GenerateOne_NoPlaceholders_LeavesTextUnchanged()
     {
@@ -153,8 +144,6 @@ public class DocumentGenerationServiceTests
         }
     }
 
-    // Груповий DOCX: повторюваний блок {{#список}}…{{/список}} клонується по одному
-    // на кожного одержувача, {{роздільник}} - ";" для всіх, крім останнього.
     [Fact]
     public void GenerateGroup_ClonesBlockPerRecipient_WithSeparatorAndTabPreserved()
     {
@@ -182,7 +171,6 @@ public class DocumentGenerationServiceTests
             var body = doc.MainDocumentPart!.Document!.Body!;
             var paragraphs = body.Elements<Paragraph>().ToList();
 
-            // Маркерні абзаци прибрані, лишились: адресат, 3 клони, підсумок.
             Assert.Equal(5, paragraphs.Count);
             Assert.Equal("Командиру частини", ConcatText(paragraphs[0]));
 
@@ -191,7 +179,7 @@ public class DocumentGenerationServiceTests
             Assert.Equal("майорІВАНЕНКО Іван;", ConcatText(paragraphs[1]));
 
             Assert.Equal("капітанПЕТРЕНКО Петро;", ConcatText(paragraphs[2]));
-            Assert.Equal("лейтенантСИДОРЕНКО Сидір.", ConcatText(paragraphs[3])); // останній - крапка
+            Assert.Equal("лейтенантСИДОРЕНКО Сидір.", ConcatText(paragraphs[3]));
 
             Assert.Equal("Кількість: 3", ConcatText(paragraphs[4]));
         }
@@ -201,8 +189,6 @@ public class DocumentGenerationServiceTests
         }
     }
 
-    // Три позначені одержувачі (підмножина) - стільки рядків і з'являється, у тому
-    // порядку, у якому передані, незалежно від загального розміру складу.
     [Fact]
     public void GenerateGroup_SubsetOfThree_ProducesExactlyThreeInGivenOrder()
     {
@@ -228,7 +214,7 @@ public class DocumentGenerationServiceTests
             var body = doc.MainDocumentPart!.Document!.Body!;
             var paragraphs = body.Elements<Paragraph>().ToList();
 
-            Assert.Equal(4, paragraphs.Count); // адресат + 2 клони + підсумок
+            Assert.Equal(4, paragraphs.Count);
             Assert.Equal("лейтенантА А;", ConcatText(paragraphs[1]));
             Assert.Equal("капітанБ Б.", ConcatText(paragraphs[2]));
             Assert.Equal("Кількість: 2", ConcatText(paragraphs[3]));
@@ -239,7 +225,6 @@ public class DocumentGenerationServiceTests
         }
     }
 
-    // Незакритий блок - явна помилка генерації, а не тихий частковий документ.
     [Fact]
     public void GenerateGroup_UnclosedBlock_ReturnsFailure()
     {
@@ -268,7 +253,6 @@ public class DocumentGenerationServiceTests
         Assert.False(File.Exists(outputPath));
     }
 
-    // Вкладені блоки не підтримуються - явна помилка.
     [Fact]
     public void GenerateGroup_NestedBlocks_ReturnsFailure()
     {
@@ -299,15 +283,6 @@ public class DocumentGenerationServiceTests
         Assert.False(result.Success);
     }
 
-    // ПЕРЕГЛЯНУТО для гілки generate-one-marker-guard: раніше цей тест закріплював,
-    // що GenerateOne МОВЧКИ стирає маркер блоку («Список: {{#список}}», «кінець
-    // {{/список}}») як звичайний незаповнений тег - саме та поведінка, яку ця
-    // гілка прибирає. Тепер GenerateOne натомість відмовляє: документ, у якому є
-    // маркер блоку, не мусить генеруватись без списку і без попередження. Маркер
-    // тут - усередині тексту абзацу, тож його ловить саме неприв'язаний
-    // BlockStructure.EmbeddedMarkerRegex (той самий детектор, що й на груповому
-    // шляху в GuardResidualMarkers), а не анкоровані OpenRegex/CloseRegex - вони
-    // вимагають, щоб маркер займав абзац цілком, і тут би нічого не знайшли.
     [Fact]
     public void GenerateOne_MarkerEmbeddedInParagraphText_RefusesGeneration()
     {
@@ -346,12 +321,6 @@ public class DocumentGenerationServiceTests
         }
     }
 
-    // Маркер, що займає цілий абзац сам по собі (типовий вигляд шаблону,
-    // насправді призначеного для GenerateGroup, який помилково потрапив у
-    // GenerateOne - саме той сценарій, від якого захищають перевірки Kind у
-    // DocumentArchiveService.RegenerateAsync і CompletenessService.GenerateForPairAsync;
-    // цей тест - резервний вартовий самого рушія на випадок, якщо перевірка Kind
-    // не спрацювала).
     [Fact]
     public void GenerateOne_StandaloneBlockMarker_RefusesGeneration()
     {
@@ -390,8 +359,6 @@ public class DocumentGenerationServiceTests
         }
     }
 
-    // Вартовий не мусить спрацьовувати на звичайному шаблоні без блоків -
-    // інакше він зламав би основний, найчастіший шлях GenerateOne.
     [Fact]
     public void GenerateOne_TemplateWithoutMarkers_StillSucceeds()
     {

@@ -29,7 +29,6 @@ namespace GenDoc.Services.Recipients
         public string? RoomBuilding { get; set; }
         public string? RoomNumber { get; set; }
 
-        // Анкетні дані (прикомандировані)
         public string? Nationality { get; set; }
         public string? Vos { get; set; }
         public DateOnly? CourseArrivalDate { get; set; }
@@ -53,7 +52,6 @@ namespace GenDoc.Services.Recipients
         public string? Vehicle { get; set; }
         public bool IsCourseOfficer { get; set; }
 
-        // Уточнення відмінків
         public Gender? Gender { get; set; }
         public string? RankAccusative { get; set; }
         public string? FullNameAccusative { get; set; }

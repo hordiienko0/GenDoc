@@ -29,18 +29,11 @@ public partial class ExportTemplateListItemViewModel : ObservableObject
     public int TagCount { get; }
     public bool CanDelete => !IsBuiltIn;
 
-    /// <summary>Відомість зібрана конструктором - її можна відкрити на редагування
-    /// блоками. Завантажена книга назад у блоки не розбирається.</summary>
     public bool IsFromBuilder { get; }
 
-    // Лише для книг-за-тегами: перший аркуш клонується по одному на кожну
-    // дату з ручного тега {{період}}. Зберігається разом з мапінгом (кнопка
-    // «Зберегти мапінг») - легкий вибір, без окремої кнопки.
     [ObservableProperty]
     private bool repeatSheetPerDate;
 
-
-    /// <summary>Підсвітка рядка в списку ліворуч; мапінг показує права панель.</summary>
     [ObservableProperty]
     private bool isSelected;
 

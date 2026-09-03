@@ -3,9 +3,6 @@ using GenDoc.Services.Templates;
 
 namespace GenDoc.Tests;
 
-// Теги, що реально стоять у відомостях вогневої підготовки з теки «шаблони».
-// Кожен, що не потрапив у словник, класифікується як Manual - тобто колонка
-// лишається порожньою (саме так «мовчав» {{курсовий_офіцер}}).
 public class PlaceholderTagMapsTests
 {
     [Theory]
@@ -26,8 +23,6 @@ public class PlaceholderTagMapsTests
         Assert.Equal(expectedField, fieldName);
     }
 
-    // Кожне зіставлене ім'я поля мусить існувати в ExportFieldKey - інакше
-    // XlsxGenerationService мовчки поверне порожньо.
     [Theory]
     [InlineData("{{зброя}}")]
     [InlineData("{{курсовий_офіцер}}")]
@@ -42,7 +37,6 @@ public class PlaceholderTagMapsTests
             $"'{fieldName}' не є значенням ExportFieldKey");
     }
 
-    // Значення, які вводить людина на кожен запуск, мусять лишитись ручними.
     [Theory]
     [InlineData("{{номер_відомості}}")]
     [InlineData("{{калібр}}")]

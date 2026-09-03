@@ -21,7 +21,6 @@
     <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1">
         <DockPanel Background="{StaticResource BackgroundBrush}">
 
-            <!-- Власна заголовна смуга замість системної рамки вікна -->
             <Border DockPanel.Dock="Top" Height="30" Background="{StaticResource NavyDeepBrush}"
                     MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
                 <Grid>
@@ -50,9 +49,6 @@
                 </Grid>
             </Border>
 
-            <!-- Темно-синє полотно з великим знаком-водяним. Знак навмисно
-                 виходить за межі вікна і приглушений: у макеті він тло, а не
-                 елемент, тож не має конкурувати з карткою. -->
             <Grid Background="{StaticResource NavyBrush}" ClipToBounds="True">
                 <Image Source="{StaticResource UnitEmblemImage}" Width="620" Height="620"
                        Opacity="0.06" HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -70,7 +66,6 @@
                             <RowDefinition Height="Auto"/>
                         </Grid.RowDefinitions>
 
-                        <!-- Шапка картки: знак, назва частини, назва системи -->
                         <StackPanel Grid.Row="0" Margin="24,26,24,20">
                             <Image Source="{StaticResource UnitEmblemImage}" Width="64" Height="64"
                                    HorizontalAlignment="Center"
@@ -90,7 +85,6 @@
                             <TextBlock Text="Пароль бази даних" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" Margin="0 0 0 6"/>
                             <PasswordBox x:Name="DatabasePasswordBox"
                                          PasswordChanged="DatabasePasswordBox_PasswordChanged"/>
-                            <!-- Кнопка на всю ширину картки - як у макеті -->
                             <Button Content="Розблокувати" Command="{Binding UnlockDatabaseCommand}"
                                     Margin="0 18 0 0" Padding="0,11" HorizontalAlignment="Stretch"/>
                         </StackPanel>
@@ -149,9 +143,6 @@
                         <TextBlock Grid.Row="3" Text="{Binding ErrorMessage}" Foreground="{StaticResource DangerBrush}"
                                    TextWrapping="Wrap" Margin="24,12,24,0"/>
 
-                        <!-- Підвал картки: версія збірки й режим бази. Версію
-                             читаємо зі складання, а не пишемо рядком - інакше
-                             вона розійдеться з реальною при першому ж релізі. -->
                         <Border Grid.Row="4" Background="{StaticResource RowAltBrush}" Margin="0,22,0,0"
                                 BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,0,0"
                                 Padding="24,11">

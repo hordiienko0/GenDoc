@@ -33,8 +33,6 @@ namespace GenDoc.ViewModels.Personnel
         private readonly Services.Generation.IManualTagFormBuilder _manualTagFormBuilder;
         private readonly IOutputFolderService _outputFolderService;
 
-        /// <summary>Ключ, під яким запам'ятовуються минулі значення саме для
-        /// цього місця - щоб вони не змішувалися з іншими екранами.</summary>
         private const string ManualTagContextKey = "person-card-regenerate";
         private string _snapshot = string.Empty;
         private bool _documentsLoaded;
@@ -76,8 +74,6 @@ namespace GenDoc.ViewModels.Personnel
             roomNumber = model.RoomNumber;
             fitness = model.FitnessCategory;
 
-            // Нова особа - картка одразу відкривається в режимі редагування,
-            // бо переглядати ще нічого.
             isEditing = IsNew;
 
             TakeSnapshot();
@@ -92,10 +88,6 @@ namespace GenDoc.ViewModels.Personnel
         public bool IsNew => Id == 0;
         public string UnitDisplay { get; }
 
-        // Обчислюються на льоту, а не фіксуються в конструкторі: після «Додати» →
-        // ввести ПІБ → «Зберегти» шапка так і лишалась «Нова особа», і це саме
-        // значення йшло в діалог генерації як відображуване ім'я
-        // (аудит 2026-08-28). RefreshHeader() кличеться після збереження.
         public string HeaderName => BuildHeaderName(Id, LastName, FirstMiddle);
         public string HeaderSub => BuildHeaderSub(Rank, Position);
 
@@ -135,7 +127,6 @@ namespace GenDoc.ViewModels.Personnel
         [NotifyPropertyChangedFor(nameof(RoomDisplay))]
         private string? roomNumber;
 
-        // 2.6: «307», а не « / 307», коли корпусу немає.
         public string RoomDisplay => FormatRoom(RoomBuilding, RoomNumber);
 
         internal static string FormatRoom(string? building, string? number)
@@ -162,7 +153,6 @@ namespace GenDoc.ViewModels.Personnel
 
         public ObservableCollection<RecipientDocRowViewModel> DocumentRows { get; } = new();
 
-        // Групові відомості пакета (1.4): не серед персональних рядків, а в підвалі.
         public ObservableCollection<GroupDocumentRowViewModel> GroupDocumentRows { get; } = new();
         [ObservableProperty] private bool hasGroupDocuments;
 
@@ -225,11 +215,6 @@ namespace GenDoc.ViewModels.Personnel
                 foreach (var g in groupDocs) GroupDocumentRows.Add(new GroupDocumentRowViewModel(g));
                 HasGroupDocuments = GroupDocumentRows.Count > 0;
 
-                // Бейдж мусить збігатися з матрицею. Раніше він (а) рахував
-                // бракуючим і те, що для цієї людини «не потрібне», і (б) не бачив
-                // групових документів узагалі - тож картка казала «Пакет повний»,
-                // коли в матриці стояло «0 з 1» через обов'язковий груповий наказ,
-                // до складу якого людина не входить (аудит 2026-08-28).
                 HasMissingDocuments =
                     statuses.Any(s => s.Requirement == Models.Enums.TemplateRequirement.Required && !s.HasContent)
                     || groupDocs.Any(g => !g.IsParticipant);
@@ -263,7 +248,6 @@ namespace GenDoc.ViewModels.Personnel
                     MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
-        // 2.5: друк прямо з картки - той самий файл, що й «Відкрити».
         [RelayCommand]
         private async Task PrintDocumentAsync(RecipientDocRowViewModel? row)
         {
@@ -281,7 +265,6 @@ namespace GenDoc.ViewModels.Personnel
             }
         }
 
-        // 2.2: будь-який персональний шаблон, не лише типовий пакет.
         [RelayCommand]
         private async Task GenerateAnyDocumentAsync()
         {
@@ -342,13 +325,11 @@ namespace GenDoc.ViewModels.Personnel
             await RefreshDocumentsAsync();
         }
 
-        // Повертає null, якщо оператор скасував діалог ручних міток - виклик генерації тоді пропускається.
         private async Task<Dictionary<string, string>?> CollectManualValuesAsync(IReadOnlyList<int> templateIds)
         {
             var manualTags = await _archiveService.GetManualTagsAsync(templateIds);
             if (manualTags.Count == 0) return new Dictionary<string, string>();
 
-            // Та сама форма, що в генерації: дати пікером, тексти з минулого разу.
             var form = await _manualTagFormBuilder.BuildAsync(manualTags, ManualTagContextKey);
             var dialog = new ManualValuesDialogViewModel(form);
             if (_dialogService.ShowDialog(dialog, Application.Current.MainWindow) != true) return null;
@@ -434,8 +415,6 @@ namespace GenDoc.ViewModels.Personnel
         [RelayCommand]
         private void Edit() => IsEditing = true;
 
-        // У режимі редагування - відкат незбережених змін без закриття картки.
-        // Поза режимом редагування (не має статись, кнопка ховається) - закрити картку.
         [RelayCommand]
         private void Cancel()
         {

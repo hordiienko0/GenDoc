@@ -7,14 +7,12 @@ namespace GenDoc.Models
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
 
-        // Значення для підстановки в {{підрозділ}} у документах; якщо null - Name.
         public string? DocumentName { get; set; }
 
         public int? ParentId { get; set; }
         public OrgNode? Parent { get; set; }
         public ICollection<OrgNode> Children { get; set; } = new List<OrgNode>();
 
-        // Materialized path: "/1/4/9/" (включає власний Id).
         public string Path { get; set; } = string.Empty;
         public int Depth { get; set; }
         public int SortOrder { get; set; }

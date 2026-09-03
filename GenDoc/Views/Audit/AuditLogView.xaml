@@ -15,7 +15,6 @@
             <Setter Property="Margin" Value="0,0,0,5"/>
         </Style>
 
-        <!-- Чіп типу дії: квадратна плашка, фон *SoftBrush, текст - відповідний насичений колір -->
         <Style x:Key="ActionChipBackgroundStyle" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
             <Style.Triggers>
@@ -64,7 +63,6 @@
             </Style.Triggers>
         </Style>
 
-        <!-- Рядок таблиці: підсвітка при наведенні -->
         <Style x:Key="AuditRowBorderStyle" TargetType="Border">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="BorderThickness" Value="0,1,0,0"/>

@@ -15,7 +15,6 @@ namespace GenDoc.ViewModels.Archive
 {
     public record FilterOption(int? Id, string Label);
 
-    // Singleton: фільтри й сторінка живуть між перемиканнями розділів.
     public partial class ArchiveViewModel : ObservableObject, Services.Navigation.INavigationTarget
     {
         private const int PageSize = 200;
@@ -34,8 +33,6 @@ namespace GenDoc.ViewModels.Archive
         private bool _suppressFilterReload;
         private bool _suppressHeaderCheck;
 
-        /// <summary>Ключ для запам'ятовування минулих значень і підписанта.
-        /// Окремий від генерації: перегенерація з архіву - свій контекст.</summary>
         private const string ManualTagContextKey = "archive-regenerate";
 
         private readonly Services.Generation.IManualTagFormBuilder _manualTagFormBuilder;
@@ -87,8 +84,6 @@ namespace GenDoc.ViewModels.Archive
         partial void OnSelectedAuthorChanged(FilterOption? value) => OnFilterChanged();
         partial void OnSelectedYearChanged(FilterOption? value) => OnFilterChanged();
 
-        // Варіант Б: перемикач «Всі / Мої» по автору - працює на всіх трьох вкладках,
-        // значення пам'ятається в UserSettings (пер-профільно).
         [ObservableProperty] private bool mineOnly;
 
         private bool _suppressMineOnlyReload;
@@ -128,10 +123,6 @@ namespace GenDoc.ViewModels.Archive
             if (!int.TryParse(index, out var i) || i == SelectedTabIndex) return;
             SelectedTabIndex = i;
 
-            // Перезавантажуємо будь-яку вкладку, на яку переходимо, включно з
-            // «Документами». Раніше нульова вкладка не оновлювалась, тож після
-            // перемикача «Всі / Мої» на сусідній вкладці вона показувала стару
-            // таблицю під новим станом перемикача (аудит 2026-08-28).
             if (i == 0) await ResetAndReloadAsync();
             if (i == 1) await ReloadRunsAsync();
             if (i == 2) await ReloadGroupAsync();
@@ -145,8 +136,6 @@ namespace GenDoc.ViewModels.Archive
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(IsListEmpty))]
         [NotifyPropertyChangedFor(nameof(HasRows))]
-        // IsArchiveEmpty/IsFilteredEmpty теж читають RowCount, тож без цих двох
-        // сповіщень напис «Нічого не знайдено» лишався поверх уже завантажених рядків.
         [NotifyPropertyChangedFor(nameof(IsArchiveEmpty))]
         [NotifyPropertyChangedFor(nameof(IsFilteredEmpty))]
         private int rowCount;
@@ -212,7 +201,6 @@ namespace GenDoc.ViewModels.Archive
             foreach (var year in options.Years)
                 YearOptions.Add(new FilterOption(year, year.ToString()));
 
-            // Дефолт - активний набір, якщо він є.
             var activeIntakeId = _activeIntakeState.Current?.Id;
             SelectedIntake = activeIntakeId is int aid
                 ? IntakeOptions.FirstOrDefault(o => o.Id == aid) ?? IntakeOptions[0]
@@ -278,7 +266,6 @@ namespace GenDoc.ViewModels.Archive
                 || (await _archiveService.GetStatsAsync(new ArchiveFilter(null, null, null, null, null, 0, 1))).Count > 0;
         }
 
-        // Пошук по ПІБ і FileName - у пам'яті, культура uk-UA (SQLite NOCASE ≠ кирилиця).
         private void ApplySearch()
         {
             var query = SearchText?.Trim();
@@ -306,10 +293,6 @@ namespace GenDoc.ViewModels.Archive
             SelectedYear = YearOptions.FirstOrDefault();
             SearchText = null;
 
-            // «Мої» - теж фільтр, і найнепомітніший: він живе в шапці вкладок,
-            // окремо від панелі фільтрів, тож на порожньому списку користувач
-            // тиснув «Скинути фільтри» й далі бачив порожньо (аудит 2026-08-28).
-            // Скидаємо під тим самим прапорцем, а стан зберігаємо в профіль.
             if (MineOnly)
             {
                 _suppressMineOnlyReload = true;
@@ -321,8 +304,6 @@ namespace GenDoc.ViewModels.Archive
             _suppressFilterReload = false;
             _ = ResetAndReloadAsync();
         }
-
-        // ── Вибір чекбоксами ─────────────────────────────────────────────
 
         private void OnRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
@@ -382,7 +363,6 @@ namespace GenDoc.ViewModels.Archive
             RefreshCheckedState();
         }
 
-        // Клік по рядку: одиночний вибір; Ctrl+клік - додає.
         public void HandleRowClick(ArchiveRowViewModel row, bool ctrl)
         {
             _suppressHeaderCheck = true;
@@ -400,8 +380,6 @@ namespace GenDoc.ViewModels.Archive
             RefreshCheckedState();
         }
 
-        // ── Правила доступності кнопок ───────────────────────────────────
-
         public bool CanOpen => CheckedCount == 1 && CheckedRows.All(r => r.HasContent);
         public bool CanSaveAs => CheckedCount >= 1 && CheckedRows.All(r => r.HasContent);
         public bool CanRegenerate => CheckedCount >= 1
@@ -411,8 +389,6 @@ namespace GenDoc.ViewModels.Archive
         public bool CanHistory => CheckedCount == 1;
         public bool CanDelete => CheckedCount >= 1;
 
-        // 2.5: друк і «Показати в теці». Шлях на диску відомий лише для документів,
-        // що лежать у типовій теці генерації (відносне ім'я файлу + DefaultOutputFolder).
         public bool CanPrint => CheckedCount >= 1 && CheckedRows.All(r => r.HasContent);
 
         [ObservableProperty]
@@ -471,8 +447,6 @@ namespace GenDoc.ViewModels.Archive
         public string? RegenerateTooltip => CheckedCount == 0
             ? "Оберіть документи"
             : CanRegenerate ? null : "Перегенерація можлива лише для згенерованих документів з живим шаблоном";
-
-        // ── Дії ─────────────────────────────────────────────────────────
 
         [RelayCommand]
         private async Task OpenAsync()
@@ -587,14 +561,11 @@ namespace GenDoc.ViewModels.Archive
                 "Перегенерація", MessageBoxButton.OKCancel, MessageBoxImage.Question);
             if (confirm != MessageBoxResult.OK) return;
 
-            // Ручні мітки: одна форма на весь батч.
             var manualTags = await _archiveService.GetManualTagsAsync(
                 rows.Select(r => r.TemplateId).Distinct().ToList());
             var manualValues = new Dictionary<string, string>();
             if (manualTags.Count > 0)
             {
-                // Та сама форма, що й у звичайній генерації: дати пікером, тексти
-                // підставлені з минулого разу, підписант зі списку.
                 var form = await _manualTagFormBuilder.BuildAsync(manualTags, ManualTagContextKey);
                 var dialog = new ManualValuesDialogViewModel(form);
                 if (_dialogService.ShowDialog(dialog, Application.Current.MainWindow) != true) return;
@@ -734,15 +705,11 @@ namespace GenDoc.ViewModels.Archive
             await ResetAndReloadAsync();
         }
 
-        // ── Таб «Запуски» ────────────────────────────────────────────────
-
-        // 2.6: порожній стан «Запусків» веде до дії.
         [RelayCommand]
         private void GoToGeneration()
             => WeakReferenceMessenger.Default.Send(
                 new Services.Navigation.NavigateToSectionMessage(Shell.MainViewModel.GenerationSectionTitle, null));
 
-        // 2.4: «Показати в архіві» з картки підсумку - вкладка «Запуски», потрібний запуск розгорнуто.
         public async Task ApplyNavigationPayloadAsync(object payload)
         {
             if (payload is not Services.Navigation.ArchiveRunNavigationPayload nav) return;
@@ -751,7 +718,6 @@ namespace GenDoc.ViewModels.Archive
             var run = Runs.FirstOrDefault(r => r.Id == nav.RunId);
             if (run is null)
             {
-                // Запуск не проходить фільтр набору - показати всі й пошукати знову.
                 SelectedIntake = IntakeOptions.FirstOrDefault(o => o.Id is null);
                 await ReloadRunsAsync();
                 run = Runs.FirstOrDefault(r => r.Id == nav.RunId);
@@ -780,7 +746,6 @@ namespace GenDoc.ViewModels.Archive
                 return;
             }
 
-            // Акордеон: розгорнутий лише один запуск; елементи вантажаться ліниво.
             foreach (var other in Runs.Where(r => r.IsExpanded))
                 other.IsExpanded = false;
 
@@ -829,13 +794,8 @@ namespace GenDoc.ViewModels.Archive
                     MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
-        // ── Таб «Групові» ────────────────────────────────────────────────
-
         public ObservableCollection<GroupDocumentRowViewModel> GroupRows { get; } = new();
 
-        // FilterOption несе один Id - для групового фільтра цього не досить, бо
-        // XLSX- і DOCX-шаблони нумеруються незалежно й можуть збігтись числом.
-        // Тому тут тримаємо GroupTemplateOption напряму, а не підганяємо спільний FilterOption.
         public ObservableCollection<GroupTemplateOption> GroupTemplateOptions { get; } = new();
 
         [ObservableProperty]
@@ -904,12 +864,6 @@ namespace GenDoc.ViewModels.Archive
 
         private void OnGroupRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            // Дужки обов'язкові: без них другий рядок стояв ПОЗА умовою й ходив у
-            // файлову систему на кожну зміну будь-якої властивості будь-якого
-            // рядка - зокрема під час масового зняття позначок, коли лічильник
-            // ще не оновлено. Паралельні виклики лишали CheckedGroupDiskPath від
-            // попереднього вибору, і «Показати в теці» відкривало чужий файл
-            // (аудит 2026-08-28).
             if (e.PropertyName == nameof(GroupDocumentRowViewModel.IsChecked) && !_suppressGroupHeaderCheck)
             {
                 GroupCheckedCount = GroupRows.Count(r => r.IsChecked);
@@ -950,7 +904,6 @@ namespace GenDoc.ViewModels.Archive
         public bool CanHistoryGroup => GroupCheckedCount == 1;
         public bool CanDeleteGroup => GroupCheckedCount >= 1;
 
-        // 2.5 для групових відомостей - той самий набір дій, що й для документів.
         public bool CanPrintGroup => GroupCheckedCount >= 1 && CheckedGroupRows.All(r => r.HasContent);
 
         [ObservableProperty]
@@ -994,7 +947,6 @@ namespace GenDoc.ViewModels.Archive
 
         public bool CanShowGroupParticipants => GroupCheckedCount == 1;
 
-        // «Учасники» (v25): склад цієї версії групового документа.
         [RelayCommand]
         private async Task ShowGroupParticipantsAsync()
         {
@@ -1063,9 +1015,6 @@ namespace GenDoc.ViewModels.Archive
             IsBusy = true;
             try
             {
-                // Дзеркалить SaveManyAsync (особисті документи, вище): рахуємо успіхи й
-                // помилки окремо, замість безумовного «Збережено N», яке для рядка без
-                // вмісту брехало б про успіх.
                 var saved = 0;
                 var errors = new List<string>();
                 foreach (var row in rows)

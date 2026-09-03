@@ -49,18 +49,12 @@ namespace GenDoc.Services.Generation
             var signer = hasSigner ? await BuildSignerAsync(contextKey) : null;
             var courseOfficer = needsCourseOfficer ? await BuildCourseOfficerAsync(contextKey) : null;
 
-            // Ключі підписанта - рівно ті рядки, що прийшли в переліку тегів
-            // (з дужками, як у PlaceholderTag), а не голі константи: інакше
-            // обране значення не знайшлося б під час підстановки.
             return new ManualTagFormViewModel(
                 rows, signer, courseOfficer,
                 tags.FirstOrDefault(ManualTagClassifier.IsSignerRank),
                 tags.FirstOrDefault(ManualTagClassifier.IsSignerName));
         }
 
-        // Хтось має бути обраний завжди. Порожній дропліст поруч із запасним
-        // авто-вибором у генерації означав би, що підписанта знову визначає
-        // порядок рядків у базі; краще показати перше прізвище й дати змінити.
         private async Task<SignerPickerViewModel> BuildCourseOfficerAsync(string contextKey)
         {
             var officers = await _staffService.GetCourseOfficersForPickerAsync();
@@ -76,9 +70,6 @@ namespace GenDoc.Services.Generation
             return new SignerPickerViewModel(options, initial ?? options.FirstOrDefault());
         }
 
-        // Окремий ключ пам'яті: курсовий офіцер і підписант документа - різні
-        // ролі, і запам'ятовувати їх під одним ключем означало б, що вибір однієї
-        // ролі мовчки перебиває іншу.
         private static string CourseOfficerContextKey(string contextKey) => $"{contextKey}#курсовий";
 
         private async Task<SignerPickerViewModel> BuildSignerAsync(string contextKey)
@@ -108,9 +99,6 @@ namespace GenDoc.Services.Generation
                 if (lastId is int id) initial = options.FirstOrDefault(o => o.RecipientId == id);
             }
 
-            // Порожній вибір не давав тегам жодного значення, і документ виходив
-            // із порожнім місцем підпису - та сама тиха вада, проти якої заводився
-            // дропліст курсового офіцера. Перше прізвище видно й можна змінити.
             return new SignerPickerViewModel(options, initial ?? options.FirstOrDefault());
         }
 
@@ -150,11 +138,6 @@ namespace GenDoc.Services.Generation
             });
         }
 
-        // Профільні значення накладаються на глобальні ПО КЛЮЧАХ, а не замість
-        // усього блоба. Інакше перший же збережений тег назавжди затіняв усе,
-        // що оператор накопичив до переходу на v26: решта полів поверталась
-        // порожньою (аудит 2026-08-28). Глобальні AppSettings лишаються
-        // замороженим fallback-ом і більше не оновлюються.
         private static Dictionary<string, T> Merge<T>(string? globalJson, string? userJson)
         {
             var merged = Parse<T>(globalJson);

@@ -2,10 +2,6 @@ using GenDoc.Services.Documents;
 
 namespace GenDoc.Tests;
 
-// Критично для анти-дубля групових документів (DOCX і XLSX): якщо змінюється
-// підмножина одержувачів, RosterHash має змінюватись теж - інакше згенерований
-// для 3 обраних людей звіт "задедуплікується" проти попереднього прогону на
-// весь склад і просто не створиться.
 public class DocumentHashServiceTests
 {
     [Fact]

@@ -33,8 +33,6 @@ namespace GenDoc.Services.Templates
                 .Select(i => (int?)i.Id)
                 .FirstOrDefault();
 
-            // Людина активного набору - найтиповіший адресат документа. Якщо набору
-            // нема, показуємо постійний склад, щоб прев'ю не лишалось порожнім.
             var query = activeIntakeId is int intakeId
                 ? db.Recipients.Where(r => r.IntakeId == intakeId)
                 : db.Recipients.Where(r => r.IntakeId == null);
@@ -72,8 +70,6 @@ namespace GenDoc.Services.Templates
         {
             using var db = _dbFactory.CreateDbContext();
 
-            // Explicit Include: lazy loading вимкнено, тож без цього {{підрозділ}},
-            // {{кімната}} і теги зброї мовчки віддали б порожнє.
             var recipient = db.Recipients
                 .Include(r => r.Unit)
                 .Include(r => r.Room)
@@ -98,8 +94,6 @@ namespace GenDoc.Services.Templates
                 })
                 .ToList();
 
-            // Той самий підставник, що й на генерації - прев'ю не має власного
-            // тлумачення полів, інакше воно розійшлося б із документом.
             return GenerationService.BuildValues(
                 mappings, recipient, organization, new Dictionary<string, string>());
         }
@@ -141,9 +135,6 @@ namespace GenDoc.Services.Templates
 
             if (isNew) db.Templates.Add(template);
 
-            // Kind визначає сканер, а не конструктор: таблиця з повторюваним рядком
-            // дає маркери {{#…}}, а отже це груповий документ на весь список - так
-            // само, як для шаблону, завантаженого файлом.
             template.Kind = SyncMappings(template, content);
 
             db.SaveChanges();
@@ -202,8 +193,6 @@ namespace GenDoc.Services.Templates
             template.Content = built.Content;
             template.UploadedAt = DateTime.Now;
             template.IsBuiltIn = false;
-            // Відомість конструктора - завжди книга за тегами: рядок під шапкою
-            // таблиці клонується по одному на людину.
             template.UsesPlaceholders = true;
             template.TemplateRowIndex = built.TemplateRowIndex;
             template.RepeatSheetPerDate = document.RepeatSheetPerDate;
@@ -249,9 +238,6 @@ namespace GenDoc.Services.Templates
             return new BuilderTemplateSource(template.Id, template.Name, document);
         }
 
-        /// <summary>Мітки описує той самий сканер, що й при завантаженні книги файлом
-        /// (ExportTemplateService.BuildPlaceholderMappings) - інакше зібрана відомість
-        /// і така сама завантажена поводились би на генерації по-різному.</summary>
         private static void SyncExportMappings(
             ExportTemplate template, byte[] content, int templateRowIndex, int templateSheetIndex)
         {
@@ -260,15 +246,6 @@ namespace GenDoc.Services.Templates
 
             var scanned = new ExportTemplate();
 
-            // Скануються ВСІ аркуші, а не лише перший: відомість конструктора
-            // буває на кілька аркушів, і теги з другого не діставали мапінгу -
-            // тобто лишалися сирими {{тегами}} у готовій книзі.
-            //
-            // Рядок-шаблон у книзі один на всі аркуші (так влаштований
-            // XlsxGenerationService), тож номер рядка передається ЛИШЕ його
-            // аркушеві. Решті йде 0: рядків з таким номером не буває, і їхні
-            // теги правильно лягають як теги рівня документа, а не як
-            // пер-людинні колонки, що клонувалися б разом із рядком.
             var sheets = workbook.Worksheets.ToList();
             for (var i = 0; i < sheets.Count; i++)
             {
@@ -282,16 +259,12 @@ namespace GenDoc.Services.Templates
             var existing = template.ColumnMappings.ToList();
             template.ColumnMappings.Clear();
 
-            // Один тег на кількох аркушах дав би стільки ж однакових мапінгів -
-            // на екрані «Мітки» це дублі, які оператор не може розрізнити.
             var seen = new HashSet<(string Tag, int Column)>();
 
             foreach (var mapping in scanned.ColumnMappings)
             {
                 if (!seen.Add((mapping.PlaceholderTag, mapping.ColumnIndex))) continue;
 
-                // Ручні правки джерела для тега, що лишився на тому самому місці,
-                // переживають перезбереження - як і в Word-гілці.
                 var previous = existing.FirstOrDefault(e =>
                     e.PlaceholderTag == mapping.PlaceholderTag && e.ColumnIndex == mapping.ColumnIndex);
 
@@ -299,10 +272,6 @@ namespace GenDoc.Services.Templates
             }
         }
 
-        /// <summary>Мітки беруться з уже зібраних байтів, а не з моделі блоків: так
-        /// мапінг за побудовою описує саме те, що лежить у шаблоні. Налаштування
-        /// джерела для тегів, які лишились, зберігаються - інакше кожне збереження
-        /// скидало б ручні правки оператора.</summary>
         private static TemplateKind SyncMappings(Template template, byte[] content)
         {
             using var stream = new MemoryStream(content);
@@ -350,8 +319,6 @@ namespace GenDoc.Services.Templates
 
             using var db = _dbFactory.CreateDbContext();
 
-            // Звання і ПІБ читаються на момент збирання документа, а не зберігаються
-            // в блоці: підвищили людину - наступний .docx підхопить нове звання сам.
             return db.Recipients
                 .Where(r => ids.Contains(r.Id))
                 .Select(r => new { r.Id, r.Rank, r.LastName, r.FirstName, r.MiddleName })

@@ -6,7 +6,6 @@
         Background="{StaticResource PanelBrush}"
         WindowStartupLocation="CenterOwner" ResizeMode="CanResize" MinWidth="480" MinHeight="420">
     <DockPanel Margin="20">
-        <!-- Крок 1: вибір шаблонів -->
         <StackPanel DockPanel.Dock="Top" Visibility="{Binding IsChoosing, Converter={StaticResource BoolToVisibility}}">
             <TextBlock Text="{Binding RecipientsSummary, StringFormat='Для: {0}'}" FontSize="13" FontWeight="SemiBold"
                        Foreground="{StaticResource TextPrimaryBrush}"/>
@@ -46,7 +45,6 @@
                 </ItemsControl>
             </ScrollViewer>
 
-            <!-- Крок 2: підсумок (2.4) -->
             <StackPanel Visibility="{Binding HasResult, Converter={StaticResource BoolToVisibility}}">
                 <StackPanel DataContext="{Binding Result}">
                     <TextBlock Text="{Binding SummaryText}" FontSize="14" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>

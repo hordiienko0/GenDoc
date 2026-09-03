@@ -37,10 +37,6 @@ namespace GenDoc.ViewModels.Personnel
         [NotifyCanExecuteChangedFor(nameof(CreateCommand))]
         private DateTime? dateEnd = DateTime.Today.AddMonths(1);
 
-        // Структура фіксована - «Всі» і під нею по папці на кожну категорію
-        // придатності, - тому текст не рахується з чекбоксів. Перелік беремо з
-        // IntakeFitnessFolders, щоб підпис не розійшовся з тим, що справді
-        // створює IntakeService.
         public string SummaryText =>
             $"Буде створено {Services.Intakes.IntakeFitnessFolders.AllFolderNames.Count + 1} папки: "
             + $"Всі → {string.Join(", ", Services.Intakes.IntakeFitnessFolders.AllFolderNames)}";
@@ -56,7 +52,6 @@ namespace GenDoc.ViewModels.Personnel
             var template = await _intakeService.GetNumberTemplateAsync();
             DisplayNumber = template.Replace("{n}", number.ToString());
 
-            // Основою набору може бути лише папка поза іншими наборами.
             foreach (var node in Flatten(_tree.RootNodes).Where(n => n.IntakeId is null))
                 BaseNodes.Add(new BaseNodeOption(node.Id, $"{new string(' ', node.Depth * 3)}{node.Name}"));
             SelectedBaseNode = BaseNodes.FirstOrDefault();

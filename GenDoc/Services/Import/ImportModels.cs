@@ -15,7 +15,6 @@ public enum ImportTargetField
     Building,
     RoomNumber,
 
-    // Анкетні дані (прикомандировані)
     Nationality,
     Vos,
     CourseArrivalDate,
@@ -114,35 +113,20 @@ public class ImportRowPreview
     public ImportRowStatus Status { get; set; }
     public string Note { get; set; } = string.Empty;
 
-    /// <summary>Картка, з якою зіткнувся рядок, якщо вона вже є в базі.
-    /// Заповнена рівно для дублів, які МОЖНА перенести: «дублюється у файлі»
-    /// такої картки не має, тож там колонка «ДІЯ» лишається порожньою.
-    /// Розрізняти дублі за текстом примітки не можна - тексти змінюються.</summary>
     public int? ExistingRecipientId { get; set; }
 
-    /// <summary>Оператор позначив рядок до перенесення (колонка «ДІЯ»).
-    /// Має сенс лише разом із ExistingRecipientId.</summary>
     public bool Move { get; set; }
 }
 
-/// <summary>Звідки береться набір, у який лягають імпортовані люди.</summary>
 public enum ImportTargetKind
 {
-    /// <summary>Набір виводиться з колонки «Підрозділ» у файлі - так імпорт
-    /// поводився до появи майстра, і так він поводиться, якщо ціль не задана.</summary>
     FromFile,
 
-    /// <summary>Оператор обрав конкретний набір і гілку в ньому (крок «Набір і
-    /// гілка»). Колонка «Підрозділ» тоді описує лише підрозділ людини, а не те,
-    /// куди її класти.</summary>
     Intake,
 
-    /// <summary>Постійний склад - поза наборами.</summary>
     PermanentStaff
 }
 
-/// <summary>Куди імпортувати. OrgNodeId - гілка всередині набору; null означає
-/// корінь набору.</summary>
 public record ImportTarget(
     ImportTargetKind Kind = ImportTargetKind.FromFile,
     int? IntakeId = null,
@@ -157,21 +141,12 @@ public class ImportParseResult
     public List<ImportColumn> Columns { get; set; } = new();
     public List<string?[]> RawRows { get; set; } = new();
 
-    /// <summary>Номер рядка в аркуші для кожного елемента <see cref="RawRows"/>.
-    /// Порядковий номер для цього не годиться: RowsUsed() пропускає порожні
-    /// рядки, тож «Рядок N» у звіті переставав збігатися з файлом. Порожній
-    /// список означає «номерів немає» - тоді діє старий розрахунок.</summary>
     public List<int> RawRowNumbers { get; set; } = new();
 
     public int TotalRows { get; set; }
 }
 
-/// <summary>Moved - люди, чиї картки вже були в базі й яких оператор позначив
-/// до перенесення. Це не Imported (нових рядків не з'явилось) і не Skipped
-/// (рядок таки щось змінив), тож окремий лічильник.</summary>
 public record ImportSummary(int Imported, int Skipped, int Errors, int Moved = 0)
 {
-    // Причини збоїв, а не лише їх кількість: анонімна "31 помилка" колись приховала
-    // цілком конкретне 'no such column: w.RawText'.
     public List<string> ErrorMessages { get; init; } = new();
 }

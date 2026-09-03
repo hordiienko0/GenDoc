@@ -6,9 +6,6 @@ using GenDoc.Services.Templates;
 
 namespace GenDoc.Tests.Templates;
 
-/// <summary>Оформлення блока в обох writer'ах. Головне тут - не те, що заданий
-/// шрифт доїжджає до файлу, а те, що НЕзаданий не доїжджає: у базі лежать
-/// шаблони, зібрані до появи форматування, і вони мусять збиратися так само.</summary>
 public class TemplateBlockStyleWriterTests
 {
     private static RunProperties? FirstRunProperties(byte[] docx)
@@ -50,15 +47,12 @@ public class TemplateBlockStyleWriterTests
         var properties = FirstRunProperties(docx);
 
         Assert.Equal("Arial", properties!.RunFonts!.Ascii!.Value);
-        // Word міряє кегль у пів-пунктах: 14 пт → "28".
         Assert.Equal("28", properties.FontSize!.Val!.Value);
         Assert.NotNull(properties.Bold);
         Assert.NotNull(properties.Italic);
         Assert.Equal("C00000", properties.Color!.Val!.Value);
     }
 
-    // Регресія на сумісність: шаблон, збережений до появи форматування, не має
-    // раптом отримати явні шрифти - інакше всі наявні документи перемалюються.
     [Fact]
     public void Docx_writes_nothing_extra_when_no_style_is_set()
     {
@@ -84,13 +78,9 @@ public class TemplateBlockStyleWriterTests
         var docx = TemplateBlockDocxWriter.Write(One(new TemplateBlock(
             TemplateBlockKind.Paragraph, "Текст", Style: new BlockStyle(Alignment: alignment))));
 
-        // InnerText, а не Val.Value.ToString(): EnumValue<T> віддає з ToString()
-        // назву типу, а не серіалізоване значення.
         Assert.Equal(expected, FirstJustification(docx)!.Val!.InnerText);
     }
 
-    // Заголовок жирний за замовчуванням - саме тому важливо, що явний false
-    // доїжджає до файлу, а не тоне в типовому значенні.
     [Fact]
     public void Docx_lets_the_operator_unbold_a_title()
     {
@@ -123,8 +113,6 @@ public class TemplateBlockStyleWriterTests
         Assert.Equal(XLColor.FromHtml("#1F4E79"), cell.Style.Font.FontColor);
     }
 
-    // У книзі «нічого не задано» не може означати «нічого не писати»: Excel тоді
-    // виведе Calibri. Типове має лишитися тим самим, що й було, - Times New Roman 11.
     [Fact]
     public void Xlsx_keeps_its_own_default_font_when_none_is_set()
     {
@@ -155,14 +143,11 @@ public class TemplateBlockStyleWriterTests
         Assert.Equal(XLAlignmentHorizontalValues.Center, header.Style.Alignment.Horizontal);
         Assert.Equal("Arial", header.Style.Font.FontName);
 
-        // Рядок-шаблон - навпаки, слухається блока.
         var template = sheet.Cell(2, 1);
         Assert.False(template.Style.Font.Bold);
         Assert.Equal("Arial", template.Style.Font.FontName);
     }
 
-    // Смуга в книзі - об'єднані клітинки, «по ширині» в них виглядає зламано,
-    // тож Justify лягає ліворуч. Так writer поводився й до появи форматування.
     [Fact]
     public void Xlsx_maps_justify_to_left()
     {
@@ -175,7 +160,6 @@ public class TemplateBlockStyleWriterTests
         Assert.Equal(XLAlignmentHorizontalValues.Left, cell.Style.Alignment.Horizontal);
     }
 
-    // Прев'ю - дзеркало writer'ів, і дзеркалить воно саме розв'язаний стиль.
     [Fact]
     public void Preview_line_carries_the_same_resolved_style()
     {

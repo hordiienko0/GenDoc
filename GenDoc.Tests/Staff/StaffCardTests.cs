@@ -5,10 +5,6 @@ using GenDoc.ViewModels.Staff;
 
 namespace GenDoc.Tests.Staff;
 
-// Постійний склад не редагувався ВЗАГАЛІ: розділ мав лише «+ Додати», і той
-// відкривав анкету прикомандированого на три десятки полів, з яких офіцерові
-// підходили чотири. Профіль, заведений при вході, лишався з самим прізвищем -
-// дописати звання не було де (вимога користувача 2026-08-31).
 public class StaffCardTests
 {
     private static StaffCardViewModel NewCard(TestDb db)
@@ -39,8 +35,6 @@ public class StaffCardTests
         return ctx.Recipients.Single(r => r.Id == id);
     }
 
-    // ─── Створення ───────────────────────────────────────────────────────────
-
     [Fact]
     public void ANewCardOpensInEditModeAndIsClean()
     {
@@ -54,8 +48,6 @@ public class StaffCardTests
         Assert.False(card.IsDirty);
     }
 
-    // Розділ веде курсових офіцерів, тож ознака стоїть одразу: зняти її - один
-    // клік, а забути поставити легко.
     [Fact]
     public void ANewCardIsACourseOfficerByDefault()
     {
@@ -90,7 +82,6 @@ public class StaffCardTests
         Assert.Equal("підполковник", person.Rank);
         Assert.Equal("0670000000", person.Phone);
         Assert.True(person.IsCourseOfficer);
-        // Постійний склад - поза наборами.
         Assert.Null(person.IntakeId);
     }
 
@@ -124,8 +115,6 @@ public class StaffCardTests
         Assert.Empty(ctx.Recipients.ToList());
     }
 
-    // ─── Редагування наявної людини ──────────────────────────────────────────
-
     [Fact]
     public void LoadingFillsTheFieldsAndOpensInReadMode()
     {
@@ -144,8 +133,6 @@ public class StaffCardTests
         Assert.False(card.IsDirty);
     }
 
-    // Головний випадок з вимоги: профіль лишав саму лише назву, і дописати
-    // звання не було де.
     [Fact]
     public void ARankCanBeAddedToACardThatHadOnlyAName()
     {
@@ -203,8 +190,6 @@ public class StaffCardTests
         Assert.True(card.IsDirty);
     }
 
-    // Повернення значення руками - знову «чисто»: guard не має питати про
-    // зміни, яких уже немає.
     [Fact]
     public void TypingTheValueBackMakesTheCardCleanAgain()
     {
@@ -241,7 +226,6 @@ public class StaffCardTests
         Assert.False(NewCard(db).Load(4242));
     }
 
-    // Заголовок картки - те, що бачить курсовий над полями.
     [Fact]
     public void TheHeaderShowsTheNameAndTheRankWithPosition()
     {

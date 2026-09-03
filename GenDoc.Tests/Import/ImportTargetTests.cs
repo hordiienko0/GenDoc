@@ -2,9 +2,6 @@ using GenDoc.Services.Import;
 
 namespace GenDoc.Tests.Import;
 
-/// <summary>Куди лягає імпорт. Правило не косметичне: від нього залежить і те,
-/// у якому наборі рядок вважається дублем, і те, в який набір людина потрапить.
-/// До появи майстра ціль виводилася лише з колонки «Підрозділ» у файлі.</summary>
 public class ImportTargetTests
 {
     private static readonly Dictionary<string, int?> UnitMap = new(StringComparer.OrdinalIgnoreCase)
@@ -29,8 +26,6 @@ public class ImportTargetTests
             ImportTarget.FromFile, UnitMap, "Невідомий підрозділ"));
     }
 
-    // Головне правило кроку «Набір і гілка»: оператор сказав прямо, куди кладемо,
-    // тож підрозділ із файлу більше не вирішує.
     [Fact]
     public void Chosen_intake_overrides_the_one_derived_from_the_file()
     {

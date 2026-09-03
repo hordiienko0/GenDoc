@@ -1,7 +1,5 @@
 namespace GenDoc.Models
 {
-    // Пер-профільний стан (v26): мій набір, останній пакет, фільтр «Мої» в архіві,
-    // дати/підписант «з минулого разу». Глобальні AppSettings лишаються fallback-ом.
     public class UserSettings
     {
         public int Id { get; set; }

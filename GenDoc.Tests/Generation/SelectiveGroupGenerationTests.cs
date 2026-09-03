@@ -5,10 +5,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Generation;
 
-// Вибіркова генерація мусить уміти й ГРУПОВІ документи, а не лише персональні
-// та відомості. Без цього «Комплектність» могла попросити відсутню відомість,
-// але не відсутній груповий наказ - хоча обидва це один документ на весь склад
-// (вимога користувача 2026-09-01).
 public class SelectiveGroupGenerationTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), $"gendoc-selgroup-{Guid.NewGuid():N}");
@@ -36,7 +32,6 @@ public class SelectiveGroupGenerationTests : IDisposable
         var two = TemplateFixtures.Person(2, "ФРАНКО", "Іван");
         ctx.Recipients.AddRange(one, two);
 
-        // Груповий шаблон із повторюваним блоком - по рядку на людину.
         var group = new Template
         {
             Name = "Список групи",
@@ -77,14 +72,11 @@ public class SelectiveGroupGenerationTests : IDisposable
         Assert.Equal(1, result.DocxGroupGenerated);
 
         using var ctx = db.Factory.CreateDbContext();
-        // Один документ, а не по одному на людину.
         var doc = Assert.Single(ctx.GeneratedGroupDocuments.ToList());
         Assert.Equal(s.GroupTemplateId, doc.TemplateId);
-        // Персональних документів груповий шаблон не створює.
         Assert.Empty(ctx.GeneratedDocuments.ToList());
     }
 
-    // Саме цей запис і робить клітинку зеленою в матриці.
     [Fact]
     public void TheGroupDocumentRecordsWhoIsInIt()
     {
@@ -102,8 +94,6 @@ public class SelectiveGroupGenerationTests : IDisposable
         Assert.Equal(s.RecipientIds.OrderBy(x => x), doc.Recipients.Select(r => r.RecipientId).OrderBy(x => x));
     }
 
-    // Звужений склад дає документ саме на цих людей: так «Комплектність»
-    // передає тих, кого охоплює фільтр придатності відомості.
     [Fact]
     public void ANarrowedRosterGivesADocumentForExactlyThosePeople()
     {
@@ -122,7 +112,6 @@ public class SelectiveGroupGenerationTests : IDisposable
         Assert.Equal(onlyFirst, doc.Recipients.Select(r => r.RecipientId).ToList());
     }
 
-    // Персональні шаблони поруч не постраждали.
     [Fact]
     public void PersonalTemplatesStillGenerateOnePerPerson()
     {
@@ -141,7 +130,6 @@ public class SelectiveGroupGenerationTests : IDisposable
         Assert.Empty(ctx.GeneratedGroupDocuments.ToList());
     }
 
-    // Обидва види разом - один прогін, обидва результати.
     [Fact]
     public void APersonalAndAGroupTemplateInOneCallProduceBoth()
     {

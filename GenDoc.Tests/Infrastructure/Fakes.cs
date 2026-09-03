@@ -4,8 +4,6 @@ using GenDoc.Services.Documents;
 
 namespace GenDoc.Tests.Infrastructure;
 
-// Пише назви дій у список - тест може перевірити, що аудит-запис зроблено,
-// не тягнучи справжню таблицю AuditLog.
 public sealed class FakeAuditLog : IAuditLogService
 {
     public List<string> Entries { get; } = new();
@@ -56,7 +54,6 @@ public sealed class FakeCurrentUser : ICurrentUserContext
     }
 }
 
-// Нічого не пише на диск і нічого не запускає - лише запам'ятовує, що просили відкрити.
 public sealed class FakeTempFiles : ISecureTempFileService
 {
     public List<(string FileName, byte[] Content)> Opened { get; } = new();
@@ -77,17 +74,12 @@ public sealed class FakeTempFiles : ISecureTempFileService
     public Task CleanupAsync() => Task.CompletedTask;
 }
 
-// Заглушка активного заїзду для CompletenessService - тестам, що не перевіряють
-// саме прив'язку до заїзду, достатньо стабільного null.
 public sealed class FakeIntakeAccessor : GenDoc.Services.Completeness.IIntakeServiceAccessor
 {
     private readonly GenDoc.Models.Intake? _intake;
 
     public FakeIntakeAccessor() { }
 
-    // Бейдж навігації читає активний набір саме звідси, тож для тестів на нього
-    // фейк мусить уміти його віддати - інакше GetBadgeCountAsync виходить на
-    // першому ж рядку й тест нічого не доводить.
     public FakeIntakeAccessor(GenDoc.Models.Intake intake) => _intake = intake;
 
     public GenDoc.Models.Intake? ActiveIntake => _intake;

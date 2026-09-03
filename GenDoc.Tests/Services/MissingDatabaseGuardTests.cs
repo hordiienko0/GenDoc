@@ -3,19 +3,6 @@ using GenDoc.ViewModels.Login;
 
 namespace GenDoc.Tests.Services;
 
-/// <summary>
-/// У рядок з'єднання не заданий Mode, а типовий - ReadWriteCreate, і перевірки
-/// File.Exists не було ніде. Тож коли файла бази немає, Open() СТВОРЮЄ нову
-/// порожню базу на введеному паролі, «SELECT count(*) FROM sqlite_master»
-/// успішно повертає 0, і вхід виглядає вдалим.
-///
-/// Небезпечно це тим, що DbPaths.DatabasePath - це AppContext.BaseDirectory,
-/// тобто bin\Debug\net8.0-windows: одне «dotnet clean», інший ярлик або свіжий
-/// клон - і оператор входить своїм звичним паролем у порожню базу, не отримавши
-/// жодного попередження, що стару не знайдено (аудит 2026-08-28).
-///
-/// Перший запуск лишається можливим - він просто перестає бути мовчазним.
-/// </summary>
 public class MissingDatabaseGuardTests
 {
     private sealed class FakeUnlock : IDatabaseUnlockService
@@ -85,7 +72,6 @@ public class MissingDatabaseGuardTests
         Assert.Equal(LoginStage.ProfileSelect, vm.Stage);
     }
 
-    // Звичайний вхід у наявну базу нічого не питає.
     [Fact]
     public void ExistingDatabase_AsksNothing()
     {
@@ -101,8 +87,6 @@ public class MissingDatabaseGuardTests
         Assert.Equal(LoginStage.ProfileSelect, vm.Stage);
     }
 
-    // Повідомлення мусить називати ПОВНИЙ шлях: без нього оператор не зрозуміє,
-    // що застосунок дивиться не туди, куди він думає.
     [Fact]
     public void ConfirmationMessage_NamesTheFullPath()
     {

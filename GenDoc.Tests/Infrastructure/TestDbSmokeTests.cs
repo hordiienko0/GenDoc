@@ -26,7 +26,6 @@ public class TestDbSmokeTests
         Assert.Equal("ШЕВЧЕНКО", person.LastName);
     }
 
-    // Soft-delete query filter має працювати так само, як у продакшні.
     [Fact]
     public void TestDb_AppliesSoftDeleteQueryFilter()
     {
@@ -48,8 +47,6 @@ public class TestDbSmokeTests
         Assert.Single(read.Recipients.IgnoreQueryFilters().ToList());
     }
 
-    // TestServices мусить складати сервіси з правильним порядком аргументів
-    // конструктора - якщо сигнатура зміниться, це впаде на компіляції.
     [Fact]
     public void TestServices_BuildArchiveAndGenerationServices()
     {
@@ -59,8 +56,6 @@ public class TestDbSmokeTests
         Assert.NotNull(TestServices.Generation(db));
     }
 
-    // XlsxTemplateScan мусить відтворювати вибір рядка-шаблону так само,
-    // як ExportTemplateService при завантаженні - рядок даних Допуску є 7-м.
     [Fact]
     public void XlsxTemplateScan_ForGeneration_FindsDopuskTemplateRow()
     {

@@ -2,9 +2,6 @@ using GenDoc.Models.Enums;
 
 namespace GenDoc.Services.Documents
 {
-    /// <summary>FolderPath - обрана гілка дерева. Це префікс збереженого
-    /// відносного шляху, а не окреме поле: дерево й список читають ОДИН рядок,
-    /// тому розійтися не можуть.</summary>
     public record ArchiveFilter(
         int? IntakeId,
         int? TemplateId,
@@ -67,7 +64,6 @@ namespace GenDoc.Services.Documents
         int SkippedCount,
         int ErrorCount);
 
-    // Учасник групового документа (v25) - для діалогу «Учасники» в «Архів → Групові».
     public record GroupParticipantDto(int RecipientId, string Rank, string FullName, string UnitName);
 
     public record RunItemDto(string Person, string TemplateName, string Status, bool IsError, long SizeBytes, int? DocumentId, bool HasContent, string FileName);
@@ -78,9 +74,6 @@ namespace GenDoc.Services.Documents
 
     public record GroupArchiveFilter(int? ExportTemplateId, int? DocxTemplateId, int? Year, int Skip, int Take, int? UserId = null);
 
-    // Ідентифікатори шаблонів XLSX і DOCX живуть у різних таблицях з незалежною
-    // нумерацією, тож саме число нічого не каже про вид документа - вид має
-    // їхати разом з ним, інакше фільтр знайде чужу відомість.
     public record GroupTemplateOption(int? ExportTemplateId, int? DocxTemplateId, string Name);
 
     public record GroupDocumentRowDto(

@@ -5,16 +5,8 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Templates;
 
-// Пастка, через яку колонка мовчки лишалась порожньою: новий {{тег}} у шаблоні,
-// якого нема в PlaceholderTagMaps, класифікується як Manual - і ніде не видно,
-// що це помилка. Тест робить цю ситуацію гучною.
 public class TemplateScanRealFilesTests
 {
-    // Теги, які СПРАВДІ заповнює людина руками у двох рапортах. Список навмисно
-    // вузький: кожен зайвий запис - це тег, який у майбутньому мовчки пройде
-    // повз перевірку замість того, щоб завалити тест. Теги XLSX-відомостей
-    // (дата_аркуша, калібр, номери_вправ тощо) сюди не належать - вони
-    // перевіряються власним списком у тестах скану XLSX.
     private static readonly HashSet<string> ManualTagWhitelist = new(StringComparer.Ordinal)
     {
         "{{дата_прибуття}}", "{{дата_зарахування}}", "{{дата_рапорту}}",
@@ -37,11 +29,9 @@ public class TemplateScanRealFilesTests
 
         var tags = scan.Tags.ToDictionary(t => t.Tag, t => t.IsInsideBlock, StringComparer.Ordinal);
 
-        // Тіло блоку - рівно один абзац «{{звання}}{{піб}}{{роздільник}}».
         Assert.True(tags["{{звання}}"]);
         Assert.True(tags["{{піб}}"]);
 
-        // Ці стоять поза блоком і мають лишитись спільними для всього документа.
         Assert.False(tags["{{дата_прибуття}}"]);
         Assert.False(tags["{{дата_зарахування}}"]);
         Assert.False(tags["{{дата_рапорту}}"]);
@@ -49,8 +39,6 @@ public class TemplateScanRealFilesTests
         Assert.False(tags["{{піб_підписанта}}"]);
     }
 
-    // {{роздільник}} обчислює рушій блоків - у мапінг він потрапляти не має,
-    // інакше з'явиться зайвий рядок у формі ручних тегів.
     [Fact]
     public void GroupRaport_DoesNotMapReservedBlockEngineTags()
     {

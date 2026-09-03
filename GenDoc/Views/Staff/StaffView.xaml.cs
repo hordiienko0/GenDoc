@@ -19,9 +19,6 @@ public partial class StaffView : UserControl
             await vm.InitializeCommand.ExecuteAsync(null);
     }
 
-    // Клік по рядку відкриває картку; клік по чекбоксу - ні. Дзеркало
-    // PersonnelView.PeopleGrid_MouseLeftButtonUp: жест у двох списках людей
-    // мусить бути той самий.
     private void StaffGrid_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
         if (FindAncestor<CheckBox>(e.OriginalSource as DependencyObject) is not null) return;

@@ -7,10 +7,6 @@ using GenDoc.Services.Templates;
 
 namespace GenDoc.Tests;
 
-// Наскрізний прогін СПРАВЖНЬОГО файлу з теки «шаблони» через справжній генератор.
-// Саме цей шаблон видавав «ахінею»: заголовок «ВІДОМІСТЬ результатів контрольного
-// заняття…» повторювався на кожного слухача, а рядок даних лишався порожнім -
-// бо рядком-шаблоном обиралась шапка (два теги в одній клітинці заголовка).
 public class DopuskTemplateEndToEndTests
 {
     private static string TemplatePath =>
@@ -39,7 +35,6 @@ public class DopuskTemplateEndToEndTests
         Assert.True(File.Exists(TemplatePath), $"Немає файлу шаблону: {TemplatePath}");
         var content = File.ReadAllBytes(TemplatePath);
 
-        // Так само, як це робить ExportTemplateService при завантаженні шаблону.
         int templateRowIndex;
         var mappings = new List<ExportTemplateColumnMapping>();
         using (var probe = new XLWorkbook(new MemoryStream(content)))
@@ -67,7 +62,6 @@ public class DopuskTemplateEndToEndTests
             }
         }
 
-        // Рядок даних - сьомий, а не шапка (третій).
         Assert.Equal(7, templateRowIndex);
 
         var roster = new[]
@@ -88,15 +82,12 @@ public class DopuskTemplateEndToEndTests
         var sheet = produced.Worksheets.First();
         var cells = sheet.RangeUsed()!.CellsUsed().Select(c => c.GetString()).ToList();
 
-        // Заголовок рівно один раз - раніше він дублювався на кожного зі списку.
         var headerCount = cells.Count(t => t.Contains("результатів контрольного заняття"));
         Assert.Equal(1, headerCount);
 
-        // Кожна людина потрапила у свій рядок.
         foreach (var person in roster)
             Assert.Contains(cells, t => t.Contains(person.LastName));
 
-        // Звання підставились, а сирі теги не лишились у готовому файлі.
         Assert.Contains(cells, t => t.Contains("майор"));
         Assert.DoesNotContain(cells, t => t.Contains("{{піб}}") || t.Contains("{{звання}}") || t.Contains("{{№}}"));
     }

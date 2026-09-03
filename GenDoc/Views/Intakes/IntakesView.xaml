@@ -56,7 +56,6 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <!-- Шапка -->
         <Grid Grid.Row="0" Margin="0,0,0,22">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
@@ -79,7 +78,6 @@
             </StackPanel>
         </Grid>
 
-        <!-- Список карток наборів -->
         <Grid Grid.Row="1">
             <TextBlock Text="{Binding EmptyText}" Foreground="{StaticResource TextSecondaryBrush}"
                        HorizontalAlignment="Center" VerticalAlignment="Center" Padding="48"
@@ -101,7 +99,6 @@
 
                                     <StackPanel Grid.Column="1" Margin="16,14">
 
-                                        <!-- Рядок 1: статус, номер, код -->
                                         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
                                             <Border Style="{StaticResource StatusChipBorderStyle}">
                                                 <TextBlock Text="{Binding StatusText}" Style="{StaticResource StatusChipTextStyle}"/>
@@ -112,11 +109,9 @@
                                                        Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
                                         </StackPanel>
 
-                                        <!-- Рядок 2: період -->
                                         <TextBlock Text="{Binding PeriodText}" FontSize="12.5"
                                                    Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,10"/>
 
-                                        <!-- Рядок 3: особовий склад + комплектність -->
                                         <Grid Margin="0,0,0,12">
                                             <TextBlock Text="Завантаження…" FontSize="12.5"
                                                        Foreground="{StaticResource TextSecondaryBrush}"
@@ -163,7 +158,6 @@
                                             </StackPanel>
                                         </Grid>
 
-                                        <!-- Рядок 4: дії -->
                                         <WrapPanel>
                                             <Button Content="Відкрити матрицю" Style="{StaticResource CardActionButtonStyle}"
                                                     Command="{Binding DataContext.OpenMatrixCommand, ElementName=IntakesRoot}"

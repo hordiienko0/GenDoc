@@ -2,20 +2,6 @@ using System.Text.RegularExpressions;
 
 namespace GenDoc.Tests;
 
-/// <summary>
-/// WPF резолвить шлях прив'язки лише серед ІНСТАНС-властивостей: для
-/// static-властивості потрібен {x:Static Тип.Ім'я}, а звичайний {Binding Ім'я}
-/// мовчки не знаходить нічого.
-///
-/// Навіщо тест: помилка не падає й не пише нічого помітного - у поповері
-/// «Оформлення» конструктора шаблонів три випадні списки (Шрифт, Розмір, Колір)
-/// просто були порожні від першого ж коміта, бо FontOptions/FontSizeOptions/
-/// ColorOptions оголошені public static, а розмітка зверталась {Binding
-/// FontOptions}. Кнопки Ж/К поруч працювали (це команди), тож збоку виглядало,
-/// ніби поповер справний (аудит 2026-08-28).
-///
-/// Тест текстовий навмисно, як StaticResourceScopeTests і IconGlyphScopeTests.
-/// </summary>
 public class StaticBindingScopeTests
 {
     private static readonly Regex StaticProperty = new(
@@ -26,8 +12,6 @@ public class StaticBindingScopeTests
         @"public\s+(?!static\b)(?!class\b)[\w<>,\[\]\?\s\.]+?\s+(?<name>\w+)\s*(?:\{\s*get|=>)",
         RegexOptions.Compiled);
 
-    // Прив'язка за простим шляхом: {Binding Ім'я} або {Binding Path=Ім'я}.
-    // Складені шляхи (з крапками), RelativeSource і x:Static нас не цікавлять.
     private static readonly Regex SimpleBinding = new(
         @"\{Binding\s+(?:Path=)?(?<name>[A-Z]\w*)\s*(?:,[^}]*)?\}",
         RegexOptions.Compiled);
@@ -60,8 +44,6 @@ public class StaticBindingScopeTests
             foreach (Match m in InstanceProperty.Matches(text)) instance.Add(m.Groups["name"].Value);
         }
 
-        // Ім'я, що існує і як інстанс-властивість десь у в'ю-моделях, прив'язка
-        // цілком може мати на увазі саме її - такі не чіпаємо.
         staticOnly.ExceptWith(instance);
 
         var offenders = new SortedSet<string>(StringComparer.Ordinal);

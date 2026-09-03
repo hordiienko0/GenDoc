@@ -4,13 +4,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Import;
 
-// Колонка «ДІЯ / Перемістити» на кроці 4. Досі дубль означав лише «пропустити
-// рядок»: людина, яка вже є в базі, просто не імпортувалась - і перевести її з
-// одного набору в інший через імпорт було неможливо взагалі.
-//
-// Переносити можна не будь-який дубль. «Дублюється в файлі» - це два рядки
-// однієї вивантажки, там переносити нема кого й нема куди. Тому ознакою
-// служить ExistingRecipientId: він є рівно тоді, коли в базі знайшлась картка.
 public class ImportMoveDuplicateTests
 {
     private static ImportService Build(TestDb db) => new(db.Factory, new FakeAuditLog());
@@ -35,7 +28,6 @@ public class ImportMoveDuplicateTests
         return parsed;
     }
 
-    // Готує базу: набір №14 з однією людиною і порожній набір №15 як ціль.
     private static (int OldIntakeId, int NewIntakeId, int RecipientId) SeedExistingPerson(TestDb db)
     {
         using var ctx = db.Factory.CreateDbContext();
@@ -71,8 +63,6 @@ public class ImportMoveDuplicateTests
         Assert.Equal(recipientId, row.ExistingRecipientId);
     }
 
-    // Другий бік межі: два однакові рядки в одній вивантажці. Перший імпортується,
-    // другий - дубль, але переносити його нікуди, бо картки в базі ще немає.
     [Fact]
     public void Validate_DuplicateWithinTheFile_HasNothingToMove()
     {
@@ -88,9 +78,6 @@ public class ImportMoveDuplicateTests
         Assert.Null(previews[1].ExistingRecipientId);
     }
 
-    // Суть дії: людина переїжджає в цільовий набір, а поля з файлу оновлюють
-    // картку. Порожня комірка НЕ затирає наявне значення - скорочена вивантажка
-    // на три колонки інакше витерла б посаду, адресу й решту анкети.
     [Fact]
     public void Import_MarkedDuplicate_MovesThePersonAndUpdatesOnlyNonEmptyFields()
     {
@@ -104,8 +91,6 @@ public class ImportMoveDuplicateTests
             ctx.SaveChanges();
         }
 
-        // Колонки «Посада» у файлі немає взагалі - саме той випадок, коли
-        // затирання було б найпомітнішим.
         var summary = Build(db).Import(
             FileWith(("Ковальчук Василь Богданович", "СН0001", "сержант")),
             new ImportTarget(ImportTargetKind.Intake, newIntakeId),
@@ -123,8 +108,6 @@ public class ImportMoveDuplicateTests
         Assert.Equal("курсант", moved.Position);
     }
 
-    // Без позначки поведінка лишається старою - дубль просто пропускається.
-    // Інакше «перенести» стало б замовчуванням і мовчки правило б чужі картки.
     [Fact]
     public void Import_UnmarkedDuplicate_StillJustSkips()
     {
@@ -145,8 +128,6 @@ public class ImportMoveDuplicateTests
         Assert.Equal("солдат", untouched.Rank);
     }
 
-    // Постійний склад - поза наборами, тож перенесення туди мусить занулити
-    // IntakeId, а не підставити якийсь набір із файлу.
     [Fact]
     public void Import_MoveToPermanentStaff_ClearsTheIntake()
     {

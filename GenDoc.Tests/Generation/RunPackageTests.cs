@@ -7,10 +7,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.Tests.Generation;
 
-// RunPackage - оркестратор, що досі не мав жодного тесту. Тут покриваємо лише
-// фазу персональних DOCX (по одному файлу на людину): завантаження ростера з
-// фільтрами (усі комбінуються через AND), правило пропуску і формування імені
-// файлу. Звітна (xlsx/груповий docx) поведінка - Task 11.
 public class RunPackageTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), $"gendoc-run-{Guid.NewGuid():N}");
@@ -22,16 +18,10 @@ public class RunPackageTests : IDisposable
 
     private static readonly IProgress<string> NoProgress = new Progress<string>(_ => { });
 
-    // Пакет з одним персональним DOCX-шаблоном (справжній «індивідуальний рапорт»)
-    // і заданим складом людей.
     private static (int PackageId, List<int> RecipientIds) SeedPackage(TestDb db, List<Recipient> people)
     {
         using var ctx = db.Factory.CreateDbContext();
 
-        // GeneratedDocument.GeneratedByUserId - обов'язковий FK на UserProfile.
-        // Заводимо користувача без явного Id, щоб SQLite сам призначив 1
-        // (перевірений підхід з DocumentVersionChainTests - явний Id=1 при
-        // автоінкременті поводиться інакше).
         ctx.Users.Add(new UserProfile { FullName = "Тест Тестович", PasswordHash = "x", CreatedAt = DateTime.Now });
         ctx.OrganizationSettings.Add(new OrganizationSettings
         {
@@ -53,9 +43,6 @@ public class RunPackageTests : IDisposable
         ctx.Recipients.AddRange(people);
         ctx.SaveChanges();
 
-        // Мапінги: беремо реальні теги шаблону, класифікуючи їх як у продакшні.
-        // Шаблон містить 12 тегів - тут навмисно мапимо лише 7; решта 5 (ручні
-        // поля) підуть у UnfilledTags, на що ці тести не зважають.
         foreach (var tag in new[]
                  {
                      "{{звання_зв}}", "{{піб_зв}}", "{{прибув}}", "{{таким}}",
@@ -99,7 +86,6 @@ public class RunPackageTests : IDisposable
         Assert.Equal(3, Directory.GetFiles(_folder, "*.docx", SearchOption.AllDirectories).Length);
     }
 
-    // Ім'я файлу: «ПРІЗВИЩЕ Ім'я Назва шаблону.docx», без технічного префікса «Шаблон_».
     [Fact]
     public void RunPackage_FileNameDropsTemplatePrefixAndUnderscores()
     {
@@ -111,19 +97,13 @@ public class RunPackageTests : IDisposable
 
         Run(db, packageId);
 
-        // Назва шаблону тепер у ПАПЦІ, а не в імені файлу - розкладка по папках
-        // (DocumentFolderLayout). Намір тесту той самий: технічний префікс
-        // «Шаблон_» і підкреслення до назви не доходять.
         var file = Directory.GetFiles(_folder, "*.docx", SearchOption.AllDirectories).Single();
-        // Через рівень вище: безпосередня тека файлу - це позначка прогону.
         var templateFolder = Path.GetFileName(Path.GetDirectoryName(Path.GetDirectoryName(file)));
 
         Assert.Equal("Рапорт котлове ІНДИВІДУАЛЬНИЙ", templateFolder);
         Assert.StartsWith("ШЕВЧЕНКО Тарас", Path.GetFileName(file));
     }
 
-    // Наскрізна перевірка розкладки: до цієї зміни всі документи лягали в корінь
-    // обраної теки пласким списком.
     [Fact]
     public void RunPackage_PutsDocumentsIntoIntakeAndTemplateFolders()
     {
@@ -139,9 +119,6 @@ public class RunPackageTests : IDisposable
         var relative = Path.GetRelativePath(_folder, file);
         var parts = relative.Split(Path.DirectorySeparatorChar);
 
-        // Чотири рівні: набір (для людини поза набором - «Постійний склад»),
-        // тип документа, позначка прогону, файл на особу. Рівень прогону тут
-        // ключовий - без нього повторна генерація затирала б попередню.
         Assert.Equal(4, parts.Length);
         Assert.Equal("Рапорт котлове ІНДИВІДУАЛЬНИЙ", parts[1]);
         Assert.StartsWith(DateTime.Now.ToString("yyyy-MM-dd"), parts[2]);
@@ -164,7 +141,6 @@ public class RunPackageTests : IDisposable
         Assert.Equal(2, Directory.GetFiles(_folder, "*.docx", SearchOption.AllDirectories).Length);
     }
 
-    // Другий прогін без regenerateExisting нічого не робить, бо файли на місці.
     [Fact]
     public void RunPackage_SecondRun_SkipsWhenFilesStillPresent()
     {
@@ -178,9 +154,6 @@ public class RunPackageTests : IDisposable
         Assert.Equal(2, second.Skipped);
     }
 
-    // А якщо файли з теки прибрали - має сформувати наново, інакше тека лишиться порожньою.
-    // Це і є та причина, чому пропуск зважає на наявність запису в архіві ТА файлу
-    // в теці одночасно, а не лише на запис.
     [Fact]
     public void RunPackage_SecondRun_RegeneratesWhenFilesWereRemovedFromFolder()
     {
@@ -254,7 +227,6 @@ public class RunPackageTests : IDisposable
         Assert.Equal(2, result.Generated);
     }
 
-    // PermanentStaffOnly = лише люди без набору (IntakeId == null).
     [Fact]
     public void RunPackage_PermanentStaffOnly_ExcludesIntakeMembers()
     {
@@ -297,8 +269,6 @@ public class RunPackageTests : IDisposable
         Assert.Equal(packageId, run.GenerationPackageId);
     }
 
-    // Вада 1.1: запис прогону не мав IntakeId, і вкладка «Запуски», що фільтрує за
-    // набором, завжди була порожня.
     [Fact]
     public void RunPackage_RecordsIntakeOfRoster()
     {
@@ -326,7 +296,7 @@ public class RunPackageTests : IDisposable
     public void RunPackage_PermanentStaffOnly_RecordsNullIntake()
     {
         using var db = new TestDb();
-        var (packageId, _) = SeedPackage(db, TemplateFixtures.Roster(2)); // без IntakeId = постійний склад
+        var (packageId, _) = SeedPackage(db, TemplateFixtures.Roster(2));
 
         Run(db, packageId, selection: RosterSelection.Everyone with { PermanentStaffOnly = true });
 

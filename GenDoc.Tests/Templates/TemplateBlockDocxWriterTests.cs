@@ -31,8 +31,6 @@ public class TemplateBlockDocxWriterTests
         Assert.Equal(new[] { "АКТ" }, paragraphs);
     }
 
-    // Головне про конструктор: він віддає звичайний шаблон із {{тегами}}, який далі
-    // читає наявний конвеєр генерації. Теги мають дожити до файлу недоторканими.
     [Fact]
     public void Keeps_placeholder_tags_intact()
     {
@@ -95,8 +93,6 @@ public class TemplateBlockDocxWriterTests
             Assert.Single(ParagraphsOf(TemplateBlockDocxWriter.Write(doc, signatories))));
     }
 
-    // Підписанта могли не обрати або він міг зникнути з постійного складу - рядок
-    // мусить лишитися під ручний підпис, а не пропасти з документа.
     [Fact]
     public void Signature_without_a_known_person_still_leaves_a_line()
     {
@@ -138,9 +134,6 @@ public class TemplateBlockDocxWriterTests
         }, repeatPerPerson))
     });
 
-    // Повторюваний рядок - це маркерні рядки {{#особи}}/{{/особи}} навколо рядка
-    // з тегами. Саме такий синтаксис розгортає наявний рушій, тож конструктор
-    // не заводить власного способу повторення.
     [Fact]
     public void Repeating_table_wraps_the_data_row_in_block_markers()
     {
@@ -152,8 +145,6 @@ public class TemplateBlockDocxWriterTests
         Assert.Equal(new[] { "{{номер}}", "{{піб}}" }, rows[2]);
         Assert.Equal("{{/особи}}", rows[3][0]);
 
-        // Маркер має займати ВЕСЬ рядок (BlockStructure зчіплює текст усіх комірок),
-        // тому решта комірок маркерного рядка - порожні.
         Assert.Equal(2, rows[1].Count);
         Assert.Equal(string.Empty, rows[1][1]);
     }
@@ -167,9 +158,6 @@ public class TemplateBlockDocxWriterTests
         Assert.DoesNotContain(rows.SelectMany(r => r), cell => cell.Contains("{{#") || cell.Contains("{{/"));
     }
 
-    // Найважливіше про таблицю: зібраний .docx має читатись наявним сканером так
-    // само, як завантажений файлом - інакше шаблон мовчки лишиться PerRecipient
-    // і на генерації дасть документ на одну людину замість списку.
     [Fact]
     public void Scanner_sees_a_repeating_block_and_marks_tags_inside_it()
     {
@@ -181,11 +169,8 @@ public class TemplateBlockDocxWriterTests
         Assert.True(scan.HasBlock);
         Assert.All(scan.Tags, t => Assert.True(t.IsInsideBlock));
 
-        // {{номер}} у мапінг не потрапляє навмисно: усередині повторюваного блоку
-        // це обчислюваний тег рушія (номер копії), а не поле з бази.
         Assert.Equal(new[] { "{{піб}}" }, scan.Tags.Select(t => t.Tag));
 
-        // Самі маркери - не поля, у мапінг вони потрапляти не мають.
         Assert.DoesNotContain(scan.Tags, t => t.Tag.Contains('#') || t.Tag.Contains('/'));
     }
 

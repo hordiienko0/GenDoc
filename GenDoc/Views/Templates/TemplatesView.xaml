@@ -5,8 +5,6 @@
              xmlns:local="clr-namespace:GenDoc.Views.Templates">
 
     <UserControl.Resources>
-        <!-- Rows of the Word-template list. Kept in resources because the SAME
-             row is drawn by TWO groups; a copy would drift from the original. -->
                             <DataTemplate x:Key="DocxTemplateRowTemplate">
                                 <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderLineBrush}">
                                     <StackPanel>
@@ -19,8 +17,6 @@
                                                 <ColumnDefinition Width="0.8*"/>
                                             </Grid.ColumnDefinitions>
 
-                                            <!-- Grid, а не StackPanel: інакше довга назва виштовхує плашку
-                                                 за межі колонки (та сама причина, що в рядку Excel-шаблону). -->
                                             <Grid Grid.Column="0" Margin="20,13" VerticalAlignment="Center">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
@@ -45,8 +41,6 @@
                                                        Foreground="{StaticResource TextSecondaryBrush}"/>
 
                                             <StackPanel Grid.Column="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="20,13">
-                                                <!-- Лише для зібраних конструктором: розібрати завантажений
-                                                     .docx назад у блоки неможливо. -->
                                                 <Button Content="&#xE8A5;" Style="{StaticResource RowIconButtonStyle}"
                                                         ToolTip="Відкрити в конструкторі"
                                                         Visibility="{Binding IsFromBuilder, Converter={StaticResource BoolToVisibility}}"
@@ -76,9 +70,6 @@
             <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
             <Setter Property="Margin" Value="0,0,0,10"/>
         </Style>
-        <!-- Рядок Excel-шаблону. Винесено в ресурси, бо той самий рядок тепер
-             малюють два списки: Excel із тегами йде до шаблонів документів,
-             Excel без тегів - до шаблонів експорту списків. -->
                             <DataTemplate DataType="{x:Type templatesVm:ExportTemplateListItemViewModel}">
                                 <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderLineBrush}">
                                     <StackPanel>
@@ -91,9 +82,6 @@
                                                 <ColumnDefinition Width="0.8*"/>
                                             </Grid.ColumnDefinitions>
 
-                                            <!-- Grid, а не StackPanel: у горизонтальному StackPanel назва
-                                                 отримує всю потрібну їй ширину і виштовхує бейдж за межі
-                                                 колонки, тож обрізало саме бейдж. Тепер стискається назва. -->
                                             <Grid Grid.Column="0" Margin="20,13" VerticalAlignment="Center">
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
@@ -141,7 +129,6 @@
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
-
 
         <DataTemplate x:Key="ExportMappingEditorTemplate">
                                         <StackPanel Margin="20,0,20,16">
@@ -263,10 +250,6 @@
                                                                 CommandParameter="{Binding}"/>
                                                     </Grid>
 
-                                                    <!-- Для кого шаблон. Зберігається одразу, без окремої кнопки:
-                                                         це один прапорець, а не текст, який ще треба доredагувати.
-                                                         Шаблон постійного складу зникає зі звичайної генерації й
-                                                         пакетів, і навпаки - тому підпис пояснює наслідок. -->
                                                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
                                                         <TextBlock Text="Для кого:" VerticalAlignment="Center"
                                                                    Foreground="{StaticResource TextSecondaryBrush}"
@@ -357,22 +340,14 @@
     </UserControl.Resources>
 
   <Grid>
-    <!-- Конструктор - повноекранний режим цього ж розділу, не окремий пункт меню. -->
     <local:TemplateBuilderView DataContext="{Binding Builder}"
                                Visibility="{Binding DataContext.IsBuilderOpen, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVisibility}}"/>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto"
                   Visibility="{Binding IsListVisible, Converter={StaticResource BoolToVisibility}}">
-        <!-- Майстер-деталь за макетом: перелік шаблонів ліворуч, мапінг обраного -
-             праворуч, замість розкривного блоку всередині рядка. -->
         <Grid Margin="0,0,0,24">
             <Grid.ColumnDefinitions>
-                <!-- MinWidth: панель мапінгу росте під вміст, але перелік шаблонів
-                     не має права звузитись до трьох літер у колонці «Назва». -->
                 <ColumnDefinition Width="*" MinWidth="380"/>
-                <!-- Auto: поки панель мапінгу схована, колонка має нульову ширину
-                     і переліки займають усе місце; коли показана - росте під вміст
-                     у межах MinWidth/MaxWidth самої панелі. -->
                 <ColumnDefinition Width="{Binding MappingPanelColumnWidth}"/>
             </Grid.ColumnDefinitions>
 
@@ -382,9 +357,6 @@
             <TextBlock Text="Шаблони, з яких формуються документи, і шаблони вивантаження списків"
                        Foreground="{StaticResource TextSecondaryBrush}" FontSize="12.5" Margin="0,4,0,22"/>
 
-            <!-- Групування за призначенням, а не за розширенням: Excel-шаблони з
-                 {{тегами}} теж формують документи (відомості, додатки), тож їм місце
-                 тут, а не серед вивантажень списків. -->
             <TextBlock Text="Шаблони документів" Style="{StaticResource TemplatesSectionTitleStyle}"/>
             <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
                     BorderThickness="1" CornerRadius="0" Margin="0,0,0,28">
@@ -404,23 +376,17 @@
                         <TextBlock Grid.Column="4" Text="" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
                     </Grid>
 
-                    <!-- Лише шаблони для наборів. Шаблони постійного складу -
-                         окремою групою нижче: у них інша аудиторія й інший шлях
-                         видачі, тож одним списком вони плутають. -->
                     <ItemsControl ItemsSource="{Binding IntakeTemplatesView}">
                         <ItemsControl.ItemTemplate>
                             <StaticResource ResourceKey="DocxTemplateRowTemplate"/>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <!-- Excel-шаблони з {{тегами}} - той самий розділ, той самий рядок,
-                         шаблон рядка береться з ресурсів за типом елемента. -->
                     <ItemsControl ItemsSource="{Binding DocumentExcelTemplates}"/>
 
                     <StackPanel Orientation="Horizontal" Margin="20,16">
                         <Button Content="+ Завантажити шаблон" Style="{StaticResource SecondaryButtonStyle}"
                                 Command="{Binding UploadDocxTemplateCommand}"/>
-                        <!-- Другий спосіб отримати шаблон: скласти з блоків, не редагуючи .docx руками. -->
                         <Button Content="+ Зібрати шаблон" Margin="8,0,0,0"
                                 ToolTip="Документ Word з блоків"
                                 Command="{Binding CreateWithBuilderCommand}"/>
@@ -432,11 +398,6 @@
                 </StackPanel>
             </Border>
 
-            <!-- ШАБЛОНИ ПОСТІЙНОГО СКЛАДУ. Поділ за аудиторією вже працював у
-                 даних (Template.Audience, схема v23) - «Видати документ» показує
-                 лише ці, - але на екрані шаблони обох аудиторій лежали одним
-                 списком, і зрозуміти, який куди піде, було ніяк.
-                 Група ховається, доки таких шаблонів немає. -->
             <StackPanel Visibility="{Binding HasPermanentStaffTemplates, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="Шаблони постійного складу" Style="{StaticResource TemplatesSectionTitleStyle}"/>
                 <TextBlock Text="Видаються офіцерам і персоналу поза наборами - через «Постійний склад», а не через генерацію по набору"
@@ -497,13 +458,6 @@
 
         </StackPanel>
 
-            <!-- З'являється лише після кліку на олівець у рядку; поки шаблон не обрано,
-                 панелі немає взагалі, щоб порожня картка не займала місце.
-                 Ширина - Auto (по вмісту) з межами, доки не потягнули роздільник. -->
-            <!-- MaxWidth 560, а не «скільки хоче вміст»: Grid віддає Auto-колонці
-                 бажану ширину навіть коли її нема куди подіти, і панель просто
-                 вилазила за край екрана (колонка «Поле» обрізалась). 560 + мінімум
-                 переліку вміщається навіть у вузьке вікно; ширше - роздільником. -->
             <Border Grid.Column="1" Margin="18,0,0,0"
                     MinWidth="320" MaxWidth="460"
                     Background="{StaticResource PanelBrush}"
@@ -512,7 +466,6 @@
                     Visibility="{Binding HasSelectedTemplate, Converter={StaticResource BoolToVisibility}}">
                 <DockPanel>
 
-                    <!-- Роздільник: тягнеться вліво, розширюючи панель за рахунок переліків -->
                     <Thumb DockPanel.Dock="Left" Width="6" Cursor="SizeWE"
                            DragDelta="MappingResizeThumb_DragDelta">
                         <Thumb.Template>
@@ -535,9 +488,6 @@
                         </Grid>
                     </Border>
 
-                    <!-- Видимість задана явно: ContentControl із ContentTemplate малює
-                         шаблон і при Content = null, тож для Excel-шаблона поверх
-                         справжнього мапінгу з'являвся порожній Word-редактор. -->
                     <ContentControl Content="{Binding SelectedDocxTemplate}"
                                     ContentTemplate="{StaticResource DocxMappingEditorTemplate}"
                                     Visibility="{Binding HasSelectedDocxTemplate, Converter={StaticResource BoolToVisibility}}"

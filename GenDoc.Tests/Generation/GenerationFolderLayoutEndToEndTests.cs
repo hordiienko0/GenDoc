@@ -6,13 +6,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Generation;
 
-// Розкладка документів по папках - на СПРАВЖНЬОМУ диску, справжнім шаблоном.
-//
-// DocumentFolderLayout покритий власними тестами, але вони перевіряють саму
-// функцію. Тут перевіряється те, чого вони не бачать: що генерація справді
-// створює ці теки й кладе файли саме туди, і що ім'я, записане в архів,
-// збігається зі шляхом на диску - інакше дерево «Архіву» показувало б не те,
-// що лежить у папках.
 public class GenerationFolderLayoutEndToEndTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), $"gendoc-layout-{Guid.NewGuid():N}");
@@ -80,8 +73,6 @@ public class GenerationFolderLayoutEndToEndTests : IDisposable
         var typeFolder = Path.Combine(intakeFolder, TemplateName);
         Assert.True(Directory.Exists(typeFolder), $"Немає теки типу документа: {typeFolder}");
 
-        // Рівень прогону - одна тека на весь запуск, і назва її рахується
-        // ОДИН раз, інакше документи розповзлися б по двох теках.
         var runFolder = Assert.Single(Directory.GetDirectories(typeFolder));
 
         var files = Directory.GetFiles(runFolder, "*.docx");
@@ -89,9 +80,6 @@ public class GenerationFolderLayoutEndToEndTests : IDisposable
         Assert.All(files, f => Assert.EndsWith(".docx", f, StringComparison.Ordinal));
     }
 
-    // Головна умова, заради якої розкладку рахує ОДНА спільна функція: те, що
-    // записано в архів, мусить збігатися зі шляхом на диску. Інакше дерево
-    // «Архіву» показувало б не те, що лежить у папках.
     [Fact]
     public void RunPackage_StoresTheSameRelativePathInTheArchiveAsOnDisk()
     {
@@ -116,10 +104,6 @@ public class GenerationFolderLayoutEndToEndTests : IDisposable
         }
     }
 
-    // Розкладка трирівнева: набір → тип документа → прогін. Перевіряємо саме
-    // теки на диску, а не дерево «Архіву»: панель папок прибрано, бо нею не
-    // користувалися, а сама розкладка на диску лишається (рішення користувача
-    // 2026-08-31).
     [Fact]
     public void StoredPaths_HaveIntakeThenTypeThenRun_AndTheFoldersExistOnDisk()
     {
@@ -146,7 +130,6 @@ public class GenerationFolderLayoutEndToEndTests : IDisposable
             Assert.True(Directory.Exists(runFolder), $"Немає теки прогону: {runFolder}");
         }
 
-        // Прогін один, тож і тека прогону одна на обидва документи.
         Assert.Single(stored.Select(p => p.Split('\\')[2]).Distinct());
     }
 }

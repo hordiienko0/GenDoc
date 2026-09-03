@@ -58,8 +58,6 @@ namespace GenDoc.ViewModels.Staff
         [ObservableProperty]
         private bool showOnlyCourseOfficers;
 
-        /// <summary>Картка праворуч від списку - як в «Особовому складі».
-        /// null - панель закрита, видно лише список.</summary>
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasCard))]
         private StaffCardViewModel? card;
@@ -192,9 +190,6 @@ namespace GenDoc.ViewModels.Staff
             Card = card;
         }
 
-        /// <summary>Клік по рядку відкриває картку на ПЕРЕГЛЯД - редагування
-        /// вмикає олівець, як в «Особовому складі». До цього постійний склад не
-        /// редагувався взагалі.</summary>
         [RelayCommand]
         private async Task OpenCardAsync(StaffRowViewModel? row)
         {
@@ -236,8 +231,6 @@ namespace GenDoc.ViewModels.Staff
         {
             if (Card is null) return;
 
-            // Скасування НОВОЇ картки закриває панель: лишати порожню форму
-            // «ні в перегляді, ні в редагуванні» безглуздо.
             if (Card.IsNew)
             {
                 Card = null;
@@ -248,8 +241,6 @@ namespace GenDoc.ViewModels.Staff
             await Task.CompletedTask;
         }
 
-        /// <summary>Єдина точка dirty-guard: інша людина, «+ Додати», ✕, інший
-        /// розділ, закриття вікна.</summary>
         public async Task<bool> TryLeaveCardAsync()
         {
             if (Card is null || !Card.IsDirty) return true;
@@ -281,11 +272,9 @@ namespace GenDoc.ViewModels.Staff
         [RelayCommand(CanExecute = nameof(HasSelection))]
         private async Task OpenLeaveAsync() => await OpenDocDialogAsync(StaffEventKind.Leave);
 
-        // «В догонку»: генерація документів PerRecipient без оформлення відрядження/відпустки.
         [RelayCommand(CanExecute = nameof(HasSelection))]
         private async Task GenerateDocumentAsync() => await OpenDocDialogAsync(null);
 
-        // Пункт контекстного меню рядка - генерація для однієї людини без чекбоксів.
         [RelayCommand]
         private async Task GenerateDocumentForRowAsync(StaffRowViewModel? row)
         {

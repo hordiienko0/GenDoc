@@ -7,19 +7,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.Tests.Archive;
 
-// Інваріант усього архіву: для пари (людина, шаблон) серед ЖИВИХ записів
-// має бути рівно один IsCurrent. Кожна операція перевіряється саме на це.
 public class DocumentVersionChainTests
 {
-    // Створює людину, шаблон і `versions` версій документа для їхньої пари.
-    // Актуальною лишається найвища версія.
     private static (int RecipientId, int TemplateId, List<int> DocumentIds) Seed(TestDb db, int versions)
     {
         using var ctx = db.Factory.CreateDbContext();
 
-        // GeneratedDocument.GeneratedByUserId - обов'язковий FK на UserProfile.
-        // Користувача з Id=1 тут не існує, поки не заведемо його самі
-        // (FakeCurrentUser лише підмінює контекст виконання, у БД нічого не пише).
         var user = new UserProfile
         {
             FullName = "Тест Тестович", PasswordHash = "x", CreatedAt = DateTime.Now
@@ -92,22 +85,20 @@ public class DocumentVersionChainTests
         using var db = new TestDb();
         var (recipientId, templateId, ids) = Seed(db, versions: 3);
 
-        await TestServices.Archive(db).MakeCurrentAsync(ids[0]); // версія 1
+        await TestServices.Archive(db).MakeCurrentAsync(ids[0]);
 
         AssertExactlyOneCurrent(db, recipientId, templateId);
         using var ctx = db.Factory.CreateDbContext();
         Assert.True(ctx.GeneratedDocuments.First(g => g.Id == ids[0]).IsCurrent);
     }
 
-    // Видалення актуальної версії має підняти попередню живу, інакше анти-дубль
-    // генерації вважатиме пару вільною і сформує документ наново.
     [Fact]
     public async Task DeleteAsync_PromotesPreviousVersionToCurrent()
     {
         using var db = new TestDb();
         var (recipientId, templateId, ids) = Seed(db, versions: 3);
 
-        await TestServices.Archive(db).DeleteAsync(new[] { ids[2] }); // видаляємо версію 3
+        await TestServices.Archive(db).DeleteAsync(new[] { ids[2] });
 
         AssertExactlyOneCurrent(db, recipientId, templateId);
         using var ctx = db.Factory.CreateDbContext();
@@ -144,7 +135,6 @@ public class DocumentVersionChainTests
         Assert.True(ctx.GeneratedDocuments.First(g => g.Id == ids[2]).IsCurrent);
     }
 
-    // Відновлення НЕ найвищої версії не повинно відбирати актуальність у новішої.
     [Fact]
     public async Task RestoreAsync_LowerVersion_DoesNotStealCurrentFlag()
     {
@@ -152,7 +142,7 @@ public class DocumentVersionChainTests
         var (recipientId, templateId, ids) = Seed(db, versions: 3);
         var service = TestServices.Archive(db);
 
-        await service.DeleteAsync(new[] { ids[0] }); // версія 1, не актуальна
+        await service.DeleteAsync(new[] { ids[0] });
         await service.RestoreAsync(ids[0]);
 
         AssertExactlyOneCurrent(db, recipientId, templateId);
@@ -202,8 +192,6 @@ public class DocumentVersionChainTests
         Assert.Equal(2, deleted[0].Version);
     }
 
-    // Легасі-запис без збереженого вмісту не має падати з внутрішнім
-    // «Sequence contains no elements» - користувач мусить побачити пояснення.
     [Fact]
     public async Task OpenAsync_DocumentWithoutStoredContent_ReturnsFailureInsteadOfThrowing()
     {
@@ -249,10 +237,6 @@ public class DocumentVersionChainTests
         Assert.Contains("не збережено в архіві", result.ErrorMessage);
     }
 
-    // Фінальне рев'ю, Finding 6: рядок GeneratedDocument міг зникнути між тим, як
-    // список відкрили, і кліком по ньому (видалення в іншому сеансі). FirstAsync
-    // на батьківському рядку падав з "Sequence contains no elements" - той самий
-    // сирий текст, який ця гілка мала прибрати з користувацьких повідомлень.
     [Fact]
     public async Task OpenAsync_StaleDocumentId_ReturnsFailureInsteadOfThrowing()
     {

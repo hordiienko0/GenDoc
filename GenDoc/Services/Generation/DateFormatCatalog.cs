@@ -2,8 +2,6 @@ namespace GenDoc.Services.Generation
 {
     public record DateFormatOption(string Key, string Display);
 
-    // Три формати дати, які можна обрати для дато-полів у мапінгу плейсхолдерів
-    // (Views/Templates). Ключ зберігається як TemplateFieldMapping.DateFormat.
     public static class DateFormatCatalog
     {
         public const string DdMmYyyy = "dd.MM.yyyy";

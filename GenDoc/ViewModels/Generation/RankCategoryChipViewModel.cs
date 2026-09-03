@@ -3,9 +3,6 @@ using GenDoc.Services;
 
 namespace GenDoc.ViewModels.Generation;
 
-// Чип-перемикач категорії звань. IsChecked - тристанове: true/false - усі звання
-// категорії позначено/знято, null - позначено лише частину (після ручного зняття
-// однієї позначки в списку "Окремі звання").
 public partial class RankCategoryChipViewModel : ObservableObject
 {
     public RankCategoryChipViewModel(RankCategory category, int count)

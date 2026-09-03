@@ -7,18 +7,12 @@ using GenDoc.Services.Templates;
 
 namespace GenDoc.ViewModels.Templates.Builder;
 
-/// <summary>Пункт списку гарнітур. Value == null - «типовий»: writer тоді не пише
-/// шрифт узагалі й документ бере його зі своїх типових.</summary>
 public record FontOption(string? Value, string Label);
 
 public record FontSizeOption(double? Value, string Label);
 
-/// <summary>Готовий колір із палітри. Ручного HEX немає навмисно - оператор
-/// обирає зі списку.</summary>
 public record ColorOption(string? Value, string Label, Brush Swatch);
 
-/// <summary>Рядок блоку «Підписи». Посада береться зі списку постійного складу -
-/// у документ підуть звання і ПІБ на момент збирання .docx.</summary>
 public partial class SignatureLineViewModel : ObservableObject
 {
     public SignatureLineViewModel(
@@ -38,8 +32,6 @@ public partial class SignatureLineViewModel : ObservableObject
     private BuilderSignatory? signatory;
 }
 
-/// <summary>Колонка відомості: заголовок шапки і вміст рядка-шаблону (звідси
-/// {{теги}} потрапляють у клоновані рядки на генерації).</summary>
 public partial class TableColumnViewModel : ObservableObject
 {
     public TableColumnViewModel(string title, string cell)
@@ -54,9 +46,6 @@ public partial class TableColumnViewModel : ObservableObject
     [ObservableProperty]
     private string cell;
 
-    /// <summary>Літера колонки в Excel (A, B, C…) - щоб оператор бачив клітинку
-    /// так само, як побачить її у відкритій книзі. Проставляє в'ю-модель за
-    /// спільною розкладкою.</summary>
     [ObservableProperty]
     private string letter = string.Empty;
 }
@@ -98,24 +87,15 @@ public partial class BuilderBlockViewModel : ObservableObject
 
     public ObservableCollection<TableColumnViewModel> Columns { get; }
 
-    /// <summary>У документі Word повторення - вибір оператора (маркери {{#особи}}
-    /// роблять документ груповим). У відомості рядок-шаблон повторюється завжди,
-    /// тож там прапорця немає.</summary>
     [ObservableProperty]
     private bool repeatPerPerson;
 
     public bool IsRepeatToggleVisible => IsTable && Mode == TemplateBuilderMode.Word;
 
-    /// <summary>У відомості повторення не вимикається, тому замість прапорця -
-    /// пояснення, що рядок і так клонується на кожну особу.</summary>
     public bool IsRepeatHintVisible => IsTable && Mode == TemplateBuilderMode.Excel;
 
-    /// <summary>Аркуш книги, на якому лежить блок (лише для відомості).</summary>
     public int SheetIndex { get; set; }
 
-    /// <summary>«рядок 3» / «рядки 4–6» - які клітинки аркуша займе цей блок.
-    /// Рахується спільною розкладкою TemplateSheetLayout, тією самою, за якою
-    /// writer кладе дані.</summary>
     [ObservableProperty]
     private string? layoutCaption;
 
@@ -125,13 +105,11 @@ public partial class BuilderBlockViewModel : ObservableObject
 
     public string KindTitle => Titles.TryGetValue(Kind, out var title) ? title : Kind.ToString();
 
-    /// <summary>«Абзац · редагується» з макета - підпис картки під час правки.</summary>
     public string HeaderTitle => IsEditing ? $"{KindTitle} · редагується" : KindTitle;
 
     public bool IsTextBlock => Kind is TemplateBlockKind.Header or TemplateBlockKind.Title
         or TemplateBlockKind.DateAndCity or TemplateBlockKind.Paragraph;
 
-    /// <summary>Гриф і абзац - багаторядкові; заголовок і рядок дати - ні.</summary>
     public bool IsMultiline => Kind is TemplateBlockKind.Header or TemplateBlockKind.Paragraph;
 
     public bool IsSignatures => Kind == TemplateBlockKind.Signatures;
@@ -154,8 +132,6 @@ public partial class BuilderBlockViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(HeaderTitle))]
     private bool isEditing;
 
-    /// <summary>Картка згорнута в самий заголовок. Стан в'юхи, а не документа:
-    /// у BuilderJson не потрапляє й прев'ю не перебудовує.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsExpanded))]
     [NotifyPropertyChangedFor(nameof(CollapseIcon))]
@@ -168,8 +144,6 @@ public partial class BuilderBlockViewModel : ObservableObject
 
     public string CollapseTooltip => IsCollapsed ? "Розгорнути блок" : "Згорнути блок";
 
-    /// <summary>Що видно у згорнутій картці - інакше згорнуті блоки не
-    /// відрізнити один від одного.</summary>
     public string CollapsedSummary
     {
         get
@@ -189,14 +163,6 @@ public partial class BuilderBlockViewModel : ObservableObject
             return firstLine.Length > 60 ? firstLine[..60] + "…" : firstLine;
         }
     }
-
-    // ─── Оформлення блока ────────────────────────────────────────────────────
-    //
-    // У моделі лежить BlockStyle із nullable полями («успадкувати типове»), а
-    // назовні віддаються вже розв'язані значення: перемикачі в поповері мусять
-    // показувати те, що справді потрапить у документ. Щойно оператор чіпає
-    // перемикач, значення стає явним - інакше зняти жирність із заголовка, який
-    // жирний за замовчуванням, було б неможливо.
 
     public static IReadOnlyList<FontOption> FontOptions { get; } = new[]
     {
@@ -234,29 +200,19 @@ public partial class BuilderBlockViewModel : ObservableObject
 
     private BlockStyle style = new();
 
-    /// <summary>Оформлення як воно лежить у моделі (nullable-поля). Сетер потрібен,
-    /// щоб FromBlock підняв збережений стиль.</summary>
     public BlockStyle Style
     {
         get => style;
         set => Apply(value ?? new BlockStyle());
     }
 
-    /// <summary>Стиль після накладання типових для типу блока - те, що покаже
-    /// прев'ю і покладе writer.</summary>
     public ResolvedBlockStyle ResolvedStyle => BlockStyleDefaults.Resolve(Kind, style);
 
-    /// <summary>Той самий стиль у величинах WPF: картка блока в редакторі малює
-    /// текст так, як він ляже в документ, а не типовим шрифтом оболонки.</summary>
     public PreviewStyleViewModel DisplayStyle => new(ResolvedStyle);
 
-    /// <summary>Поповер оформлення відкритий. Не впливає на документ, тому
-    /// TemplateBuilderViewModel не перебудовує через нього прев'ю.</summary>
     [ObservableProperty]
     private bool isStyleOpen;
 
-    /// <summary>Для таблиці жирність і вирівнювання стосуються рядка даних:
-    /// шапка структурно лишається жирною і центрованою в книзі.</summary>
     public string StyleScopeHint => IsTable
         ? "Жирність і вирівнювання стосуються рядка даних - шапка таблиці лишається жирною."
         : string.Empty;
@@ -293,9 +249,6 @@ public partial class BuilderBlockViewModel : ObservableObject
         set => Apply(style with { Italic = value });
     }
 
-    // Чотири прапорці замість enum'а: RadioButton'и в поповері прив'язуються
-    // до них напряму, без конвертера. Скидання в false ігнорується - вимкнути
-    // вирівнювання не можна, можна лише обрати інше.
     public bool IsAlignLeft
     {
         get => ResolvedStyle.Alignment == BlockAlignment.Left;
@@ -320,23 +273,16 @@ public partial class BuilderBlockViewModel : ObservableObject
         set { if (value) Apply(style with { Alignment = BlockAlignment.Justify }); }
     }
 
-    /// <summary>Повернути блок до типового оформлення його типу.</summary>
     [RelayCommand]
     private void ResetStyle() => Apply(new BlockStyle());
 
     [RelayCommand]
     private void ToggleCollapsed() => IsCollapsed = !IsCollapsed;
 
-    /// <summary>Властивості, від яких сам документ не змінюється: підсвітка картки,
-    /// підписи розкладки і дзеркальні властивості поповера. Останні важливі -
-    /// одна зміна стилю сповіщає про десяток похідних, і без цього переліку
-    /// прев'ю перебудовувалося б десять разів поспіль замість одного (сам стиль
-    /// приїжджає окремим сповіщенням ResolvedStyle).</summary>
     public static IReadOnlySet<string> NonDocumentProperties { get; } = new HashSet<string>(StringComparer.Ordinal)
     {
         nameof(IsEditing), nameof(HeaderTitle), nameof(LayoutCaption), nameof(IsStyleOpen),
         nameof(DisplayStyle),
-        // Згортання - суто вигляд картки, документ від нього не змінюється.
         nameof(IsCollapsed), nameof(IsExpanded), nameof(CollapseIcon),
         nameof(CollapseTooltip), nameof(CollapsedSummary),
         nameof(SelectedFont), nameof(SelectedFontSize), nameof(SelectedColor),
@@ -348,8 +294,6 @@ public partial class BuilderBlockViewModel : ObservableObject
     {
         style = updated;
 
-        // Одне сповіщення на всі похідні: змінити гарнітуру означає перемалювати
-        // і поповер, і картку блока, і прев'ю.
         OnPropertyChanged(nameof(ResolvedStyle));
         OnPropertyChanged(nameof(DisplayStyle));
         OnPropertyChanged(nameof(SelectedFont));
@@ -367,11 +311,7 @@ public partial class BuilderBlockViewModel : ObservableObject
         Kind,
         IsTextBlock ? Text : null,
         SheetIndex: SheetIndex,
-        // Порожній стиль не серіалізуємо: він нічого не міняє, а в JSON лишався
-        // б назавжди.
         Style: style.IsEmpty ? null : style,
-        // У відомості повторення не вимикається: рядок-шаблон за побудовою
-        // клонується по одному на людину.
         Table: IsTable
             ? new TableSpec(
                 Columns.Select(c => new TableColumn(c.Title, c.Cell)).ToList(),
@@ -399,14 +339,10 @@ public partial class BuilderBlockViewModel : ObservableObject
             block.Table?.RepeatPerPerson ?? true, mode)
         {
             SheetIndex = block.SheetIndex,
-            // У старому BuilderJson поля Style немає - тоді лишається порожній
-            // стиль, тобто сьогоднішнє типове оформлення.
             Style = block.Style ?? new BlockStyle()
         };
     }
 
-    /// <summary>Заготовки за макетом: свіжий блок одразу виглядає як у документі,
-    /// а не як порожня картка, яку ще треба вгадати, чим заповнити.</summary>
     public static BuilderBlockViewModel CreateNew(
         TemplateBlockKind kind, IReadOnlyList<BuilderSignatory> signatoryOptions,
         TemplateBuilderMode mode = TemplateBuilderMode.Word)
@@ -414,8 +350,6 @@ public partial class BuilderBlockViewModel : ObservableObject
         var text = kind switch
         {
             TemplateBlockKind.Header => "ЗАТВЕРДЖУЮ\nНачальник курсу\n{{звання_командира}} {{піб_командира}}",
-            // Пробіли, а не табуляція: у .docx рядок пишеться одним Run зі
-            // Space="preserve", а символ табуляції там не дає відступу.
             TemplateBlockKind.DateAndCity => "м. {{місто}}                              \"___\" ________ 20__ р.",
             _ => string.Empty
         };
@@ -424,8 +358,6 @@ public partial class BuilderBlockViewModel : ObservableObject
             ? new[] { new SignatureLineViewModel(string.Empty, null, signatoryOptions) }
             : null;
 
-        // Заготовка відомості: нумерація, звання, ПІБ - колонки, з яких на практиці
-        // починається будь-яка з наявних відомостей.
         var columns = kind == TemplateBlockKind.Table
             ? new[]
             {

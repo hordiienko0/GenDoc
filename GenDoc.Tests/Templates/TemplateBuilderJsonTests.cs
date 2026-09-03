@@ -3,8 +3,6 @@ using GenDoc.Services.Templates;
 
 namespace GenDoc.Tests.Templates;
 
-// BuilderJson живе в базі роками: саме він, а не .docx, дає змогу відкрити шаблон
-// у конструкторі повторно. Тому перевіряємо і зворотний розбір, і живучість формату.
 public class TemplateBuilderJsonTests
 {
     [Fact]
@@ -35,8 +33,6 @@ public class TemplateBuilderJsonTests
         Assert.Equal("Здав", signatures[1].Caption);
     }
 
-    // Enum'и пишемо рядками: інакше будь-яка зміна порядку TemplateBlockKind мовчки
-    // перетворила б збережені шаблони на інші блоки.
     [Fact]
     public void Block_kind_is_written_as_a_name_not_a_number()
     {
@@ -64,14 +60,11 @@ public class TemplateBuilderJsonTests
         Assert.Equal("Arial", style.FontFamily);
         Assert.Equal(14, style.FontSize);
         Assert.True(style.Bold);
-        // Явний false мусить пережити round-trip: він відрізняється від «не задано».
         Assert.False(style.Italic);
         Assert.Equal("C00000", style.Color);
         Assert.Equal(BlockAlignment.Center, style.Alignment);
     }
 
-    // Шаблони, збережені до появи форматування, лежать у базі без поля Style.
-    // Вони мусять читатися й давати рівно те оформлення, що й раніше.
     [Fact]
     public void Json_saved_before_formatting_existed_still_loads()
     {
@@ -95,8 +88,6 @@ public class TemplateBuilderJsonTests
     [InlineData("{зіпсований json")]
     public void Broken_or_missing_source_gives_null_instead_of_throwing(string? json)
     {
-        // Порожній BuilderJson - звичайний випадок: шаблон завантажений файлом.
-        // Зіпсований - аварійний, але й він не має валити екран шаблонів.
         Assert.Null(TemplateBuilderJson.Deserialize(json));
     }
 }

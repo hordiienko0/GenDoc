@@ -82,8 +82,6 @@ namespace GenDoc.ViewModels.Personnel
         [RelayCommand]
         private void Cancel() => CloseDialog(false);
 
-        // Переміщення папки: заборонені сам вузол, його нащадки (Path-префікс)
-        // і папки чужого набору, якщо вузол належить набору.
         public static NodePickerDialogViewModel ForNodeMove(OrgTreeViewModel tree, OrgNodeViewModel moving)
         {
             var dialog = new NodePickerDialogViewModel($"Перемістити «{moving.Name}» до…", null);
@@ -93,7 +91,6 @@ namespace GenDoc.ViewModels.Personnel
             return dialog;
         }
 
-        // Переміщення людей: будь-який вузол; перехід між наборами - попередження.
         public static NodePickerDialogViewModel ForRecipients(
             OrgTreeViewModel tree, IReadOnlyCollection<int?> sourceIntakeIds, int count)
         {

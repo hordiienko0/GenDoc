@@ -4,24 +4,8 @@ using GenDoc.Models.TemplateBuilder;
 
 namespace GenDoc.Services.Templates
 {
-    /// <summary>Байти книги + номер рядка-шаблону, який далі клонується по одному
-    /// на людину. Рядок обчислює саме writer - тільки він знає, скільки рядків
-    /// зайняли заголовки над таблицею.
-    ///
-    /// TemplateSheetIndex - аркуш, якому цей рядок належить. Без нього сканер
-    /// міток вважав би пер-людинним і той тег, що на ІНШОМУ аркуші випадково
-    /// стоїть у рядку з тим самим номером (аудит 2026-08-28).</summary>
     public record XlsxBuildResult(byte[] Content, int TemplateRowIndex, int TemplateSheetIndex = 0);
 
-    /// <summary>
-    /// Збирає .xlsx-відомість із блоків конструктора. Як і для Word, це навмисно
-    /// звичайний шаблон із {{тегами}}: рядок під шапкою таблиці - той самий
-    /// «рядок-шаблон», який шукає ExportTemplateService.FindTemplateRow і клонує
-    /// XlsxGenerationService. Окремого каналу генерації тут не з'являється.
-    ///
-    /// Розкладку рядків рахує TemplateSheetLayout - та сама, за якою конструктор
-    /// підписує оператору, що куди ляже.
-    /// </summary>
     public static class TemplateBlockXlsxWriter
     {
         private const string FontName = "Times New Roman";
@@ -48,8 +32,6 @@ namespace GenDoc.Services.Templates
 
                 WriteSheet(sheet, blocks, layout, signatories);
 
-                // Рядок-шаблон у книзі один на всі аркуші (так влаштований
-                // XlsxGenerationService), тому беремо перший знайдений.
                 if (templateRowIndex == 0 && layout.TemplateRowIndex > 0)
                 {
                     templateRowIndex = layout.TemplateRowIndex;
@@ -74,8 +56,6 @@ namespace GenDoc.Services.Templates
                 var block = blocks[placement.BlockIndex];
                 var row = placement.FirstRow;
 
-                // Ті самі типові значення, що й у docx-writer'а: вирівнювання і
-                // жирність більше не константи по місцю, а розв'язаний стиль блока.
                 var style = BlockStyleDefaults.Resolve(block.Kind, block.Style);
 
                 switch (block.Kind)
@@ -105,8 +85,6 @@ namespace GenDoc.Services.Templates
             }
         }
 
-        /// <summary>Excel не приймає порожню назву, довшу за 31 символ і символи
-        /// []:*?/\ - оператор може вписати будь-що, тож підчищаємо тут.</summary>
         internal static string SafeSheetName(string? name, int sheetIndex)
         {
             var cleaned = new string((name ?? string.Empty)
@@ -124,8 +102,6 @@ namespace GenDoc.Services.Templates
 
         private static void WriteHeaderRow(IXLWorksheet sheet, int row, TableSpec table, ResolvedBlockStyle style)
         {
-            // Шапка бере від блока гарнітуру, розмір і колір, але лишається
-            // жирною й центрованою - це структура книги, а не оформлення.
             var headerStyle = BlockStyleDefaults.ForTableHeader(style, BlockAlignment.Center);
 
             for (var i = 0; i < table.Columns.Count; i++)
@@ -135,8 +111,6 @@ namespace GenDoc.Services.Templates
                 Style(cell, headerStyle);
                 Border(cell);
 
-                // Ширина за довжиною заголовка: AdjustToContents тут марний -
-                // у рядку-шаблоні стоять {{теги}}, а не майбутні значення.
                 sheet.Column(i + 1).Width = Math.Clamp(
                     table.Columns[i].Title.Length + 4, MinColumnWidth, MaxColumnWidth);
             }
@@ -149,15 +123,12 @@ namespace GenDoc.Services.Templates
             for (var i = 0; i < table.Columns.Count; i++)
             {
                 var cell = sheet.Cell(row, i + 1);
-                // SetValue, а не Value: текст, що починається з "=" або схожий на
-                // число, інакше пішов би у формулу/число, а нам потрібен рівно тег.
                 cell.SetValue(table.Columns[i].Cell);
                 Style(cell, style);
                 Border(cell);
             }
         }
 
-        /// <summary>Рядок на всю ширину таблиці - заголовок, абзац, підпис.</summary>
         private static void WriteBanner(
             IXLWorksheet sheet, int row, int columnCount, string? text, ResolvedBlockStyle style)
         {
@@ -171,9 +142,6 @@ namespace GenDoc.Services.Templates
 
         private static void Style(IXLCell cell, ResolvedBlockStyle style)
         {
-            // Незаданим шрифт і кегль лишаються Times New Roman 11 - рівно те, що
-            // writer ставив завжди; у книзі, на відміну від Word, «нічого не
-            // задано» вивело б Calibri, тож типове тут явне.
             cell.Style.Font.FontName = style.FontFamily is { Length: > 0 } font ? font : FontName;
             cell.Style.Font.FontSize = style.FontSize ?? 11;
             cell.Style.Font.Bold = style.Bold;
@@ -187,9 +155,6 @@ namespace GenDoc.Services.Templates
             cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
         }
 
-        /// <summary>Смуга в книзі - це об'єднані клітинки, і «по ширині» в них
-        /// виглядає зламано, тож Justify лягає ліворуч. Так writer поводився й до
-        /// появи форматування: абзац і дата писалися Left.</summary>
         private static XLAlignmentHorizontalValues Horizontal(BlockAlignment alignment) => alignment switch
         {
             BlockAlignment.Center => XLAlignmentHorizontalValues.Center,
@@ -205,8 +170,6 @@ namespace GenDoc.Services.Templates
             cell.Style.Border.RightBorder = XLBorderStyleValues.Thin;
         }
 
-        // Дзеркало TemplateBlockDocxWriter.RenderSignature - підпис у відомості
-        // виглядає так само, як у документі.
         private static string RenderSignature(
             SignatureLine line, IReadOnlyDictionary<int, SignatoryInfo>? signatories)
         {

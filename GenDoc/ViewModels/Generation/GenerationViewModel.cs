@@ -57,10 +57,6 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         var packageId = nav.PackageId ?? await _completenessService.GetDefaultPackageIdAsync();
         if (packageId is not int id) return;
 
-        // Відновлення навігації - не вибір користувача (навіть коли пакет
-        // визначено через GetDefaultPackageIdAsync, який сам читає
-        // LastPackageId): читаємо, але не пишемо назад, інакше кожен захід
-        // на екран мовчки "підтверджував" би вже запам'ятоване значення.
         var item = Packages.FirstOrDefault(p => p.Id == id);
         if (item is not null) await RefreshForPackageAsync(item);
     }
@@ -112,7 +108,6 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     private async Task LoadDefaultOutputFolderAsync()
         => OutputFolder = await _outputFolderService.GetDefaultAsync();
 
-    // 2.4: підсумок останнього прогону замість MessageBox; скидається при зміні пакета.
     [ObservableProperty]
     private GenerationResultViewModel? lastResult;
 
@@ -130,8 +125,6 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
 
     [ObservableProperty]
     private string progressText = string.Empty;
-
-    // ── Особовий склад: весь / позначені ────────────────────────────────
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(UseSelectedRecipients))]
@@ -154,7 +147,6 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     public string SelectedRecipientsCountLabel => $"Обрано {SelectedRecipientsCount} з {RecipientOptions.Count(r => r.IsVisible)}";
     public bool ShowNoRecipientsSelectedHint => UseSelectedRecipients && SelectedRecipientsCount == 0;
 
-    // 2.3: пошук за ПІБ у списку «Вибрані» - лише показ, позначки не скидає.
     [ObservableProperty] private string recipientSearchText = string.Empty;
 
     partial void OnRecipientSearchTextChanged(string value)
@@ -202,8 +194,6 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     {
         foreach (var row in RecipientOptions) row.IsChecked = false;
     }
-
-    // ── Фільтр звань ─────────────────────────────────────────────────────
 
     private bool _suppressRankSync;
 
@@ -254,7 +244,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     {
         if (e.PropertyName != nameof(RankCategoryChipViewModel.IsChecked) || _suppressRankSync) return;
         var chip = (RankCategoryChipViewModel)sender!;
-        if (chip.IsChecked is not bool value) return; // програмний перехід у невизначений стан - не каскадувати
+        if (chip.IsChecked is not bool value) return;
 
         _suppressRankSync = true;
         try
@@ -297,9 +287,6 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         }
     }
 
-    // Звужує чекбокс-список одержувачів до обраних звань (порожній вибір - без
-    // обмеження); відфільтровані ховаються і знімаються з позначення, щоб оператор
-    // ніколи не згенерував звіт на когось, кого не бачить у списку.
     private void ApplyRecipientRankFilter()
     {
         var checkedRanks = new HashSet<string>(
@@ -318,9 +305,6 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         RefreshAllRecipientsCount();
     }
 
-    // Число в «Згенерувати всім (N)» рахується тим самим шляхом, що й прогін,
-    // і перераховується при кожній зміні фільтра звань. Раніше воно бралося з
-    // усієї таблиці й обіцяло 300 там, де прогін робив 40 (аудит 2026-08-28).
     private void RefreshAllRecipientsCount()
     {
         var checkedRanks = RankOptions.Where(o => o.IsChecked).Select(o => o.Rank).ToList();
@@ -342,9 +326,6 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         RefreshLastRun();
     }
 
-    // Останній запуск на порожньому боці екрана. Кнопки «повторити» свідомо
-    // немає: тека виводу в прогоні не зберігається, а повторна генерація
-    // переписує документи - такого в один клік бути не повинно.
     [ObservableProperty] private string lastRunPackageName = string.Empty;
     [ObservableProperty] private string lastRunSummary = string.Empty;
     [ObservableProperty] private bool hasLastRun;
@@ -374,10 +355,6 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         return item is null ? Task.CompletedTask : SelectPackageAsync(item);
     }
 
-    // Єдина точка, де вибір пакета - справжня дія користувача (клік по картці
-    // пакета чи "відкрити останній пакет"): тут і лише тут пишемо
-    // LastPackageId. Відновлення навігації й пере-збірка форми після
-    // редагування вимог ідуть напряму в RefreshForPackageAsync, обходячи запис.
     [RelayCommand]
     private async Task SelectPackageAsync(GenerationPackageListItemViewModel? item)
     {
@@ -411,7 +388,6 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
 
         RefreshRecipientOptions();
         RefreshAllRecipientsCount();
-        // 2.1: тека не скидається при виборі пакета; порожня - підставляється типова.
         if (string.IsNullOrWhiteSpace(OutputFolder)) await LoadDefaultOutputFolderAsync();
         LastResult = null;
         ProgressText = string.Empty;
@@ -495,8 +471,6 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         if (_dialogService.ShowDialog(vm, Application.Current.MainWindow) == true)
         {
             WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
-            // Пере-збірка форми/зведення після редагування вимог - не новий
-            // вибір пакета користувачем, тож LastPackageId тут не пишемо.
             await RefreshForPackageAsync(SelectedPackage);
         }
     }
@@ -527,9 +501,6 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         var courseOfficerId = ManualTagForm?.CourseOfficer?.Selected?.RecipientId;
         var progress = new Progress<string>(message => ProgressText = message);
 
-        // Фільтр звань - орthogonal до вибору "весь склад / позначені": звужує
-        // обидва варіанти однаково, звідси й порожні RankCategories (леф-рівень
-        // Ranks уже покриває будь-яку комбінацію обраних категорій/окремих звань).
         var checkedRanks = RankOptions.Where(o => o.IsChecked).Select(o => o.Rank).ToList();
 
         var rosterSelection = new RosterSelection(
@@ -543,11 +514,6 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         IsBusy = true;
         ProgressText = "Підготовка…";
 
-        // try/finally обов'язковий: без нього виняток із RunPackage (недоступна
-        // мережева тека, видалений в іншому вікні пакет, збій SaveChanges)
-        // лишав IsBusy = true, і весь екран генерації був заблокований до
-        // перезапуску застосунку (аудит 2026-08-28). Так само зроблено в
-        // GenerateDocumentsDialogViewModel.
         try
         {
             var result = await Task.Run(() =>
@@ -556,7 +522,6 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
             if (ManualTagForm is not null)
                 await _manualTagFormBuilder.SaveAsync($"pkg:{packageId}", ManualTagForm);
 
-            // 2.4: картка підсумку під кнопкою замість двох MessageBox («Завершено» → «Відкрити папку?»).
             LastResult = new GenerationResultViewModel(result, outputFolderPath);
         }
         finally
@@ -566,11 +531,6 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         }
     }
 
-    // Тег "{{дата}}" зарезервований під це поле - підставляється в кожен документ
-    // пакета незалежно від шаблону; якщо шаблон явно мапить {{дата}} вручну,
-    // це поле є єдиним джерелом значення (перекриває будь-який попередній запис).
-    // Ключ має бути тим самим brace-wrapped рядком, що й PlaceholderTag усюди
-    // (TemplateService, GenerationService.BuildValues, DocumentGenerationService).
     internal const string DocumentDateTag = "{{дата}}";
 
     internal static void ApplyDocumentDate(Dictionary<string, string> manualValues, DateTime? documentDate)

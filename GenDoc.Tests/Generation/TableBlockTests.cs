@@ -6,9 +6,6 @@ using GenDoc.Services.Generation;
 
 namespace GenDoc.Tests.Generation;
 
-// Списки людей у військових паперах майже завжди табличні, тож повторення
-// рядка - не окрема фіча, а той самий блок {{#…}}/{{/…}}, лише одиниця
-// повторення інша: рядок замість абзацу.
 public class TableBlockTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), $"gendoc-tblock-{Guid.NewGuid():N}");
@@ -29,8 +26,6 @@ public class TableBlockTests : IDisposable
     private static TableRow Row(params string[] cells)
         => new(cells.Select(c => new TableCell(new Paragraph(new Run(new Text(c))))));
 
-    // Шапка, маркерний рядок, один рядок тіла, закриваючий маркер, підсумок.
-    // {{кількість_осіб}} свідомо поза блоком - воно спільне для документа.
     private static byte[] BuildTableBlockDocx()
     {
         using var stream = new MemoryStream();
@@ -89,7 +84,6 @@ public class TableBlockTests : IDisposable
 
         var rows = TableCells(path);
 
-        // Шапка + 3 людини + підсумок. Маркерних рядків уже нема.
         Assert.Equal(5, rows.Count);
         Assert.Equal("№", rows[0][0]);
         Assert.Equal("ШЕВЧЕНКО Т.;", rows[1][1]);
@@ -133,8 +127,6 @@ public class TableBlockTests : IDisposable
         Assert.Equal("Усього", rows[1][0]);
     }
 
-    // Горизонтальне об'єднання живе у властивостях комірки, тож має пережити
-    // клонування рядка без окремого коду.
     [Fact]
     public void TableBlock_KeepsHorizontalMergeOnClonedRows()
     {
@@ -172,10 +164,6 @@ public class TableBlockTests : IDisposable
         Assert.Equal(new int?[] { 2, 2 }, spans);
     }
 
-    // Абзац, загорнутий у елемент керування вмістом (w:sdt), участі в блоках
-    // не бере - він не маркер і не тіло. Але груповий режим не має через це
-    // мовчки лишати там сирий {{тег}}: одиночний режим (GenerateOne) його б
-    // заповнив, і груповий мусить поводитись так само.
     [Fact]
     public void TableBlock_FillsTagInsideContentControlWrapper()
     {
@@ -212,12 +200,6 @@ public class TableBlockTests : IDisposable
         Assert.DoesNotContain("{{", text);
     }
 
-    // Рядок, загорнутий у елемент керування вмістом на рівні рядка (w:sdtRow),
-    // так само не бере участі в блоках і невидимий для структурного обходу
-    // (BlockStructure.Rows дивиться лише прямих дітей-TableRow). Огляд перед
-    // злиттям гілки: підмітання мусить діставати такий рядок так само, як
-    // діставало обгортку абзаца, і не лишати спантеличеного запису в
-    // UnfilledTags, коли значення насправді підставилось.
     [Fact]
     public void TableBlock_FillsTagInsideSdtWrappedRow_AndReportsNothingSpurious()
     {

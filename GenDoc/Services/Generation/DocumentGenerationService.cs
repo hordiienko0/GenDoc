@@ -22,8 +22,6 @@ namespace GenDoc.Services.Generation
         {
             try
             {
-                // Копія байтів - MemoryStream(byte[]) інакше пише напряму у переданий
-                // масив (кеш шаблону), а його не можна мутувати між генераціями.
                 using var stream = new MemoryStream();
                 stream.Write(content, 0, content.Length);
                 stream.Position = 0;
@@ -34,14 +32,6 @@ namespace GenDoc.Services.Generation
                 {
                     var mainPart = doc.MainDocumentPart;
 
-                    // Перевірка йде ДО будь-якої підстановки: GenerateOne не вміє
-                    // розгортати повторювані блоки, тож {{#…}}/{{/…}} тут - ознака,
-                    // що шаблон насправді груповий (одна довжина списку - один
-                    // документ), а не персональний. Раніше ReplaceInParagraph мовчки
-                    // стирав такий маркер як звичайний незаповнений тег, і людина
-                    // отримувала документ без списку і без жодного попередження.
-                    // Той самий детектор (BlockStructure.EmbeddedMarkerRegex), яким
-                    // на груповому шляху користується GuardResidualMarkers.
                     var residualMarker = FindResidualMarkerInDocument(mainPart);
                     if (residualMarker is not null)
                         return new GenerationItemResult(
@@ -121,9 +111,6 @@ namespace GenDoc.Services.Generation
             }
         }
 
-        // Розгортає повторювані блоки {{#name}}…{{/name}} у контейнері
-        // (тіло/шапка/підвал) і замінює звичайні мітки поза блоками. Одиниця
-        // повторення - абзац на рівні документа або рядок усередині таблиці.
         private static List<string> ProcessContainer(
             OpenXmlCompositeElement container,
             IReadOnlyList<IDictionary<string, string>> perRecipientValues,
@@ -141,42 +128,13 @@ namespace GenDoc.Services.Generation
                 BlockStructure.BlockChildren(container).ToList(),
                 perRecipientValues, sharedWithCount, unfilled, templateName, insideTable: false);
 
-            // Маркер, якого структурний обхід вище не розгорнув, лишається в
-            // тексті буквально - і ReplaceInElement усередині ProcessSiblings
-            // (рядок, що сам не є маркером), і ReplaceInElement у ExpandBlock
-            // (підстановка в клонах) викликаються з preserveMarkers: true,
-            // тож не стирають його як звичайний незаповнений тег. Перевірка
-            // йде саме тут: усі маркери, які рушій УМІВ розгорнути, вже
-            // прибрані разом з абзацом/рядком; усе, що лишилось - маркер там,
-            // куди обхід не сягає, або в абзаці, який маркером-елементом не є.
-            // Обов'язково до підмітання нижче: воно теж не стирає маркери
-            // (той самий preserveMarkers: true), але порядок тримаємо явним,
-            // щоб це не залежало від деталі реалізації заміни.
             GuardResidualMarkers(container, templateName);
 
-            // Повне підмітання: дістає теги на будь-якій глибині, куди
-            // структурний обхід (блокові діти контейнера, рядки однієї
-            // таблиці) не заходить - усередині елемента керування вмістом
-            // Word, у таблиці, вкладеній в комірку. ReplaceInParagraph рано
-            // виходить, якщо в тексті нема "{{", тож уже підставлені абзаци
-            // він не чіпає; unfilled.Distinct() у GenerateGroup прибирає
-            // можливе подвійне повідомлення. preserveMarkers: true - це
-            // груповий шлях, у нього є GuardResidualMarkers вище; GenerateOne
-            // такого вартового не має, тож там маркери за замовчуванням і
-            // надалі стираються, як до цієї гілки.
             unfilled.AddRange(ReplaceInContainer(container, sharedWithCount, preserveMarkers: true));
 
             return unfilled;
         }
 
-        // Кінцевий автомат блоку над послідовністю сусідів одного батька.
-        // Викликається двічі: для блокових дітей контейнера і для рядків
-        // таблиці. Тіло блоку за побудовою складається з сусідів маркерів, тож
-        // окремої перевірки «однакового батька» більше не потрібно.
-        //
-        // Правило, що знімає двозначність: поки відкрито блок рівня документа,
-        // таблиця - це вміст блоку і клонується цілком; усередину таблиці по
-        // маркерні рядки заходимо лише тоді, коли блок не відкрито.
         private static void ProcessSiblings(
             List<OpenXmlElement> siblings,
             IReadOnlyList<IDictionary<string, string>> perRecipientValues,
@@ -263,9 +221,6 @@ namespace GenDoc.Services.Generation
             }
         }
 
-        // Обхід не заходить у таблицю, поки відкрито блок рівня документа, тож
-        // маркерний рядок усередині такого блоку інакше лишився б літеральним
-        // текстом у кожній копії.
         private static void GuardNestedRowBlocks(
             List<OpenXmlElement> body, string templateName, string blockName)
         {
@@ -280,19 +235,6 @@ namespace GenDoc.Services.Generation
                     + $"у рядку таблиці всередині блоку «{{{{#{blockName}}}}}».");
         }
 
-        // Клонування рядка з вертикальним об'єднанням дало б N продовжень merge
-        // і зіпсовану таблицю. Відмовляємо, а не знімаємо об'єднання тихо:
-        // документ, який виглядає готовим, гірший за явну відмову.
-        //
-        // Область перевірки - лише комірки рядків, що САМІ є тілом блоку (body
-        // складається з TableRow, коли блок відкрито рядком). Якщо тілом блоку
-        // є ціла таблиця (блок рівня документа навколо таблиці) або рядок
-        // містить вкладену таблицю зі своїм merge, це об'єднання не зазнає
-        // жодного псування від клонування - таблиця чи вкладена таблиця
-        // копіюється цілком і лишається самодостатньою в кожній копії.
-        // Ширша перевірка (по всіх Descendants) відмовляла і в цих випадках
-        // теж - а обʼєднана шапка таблиці майже завжди є в списках особового
-        // складу, тож це виявилось наддумкою.
         private static void GuardVerticalMerge(
             List<OpenXmlElement> body, string templateName, string blockName)
         {
@@ -307,16 +249,6 @@ namespace GenDoc.Services.Generation
                     + "об'єднання по вертикалі в рядках, що повторюються.");
         }
 
-        // Маркер, який структурний обхід не розгорнув: або тому що не сягнув
-        // туди (усередині елемента керування вмістом Word, у таблиці,
-        // вкладеній у комірку), або тому що маркер ділить абзац з іншим
-        // текстом («Список: {{#список}}» - це теж не «елемент-маркер», з
-        // яким уміє працювати ProcessSiblings). Шукаємо неприв'язаним
-        // регексом (BlockStructure.EmbeddedMarkerRegex) саме тому, що друга
-        // причина не дає анкорованим OpenName/CloseName спрацювати. Це
-        // безпечно лише разом з preserveMarkers=true в підмітанні вище: без
-        // нього маркер, який ділить абзац з текстом, ReplaceInParagraph уже
-        // стер би раніше, ніж ця перевірка його побачить.
         private static void GuardResidualMarkers(OpenXmlCompositeElement container, string templateName)
         {
             var marker = FindEmbeddedMarker(container);
@@ -329,12 +261,6 @@ namespace GenDoc.Services.Generation
                 + "текстом і не вкладеним глибше.");
         }
 
-        // Спільний детектор для GuardResidualMarkers (груповий шлях) і перевірки
-        // в GenerateOne: перший {{#…}}/{{/…}}, знайдений будь-де в тексті абзаців
-        // контейнера, неприв'язаним BlockStructure.EmbeddedMarkerRegex (див.
-        // коментар при його оголошенні - на відміну від анкорованих
-        // OpenRegex/CloseRegex, він ловить і маркер, що ділить абзац з іншим
-        // текстом).
         private static string? FindEmbeddedMarker(OpenXmlCompositeElement? container)
         {
             if (container is null) return null;
@@ -349,10 +275,6 @@ namespace GenDoc.Services.Generation
             return null;
         }
 
-        // Той самий детектор, застосований до всього документа GenerateOne
-        // (тіло + всі колонтитули) - стільки ж контейнерів, скільки нижче
-        // проходить заміна, щоб перевірка не пропустила маркер там, куди
-        // підстановка таки дійде.
         private static string? FindResidualMarkerInDocument(MainDocumentPart? mainPart)
         {
             if (mainPart is null) return null;
@@ -375,10 +297,6 @@ namespace GenDoc.Services.Generation
             return null;
         }
 
-        // Повідомлення для GenerateOne - на відміну від GuardResidualMarkers (де
-        // йдеться про технічне розташування маркера в групового рушія), тут
-        // причина інша й простіша для користувача: цей шаблон узагалі не для
-        // одноосібної генерації.
         private static string BuildStrayBlockMarkerMessage(string templateName, string marker)
             => $"Шаблон «{templateName}» містить маркер повторюваного блоку «{marker}». "
                + "Такий шаблон формує один документ на весь список людей, а не окремий "
@@ -421,14 +339,6 @@ namespace GenDoc.Services.Generation
             closeElement.Remove();
         }
 
-        // Заміна в усіх абзацах елемента: для абзацу це він сам, для рядка чи
-        // таблиці - абзаци всіх його комірок.
-        //
-        // preserveMarkers за замовчуванням false: цей прапорець вмикає лише
-        // груповий шлях (ProcessSiblings/ExpandBlock), де є GuardResidualMarkers,
-        // що ловить лишений маркер і відмовляє. GenerateOne такого вартового
-        // не має, тож там маркер, який опинився в звичайному тексті, і надалі
-        // стирається як незаповнений тег - так само, як до цієї гілки.
         private static void ReplaceInElement(
             OpenXmlElement element, IDictionary<string, string> values, List<string> unfilled,
             bool preserveMarkers = false)
@@ -456,10 +366,6 @@ namespace GenDoc.Services.Generation
             return unfilled;
         }
 
-        // Заміна зі збереженням позиції нетекстових вузлів (w:tab, w:br, w:drawing…):
-        // рахуємо зміщення кожного текстового вузла в межах параграфа, знаходимо збіги
-        // у зчепленому тексті, і пишемо результат назад лише у ті самі текстові вузли,
-        // а не в один "плаский" рядок першого рану.
         internal static void ReplaceInParagraph(
             Paragraph paragraph, IDictionary<string, string> values, List<string> unfilled,
             bool preserveMarkers = false)
@@ -498,7 +404,7 @@ namespace GenDoc.Services.Generation
                 while (matchQueue.Count > 0)
                 {
                     var match = matchQueue.Peek();
-                    if (match.Index >= end) break; // цей збіг стосується наступних вузлів
+                    if (match.Index >= end) break;
 
                     var matchStartLocal = Math.Max(0, match.Index - start);
                     if (matchStartLocal > localPos)
@@ -511,18 +417,8 @@ namespace GenDoc.Services.Generation
                     {
                         if (preserveMarkers && BlockStructure.IsMarkerTag(match.Value))
                         {
-                            // Маркер блоку ({{#…}}/{{/…}}), що дійшов сюди буквально -
-                            // структурний обхід його не розпізнав і не прибрав. Це не
-                            // поле: не вгадуємо значення і не стираємо як незаповнений
-                            // тег, а лишаємо текст як є. GuardResidualMarkers у
-                            // ProcessContainer саме такий залишок і шукає - стерши його
-                            // тут, ми б зробили цю перевірку сліпою. Лише коли
-                            // preserveMarkers=true (груповий шлях, де вартовий є) -
-                            // GenerateOne цей прапорець не піднімає й далі стирає
-                            // маркер як звичайний незаповнений тег.
                             sb.Append(match.Value);
                         }
-                        // Цей вузол - вузол, де збіг починається: сюди йде все значення заміни.
                         else if (values.TryGetValue(match.Value, out var value) && !string.IsNullOrEmpty(value))
                             sb.Append(value);
                         else
@@ -535,10 +431,10 @@ namespace GenDoc.Services.Generation
                     if (match.Index + match.Length <= end)
                     {
                         matchQueue.Dequeue();
-                        continue; // у цьому ж вузлі може починатись наступний збіг
+                        continue;
                     }
 
-                    break; // збіг триває у наступному вузлі - лишаємо його в черзі
+                    break;
                 }
 
                 if (localPos < original.Length)

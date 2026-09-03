@@ -33,32 +33,21 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
         RefreshDocxTemplates();
     }
 
-    /// <summary>Excel-шаблони з {{тегами}} - вони формують документ, тож показуються
-    /// разом із шаблонами Word, а не серед вивантажень списків.</summary>
     [ObservableProperty]
     private ObservableCollection<ExportTemplateListItemViewModel> documentExcelTemplates = new();
 
-    /// <summary>Excel без тегів - заголовок у рядку 1, дані нижче: просте вивантаження списку.</summary>
     [ObservableProperty]
     private ObservableCollection<ExportTemplateListItemViewModel> listExportTemplates = new();
 
     [ObservableProperty]
     private ObservableCollection<DocxTemplateListItemViewModel> docxTemplates = new();
 
-    /// <summary>
-    /// Два ВИДИ над ТІЄЮ САМОЮ колекцією, а не дві окремі колекції: елементи
-    /// лишаються тими самими об'єктами, тож вибір, завантажений мапінг і
-    /// перемикач аудиторії працюють як раніше. Дві копії списку довелося б
-    /// синхронізувати, і рядок губив би стан при переході між групами.
-    /// </summary>
     [ObservableProperty]
     private ListCollectionView? intakeTemplatesView;
 
     [ObservableProperty]
     private ListCollectionView? permanentStaffTemplatesView;
 
-    /// <summary>Група постійного складу ховається, доки жодного такого шаблону
-    /// немає: порожній розділ лише додає шуму.</summary>
     [ObservableProperty]
     private bool hasPermanentStaffTemplates;
 
@@ -70,7 +59,6 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
                 t.RepeatSheetPerDate, t.IsFromBuilder))
             .ToList();
 
-        // Групування за призначенням, а не за розширенням файлу.
         DocumentExcelTemplates = new ObservableCollection<ExportTemplateListItemViewModel>(
             all.Where(t => t.UsesPlaceholders));
         ListExportTemplates = new ObservableCollection<ExportTemplateListItemViewModel>(
@@ -84,8 +72,6 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
                 t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, t.TagCount, t.IsFromBuilder, t.Audience))
             .ToList();
 
-        // Зміна аудиторії зберігається одразу - окремої кнопки немає, як і в
-        // короткої назви поруч.
         foreach (var item in items) item.AudienceChanged += OnTemplateAudienceChanged;
 
         DocxTemplates = new ObservableCollection<DocxTemplateListItemViewModel>(items);
@@ -96,9 +82,6 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
         RefreshAudienceGroups();
     }
 
-    /// <summary>Перерахувати обидві групи. Викликається й після перемикання
-    /// аудиторії - інакше рядок лишався б у старій групі до перезаходу
-    /// в розділ, і скидалося б, ніби перемикач не спрацював.</summary>
     private void RefreshAudienceGroups()
     {
         IntakeTemplatesView?.Refresh();
@@ -108,8 +91,6 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
             DocxTemplates.Any(t => t.Audience == TemplateAudience.PermanentStaff);
     }
 
-    /// <summary>Конструктор живе всередині «Шаблонів»: не окремий пункт меню, а
-    /// повноекранний режим цього ж розділу. Не null - розділ показує конструктор.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsBuilderOpen))]
     [NotifyPropertyChangedFor(nameof(IsListVisible))]
@@ -119,8 +100,6 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
 
     public bool IsListVisible => Builder is null;
 
-    /// <summary>Незбережене складання в конструкторі гинуло мовчки при переході
-    /// в інший розділ. Питає той самий guard, що й «✕ Закрити» в конструкторі.</summary>
     public Task<bool> TryLeaveAsync()
     {
         if (Builder is null) return Task.FromResult(true);
@@ -138,9 +117,6 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
         Builder = builderViewModel;
     }
 
-    /// <summary>Той самий конструктор, але одразу у режимі відомості: зібраний
-    /// .xlsx лягає в ExportTemplate і потрапляє в той самий розділ «Шаблони
-    /// документів» (він за тегами, а отже формує документ).</summary>
     [RelayCommand]
     private void CreateVidomistWithBuilder()
     {
@@ -174,8 +150,6 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
         var builderViewModel = CreateBuilder();
         if (!builderViewModel.LoadTemplate(item.Id, TemplateBuilderMode.Word))
         {
-            // Практично недосяжно: кнопка є лише в рядків з BuilderJson. Лишається
-            // на випадок зіпсованого JSON - краще сказати, ніж відкрити порожній екран.
             MessageBox.Show(
                 "Цей шаблон завантажений файлом і не має джерела блоків, тож у конструкторі не відкривається.",
                 "Немає джерела блоків", MessageBoxButton.OK, MessageBoxImage.Information);
@@ -191,8 +165,6 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
         builderViewModel.RequestClose += () => Builder = null;
         builderViewModel.Saved += () =>
         {
-            // Режим міг перемкнутись уже після відкриття, тож перечитуємо обидва
-            // переліки, а не той, з якого зайшли.
             RefreshDocxTemplates();
             Refresh();
         };
@@ -235,15 +207,10 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
         }
     }
 
-    /// <summary>Обраний шаблон - його мапінг показує права панель. Типи різні
-    /// (Word / Excel), тому object: розкладку добирає типізований DataTemplate у XAML.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedTemplate))]
     private object? selectedTemplate;
 
-    /// <summary>Word і Excel описані різними в'ю-моделями з різними редакторами
-    /// мапінгу, тож права панель тримає два окремі слоти, а не один нетипізований:
-    /// два неявні DataTemplate на один тип XAML не дозволяє.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedDocxTemplate))]
     private DocxTemplateListItemViewModel? selectedDocxTemplate;
@@ -254,17 +221,10 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
 
     public bool HasSelectedTemplate => SelectedTemplate is not null;
 
-    // ContentControl із заданим ContentTemplate малює шаблон навіть при Content = null
-    // (порожні поля й друга кнопка «Зберегти мапінг» над справжньою) - тому слоти
-    // ховаємо явно, а не покладаємось на порожній Content.
     public bool HasSelectedDocxTemplate => SelectedDocxTemplate is not null;
 
     public bool HasSelectedExportTemplate => SelectedExportTemplate is not null;
 
-    /// <summary>Ширина панелі мапінгу. Поки оператор не чіпав роздільник, панель
-    /// розсувається сама під свій вміст (Auto) - довгі назви полів і теги інакше
-    /// не вміщаються у фіксовану ширину. Щойно її потягнули, ширина стає явною
-    /// й більше не стрибає під час перемикання шаблонів.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MappingPanelColumnWidth))]
     private double mappingPanelWidth = 430;
@@ -303,8 +263,6 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
         SelectedExportTemplate = item as ExportTemplateListItemViewModel;
     }
 
-    /// <summary>Закриває праву панель: без цього вона лишалася б на екрані назавжди
-    /// після першого ж кліку на олівець.</summary>
     [RelayCommand]
     private void ClearTemplateSelection()
     {
@@ -351,7 +309,6 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
         MessageBox.Show("Мапінг міток збережено.", "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
-    // Не команда, а обробник події рядка: перемикач у списку зберігає одразу.
     private void OnTemplateAudienceChanged(DocxTemplateListItemViewModel item)
     {
         _templateService.SaveAudience(item.Id, item.Audience);

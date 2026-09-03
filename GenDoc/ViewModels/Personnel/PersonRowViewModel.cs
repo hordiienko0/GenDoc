@@ -19,20 +19,14 @@ namespace GenDoc.ViewModels.Personnel
         public string? MiddleName => Item.MiddleName;
         public string Rank => Item.Rank;
 
-        /// <summary>Звання для КОЛОНКИ списку. «молодший лейтенант» не влазить
-        /// поруч із ПІБ і посадою й забирає ширину в прізвища; повне звання
-        /// лишається в підказці, у картці й у документах.</summary>
         public string RankShort => Services.RankAbbreviation.Short(Item.Rank);
         public string Position => Item.Position;
         public string FitnessDisplay => string.IsNullOrWhiteSpace(Item.FitnessCategory) ? "-" : Item.FitnessCategory;
 
-        /// <summary>Чи показувати бейдж придатності - для порожньої категорії лишається прочерк.</summary>
         public bool HasFitness => !string.IsNullOrWhiteSpace(Item.FitnessCategory);
 
-        /// <summary>Обмежено придатний / непридатний - бейдж стає застережливим.</summary>
         public bool IsLimitedFitness => !FitnessCategoryHelper.IsRegular(Item.FitnessCategory);
 
-        /// <summary>Підпис бейджа. Макет показує «обмежено» - повна категорія лишається у підказці.</summary>
         public string FitnessBadgeText =>
             string.Equals(Item.FitnessCategory, "обмежено придатний", StringComparison.OrdinalIgnoreCase)
                 ? "обмежено"
@@ -41,7 +35,6 @@ namespace GenDoc.ViewModels.Personnel
         public int OrgNodeId => Item.OrgNodeId;
         public int? IntakeId => Item.IntakeId;
 
-        // «ПРІЗВИЩЕ І.І.»
         public string ShortName
         {
             get

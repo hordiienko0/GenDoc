@@ -38,9 +38,6 @@
             <Setter Property="Margin" Value="0,0,7,0"/>
         </Style>
 
-        <!-- Сегмент перемикача «Всі / Мої». Локальний ресурс лише для цього
-             view - інші вікна мають власні (PackageRequirementsWindow тощо), і
-             посилатись на чужий локальний ресурс не можна. -->
         <Style x:Key="ArchiveMineSegmentStyle" TargetType="RadioButton">
             <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
             <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
@@ -133,8 +130,6 @@
                 </Button>
                 </StackPanel>
 
-                <!-- Перемикач «Всі / Мої» по автору - спільний для всіх трьох
-                     вкладок, тож живе в шапці, а не всередині кожної. -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,4">
                     <RadioButton Content="Всі" GroupName="ArchiveMine" Style="{StaticResource ArchiveMineSegmentStyle}"
                                  IsChecked="{Binding MineOnly, Converter={StaticResource InverseBoolean}}"/>
@@ -144,7 +139,6 @@
             </Grid>
         </Border>
 
-        <!-- ТАБ «ДОКУМЕНТИ» -->
         <Grid Grid.Row="2" Visibility="{Binding IsDocsTab, Converter={StaticResource BoolToVisibility}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
@@ -166,10 +160,6 @@
                               SelectedItem="{Binding SelectedTemplate}" DisplayMemberPath="Label"/>
                     <ComboBox Style="{StaticResource ArchiveFilterComboStyle}" ItemsSource="{Binding PackageOptions}"
                               SelectedItem="{Binding SelectedPackage}" DisplayMemberPath="Label"/>
-                    <!-- Під «Мої» фільтр за автором задає перемикач у шапці, і вибір
-                         тут не має жодного впливу. Комбобокс лишався активним і
-                         показував обране значення - виглядало як зламаний фільтр
-                         (аудит 2026-08-28). Тепер він явно недоступний. -->
                     <ComboBox Style="{StaticResource ArchiveFilterComboStyle}" ItemsSource="{Binding AuthorOptions}"
                               SelectedItem="{Binding SelectedAuthor}" DisplayMemberPath="Label"
                               IsEnabled="{Binding MineOnly, Converter={StaticResource InverseBoolean}}"
@@ -374,20 +364,12 @@
             </StackPanel>
         </Grid>
 
-        <!-- ТАБ «ЗАПУСКИ» -->
         <Grid Grid.Row="2" Visibility="{Binding IsRunsTab, Converter={StaticResource BoolToVisibility}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- Список запусків фільтрується SelectedIntake і SelectedYear, а
-                 комбо для них жили ЛИШЕ на вкладці «Документи»: оператор звужував
-                 там набір, переходив сюди й бачив короткий список без жодної
-                 видимої причини (аудит 2026-08-28). Ті самі властивості - тож
-                 вибір спільний для обох вкладок. Решта фільтрів («Шаблон»,
-                 «Пакет», «Автор», пошук) до запусків не застосовується, і їх тут
-                 навмисно немає. -->
             <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,9">
                 <ComboBox Style="{StaticResource ArchiveFilterComboStyle}" ItemsSource="{Binding IntakeOptions}"
                           SelectedItem="{Binding SelectedIntake}" DisplayMemberPath="Label"/>
@@ -504,7 +486,6 @@
                 </ItemsControl>
             </ScrollViewer>
 
-            <!-- 2.6: порожній стан веде до дії -->
             <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center"
                         Visibility="{Binding RunsEmpty, Converter={StaticResource BoolToVisibility}}">
                 <TextBlock Text="Запусків ще не було" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"
@@ -514,7 +495,6 @@
             </StackPanel>
         </Grid>
 
-        <!-- ТАБ «ГРУПОВІ» -->
         <Grid Grid.Row="2" Visibility="{Binding IsGroupTab, Converter={StaticResource BoolToVisibility}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>

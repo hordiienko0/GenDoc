@@ -3,9 +3,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <UserControl.Resources>
-        <!-- Кружок кроку. Стан приходить у Tag: "done" / "current" / порожньо.
-             DataTrigger, а не Trigger: Tag оголошений як object, і звичайний
-             Trigger порівнював би значення з рядком не так, як очікується. -->
         <Style x:Key="StepBadgeStyle" TargetType="Border">
             <Setter Property="Width" Value="26"/>
             <Setter Property="Height" Value="26"/>
@@ -86,15 +83,12 @@
 
     <DockPanel>
 
-        <!-- ШАПКА: назва, підзаголовок і смуга кроків -->
         <StackPanel DockPanel.Dock="Top" Margin="0,0,0,18">
             <TextBlock Text="Імпорт з Excel" FontSize="19" FontWeight="SemiBold"
                        Foreground="{StaticResource TextPrimaryBrush}"/>
             <TextBlock Text="Файл · набір і гілка · зіставлення · перевірка"
                        Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,4,0,18"/>
 
-            <!-- Смуга кроків. Стан кожного кружка рахує в'ю-модель через
-                 StepNState; тут лише малювання. -->
             <StackPanel Orientation="Horizontal">
                 <StackPanel Orientation="Horizontal">
                     <Border Style="{StaticResource StepBadgeStyle}" Tag="{Binding Step1State}">
@@ -132,7 +126,6 @@
             </StackPanel>
         </StackPanel>
 
-        <!-- НИЗ: навігація майстра -->
         <Border DockPanel.Dock="Bottom" Padding="0,14,0,0" Margin="0,14,0,0"
                 BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,0,0">
             <Grid>
@@ -146,8 +139,6 @@
                         Padding="18,9" Command="{Binding GoBackCommand}"
                         Visibility="{Binding CanGoBack, Converter={StaticResource BoolToVisibility}}"/>
 
-                <!-- Підказка про пропущені рядки стоїть однією групою з кнопками,
-                     тож їй потрібна стеля - інакше вона виштовхує їх за край. -->
                 <TextBlock Grid.Column="1" Text="{Binding SkippedNoteText}" VerticalAlignment="Center"
                            Margin="16,0" FontSize="11.5" MaxWidth="420"
                            TextTrimming="CharacterEllipsis" ToolTip="{Binding SkippedNoteText}"
@@ -165,11 +156,9 @@
             </Grid>
         </Border>
 
-        <!-- ТІЛО: рівно один крок за раз -->
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <Grid>
 
-                <!-- КРОК 1: файл -->
                 <StackPanel Visibility="{Binding IsStep1, Converter={StaticResource BoolToVisibility}}">
                     <Border Style="{StaticResource CardStyle}" Padding="24"
                             Visibility="{Binding NoFile, Converter={StaticResource BoolToVisibility}}">
@@ -209,11 +198,9 @@
                     </Border>
                 </StackPanel>
 
-                <!-- КРОК 2: набір і гілка -->
                 <StackPanel Visibility="{Binding IsStep2, Converter={StaticResource BoolToVisibility}}">
                     <Border Style="{StaticResource CardStyle}">
                         <StackPanel>
-                            <!-- Вибір цілі -->
                             <StackPanel Orientation="Horizontal" Margin="20,16">
                                 <RadioButton Content="Імпортувати в наявний набір" GroupName="ImportTarget"
                                              IsChecked="{Binding TargetExistingIntake, Mode=TwoWay}"
@@ -221,8 +208,6 @@
                                 <RadioButton Content="Створити новий набір" GroupName="ImportTarget"
                                              IsChecked="{Binding TargetNewIntake, Mode=TwoWay}"
                                              VerticalAlignment="Center" Margin="0,0,28,0"/>
-                                <!-- Постійного складу в макеті немає, але це наявна
-                                     можливість застосунку - вона лишається вибором. -->
                                 <RadioButton Content="Постійний склад (без набору)" GroupName="ImportTarget"
                                              IsChecked="{Binding TargetPermanentStaff, Mode=TwoWay}"
                                              VerticalAlignment="Center"/>
@@ -242,7 +227,6 @@
                                        Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5"
                                        Visibility="{Binding TargetNewIntake, Converter={StaticResource BoolToVisibility}}"/>
 
-                            <!-- Гілка всередині набору -->
                             <Border Background="{StaticResource RowAltBrush}" Padding="20,10"
                                     BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,0,1"
                                     Visibility="{Binding IsIntakeChoiceVisible, Converter={StaticResource BoolToVisibility}}">
@@ -253,8 +237,6 @@
                                           Visibility="{Binding IsIntakeChoiceVisible, Converter={StaticResource BoolToVisibility}}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <!-- Уся смуга - кнопка вибору: у макеті рядок гілки
-                                             клікабельний цілком, а не лише його назва. -->
                                         <Button Command="{Binding DataContext.SelectBranchCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                 CommandParameter="{Binding}"
                                                 HorizontalContentAlignment="Stretch" Cursor="Hand">
@@ -310,7 +292,6 @@
                     </Border>
                 </StackPanel>
 
-                <!-- КРОК 3: зіставлення колонок -->
                 <Border Style="{StaticResource CardStyle}"
                         Visibility="{Binding IsStep3, Converter={StaticResource BoolToVisibility}}">
                     <StackPanel>
@@ -360,18 +341,13 @@
                     </StackPanel>
                 </Border>
 
-                <!-- КРОК 4: перевірка -->
                 <StackPanel Visibility="{Binding IsStep4, Converter={StaticResource BoolToVisibility}}">
 
-                    <!-- Панель зі статистикою рядків -->
                     <Border Style="{StaticResource CardStyle}" Padding="16,12" Margin="0,0,0,14">
                         <TextBlock Text="{Binding RowStatsText}" VerticalAlignment="Center" FontSize="12"
                                    Foreground="{StaticResource TextSecondaryBrush}"/>
                     </Border>
 
-                    <!-- Перемикач діє на ВЕСЬ файл, а таблиця нижче показує лише перші
-                         вісім рядків - тому кількість названа тут явно, інакше було б
-                         незрозуміло, скільки саме людей зачепить одна галочка. -->
                     <Border Style="{StaticResource CardStyle}" Padding="16,12" Margin="0,0,0,14"
                             Visibility="{Binding HasMovableDuplicates, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel>
@@ -387,9 +363,6 @@
                         <StackPanel>
                             <Grid Background="{StaticResource SkySoftBrush}">
                                 <Grid.ColumnDefinitions>
-                                    <!-- Явна ширина: значок мусить вміщати найдовше зі своїх значень
-                                         («КОНФЛІКТ»). Частка стискалась щоразу, коли в таблиці
-                                         з'являлась нова колонка. -->
                                     <ColumnDefinition Width="104"/>
                                     <ColumnDefinition Width="1.8*"/>
                                     <ColumnDefinition Width="1.2*"/>
@@ -424,8 +397,6 @@
                                             </Border.Style>
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
-                                                    <!-- Та сама явна ширина, що й у шапці: колонки
-                                                         рядка мусять збігатися з нею стовпець у стовпець. -->
                                                     <ColumnDefinition Width="104"/>
                                                     <ColumnDefinition Width="1.8*"/>
                                                     <ColumnDefinition Width="1.2*"/>
@@ -452,9 +423,6 @@
                                                             </Style.Triggers>
                                                         </Style>
                                                     </Border.Style>
-                                                    <!-- «ОК» задано СЕТТЕРОМ, а не атрибутом Text: локальне значення
-                                                         в WPF старше за сеттер зі стилю, тож тригери міняли колір,
-                                                         але слово лишалось «ОК» навіть на помилці й конфлікті. -->
                                                     <TextBlock FontSize="10.5" FontWeight="Bold">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock">
@@ -513,8 +481,6 @@
                                                     </TextBlock.Style>
                                                 </TextBlock>
 
-                                                <!-- Прапорець лише там, де є що переносити. Дубль усередині
-                                                     файлу картки в базі не має, тож у нього тут прочерк. -->
                                                 <Grid Grid.Column="5" Margin="16,10">
                                                     <CheckBox IsChecked="{Binding Move}" Content="перенести"
                                                               VerticalAlignment="Center" FontSize="11"

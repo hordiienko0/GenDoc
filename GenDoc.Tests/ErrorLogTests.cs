@@ -2,8 +2,6 @@ using GenDoc.Services;
 
 namespace GenDoc.Tests;
 
-// Вада 1.3: застосунок зникав без сліду. Журнал - один файл на день, запис із
-// часом, користувачем, типом, повідомленням, стеком і внутрішніми винятками.
 public class ErrorLogTests : IDisposable
 {
     private readonly string _dir = Path.Combine(Path.GetTempPath(), $"gendoc-log-{Guid.NewGuid():N}");
@@ -28,7 +26,7 @@ public class ErrorLogTests : IDisposable
         Assert.Contains("зовнішній", text);
         Assert.Contains("ArgumentException", text);
         Assert.Contains("внутрішній", text);
-        Assert.Contains(nameof(Format_ContainsTypeMessageStackAndInner), text); // стек
+        Assert.Contains(nameof(Format_ContainsTypeMessageStackAndInner), text);
     }
 
     [Fact]

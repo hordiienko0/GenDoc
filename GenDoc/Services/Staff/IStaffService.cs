@@ -14,9 +14,6 @@ namespace GenDoc.Services.Staff
         Task<IReadOnlyList<string>> GetUnitsAsync();
         Task<IReadOnlyList<StaffPickerPerson>> GetPermanentStaffForPickerAsync();
 
-        /// <summary>Вужчий список - лише курсові офіцери. Дропліст
-        /// {{курсовий_офіцер}} не має права показувати весь постійний склад:
-        /// це повернуло б випадковий вибір, від якого й ішли.</summary>
         Task<IReadOnlyList<StaffPickerPerson>> GetCourseOfficersForPickerAsync();
         Task IssueDocumentsAsync(
             StaffEventKind kind, IReadOnlyList<int> recipientIds, IReadOnlyList<int> templateIds,

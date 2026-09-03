@@ -30,9 +30,6 @@ using System.Windows;
 
 namespace GenDoc
 {
-    /// <summary>
-    /// Interaction logic for App.xaml
-    /// </summary>
     public partial class App : Application
     {
         public static IServiceProvider Services { get; private set; } = null!;
@@ -41,8 +38,6 @@ namespace GenDoc
         {
             base.OnStartup(e);
 
-            // Вада 1.3: без обробника застосунок зникав мовчки. Диспетчерські помилки
-            // логуємо й показуємо, не завершуючи роботу; решту - лише логуємо.
             DispatcherUnhandledException += OnDispatcherUnhandledException;
             AppDomain.CurrentDomain.UnhandledException += (_, args) =>
             {
@@ -117,7 +112,6 @@ namespace GenDoc
             services.AddTransient<SettingsViewModel>();
             services.AddTransient<GenerationViewModel>();
             services.AddTransient<RoomsViewModel>();
-            // Singleton: дерево і список тримають стан між перемиканнями розділів.
             services.AddSingleton<OrgTreeViewModel>();
             services.AddSingleton<PersonnelViewModel>();
             services.AddSingleton<ArchiveViewModel>();
@@ -161,7 +155,6 @@ namespace GenDoc
 
         private void RunLoginFlow()
         {
-            // Прибираємо тимчасові копії документів, що лишились із минулого сеансу.
             _ = Services.GetRequiredService<ISecureTempFileService>().CleanupAsync();
 
             var loginWindow = Services.GetRequiredService<LoginWindow>();

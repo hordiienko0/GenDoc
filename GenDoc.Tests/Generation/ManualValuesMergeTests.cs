@@ -5,16 +5,6 @@ using GenDoc.Tests.Infrastructure;
 
 namespace GenDoc.Tests.Generation;
 
-/// <summary>
-/// Пер-профільні ручні значення (v26) мусять ЗЛИВАТИСЬ із глобальними по
-/// ключах, а не підмінювати їх блобом.
-///
-/// Регресія, знайдена аудитом 2026-08-28: читання відкочувалось на
-/// AppSettings лише тоді, коли профільний JSON порожній ЦІЛКОМ. Тобто перший
-/// же збережений тег («Дата наказу») назавжди затіняв усе, що оператор
-/// накопичив до переходу на v26 - решта полів поверталась порожньою, а
-/// передвибір підписанта злітав для всіх шаблонів, крім останнього.
-/// </summary>
 public class ManualValuesMergeTests
 {
     private const int UserId = 1;
@@ -79,16 +69,12 @@ public class ManualValuesMergeTests
         Assert.Equal("Полтава", Assert.Single(form.Rows).Value);
     }
 
-    // Той самий розрив для підписантів: збереження вибору для одного шаблону
-    // скидало передвибір для всіх інших.
     [Fact]
     public async Task Signer_UserChoiceForOneTemplate_KeepsGlobalChoiceForAnother()
     {
         using var db = new TestDb();
         Seed(db,
             globalJson: null, userJson: null,
-            // Курсовий офіцер пам'ятається під власним ключем «<контекст>#курсовий»,
-            // щоб вибір цієї ролі не перебивав підписанта документа.
             globalSigners: JsonSerializer.Serialize(new Dictionary<string, int> { ["tpl:5#курсовий"] = 2 }),
             userSigners: JsonSerializer.Serialize(new Dictionary<string, int> { ["tpl:9#курсовий"] = 1 }));
 

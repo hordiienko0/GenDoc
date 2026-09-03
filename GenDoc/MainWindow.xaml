@@ -111,7 +111,6 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <!-- Кнопка закріплення/згортання меню - на темному тлі панелі -->
         <Style x:Key="SidebarToggleButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Foreground" Value="{StaticResource MenuTextBrush}"/>
@@ -152,7 +151,6 @@
 
     <DockPanel Background="{StaticResource BackgroundBrush}">
 
-        <!-- Титульна панель -->
         <Border DockPanel.Dock="Top" Height="30" Background="{StaticResource NavyDeepBrush}"
                 MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
             <Grid>
@@ -171,7 +169,6 @@
             </Grid>
         </Border>
 
-        <!-- Рядок меню -->
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="Файл" Click="MenuItem_Click"/>
             <MenuItem Header="Правка" Click="MenuItem_Click"/>
@@ -201,30 +198,21 @@
 
         <Grid Background="{StaticResource BackgroundBrush}">
             <Grid.ColumnDefinitions>
-                <!-- Скільки місця меню ЗАБИРАЄ: закріплене - повну ширину,
-                     згорнуте - лише смужку іконок. -->
                 <ColumnDefinition Width="{Binding SidebarColumnWidth}"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
             <ContentControl Grid.Column="1" Content="{Binding CurrentContent}" Margin="24"/>
 
-            <!-- Панель лежить ПОВЕРХ обох колонок і вирівняна вліво: коли вона
-                 незакріплена, розкриття наїжджає на вміст, а не розсуває його
-                 (інакше весь розділ перебудовувався б від наведення миші). -->
             <Border Grid.Column="0" Grid.ColumnSpan="2" Panel.ZIndex="10"
                     HorizontalAlignment="Left" Width="{Binding SidebarWidth}"
                     Background="{StaticResource NavyBrush}"
                     MouseEnter="Sidebar_MouseEnter" MouseLeave="Sidebar_MouseLeave">
                 <DockPanel>
 
-                    <!-- Шапка: емблема + назва частини + закріплення панелі -->
                     <Border DockPanel.Dock="Top" Padding="10,12"
                             BorderBrush="{StaticResource SidebarDividerBrush}" BorderThickness="0,0,0,1">
                         <DockPanel>
-                            <!-- Кнопка закріплення видима лише в розкритому стані:
-                                 у смужці для неї немає місця, а розкрити її можна
-                                 наведенням. -->
                             <Button DockPanel.Dock="Right" Style="{StaticResource SidebarToggleButtonStyle}"
                                     Content="{Binding SidebarToggleIcon}"
                                     ToolTip="{Binding SidebarToggleTooltip}"
@@ -266,9 +254,6 @@
                                                             <ColumnDefinition Width="Auto"/>
                                                         </Grid.ColumnDefinitions>
 
-                                                        <!-- Іконка розділу: у згорнутій смужці від пункту
-                                                             лишається тільки вона, тому фіксованої ширини
-                                                             й по центру смужки. -->
                                                         <TextBlock Grid.Column="0" Text="{Binding Icon}"
                                                                    FontFamily="Segoe MDL2 Assets" FontSize="15"
                                                                    Width="22" TextAlignment="Center"

@@ -3,9 +3,6 @@ using GenDoc.Models;
 
 namespace GenDoc.Tests.Infrastructure;
 
-// Шляхи до справжніх шаблонів з теки «шаблони» в корені репозиторію.
-// Свідомо БЕЗ копіювання у bin: якщо шаблон перейменували чи прибрали,
-// тест має впасти одразу, а не мовчки працювати зі старою копією.
 public static class TemplateFixtures
 {
     public static string DopuskXlsx => Path(@"Шаблон_Допуск_Додаток_5.xlsx");
@@ -43,7 +40,6 @@ public static class TemplateFixtures
         ServiceNumber = $"СН{id:0000}"
     };
 
-    // Детермінований ростер: прізвища за абеткою, звання чергуються.
     public static List<Recipient> Roster(int count)
     {
         var ranks = new[] { "полковник", "майор", "капітан", "старший лейтенант" };

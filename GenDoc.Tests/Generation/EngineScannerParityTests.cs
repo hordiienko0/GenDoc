@@ -7,10 +7,6 @@ using GenDoc.Services.Templates;
 
 namespace GenDoc.Tests.Generation;
 
-// Огляд перед злиттям гілки: жоден тест у наборі не звіряв сканер із рушієм
-// одне з одним, і саме тому вся ця дірка (маркери, що мовчки стираються поза
-// структурним обходом) лишалась непоміченою. Ці два тести - саме та звірка,
-// яка мала б це виявити раніше.
 public class EngineScannerParityTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), $"gendoc-parity-{Guid.NewGuid():N}");
@@ -34,13 +30,6 @@ public class EngineScannerParityTests : IDisposable
         return string.Concat(doc.MainDocumentPart!.Document!.Body!.Descendants<Text>().Select(t => t.Text));
     }
 
-    // Звичайні (не блокові) теги на п'ятьох різних глибинах: абзац рівня
-    // документа, комірка звичайної таблиці, абзац у елементі керування
-    // вмістом Word (w:sdt), комірка таблиці, вкладеної в комірку іншої
-    // таблиці, і рядок, загорнутий у елемент керування вмістом на рівні
-    // рядка (w:sdtRow) - саме глибина, яку стара «інша» підмітка бачила лише
-    // для прямих дітей контейнера і пропускала тут. Без блоку - навмисно:
-    // цей документ підходить під обидва режими генерації одразу.
     private static byte[] BuildDocWithTagsAtVariousDepths()
     {
         using var stream = new MemoryStream();
@@ -71,11 +60,6 @@ public class EngineScannerParityTests : IDisposable
         return stream.ToArray();
     }
 
-    // Та сама звичайна (не блокова) заміна, пропущена через обидва шляхи
-    // генерації: GenerateOne іде плоским Descendants<Paragraph>() і бачить
-    // усе за побудовою; GenerateGroup - структурним обходом плюс підмітанням.
-    // Якщо підмітання колись перестане покривати якусь глибину, цей тест
-    // розійдеться першим - саме такого порівняння в наборі раніше не було.
     [Fact]
     public void OrdinaryTagsAtEveryDepth_LeaveNoRawPlaceholders_ThroughEitherGenerationPath()
     {
@@ -103,11 +87,6 @@ public class EngineScannerParityTests : IDisposable
         Assert.DoesNotContain("{{", ReadAllText(groupPath));
     }
 
-    // Звірка сканера з рушієм: беремо все, що сканер зібрав як теги на
-    // фікстурі з тегами на різних глибинах, підставляємо значення рівно для
-    // цих тегів - і рушій має заповнити геть усе без винятку. Якби сканер
-    // мав сліпу зону (як до фіксу з w:sdt), тут лишився б {{тег}} без
-    // значення в словнику, і UnfilledTags або сирий текст це б показали.
     [Fact]
     public void EveryTagTheEngineSubstitutes_WasCollectedByTheScanner()
     {

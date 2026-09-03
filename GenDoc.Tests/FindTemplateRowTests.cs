@@ -3,13 +3,8 @@ using GenDoc.Services;
 
 namespace GenDoc.Tests;
 
-// Розкладки взяті з реальних відомостей у теці «шаблони».
 public class FindTemplateRowTests
 {
-    // Допуск (Додаток 5): у шапці в ОДНІЙ клітинці два теги - {{номери_вправ}} і
-    // {{номер_вч}}. За старим правилом «перший рядок із >1 тегом» шаблонним ставав
-    // рядок 3, тож заголовок клонувався на кожного слухача, а рядок даних лишався
-    // порожнім. Має обиратись рядок 7.
     [Fact]
     public void FindTemplateRow_HeaderHasTwoTagsInOneCell_PicksDataRowNotHeader()
     {
@@ -36,8 +31,6 @@ public class FindTemplateRowTests
         Assert.Equal(7, ExportTemplateService.FindTemplateRow(sheet.RangeUsed()!));
     }
 
-    // Залік (Додаток 8): шапка з {{номер_вч}} і {{опис_підрозділу}} в різних рядках,
-    // блок підпису з двома тегами нижче. Дані - рядок 10.
     [Fact]
     public void FindTemplateRow_SignatureBlockBelowData_PicksDataRow()
     {
@@ -60,8 +53,6 @@ public class FindTemplateRowTests
         Assert.Equal(10, ExportTemplateService.FindTemplateRow(sheet.RangeUsed()!));
     }
 
-    // Роздавальна відомість: у рядку даних лише один пер-людинний тег
-    // ({{піб_ініціали}}), решта - ручні. Він усе одно має виграти в шапки.
     [Fact]
     public void FindTemplateRow_SingleRecipientTagAmongManualOnes_StillWins()
     {
@@ -79,8 +70,6 @@ public class FindTemplateRowTests
         Assert.Equal(9, ExportTemplateService.FindTemplateRow(sheet.RangeUsed()!));
     }
 
-    // Запасна поведінка: жодного пер-людинного тега - як раніше, перший рядок
-    // з кількома тегами.
     [Fact]
     public void FindTemplateRow_NoRecipientTags_FallsBackToFirstMultiTagRow()
     {
@@ -105,9 +94,6 @@ public class FindTemplateRowTests
         Assert.Null(ExportTemplateService.FindTemplateRow(sheet.RangeUsed()!));
     }
 
-    // Правило рахує теги ЛЮДИНИ, а не всі теги поспіль: рядок 4 має більше тегів
-    // загалом, але всі вони ручні, а рядок 6 має менше - зате це дані людини.
-    // Саме рядок 6 клонується на кожного зі списку.
     [Fact]
     public void FindTemplateRow_RowWithMoreManualTags_LosesToRowWithRecipientTags()
     {

@@ -6,8 +6,6 @@ using GenDoc.Services.Generation;
 
 namespace GenDoc.Tests.Generation;
 
-// Кожен випадок тут дав би зіпсований документ мовчки. Відмова з названим
-// шаблоном і блоком краща за файл, який виглядає готовим.
 public class TableBlockErrorTests : IDisposable
 {
     private readonly string _folder = Path.Combine(Path.GetTempPath(), $"gendoc-tblockerr-{Guid.NewGuid():N}");
@@ -123,17 +121,9 @@ public class TableBlockErrorTests : IDisposable
         Assert.False(result.Success);
         Assert.Contains("Проба", result.ErrorMessage);
         Assert.Contains("список", result.ErrorMessage);
-        // Не просто "таблиц" - це стрічка спільна з повідомленням про
-        // "перетин рівнів" (crossing branch), і збіг з нею тест не помітив би.
-        // "не закрито в ній же" є лише в повідомленні цієї, in-table гілки.
         Assert.Contains("не закрито в ній же", result.ErrorMessage);
     }
 
-    // Огляд перед злиттям гілки: маркерна таблиця (відкриваючий/тіло/
-    // закриваючий рядки), уся загорнута в елемент керування вмістом Word,
-    // невидима для структурного обходу (BlockChildren бере лише Paragraph і
-    // Table серед прямих дітей контейнера). До GuardResidualMarkers це
-    // мовчки тихо стиралось підміткою - Success=True, порожня таблиця.
     [Fact]
     public void MarkerTableInsideSdtBlock_FailsWithMessageNamingTemplate()
     {
@@ -150,11 +140,6 @@ public class TableBlockErrorTests : IDisposable
         Assert.Contains("{{#список}}", result.ErrorMessage);
     }
 
-    // Огляд перед злиттям гілки: маркерні рядки таблиці, вкладеної в комірку
-    // іншої (звичайної) таблиці. Зовнішній рядок - не маркер (його текст -
-    // зчеплення текстів усіх вкладених маркерів), тож структурний обхід
-    // трактує його як звичайний вміст і раніше стирав маркери всередині як
-    // незаповнені теги - так само тихо, як і у випадку з w:sdt.
     [Fact]
     public void MarkerRowsInTableNestedInsideACell_FailWithMessageNamingTemplate()
     {
@@ -172,14 +157,6 @@ public class TableBlockErrorTests : IDisposable
         Assert.Contains("{{#список}}", result.ErrorMessage);
     }
 
-    // Другий огляд перед злиттям гілки: маркер, що ділить абзац з іншим
-    // текстом («Список: {{#список}}», «кінець {{/список}}»), - так само не
-    // «елемент-маркер», яким уміє оперувати ProcessSiblings (той бачить лише
-    // абзац, чий ЦІЛИЙ текст дорівнює маркеру). Перше виправлення робило
-    // preserveMarkers безумовним і GuardResidualMarkers - лише
-    // весь-абзац-разом, тож такий текст лишався буквально в тексті й
-    // друкувався в Success=True документі. GuardResidualMarkers тепер шукає
-    // маркер будь-де в тексті абзаца (BlockStructure.EmbeddedMarkerRegex).
     [Fact]
     public void MarkerSharingAParagraphWithOtherText_FailsWithMessageNamingTemplate()
     {

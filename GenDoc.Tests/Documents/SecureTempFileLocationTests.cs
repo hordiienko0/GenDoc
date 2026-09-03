@@ -3,11 +3,6 @@ using GenDoc.Services.Documents;
 
 namespace GenDoc.Tests.Documents;
 
-// Тимчасові копії - це РОЗШИФРОВАНІ персональні дані. Вони лежали в теці
-// застосунку (`AppContext.BaseDirectory/_temp`) поруч із базою: та тека часто
-// живе на мережевому диску або на флешці, звідки її ніхто не витирає, і
-// потрапляє в резервні копії дистрибутива цілком. Місце - профіль користувача
-// (аудит 2026-08-28).
 public class SecureTempFileLocationTests
 {
     private static string TempRoot()
@@ -33,9 +28,6 @@ public class SecureTempFileLocationTests
         Assert.EndsWith("_temp", root);
     }
 
-    // Прибирання мусить зачепити й стару теку: інсталяції, що вже працювали,
-    // мають розшифровані документи в теці застосунку, і переїзд сам собою їх
-    // там і залишив би назавжди.
     [Fact]
     public async Task Cleanup_AlsoRemovesTheLegacyFolderNextToTheApplication()
     {

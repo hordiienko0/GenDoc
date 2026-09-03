@@ -85,8 +85,6 @@ public partial class MainViewModel : ObservableObject
 
         Groups = new ObservableCollection<NavigationGroup>
         {
-            // Іконки - гліфи Segoe MDL2 Assets, тим самим шрифтом, що й кнопки
-            // рядків таблиць. У згорнутій панелі меню від пункту лишається саме вона.
             new(new[]
             {
                 new NavigationItem(PersonnelSectionTitle, "\uE716", () => _serviceProvider.GetRequiredService<PersonnelViewModel>()),
@@ -113,9 +111,6 @@ public partial class MainViewModel : ObservableObject
             }, showDividerAfter: false),
         };
 
-        // Стартовий розділ - «Особовий склад». Шукаємо за назвою, а не беремо
-        // перший пункт списку: порядок меню - справа розкладки, і зміна порядку
-        // не повинна мовчки міняти те, з чого починається робота.
         var items = Groups.SelectMany(g => g.Items).ToList();
         var startItem = items.FirstOrDefault(i => i.Title == PersonnelSectionTitle) ?? items.First();
         _ = SelectItemAsync(startItem);
@@ -136,22 +131,16 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string organizationDisplayName = string.Empty;
 
-    /// <summary>Скорочена назва частини - перший рядок шапки бічної панелі.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSidebarUnitFullName))]
     private string sidebarUnitShortName = string.Empty;
 
-    /// <summary>Повна назва частини - другий рядок шапки бічної панелі.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSidebarUnitFullName))]
     private string sidebarUnitFullName = string.Empty;
 
     public bool HasSidebarUnitFullName => !string.IsNullOrWhiteSpace(SidebarUnitFullName);
 
-    /// <summary>Панель закріплена - займає місце й показує підписи. Знята з
-    /// закріплення, вона згортається в смужку з іконок і розкривається поверх
-    /// вмісту, коли на неї навести. Так на вузьких екранах розділу лишається
-    /// вся ширина, а меню нікуди не зникає.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSidebarExpanded))]
     [NotifyPropertyChangedFor(nameof(SidebarColumnWidth))]
@@ -160,7 +149,6 @@ public partial class MainViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(SidebarToggleTooltip))]
     private bool isSidebarPinned = true;
 
-    /// <summary>Курсор над панеллю - тимчасове розкриття незакріпленої панелі.</summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsSidebarExpanded))]
     [NotifyPropertyChangedFor(nameof(SidebarWidth))]
@@ -171,11 +159,8 @@ public partial class MainViewModel : ObservableObject
     public const double SidebarExpandedWidth = 212;
     public const double SidebarRailWidth = 52;
 
-    /// <summary>Ширина самої панелі: розкрита - повна, згорнута - смужка іконок.</summary>
     public double SidebarWidth => IsSidebarExpanded ? SidebarExpandedWidth : SidebarRailWidth;
 
-    /// <summary>Скільки місця панель ЗАБИРАЄ в розділу. Незакріплена не забирає
-    /// нічого понад смужку - вона спливає поверх, не зсуваючи вміст.</summary>
     public GridLength SidebarColumnWidth => new(IsSidebarPinned ? SidebarExpandedWidth : SidebarRailWidth);
 
     public string SidebarToggleIcon => IsSidebarPinned ? "\uE76B" : "\uE76C";
@@ -189,7 +174,6 @@ public partial class MainViewModel : ObservableObject
 
     private const string AppTitle = "GenDoc - Облік особового складу";
 
-    /// <summary>Текст титульного рядка - з назвою частини, як у макеті.</summary>
     public string WindowTitleText { get; private set; } = AppTitle;
 
     public string StatusBarUserText { get; private set; } = string.Empty;
@@ -223,10 +207,6 @@ public partial class MainViewModel : ObservableObject
 
     private void RefreshIntakesBadgeFireAndForget() => _ = RefreshIntakesBadgeAsync();
 
-    /// <summary>Спитати поточний розділ, чи можна його полишити. Одна точка на
-    /// два випадки: перехід у інший розділ і закриття вікна. До цього хрестик
-    /// закривав вікно, не питаючи нікого, і незбережена робота гинула
-    /// (аудит 2026-08-28).</summary>
     public async Task<bool> TryLeaveCurrentSectionAsync()
         => CurrentContent is not IGuardedSection guarded || await guarded.TryLeaveAsync();
 
@@ -235,7 +215,6 @@ public partial class MainViewModel : ObservableObject
     {
         if (item is null || item == SelectedItem) return;
 
-        // Розділ із незбереженими змінами може заблокувати перехід.
         if (!await TryLeaveCurrentSectionAsync()) return;
 
         if (SelectedItem is not null) SelectedItem.IsActive = false;
@@ -252,7 +231,7 @@ public partial class MainViewModel : ObservableObject
         if (item != SelectedItem)
         {
             await SelectItemAsync(item);
-            if (SelectedItem != item) return; // IGuardedSection відмовив у переході
+            if (SelectedItem != item) return;
         }
 
         if (m.Payload is not null && CurrentContent is INavigationTarget target)

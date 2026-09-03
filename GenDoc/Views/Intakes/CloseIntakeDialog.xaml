@@ -17,7 +17,6 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Заголовок -->
         <Border Grid.Row="0" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1" Padding="16,12">
             <Grid>
                 <Grid.ColumnDefinitions>
@@ -31,7 +30,6 @@
             </Grid>
         </Border>
 
-        <!-- Тіло -->
         <StackPanel Grid.Row="1" Margin="22,16">
 
             <Grid Margin="0,0,0,16" Visibility="{Binding HasIncomplete, Converter={StaticResource BoolToVisibility}}">
@@ -72,7 +70,6 @@
             </TextBlock>
         </StackPanel>
 
-        <!-- Футер -->
         <Border Grid.Row="2" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,0,0" Padding="22,16">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="Скасувати" Style="{StaticResource GhostButtonStyle}" Command="{Binding CancelCommand}" IsCancel="True"/>

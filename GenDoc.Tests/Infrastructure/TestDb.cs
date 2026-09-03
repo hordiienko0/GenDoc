@@ -5,18 +5,12 @@ using Microsoft.Extensions.Logging;
 
 namespace GenDoc.Tests.Infrastructure;
 
-// Незашифрована in-memory база для тестів сервісів. З'єднання мусить лишатись
-// відкритим весь час життя TestDb - SQLite знищує in-memory базу, щойно
-// закривається останнє з'єднання до неї.
 public sealed class TestDb : IDisposable
 {
     private readonly SqliteConnection _connection;
     private readonly List<string> _sql = new();
     private readonly bool _recordSql;
 
-    /// <param name="recordSql">Записувати виконані запити у <see cref="Sql"/>.
-    /// Потрібно лише тестам, що рахують звернення до бази (N+1); вимкнено
-    /// типово, щоб решта тестів не платила за журнал.</param>
     public TestDb(bool recordSql = false)
     {
         _recordSql = recordSql;
@@ -31,16 +25,11 @@ public sealed class TestDb : IDisposable
 
     public IDbContextFactory<AppDbContext> Factory { get; }
 
-    /// <summary>Виконані SQL-команди - у порядку виконання. Порожньо, якщо
-    /// TestDb створено без recordSql.</summary>
     public IReadOnlyList<string> Sql
     {
         get { lock (_sql) return _sql.ToList(); }
     }
 
-    /// <summary>Скільки разів виконався запит SELECT до вказаної таблиці. Саме
-    /// це число й відрізняє «вичитали довідник один раз» від «сканували на
-    /// кожен рядок».</summary>
     public int SelectCount(string table)
         => Sql.Count(s => s.Contains("SELECT", StringComparison.Ordinal)
                        && s.Contains($"\"{table}\"", StringComparison.Ordinal));
@@ -74,8 +63,6 @@ public sealed class TestDb : IDisposable
         public AppDbContext CreateDbContext() => new TestAppDbContext(_connection, _log);
     }
 
-    // Перевизначає OnConfiguring і НЕ викликає base - так гілка з паролем
-    // і DbPaths.DatabasePath не виконується взагалі.
     private sealed class TestAppDbContext : AppDbContext
     {
         private readonly SqliteConnection _connection;

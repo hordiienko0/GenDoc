@@ -4,9 +4,6 @@ namespace GenDoc.Services.Documents
     {
         Task<List<ArchiveRowDto>> QueryAsync(ArchiveFilter filter);
 
-        /// <summary>Дерево папок для лівої панелі «Архіву». Читає ті самі
-        /// збережені шляхи, за якими фільтрується список, тож розійтися з ним
-        /// не може.</summary>
         Task<ArchiveStats> GetStatsAsync(ArchiveFilter filter);
         Task<ArchiveFilterOptions> GetFilterOptionsAsync();
 
@@ -36,15 +33,11 @@ namespace GenDoc.Services.Documents
         Task<List<RunDto>> GetRunsAsync(int? intakeId, int? year, int? userId = null);
         Task<List<RunItemDto>> GetRunItemsAsync(int runId);
 
-        // Групові документи (XLSX-відомості на весь список людей) - окрема
-        // персональна модель, без RecipientId.
         Task<List<GroupDocumentRowDto>> QueryGroupAsync(GroupArchiveFilter filter);
         Task<List<GroupTemplateOption>> GetGroupTemplateOptionsAsync();
         Task<ArchiveOpResult> OpenGroupAsync(int groupDocumentId);
         Task<ArchiveOpResult> PrintGroupAsync(int groupDocumentId);
 
-        /// <summary>Склад цієї версії групового документа (v25); порожньо -
-        /// документ згенеровано до запису складу.</summary>
         Task<List<GroupParticipantDto>> GetGroupParticipantsAsync(int groupDocumentId);
         Task<ArchiveOpResult> SaveGroupAsAsync(int groupDocumentId, string targetPath);
         Task DeleteGroupAsync(IReadOnlyList<int> groupDocumentIds);
