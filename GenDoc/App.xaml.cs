@@ -110,6 +110,7 @@ namespace GenDoc
             services.AddTransient<ViewModels.Templates.Builder.TemplateBuilderViewModel>();
             services.AddTransient<AuditLogViewModel>();
             services.AddTransient<SettingsViewModel>();
+            services.AddSingleton<CommunityToolkit.Mvvm.Messaging.IMessenger>(CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger.Default);
             services.AddTransient<GenerationViewModel>();
             services.AddTransient<RoomsViewModel>();
             services.AddSingleton<OrgTreeViewModel>();

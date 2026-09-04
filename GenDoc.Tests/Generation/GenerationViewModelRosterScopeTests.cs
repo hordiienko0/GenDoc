@@ -59,9 +59,9 @@ public class GenerationViewModelRosterScopeTests
             new NoManualTags(),
             new OutputFolderService(db.Factory),
             TestServices.UserSettings(db, 1),
-            activeIntake is null ? new FakeIntakeAccessor() : new FakeIntakeAccessor(activeIntake));
+            activeIntake is null ? new FakeIntakeAccessor() : new FakeIntakeAccessor(activeIntake),
+            new WeakReferenceMessenger());
 
-        WeakReferenceMessenger.Default.UnregisterAll(vm);
         await vm.InitialLoad;
         return vm;
     }
@@ -111,6 +111,34 @@ public class GenerationViewModelRosterScopeTests
         Assert.False(vm.HasActiveIntake);
         Assert.Equal("Згенерувати всім (4)", vm.GenerateButtonText);
         Assert.Equal("Активного набору немає — у списку всі люди бази, включно з постійним складом.", vm.RosterScopeHint);
+    }
+
+    [Fact]
+    public async Task Roster_ReactsOnlyToItsOwnMessenger_NotToTheGlobalOne()
+    {
+        using var db = new TestDb();
+        var seeded = Seed(db);
+        var messenger = new WeakReferenceMessenger();
+        var vm = new GenerationViewModel(
+            TestServices.Generation(db),
+            new NoDialogs(),
+            null!,
+            TestServices.Completeness(db, 1, seeded.ActiveIntake),
+            new RecipientService(db.Factory, new FakeAuditLog(), new FakeCurrentUser()),
+            new NoManualTags(),
+            new OutputFolderService(db.Factory),
+            TestServices.UserSettings(db, 1),
+            new FakeIntakeAccessor(seeded.ActiveIntake),
+            messenger);
+        await vm.InitialLoad;
+        var hintChanges = 0;
+        vm.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(vm.RosterScopeHint)) hintChanges++; };
+
+        WeakReferenceMessenger.Default.Send(new ActiveIntakeChangedMessage());
+        Assert.Equal(0, hintChanges);
+
+        messenger.Send(new ActiveIntakeChangedMessage());
+        Assert.Equal(1, hintChanges);
     }
 
     [Fact]

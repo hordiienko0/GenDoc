@@ -27,6 +27,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     private readonly IOutputFolderService _outputFolderService;
     private readonly IUserSettingsService _userSettings;
     private readonly Services.Completeness.IIntakeServiceAccessor _intakeAccessor;
+    private readonly IMessenger _messenger;
 
     public GenerationViewModel(
         IGenerationService generationService,
@@ -37,7 +38,8 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         IManualTagFormBuilder manualTagFormBuilder,
         IOutputFolderService outputFolderService,
         IUserSettingsService userSettings,
-        Services.Completeness.IIntakeServiceAccessor intakeAccessor)
+        Services.Completeness.IIntakeServiceAccessor intakeAccessor,
+        IMessenger messenger)
     {
         _generationService = generationService;
         _dialogService = dialogService;
@@ -48,7 +50,8 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         _outputFolderService = outputFolderService;
         _userSettings = userSettings;
         _intakeAccessor = intakeAccessor;
-        WeakReferenceMessenger.Default.Register<GenerationViewModel, ActiveIntakeChangedMessage>(this,
+        _messenger = messenger;
+        _messenger.Register<GenerationViewModel, ActiveIntakeChangedMessage>(this,
             static (recipient, message) => recipient.OnActiveIntakeChanged());
         RefreshPackages();
         RefreshRecipientOptions();
@@ -569,7 +572,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         await vm.InitializeAsync(SelectedPackage.Id, null);
         if (_dialogService.ShowDialog(vm, Application.Current.MainWindow) == true)
         {
-            WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
+            _messenger.Send(new MatrixChangedMessage());
             await RefreshForPackageAsync(SelectedPackage);
         }
     }
