@@ -53,7 +53,7 @@ namespace GenDoc.Services.Documents
         bool HasContent,
         string FileName);
 
-    public record AttachmentDto(int Id, string FileName, DateTime UploadedAt, string? Note, long SizeBytes);
+    public record AttachmentDto(int Id, string FileName, DateTime UploadedAt, string? Note, long SizeBytes, int DocumentVersion);
 
     public record RunDto(
         int Id,

@@ -23,7 +23,7 @@ namespace GenDoc.Services.Documents
         Task<ArchiveOpResult> OpenAttachmentAsync(int attachmentId);
         Task<ArchiveOpResult> SaveAttachmentAsAsync(int attachmentId, string targetPath);
         Task<List<DocumentVersionDto>> GetVersionsAsync(int recipientId, int templateId);
-        Task<List<AttachmentDto>> GetAttachmentsAsync(int documentId);
+        Task<List<AttachmentDto>> GetAttachmentsAsync(int recipientId, int templateId);
         Task DeleteAttachmentAsync(int attachmentId);
         Task<int> MakeCurrentAsync(int versionDocumentId);
 

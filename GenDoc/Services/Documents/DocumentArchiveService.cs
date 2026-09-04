@@ -100,7 +100,10 @@ namespace GenDoc.Services.Documents
                     g.GeneratedAt,
                     db.Users.IgnoreQueryFilters()
                         .Where(u => u.Id == g.GeneratedByUserId).Select(u => u.FullName).FirstOrDefault() ?? "-",
-                    g.Attachments.Count(a => a.DeletedAt == null),
+                    db.DocumentAttachments.Count(a => a.DeletedAt == null
+                        && a.GeneratedDocument!.DeletedAt == null
+                        && a.GeneratedDocument.RecipientId == g.RecipientId
+                        && a.GeneratedDocument.TemplateId == g.TemplateId),
                     g.HasContent,
                     g.SourceType,
                     g.FileName,
@@ -371,6 +374,15 @@ namespace GenDoc.Services.Documents
                 current.IsCurrent = false;
             }
 
+            var recipient = await db.Recipients.IgnoreQueryFilters()
+                .Where(r => r.Id == previous.RecipientId)
+                .Select(r => new { r.IntakeId, r.OrgNodeId, r.DeletedAt })
+                .FirstOrDefaultAsync();
+            var alive = recipient is not null && recipient.DeletedAt is null;
+            var orgPath = alive
+                ? await OrgTree.OrgPathBuilder.BuildAsync(db, recipient!.OrgNodeId)
+                : previous.OrgPathSnapshot;
+
             db.GeneratedDocuments.Add(new GeneratedDocument
             {
                 RecipientId = previous.RecipientId,
@@ -384,9 +396,9 @@ namespace GenDoc.Services.Documents
                 Version = maxVersion + 1,
                 IsCurrent = true,
                 SourceType = sourceType,
-                IntakeId = previous.IntakeId,
-                OrgNodeIdSnapshot = previous.OrgNodeIdSnapshot,
-                OrgPathSnapshot = previous.OrgPathSnapshot,
+                IntakeId = alive ? recipient!.IntakeId : previous.IntakeId,
+                OrgNodeIdSnapshot = alive ? recipient!.OrgNodeId : previous.OrgNodeIdSnapshot,
+                OrgPathSnapshot = orgPath,
                 HasContent = true,
                 Content = new GeneratedDocumentContent { Content = bytes }
             });
@@ -400,12 +412,8 @@ namespace GenDoc.Services.Documents
             var doc = await db.GeneratedDocuments.FirstOrDefaultAsync(g => g.Id == documentId);
             if (doc is null) return new ArchiveOpResult(false, RecordGoneMessage);
 
-            var maxKb = await db.AppSettings.Select(s => s.MaxDocumentSizeKb).FirstOrDefaultAsync()
-                ?? DefaultMaxDocumentSizeKb;
-            var info = new FileInfo(filePath);
-            if (info.Length > maxKb * 1024L)
-                return new ArchiveOpResult(false,
-                    $"Файл {info.Length / 1024 / 1024.0:0.#} МБ перевищує ліміт {maxKb / 1024.0:0.#} МБ. Нічого не збережено.");
+            if (await FileLimitErrorAsync(db, filePath) is { } limitError)
+                return new ArchiveOpResult(false, limitError);
 
             var bytes = await File.ReadAllBytesAsync(filePath);
             await AddVersionAsync(db, doc, bytes, Path.GetFileName(filePath), DocumentSourceType.ManualUpload);
@@ -416,14 +424,34 @@ namespace GenDoc.Services.Documents
             return new ArchiveOpResult(true, null);
         }
 
+        private static async Task<string?> FileLimitErrorAsync(AppDbContext db, string filePath)
+        {
+            if (!File.Exists(filePath))
+                return $"Файл не знайдено: {filePath}. Нічого не збережено.";
+
+            var maxKb = await db.AppSettings.Select(s => s.MaxDocumentSizeKb).FirstOrDefaultAsync()
+                ?? DefaultMaxDocumentSizeKb;
+            var info = new FileInfo(filePath);
+            if (info.Length > maxKb * 1024L)
+                return $"Файл {info.Length / 1024 / 1024.0:0.#} МБ перевищує ліміт {maxKb / 1024.0:0.#} МБ. Нічого не збережено.";
+
+            return null;
+        }
+
         public async Task<ArchiveOpResult> AttachAsync(int documentId, string filePath, string? note)
         {
             using var db = _dbFactory.CreateDbContext();
+            var doc = await db.GeneratedDocuments.FirstOrDefaultAsync(g => g.Id == documentId);
+            if (doc is null) return new ArchiveOpResult(false, RecordGoneMessage);
+
+            if (await FileLimitErrorAsync(db, filePath) is { } limitError)
+                return new ArchiveOpResult(false, limitError);
+
             var bytes = await File.ReadAllBytesAsync(filePath);
 
             db.DocumentAttachments.Add(new DocumentAttachment
             {
-                GeneratedDocumentId = documentId,
+                GeneratedDocumentId = doc.Id,
                 FileName = Path.GetFileName(filePath),
                 Content = bytes,
                 SizeBytes = bytes.LongLength,
@@ -466,7 +494,10 @@ namespace GenDoc.Services.Documents
                     g.OrgPathSnapshot, g.GeneratedAt,
                     db.Users.IgnoreQueryFilters()
                         .Where(u => u.Id == g.GeneratedByUserId).Select(u => u.FullName).FirstOrDefault() ?? "-",
-                    g.Attachments.Count(a => a.DeletedAt == null),
+                    db.DocumentAttachments.Count(a => a.DeletedAt == null
+                        && a.GeneratedDocument!.DeletedAt == null
+                        && a.GeneratedDocument.RecipientId == g.RecipientId
+                        && a.GeneratedDocument.TemplateId == g.TemplateId),
                     g.HasContent, g.SourceType, g.FileName, g.SizeBytes,
                     db.Recipients.IgnoreQueryFilters()
                         .Any(r => r.Id == g.RecipientId && r.DeletedAt == null)))
@@ -515,13 +546,15 @@ namespace GenDoc.Services.Documents
                 .ToListAsync();
         }
 
-        public async Task<List<AttachmentDto>> GetAttachmentsAsync(int documentId)
+        public async Task<List<AttachmentDto>> GetAttachmentsAsync(int recipientId, int templateId)
         {
             using var db = _dbFactory.CreateDbContext();
             return await db.DocumentAttachments
-                .Where(a => a.GeneratedDocumentId == documentId)
+                .Where(a => a.GeneratedDocument!.RecipientId == recipientId
+                    && a.GeneratedDocument.TemplateId == templateId)
                 .OrderByDescending(a => a.UploadedAt)
-                .Select(a => new AttachmentDto(a.Id, a.FileName, a.UploadedAt, a.Note, a.SizeBytes))
+                .Select(a => new AttachmentDto(
+                    a.Id, a.FileName, a.UploadedAt, a.Note, a.SizeBytes, a.GeneratedDocument!.Version))
                 .ToListAsync();
         }
 

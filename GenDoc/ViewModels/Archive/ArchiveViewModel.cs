@@ -673,7 +673,20 @@ namespace GenDoc.ViewModels.Archive
             IsBusy = true;
             try
             {
-                await _archiveService.AttachAsync(row.Id, fileDialog.FileName, noteDialog.Note);
+                var result = await _archiveService.AttachAsync(row.Id, fileDialog.FileName, noteDialog.Note);
+                if (!result.Success)
+                {
+                    MessageBox.Show(result.ErrorMessage, "Прикріпити скан",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+            }
+            catch (Exception ex)
+            {
+                ErrorLog.Write(ex, _currentUser.CurrentUserFullName);
+                MessageBox.Show($"Не вдалося прикріпити скан: {ex.Message}", "Прикріпити скан",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
             }
             finally
             {

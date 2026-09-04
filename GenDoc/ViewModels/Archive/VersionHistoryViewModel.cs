@@ -49,6 +49,7 @@ namespace GenDoc.ViewModels.Archive
 
         public AttachmentDto Dto { get; }
         public string FileName => Dto.FileName;
+        public string VersionText => $"до в.{Dto.DocumentVersion}";
         public string DateText => Dto.UploadedAt.ToString("dd.MM.yyyy HH:mm", Uk);
         public string NoteText => string.IsNullOrWhiteSpace(Dto.Note) ? "-" : Dto.Note!;
     }
@@ -58,7 +59,6 @@ namespace GenDoc.ViewModels.Archive
         private readonly IDocumentArchiveService _archiveService;
         private readonly int _recipientId;
         private readonly int _templateId;
-        private readonly int _documentId;
 
         public VersionHistoryViewModel(
             IDocumentArchiveService archiveService,
@@ -68,7 +68,6 @@ namespace GenDoc.ViewModels.Archive
             _archiveService = archiveService;
             _recipientId = recipientId;
             _templateId = templateId;
-            _documentId = documentId;
             HeaderText = $"{personName} - {templateName}";
         }
 
@@ -89,7 +88,7 @@ namespace GenDoc.ViewModels.Archive
                 Versions.Add(new VersionRowViewModel(version, this));
 
             Attachments.Clear();
-            foreach (var attachment in await _archiveService.GetAttachmentsAsync(_documentId))
+            foreach (var attachment in await _archiveService.GetAttachmentsAsync(_recipientId, _templateId))
                 Attachments.Add(new AttachmentRowViewModel(attachment));
             HasAttachments = Attachments.Count > 0;
         }
