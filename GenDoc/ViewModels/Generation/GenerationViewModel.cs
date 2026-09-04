@@ -418,12 +418,31 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         RefreshPackageTemplateCounts();
     }
 
-    private void RefreshPackages()
+    internal void RefreshPackages()
     {
+        var selectedId = SelectedPackage?.Id;
         Packages = new ObservableCollection<GenerationPackageListItemViewModel>(
             _generationService.GetPackages().Select(p => new GenerationPackageListItemViewModel(p.Id, p.Name, p.Description, p.TemplateCount)));
 
+        var current = selectedId is int id ? Packages.FirstOrDefault(p => p.Id == id) : null;
+        if (current is not null)
+        {
+            current.IsSelected = true;
+            SelectedPackage = current;
+        }
+        else if (selectedId is not null)
+        {
+            ClearPackageSelection();
+        }
+
         RefreshLastRun();
+    }
+
+    private void ClearPackageSelection()
+    {
+        SelectedPackage = null;
+        PackageTemplates = new ObservableCollection<PackageTemplateSummaryItemViewModel>();
+        ManualTagForm = null;
     }
 
     [ObservableProperty] private string lastRunPackageName = string.Empty;
@@ -518,7 +537,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     private void CancelCreatePackage() => IsCreatingPackage = false;
 
     [RelayCommand]
-    private void CreatePackage()
+    private async Task CreatePackageAsync()
     {
         if (string.IsNullOrWhiteSpace(NewPackageName))
         {
@@ -535,10 +554,12 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
             return;
         }
 
-        _generationService.CreatePackage(NewPackageName, NewPackageDescription, templateIds, exportTemplateIds);
+        var createdId = _generationService.CreatePackage(NewPackageName, NewPackageDescription, templateIds, exportTemplateIds);
         IsCreatingPackage = false;
 
         RefreshPackages();
+        var created = Packages.FirstOrDefault(p => p.Id == createdId);
+        if (created is not null) await SelectPackageAsync(created);
     }
 
     [RelayCommand]
@@ -551,14 +572,14 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
             MessageBoxButton.YesNo, MessageBoxImage.Warning);
         if (confirm != MessageBoxResult.Yes) return;
 
+        DeletePackageCore(item);
+    }
+
+    internal void DeletePackageCore(GenerationPackageListItemViewModel item)
+    {
         _generationService.DeletePackage(item.Id);
 
-        if (SelectedPackage?.Id == item.Id)
-        {
-            SelectedPackage = null;
-            PackageTemplates = new ObservableCollection<PackageTemplateSummaryItemViewModel>();
-            ManualTagForm = null;
-        }
+        if (SelectedPackage?.Id == item.Id) ClearPackageSelection();
 
         RefreshPackages();
     }
@@ -570,10 +591,11 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
 
         var vm = _serviceProvider.GetRequiredService<PackageRequirementsViewModel>();
         await vm.InitializeAsync(SelectedPackage.Id, null);
-        if (_dialogService.ShowDialog(vm, Application.Current.MainWindow) == true)
+        if (_dialogService.ShowDialog(vm, Application.Current?.MainWindow) == true)
         {
             _messenger.Send(new MatrixChangedMessage());
-            await RefreshForPackageAsync(SelectedPackage);
+            RefreshPackages();
+            if (SelectedPackage is not null) await RefreshForPackageAsync(SelectedPackage);
         }
     }
 

@@ -44,7 +44,7 @@ namespace GenDoc.Services.Generation
             Models.Enums.TemplateAudience audience = Models.Enums.TemplateAudience.Intake);
         List<(int Id, string Name)> GetAllExportTemplates();
 
-        void CreatePackage(
+        int CreatePackage(
             string name, string? description, List<int> templateIds,
             List<(int ExportTemplateId, FitnessFilter Filter)> exportTemplates);
 

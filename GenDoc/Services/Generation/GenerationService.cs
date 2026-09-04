@@ -83,7 +83,7 @@ namespace GenDoc.Services.Generation
                 .ToList();
         }
 
-        public void CreatePackage(
+        public int CreatePackage(
             string name, string? description, List<int> templateIds,
             List<(int ExportTemplateId, FitnessFilter Filter)> exportTemplates)
         {
@@ -119,6 +119,7 @@ namespace GenDoc.Services.Generation
             _auditLogService.LogCreate(db, "GenerationPackage", package.Id, package.Name,
                 $"Шаблонів: {templateIds.Count}, XLSX: {exportTemplates.Count}");
             db.SaveChanges();
+            return package.Id;
         }
 
         public void DeletePackage(int packageId)
