@@ -36,6 +36,38 @@ namespace GenDoc.Services.Generation
             await db.SaveChangesAsync();
         }
 
+        internal static async Task<string?> ConfiguredRootAsync(AppDbContext db)
+        {
+            var configured = await db.AppSettings.Select(s => s.DefaultOutputFolder).FirstOrDefaultAsync();
+            return string.IsNullOrWhiteSpace(configured) ? null : OutputFolderResolver.Resolve(configured);
+        }
+
+        internal static async Task<string> PlaceRegeneratedAsync(
+            AppDbContext db, string root, Models.GeneratedDocument? previous, Models.Recipient recipient, string templateName)
+        {
+            var intakeName = recipient.IntakeId is int intakeId
+                ? await db.Intakes.IgnoreQueryFilters()
+                    .Where(i => i.Id == intakeId).Select(i => i.DisplayNumber).FirstOrDefaultAsync()
+                : null;
+
+            var sameScope = previous is not null
+                            && previous.IntakeId == recipient.IntakeId
+                            && previous.OrgNodeIdSnapshot == recipient.OrgNodeId;
+
+            return Documents.DocumentFolderLayout.ForRegeneration(
+                previous?.FileName, sameScope, intakeName, TemplateNaming.Clean(templateName),
+                GenerationService.ResolveRunStamp(root),
+                $"{recipient.LastName} {recipient.FirstName}", recipient.ServiceNumber, ".docx");
+        }
+
+        internal static async Task WriteAsync(string root, string relativeFileName, byte[] bytes)
+        {
+            var path = Path.Combine(root, relativeFileName);
+            var folder = Path.GetDirectoryName(path);
+            if (!string.IsNullOrEmpty(folder)) Directory.CreateDirectory(folder);
+            await File.WriteAllBytesAsync(path, bytes);
+        }
+
         public async Task<string?> ResolveOnDiskAsync(string relativeFileName)
         {
             if (string.IsNullOrWhiteSpace(relativeFileName)) return null;

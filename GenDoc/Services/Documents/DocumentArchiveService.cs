@@ -308,10 +308,25 @@ namespace GenDoc.Services.Documents
                     return new ArchiveOpResult(false, result.ErrorMessage);
 
                 var bytes = await File.ReadAllBytesAsync(tempPath);
-                await AddVersionAsync(db, doc, bytes,
-                    Path.GetFileNameWithoutExtension(doc.FileName) is { Length: > 0 } stem
-                        ? stem + ".docx"
-                        : $"{template.Name}.docx",
+
+                var fileName = string.IsNullOrWhiteSpace(doc.FileName)
+                    ? $"{template.Name}.docx"
+                    : Path.ChangeExtension(doc.FileName, ".docx");
+                var root = await OutputFolderService.ConfiguredRootAsync(db);
+                if (root is not null)
+                {
+                    fileName = await OutputFolderService.PlaceRegeneratedAsync(db, root, doc, doc.Recipient, template.Name);
+                    try
+                    {
+                        await OutputFolderService.WriteAsync(root, fileName, bytes);
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    {
+                        return new ArchiveOpResult(false, $"Не вдалося записати файл у теку документів: {ex.Message}");
+                    }
+                }
+
+                await AddVersionAsync(db, doc, bytes, fileName,
                     DocumentSourceType.Generated,
                     _documentHashService.ComputeSourceHash(
                         mappings, doc.Recipient, orgSettings, manualValues, courseOfficerSignature));

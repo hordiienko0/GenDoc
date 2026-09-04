@@ -52,6 +52,18 @@ namespace GenDoc.Services.Documents
                 Sanitize(runStamp));
         }
 
+        public static string ForRegeneration(
+            string? previousFileName, bool sameScope, string? intakeName, string? templateName,
+            string runStamp, string? personName, string? serviceNumber, string extension)
+        {
+            if (sameScope
+                && !string.IsNullOrWhiteSpace(previousFileName)
+                && !string.IsNullOrEmpty(Path.GetDirectoryName(previousFileName)))
+                return Path.ChangeExtension(previousFileName, extension);
+
+            return ForPerson(intakeName, templateName, runStamp, personName, serviceNumber).RelativePath(extension);
+        }
+
         private static string IntakeFolder(string? intakeName)
             => string.IsNullOrWhiteSpace(intakeName) ? PermanentStaffFolder : Sanitize(intakeName);
 

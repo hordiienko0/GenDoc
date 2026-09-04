@@ -228,12 +228,28 @@ namespace GenDoc.Services.Completeness
                     .Where(g => g.RecipientId == recipientId && g.TemplateId == templateId)
                     .MaxAsync(g => (int?)g.Version) ?? 0;
 
-                foreach (var current in db.GeneratedDocuments
+                var currents = db.GeneratedDocuments
                     .Where(g => g.RecipientId == recipientId && g.TemplateId == templateId && g.IsCurrent)
-                    .ToList())
+                    .ToList();
+                var previous = currents.OrderByDescending(g => g.Version).FirstOrDefault();
+
+                var fileName = SecureTempFileService.SanitizeFileName(
+                    $"{recipient.LastName} {recipient.FirstName} - {template.Name}.docx");
+                var root = await OutputFolderService.ConfiguredRootAsync(db);
+                if (root is not null)
                 {
-                    current.IsCurrent = false;
+                    fileName = await OutputFolderService.PlaceRegeneratedAsync(db, root, previous, recipient, template.Name);
+                    try
+                    {
+                        await OutputFolderService.WriteAsync(root, fileName, bytes);
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                    {
+                        return new ArchiveOpResult(false, $"Не вдалося записати файл у теку документів: {ex.Message}");
+                    }
                 }
+
+                foreach (var current in currents) current.IsCurrent = false;
 
                 var orgPath = await BuildOrgPathAsync(db, recipient.OrgNodeId);
                 var doc = new GeneratedDocument
@@ -242,8 +258,7 @@ namespace GenDoc.Services.Completeness
                     TemplateId = templateId,
                     GeneratedAt = DateTime.Now,
                     GeneratedByUserId = _currentUserContext.CurrentUserId ?? 0,
-                    FileName = SecureTempFileService.SanitizeFileName(
-                        $"{recipient.LastName} {recipient.FirstName} - {template.Name}.docx"),
+                    FileName = fileName,
                     SizeBytes = bytes.LongLength,
                     ContentHash = Convert.ToHexString(SHA256.HashData(bytes)),
                     SourceHash = _documentHashService.ComputeSourceHash(
