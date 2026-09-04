@@ -369,6 +369,11 @@ namespace GenDoc.ViewModels.Personnel
                 "Підтвердження видалення", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (confirm != MessageBoxResult.Yes) return;
 
+            await DeleteConfirmedAsync(node);
+        }
+
+        internal async Task DeleteConfirmedAsync(OrgNodeViewModel node)
+        {
             await _orgTreeService.DeleteAsync(node.Id);
 
             var parent = node.ParentId is int pid ? _byId.GetValueOrDefault(pid) : null;
@@ -381,6 +386,10 @@ namespace GenDoc.ViewModels.Personnel
                 SelectedNode = null;
                 if (parent is not null) parent.IsSelected = true;
             }
+
+            if (!node.IsIntakeRoot) return;
+            await _activeIntakeState.RefreshAsync();
+            WeakReferenceMessenger.Default.Send(new CountsChangedMessage());
         }
 
         private void RemoveSubtreeFromIndex(OrgNodeViewModel node)
