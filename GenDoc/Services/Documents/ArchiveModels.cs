@@ -63,7 +63,8 @@ namespace GenDoc.Services.Documents
         string? BranchName,
         int GeneratedCount,
         int SkippedCount,
-        int ErrorCount);
+        int ErrorCount,
+        int? IntakeId = null);
 
     public record GroupParticipantDto(int RecipientId, string Rank, string FullName, string UnitName);
 

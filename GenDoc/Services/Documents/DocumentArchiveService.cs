@@ -691,7 +691,7 @@ namespace GenDoc.Services.Documents
             return runs.Select(r => new RunDto(
                 r.Id, r.RunAt, r.PackageName,
                 r.IntakeId is int iid ? numberById.GetValueOrDefault(iid) : null,
-                r.BranchName, r.GeneratedCount, r.SkippedCount, r.ErrorCount)).ToList();
+                r.BranchName, r.GeneratedCount, r.SkippedCount, r.ErrorCount, r.IntakeId)).ToList();
         }
 
         public async Task<List<RunItemDto>> GetRunItemsAsync(int runId)

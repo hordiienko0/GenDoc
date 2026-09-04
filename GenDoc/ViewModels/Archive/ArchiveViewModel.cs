@@ -153,72 +153,102 @@ namespace GenDoc.ViewModels.Archive
 
         [ObservableProperty] private bool runsEmpty;
 
-        public async Task InitializeAsync()
-        {
-            if (_initialized)
-            {
-                await ResetAndReloadAsync();
-                return;
-            }
-            _initialized = true;
+        private Task? _initialization;
 
-            _suppressMineOnlyReload = true;
-            var settings = await _userSettings.GetForCurrentUserAsync();
-            MineOnly = settings.ArchiveMineOnly;
-            _suppressMineOnlyReload = false;
+        public Task InitializeAsync()
+        {
+            if (_initialization is { IsCompleted: false }) return _initialization;
+            _initialization = InitializeCoreAsync();
+            return _initialization;
+        }
+
+        private async Task InitializeCoreAsync()
+        {
+            if (!_initialized)
+            {
+                _initialized = true;
+                _suppressMineOnlyReload = true;
+                var settings = await _userSettings.GetForCurrentUserAsync();
+                MineOnly = settings.ArchiveMineOnly;
+                _suppressMineOnlyReload = false;
+            }
 
             await ReloadFilterOptionsAsync();
-            await ResetAndReloadAsync();
+            await ReloadGroupTemplateOptionsAsync();
+            await ReloadActiveTabAsync();
         }
+
+        private Task ReloadActiveTabAsync() => SelectedTabIndex switch
+        {
+            1 => ReloadRunsAsync(),
+            2 => ReloadGroupAsync(),
+            _ => ResetAndReloadAsync()
+        };
+
+        private static FilterOption Keep(
+            ObservableCollection<FilterOption> options, FilterOption? previous, FilterOption? fallback = null)
+            => (previous is null ? null : options.FirstOrDefault(o => o.Id == previous.Id))
+               ?? fallback
+               ?? options[0];
 
         private async Task ReloadFilterOptionsAsync()
         {
             var options = await _archiveService.GetFilterOptionsAsync();
             _suppressFilterReload = true;
+            try
+            {
+                var previousIntake = SelectedIntake;
+                var previousTemplate = SelectedTemplate;
+                var previousPackage = SelectedPackage;
+                var previousAuthor = SelectedAuthor;
+                var previousYear = SelectedYear;
 
-            IntakeOptions.Clear();
-            IntakeOptions.Add(new FilterOption(null, "Набір: усі"));
-            foreach (var (id, label) in options.Intakes)
-                IntakeOptions.Add(new FilterOption(id, label));
+                IntakeOptions.Clear();
+                IntakeOptions.Add(new FilterOption(null, "Набір: усі"));
+                foreach (var (id, label) in options.Intakes)
+                    IntakeOptions.Add(new FilterOption(id, label));
 
-            TemplateOptions.Clear();
-            TemplateOptions.Add(new FilterOption(null, "Шаблон: усі"));
-            foreach (var (id, name) in options.Templates)
-                TemplateOptions.Add(new FilterOption(id, name));
+                TemplateOptions.Clear();
+                TemplateOptions.Add(new FilterOption(null, "Шаблон: усі"));
+                foreach (var (id, name) in options.Templates)
+                    TemplateOptions.Add(new FilterOption(id, name));
 
-            PackageOptions.Clear();
-            PackageOptions.Add(new FilterOption(null, "Пакет: усі"));
-            foreach (var (id, name) in options.Packages)
-                PackageOptions.Add(new FilterOption(id, name));
+                PackageOptions.Clear();
+                PackageOptions.Add(new FilterOption(null, "Пакет: усі"));
+                foreach (var (id, name) in options.Packages)
+                    PackageOptions.Add(new FilterOption(id, name));
 
-            AuthorOptions.Clear();
-            AuthorOptions.Add(new FilterOption(null, "Автор: усі"));
-            foreach (var (id, name) in options.Authors)
-                AuthorOptions.Add(new FilterOption(id, name));
+                AuthorOptions.Clear();
+                AuthorOptions.Add(new FilterOption(null, "Автор: усі"));
+                foreach (var (id, name) in options.Authors)
+                    AuthorOptions.Add(new FilterOption(id, name));
 
-            YearOptions.Clear();
-            YearOptions.Add(new FilterOption(null, "Період: усі"));
-            foreach (var year in options.Years)
-                YearOptions.Add(new FilterOption(year, year.ToString()));
+                YearOptions.Clear();
+                YearOptions.Add(new FilterOption(null, "Період: усі"));
+                foreach (var year in options.Years)
+                    YearOptions.Add(new FilterOption(year, year.ToString()));
 
-            var activeIntakeId = _activeIntakeState.Current?.Id;
-            SelectedIntake = activeIntakeId is int aid
-                ? IntakeOptions.FirstOrDefault(o => o.Id == aid) ?? IntakeOptions[0]
-                : IntakeOptions[0];
-            SelectedTemplate = TemplateOptions[0];
-            SelectedPackage = PackageOptions[0];
-            SelectedAuthor = AuthorOptions[0];
-            SelectedYear = YearOptions[0];
-
-            _suppressFilterReload = false;
+                var activeIntake = _activeIntakeState.Current?.Id is int aid
+                    ? IntakeOptions.FirstOrDefault(o => o.Id == aid)
+                    : null;
+                SelectedIntake = Keep(IntakeOptions, previousIntake, activeIntake);
+                SelectedTemplate = Keep(TemplateOptions, previousTemplate);
+                SelectedPackage = Keep(PackageOptions, previousPackage);
+                SelectedAuthor = Keep(AuthorOptions, previousAuthor);
+                SelectedYear = Keep(YearOptions, previousYear);
+            }
+            finally
+            {
+                _suppressFilterReload = false;
+            }
         }
+
+        internal Task FilterReload { get; private set; } = Task.CompletedTask;
 
         private void OnFilterChanged()
         {
             if (_suppressFilterReload) return;
-            _ = ResetAndReloadAsync();
-            if (IsRunsTab) _ = ReloadRunsAsync();
-            if (IsGroupTab) _ = ReloadGroupAsync();
+            FilterReload = ReloadActiveTabAsync();
         }
 
         private ArchiveFilter BuildFilter(int skip) => new(
@@ -303,7 +333,7 @@ namespace GenDoc.ViewModels.Archive
             }
 
             _suppressFilterReload = false;
-            _ = ResetAndReloadAsync();
+            FilterReload = ReloadActiveTabAsync();
         }
 
         private void OnRowPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -735,26 +765,40 @@ namespace GenDoc.ViewModels.Archive
         public async Task ApplyNavigationPayloadAsync(object payload)
         {
             if (payload is not Services.Navigation.ArchiveRunNavigationPayload nav) return;
+            await InitializeAsync();
+
+            var target = (await _archiveService.GetRunsAsync(null, null)).FirstOrDefault(r => r.Id == nav.RunId);
+            _suppressFilterReload = true;
+            try
+            {
+                SelectedIntake = IntakeOptions.FirstOrDefault(o => o.Id == target?.IntakeId)
+                                 ?? IntakeOptions.FirstOrDefault(o => o.Id is null);
+                SelectedYear = YearOptions.FirstOrDefault(o => o.Id == target?.RunAt.Year)
+                               ?? YearOptions.FirstOrDefault(o => o.Id is null);
+            }
+            finally
+            {
+                _suppressFilterReload = false;
+            }
+
             SelectedTabIndex = 1;
             await ReloadRunsAsync();
             var run = Runs.FirstOrDefault(r => r.Id == nav.RunId);
-            if (run is null)
-            {
-                SelectedIntake = IntakeOptions.FirstOrDefault(o => o.Id is null);
-                await ReloadRunsAsync();
-                run = Runs.FirstOrDefault(r => r.Id == nav.RunId);
-            }
             if (run is not null && !run.IsExpanded) await ToggleRunAsync(run);
         }
 
         private async Task ReloadRunsAsync()
         {
+            var expandedId = Runs.FirstOrDefault(r => r.IsExpanded)?.Id;
             var runs = await _archiveService.GetRunsAsync(
                 SelectedIntake?.Id, SelectedYear?.Id, MineOnly ? _currentUser.CurrentUserId : null);
             Runs.Clear();
             foreach (var run in runs)
                 Runs.Add(new RunGroupViewModel(run));
             RunsEmpty = Runs.Count == 0;
+
+            if (expandedId is int id && Runs.FirstOrDefault(r => r.Id == id) is { } expanded)
+                await ToggleRunAsync(expanded);
         }
 
         [RelayCommand]
@@ -835,21 +879,35 @@ namespace GenDoc.ViewModels.Archive
 
         private bool _suppressGroupFilterReload;
 
-        private async Task ReloadGroupAsync()
+        private async Task ReloadGroupTemplateOptionsAsync()
         {
-            if (_suppressGroupFilterReload) return;
-
-            if (GroupTemplateOptions.Count == 0)
+            var options = await _archiveService.GetGroupTemplateOptionsAsync();
+            var previous = SelectedGroupTemplate;
+            _suppressGroupFilterReload = true;
+            try
             {
-                _suppressGroupFilterReload = true;
-                var options = await _archiveService.GetGroupTemplateOptionsAsync();
                 GroupTemplateOptions.Clear();
                 GroupTemplateOptions.Add(new GroupTemplateOption(null, null, "Шаблон: усі"));
                 foreach (var option in options)
                     GroupTemplateOptions.Add(option);
-                SelectedGroupTemplate = GroupTemplateOptions[0];
+                SelectedGroupTemplate =
+                    (previous is null
+                        ? null
+                        : GroupTemplateOptions.FirstOrDefault(o =>
+                            o.ExportTemplateId == previous.ExportTemplateId && o.DocxTemplateId == previous.DocxTemplateId))
+                    ?? GroupTemplateOptions[0];
+            }
+            finally
+            {
                 _suppressGroupFilterReload = false;
             }
+        }
+
+        private async Task ReloadGroupAsync()
+        {
+            if (_suppressGroupFilterReload) return;
+
+            if (GroupTemplateOptions.Count == 0) await ReloadGroupTemplateOptionsAsync();
 
             IsBusy = true;
             try
