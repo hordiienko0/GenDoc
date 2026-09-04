@@ -10,9 +10,12 @@ namespace GenDoc.Services.Generation
 
         public static string Normalize(string tag) => tag.Trim().Trim('{', '}').Trim();
 
+        private static readonly string PeriodTag = Normalize(XlsxGenerationService.PeriodTag);
+
         public static ManualTagKind Classify(string tag) => Normalize(tag) switch
         {
             ArrivalDateTag or EnrollmentDateTag or ReportDateTag => ManualTagKind.Date,
+            var t when t == PeriodTag => ManualTagKind.Period,
             _ => ManualTagKind.Text
         };
 

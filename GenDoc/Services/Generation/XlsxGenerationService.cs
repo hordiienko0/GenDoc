@@ -13,6 +13,33 @@ namespace GenDoc.Services.Generation
 
         internal const string PeriodTag = "{{період}}";
         internal const string DateSheetTag = "{{дата_аркуша}}";
+        internal const string PeriodDateFormat = "dd.MM.yyyy";
+
+        internal static string FormatPeriod(DateOnly from, DateOnly to)
+        {
+            var start = from.ToString(PeriodDateFormat, CultureInfo.InvariantCulture);
+            return from == to ? start : $"{start}-{to.ToString(PeriodDateFormat, CultureInfo.InvariantCulture)}";
+        }
+
+        internal static bool TryParsePeriodBounds(string? raw, out DateOnly from, out DateOnly to)
+        {
+            from = to = default;
+            if (string.IsNullOrWhiteSpace(raw) || raw.Contains(',')) return false;
+
+            List<DateOnly> dates;
+            try
+            {
+                dates = ParsePeriodDates(raw);
+            }
+            catch (FormatException)
+            {
+                return false;
+            }
+
+            from = dates[0];
+            to = dates[^1];
+            return true;
+        }
 
         public XlsxGenerationResult Generate(
             byte[] templateContent,

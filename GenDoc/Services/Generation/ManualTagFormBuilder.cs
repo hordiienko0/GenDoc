@@ -32,7 +32,7 @@ namespace GenDoc.Services.Generation
             var hasSigner = ManualTagClassifier.HasSignerPair(tags);
             var arrival = _intakeAccessor.ActiveIntake?.DateStart ?? DateOnly.FromDateTime(DateTime.Today);
 
-            var needsLastValues = hasSigner || tags.Any(t => ManualTagClassifier.Classify(t) == ManualTagKind.Text);
+            var needsLastValues = hasSigner || tags.Any(t => ManualTagClassifier.Classify(t) != ManualTagKind.Date);
             var lastValues = needsLastValues ? await GetLastValuesAsync() : new Dictionary<string, string>();
 
             var rows = new ObservableCollection<ManualTagRowViewModel>();
@@ -41,9 +41,13 @@ namespace GenDoc.Services.Generation
                 if (hasSigner && (ManualTagClassifier.IsSignerRank(tag) || ManualTagClassifier.IsSignerName(tag)))
                     continue;
 
-                rows.Add(ManualTagClassifier.Classify(tag) == ManualTagKind.Date
-                    ? new ManualTagRowViewModel(tag, ManualTagClassifier.PrefillDate(tag, arrival), d => ManualTagClassifier.FormatDate(tag, d))
-                    : new ManualTagRowViewModel(tag, lastValues.GetValueOrDefault(tag)));
+                rows.Add(ManualTagClassifier.Classify(tag) switch
+                {
+                    ManualTagKind.Date => new ManualTagRowViewModel(
+                        tag, ManualTagClassifier.PrefillDate(tag, arrival), d => ManualTagClassifier.FormatDate(tag, d)),
+                    ManualTagKind.Period => ManualTagRowViewModel.Period(tag, lastValues.GetValueOrDefault(tag)),
+                    _ => new ManualTagRowViewModel(tag, lastValues.GetValueOrDefault(tag))
+                });
             }
 
             var signer = hasSigner ? await BuildSignerAsync(contextKey) : null;
@@ -104,7 +108,7 @@ namespace GenDoc.Services.Generation
 
         public async Task SaveAsync(string contextKey, ManualTagFormViewModel form)
         {
-            var textRows = form.Rows.Where(r => r.Kind == ManualTagKind.Text).ToList();
+            var textRows = form.Rows.Where(r => r.Kind != ManualTagKind.Date).ToList();
             var hasSignerChoice = form.Signer?.Selected is not null || form.CourseOfficer?.Selected is not null;
             if (textRows.Count == 0 && !hasSignerChoice) return;
 

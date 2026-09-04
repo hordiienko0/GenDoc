@@ -367,8 +367,12 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
             _exportTemplateService.SaveMappings(item.Id, mappings);
         }
 
-        MessageBox.Show("Мапінг колонок збережено.", "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
+        MessageBox.Show(MappingSavedMessage(item.UsesPlaceholders && item.RepeatSheetPerDate), "Готово", MessageBoxButton.OK, MessageBoxImage.Information);
     }
+
+    internal static string MappingSavedMessage(bool repeatSheetPerDate) => repeatSheetPerDate
+        ? "Мапінг колонок збережено.\n\nАркуш повторюватиметься на кожну дату періоду: період «з – по» буде запитано під час генерації (рядок «Період» у значеннях для генерації)."
+        : "Мапінг колонок збережено.";
 
     [RelayCommand]
     private void DeleteTemplate(ExportTemplateListItemViewModel? item)

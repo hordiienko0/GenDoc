@@ -329,28 +329,56 @@
                                                     <TextBlock Grid.Column="0" Text="{Binding Label}"
                                                                ToolTip="{Binding Tag}" TextWrapping="Wrap"
                                                                Foreground="{StaticResource AccentBrush}" VerticalAlignment="Center"/>
-                                                    <DatePicker Grid.Column="1" SelectedDate="{Binding DateValue}">
-                                                        <DatePicker.Style>
-                                                            <Style TargetType="DatePicker">
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding Kind}" Value="Text">
-                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </DatePicker.Style>
-                                                    </DatePicker>
-                                                    <TextBox Grid.Column="1" Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}">
-                                                        <TextBox.Style>
-                                                            <Style TargetType="TextBox">
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding Kind}" Value="Date">
-                                                                        <Setter Property="Visibility" Value="Collapsed"/>
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </TextBox.Style>
-                                                    </TextBox>
+                                                    <StackPanel Grid.Column="1">
+                                                        <DatePicker SelectedDate="{Binding DateValue}">
+                                                            <DatePicker.Style>
+                                                                <Style TargetType="DatePicker">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Kind}" Value="Date">
+                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </DatePicker.Style>
+                                                        </DatePicker>
+                                                        <Grid Margin="0,0,0,6">
+                                                            <Grid.Style>
+                                                                <Style TargetType="Grid">
+                                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Kind}" Value="Period">
+                                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Grid.Style>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                                <ColumnDefinition Width="Auto"/>
+                                                                <ColumnDefinition Width="*"/>
+                                                            </Grid.ColumnDefinitions>
+                                                            <TextBlock Grid.Column="0" Text="з" Foreground="{StaticResource TextSecondaryBrush}"
+                                                                       VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                            <DatePicker Grid.Column="1" SelectedDate="{Binding PeriodFrom}"/>
+                                                            <TextBlock Grid.Column="2" Text="по" Foreground="{StaticResource TextSecondaryBrush}"
+                                                                       VerticalAlignment="Center" Margin="10,0,6,0"/>
+                                                            <DatePicker Grid.Column="3" SelectedDate="{Binding PeriodTo}"/>
+                                                        </Grid>
+                                                        <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
+                                                                 ToolTip="дд.мм.рррр-дд.мм.рррр або перелік дат через кому">
+                                                            <TextBox.Style>
+                                                                <Style TargetType="TextBox">
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding Kind}" Value="Date">
+                                                                            <Setter Property="Visibility" Value="Collapsed"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBox.Style>
+                                                        </TextBox>
+                                                    </StackPanel>
                                                 </Grid>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>

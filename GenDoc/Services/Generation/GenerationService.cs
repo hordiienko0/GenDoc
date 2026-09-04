@@ -279,6 +279,11 @@ namespace GenDoc.Services.Generation
                 }
             }
 
+            var repeatsSheetPerDate = exportTemplateIds.Count > 0
+                && db.ExportTemplates.Any(t => exportTemplateIds.Contains(t.Id) && t.RepeatSheetPerDate);
+            if (repeatsSheetPerDate && seen.Add(XlsxGenerationService.PeriodTag))
+                tags.Add(XlsxGenerationService.PeriodTag);
+
             return tags;
         }
 

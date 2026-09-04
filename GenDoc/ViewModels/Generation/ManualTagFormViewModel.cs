@@ -3,11 +3,15 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace GenDoc.ViewModels.Generation
 {
-    public enum ManualTagKind { Text, Date }
+    public enum ManualTagKind { Text, Date, Period }
 
     public partial class ManualTagRowViewModel : ObservableObject
     {
+        private const string PeriodLabel = "Період (з – по)";
+
         private readonly Func<DateOnly, string>? _dateFormatter;
+        private readonly string? _labelOverride;
+        private bool _syncingPeriod;
 
         public ManualTagRowViewModel(string tag, string? initialValue)
         {
@@ -25,19 +29,85 @@ namespace GenDoc.ViewModels.Generation
             value = formatter(initialDate);
         }
 
+        private ManualTagRowViewModel(string tag, ManualTagKind kind, string? initialValue, string? labelOverride)
+        {
+            Tag = tag;
+            Kind = kind;
+            _labelOverride = labelOverride;
+            value = initialValue ?? string.Empty;
+        }
+
+        public static ManualTagRowViewModel Period(string tag, string? storedValue)
+        {
+            var row = new ManualTagRowViewModel(tag, ManualTagKind.Period, storedValue, PeriodLabel);
+            row.SyncPeriodPickersFromValue();
+            return row;
+        }
+
         public string Tag { get; }
 
-        public string Label => Services.Generation.ManualTagLabel.Human(Tag);
+        public string Label => _labelOverride ?? Services.Generation.ManualTagLabel.Human(Tag);
 
         public ManualTagKind Kind { get; }
 
         [ObservableProperty] private string value = string.Empty;
         [ObservableProperty] private DateTime? dateValue;
+        [ObservableProperty] private DateTime? periodFrom;
+        [ObservableProperty] private DateTime? periodTo;
 
         partial void OnDateValueChanged(DateTime? oldValue, DateTime? newValue)
         {
             if (Kind == ManualTagKind.Date && newValue is DateTime dt && _dateFormatter is not null)
                 Value = _dateFormatter(DateOnly.FromDateTime(dt));
+        }
+
+        partial void OnPeriodFromChanged(DateTime? value) => WritePeriodValue();
+
+        partial void OnPeriodToChanged(DateTime? value) => WritePeriodValue();
+
+        partial void OnValueChanged(string value)
+        {
+            if (Kind == ManualTagKind.Period) SyncPeriodPickersFromValue();
+        }
+
+        private void WritePeriodValue()
+        {
+            if (Kind != ManualTagKind.Period || _syncingPeriod) return;
+
+            var from = PeriodFrom ?? PeriodTo;
+            var to = PeriodTo ?? PeriodFrom;
+            if (from is null || to is null) return;
+
+            var start = DateOnly.FromDateTime(from.Value);
+            var end = DateOnly.FromDateTime(to.Value);
+            if (end < start) (start, end) = (end, start);
+
+            _syncingPeriod = true;
+            try
+            {
+                Value = Services.Generation.XlsxGenerationService.FormatPeriod(start, end);
+            }
+            finally
+            {
+                _syncingPeriod = false;
+            }
+        }
+
+        private void SyncPeriodPickersFromValue()
+        {
+            if (_syncingPeriod) return;
+            if (!Services.Generation.XlsxGenerationService.TryParsePeriodBounds(Value, out var from, out var to)) return;
+
+            _syncingPeriod = true;
+            try
+            {
+                PeriodFrom = from.ToDateTime(TimeOnly.MinValue);
+                PeriodTo = to.ToDateTime(TimeOnly.MinValue);
+            }
+            finally
+            {
+                _syncingPeriod = false;
+            }
         }
     }
 
