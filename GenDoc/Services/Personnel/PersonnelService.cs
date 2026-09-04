@@ -114,8 +114,15 @@ namespace GenDoc.Services.Personnel
 
             if (recipient.IntakeId is int intakeId && (isNew || fitnessChanged))
             {
-                var folderId = await IntakeFitnessFolders.ResolveAsync(db, intakeId, recipient.FitnessCategory);
-                if (folderId is int id) recipient.OrgNodeId = id;
+                var nodeIntakeId = await db.OrgNodes
+                    .Where(n => n.Id == recipient.OrgNodeId)
+                    .Select(n => n.IntakeId)
+                    .FirstOrDefaultAsync();
+                if (nodeIntakeId == intakeId)
+                {
+                    var folderId = await IntakeFitnessFolders.ResolveAsync(db, intakeId, recipient.FitnessCategory);
+                    if (folderId is int id) recipient.OrgNodeId = id;
+                }
             }
 
             await db.SaveChangesAsync();

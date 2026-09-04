@@ -250,6 +250,10 @@ namespace GenDoc.Services.Intakes
                     throw new InvalidOperationException("Набір уже закрито.");
 
                 var detailsParts = new List<string>();
+                var peopleIds = await db.Recipients
+                    .Where(r => r.IntakeId == request.IntakeId)
+                    .Select(r => r.Id)
+                    .ToListAsync();
 
                 if (request.MovePersonnel)
                 {
@@ -279,18 +283,19 @@ namespace GenDoc.Services.Intakes
                     await db.SaveChangesAsync();
                     node.Path = $"{targetParent.Path}{node.Id}/";
 
-                    var movedCount = await db.Recipients.CountAsync(r => r.IntakeId == request.IntakeId);
-                    await db.Recipients.Where(r => r.IntakeId == request.IntakeId)
-                        .ExecuteUpdateAsync(s => s.SetProperty(r => r.OrgNodeId, node.Id));
-                    detailsParts.Add($"переміщено {movedCount} осіб");
+                    await db.Recipients.Where(r => peopleIds.Contains(r.Id))
+                        .ExecuteUpdateAsync(s => s
+                            .SetProperty(r => r.OrgNodeId, node.Id)
+                            .SetProperty(r => r.IntakeId, (int?)null));
+                    detailsParts.Add($"переміщено {peopleIds.Count} осіб");
                 }
 
                 if (request.ReleaseRooms)
                 {
                     var roomCount = await db.Recipients
-                        .Where(r => r.IntakeId == request.IntakeId && r.RoomId != null)
+                        .Where(r => peopleIds.Contains(r.Id) && r.RoomId != null)
                         .Select(r => r.RoomId!.Value).Distinct().CountAsync();
-                    await db.Recipients.Where(r => r.IntakeId == request.IntakeId && r.RoomId != null)
+                    await db.Recipients.Where(r => peopleIds.Contains(r.Id) && r.RoomId != null)
                         .ExecuteUpdateAsync(s => s.SetProperty(r => r.RoomId, (int?)null));
                     detailsParts.Add($"звільнено {roomCount} кімнат");
                 }
