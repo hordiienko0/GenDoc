@@ -71,7 +71,8 @@ namespace GenDoc.Services.Generation
             var options = officers
                 .Select(s => new StaffPickerOption(
                     s.Id, s.Rank, Services.NameFormatter.SignatureName(s.LastName, s.FirstName),
-                    $"{s.Rank} {Services.NameFormatter.SignatureName(s.LastName, s.FirstName)}"))
+                    $"{s.Rank} {Services.NameFormatter.SignatureName(s.LastName, s.FirstName)}",
+                    CourseOfficerSignature.Compose(s.UnitName, s.Rank, s.LastName, s.FirstName, s.MiddleName)))
                 .ToList();
 
             var lastId = await GetLastSignerIdAsync(CourseOfficerContextKey(contextKey));

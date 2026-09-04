@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -134,9 +135,20 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NotBusy))]
+    [NotifyCanExecuteChangedFor(nameof(SelectPackageCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DeletePackageCommand))]
+    [NotifyCanExecuteChangedFor(nameof(OpenRequirementsCommand))]
+    [NotifyCanExecuteChangedFor(nameof(PickOutputFolderCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ShowCreatePackageCommand))]
+    [NotifyCanExecuteChangedFor(nameof(OpenLastPackageCommand))]
     private bool isBusy;
 
     public bool NotBusy => !IsBusy;
+
+    [ObservableProperty]
+    private bool packageUsesAutoGrades;
+
+    public const string AutoGradesHint = "Оцінки в цій відомості проставляються автоматично (3 або 4)";
 
     [ObservableProperty]
     private string progressText = string.Empty;
@@ -459,6 +471,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         SelectedPackage = null;
         PackageTemplates = new ObservableCollection<PackageTemplateSummaryItemViewModel>();
         ManualTagForm = null;
+        PackageUsesAutoGrades = false;
     }
 
     [ObservableProperty] private string lastRunPackageName = string.Empty;
@@ -480,7 +493,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
               + (last.ErrorCount > 0 ? $", помилок {last.ErrorCount}" : string.Empty);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(NotBusy))]
     private Task OpenLastPackageAsync()
     {
         var item = _lastRunPackageId is int id
@@ -490,10 +503,17 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         return item is null ? Task.CompletedTask : SelectPackageAsync(item);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(NotBusy))]
     private async Task SelectPackageAsync(GenerationPackageListItemViewModel? item)
     {
-        if (item is null) return;
+        if (item is null || IsBusy) return;
+
+        if (SelectedPackage?.Id == item.Id)
+        {
+            foreach (var p in Packages) p.IsSelected = ReferenceEquals(p, item);
+            SelectedPackage = item;
+            return;
+        }
 
         await _userSettings.UpdateAsync(s => s.LastPackageId = item.Id);
         await RefreshForPackageAsync(item);
@@ -501,12 +521,33 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
 
     private async Task RefreshForPackageAsync(GenerationPackageListItemViewModel item)
     {
+        if (IsBusy) return;
+
         IsCreatingPackage = false;
 
         foreach (var p in Packages) p.IsSelected = false;
         item.IsSelected = true;
         SelectedPackage = item;
 
+        await LoadPackageContentAsync(item, previous: null);
+
+        RefreshRecipientOptions();
+        RefreshAllRecipientsCount();
+        if (string.IsNullOrWhiteSpace(OutputFolder)) await LoadDefaultOutputFolderAsync();
+        LastResult = null;
+        ProgressText = string.Empty;
+    }
+
+    internal async Task RefreshPackageContentAsync()
+    {
+        if (SelectedPackage is not { } item || IsBusy) return;
+
+        await LoadPackageContentAsync(item, ManualTagForm);
+        RefreshPackageTemplateCounts();
+    }
+
+    private async Task LoadPackageContentAsync(GenerationPackageListItemViewModel item, ManualTagFormViewModel? previous)
+    {
         var rosterSelection = BuildRosterSelection();
         var summary = new List<PackageTemplateSummaryItemViewModel>();
         summary.AddRange(_generationService.GetPackageTemplates(item.Id)
@@ -516,21 +557,42 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
                 t.Name, t.FitnessFilter,
                 _generationService.GetRecipientCount(rosterSelection with { FitnessFilter = t.FitnessFilter }))));
         PackageTemplates = new ObservableCollection<PackageTemplateSummaryItemViewModel>(summary);
+        PackageUsesAutoGrades = _generationService.PackageUsesAutoGrades(item.Id);
 
         var tags = _generationService.GetManualTags(item.Id);
         var needsCourseOfficer = _generationService.PackageNeedsCourseOfficer(item.Id);
-        ManualTagForm = tags.Count > 0 || needsCourseOfficer
+        var form = tags.Count > 0 || needsCourseOfficer
             ? await _manualTagFormBuilder.BuildAsync(tags, $"pkg:{item.Id}", needsCourseOfficer)
             : null;
 
-        RefreshRecipientOptions();
-        RefreshAllRecipientsCount();
-        if (string.IsNullOrWhiteSpace(OutputFolder)) await LoadDefaultOutputFolderAsync();
-        LastResult = null;
-        ProgressText = string.Empty;
+        if (form is not null && previous is not null) CarryOverEnteredValues(previous, form);
+        ManualTagForm = form;
     }
 
-    [RelayCommand]
+    internal static void CarryOverEnteredValues(ManualTagFormViewModel previous, ManualTagFormViewModel next)
+    {
+        foreach (var row in next.Rows)
+        {
+            var old = previous.Rows.FirstOrDefault(r => r.Tag == row.Tag && r.Kind == row.Kind);
+            if (old is null) continue;
+
+            if (row.Kind == ManualTagKind.Date) row.DateValue = old.DateValue;
+            else row.Value = old.Value;
+        }
+
+        CarryOverChoice(previous.Signer, next.Signer);
+        CarryOverChoice(previous.CourseOfficer, next.CourseOfficer);
+    }
+
+    private static void CarryOverChoice(SignerPickerViewModel? previous, SignerPickerViewModel? next)
+    {
+        if (previous?.Selected is not { } chosen || next is null) return;
+
+        var match = next.Options.FirstOrDefault(o => o.RecipientId == chosen.RecipientId);
+        if (match is not null) next.Selected = match;
+    }
+
+    [RelayCommand(CanExecute = nameof(NotBusy))]
     private void ShowCreatePackage()
     {
         IsCreatingPackage = true;
@@ -544,9 +606,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         TemplateCheckItems = new ObservableCollection<GenerationTemplateCheckItemViewModel>(checkItems);
 
         foreach (var p in Packages) p.IsSelected = false;
-        SelectedPackage = null;
-        PackageTemplates = new ObservableCollection<PackageTemplateSummaryItemViewModel>();
-        ManualTagForm = null;
+        ClearPackageSelection();
     }
 
     [RelayCommand]
@@ -578,10 +638,10 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         if (created is not null) await SelectPackageAsync(created);
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(NotBusy))]
     private void DeletePackage(GenerationPackageListItemViewModel? item)
     {
-        if (item is null) return;
+        if (item is null || IsBusy) return;
 
         var confirm = MessageBox.Show(
             $"Видалити пакет «{item.Name}»?", "Підтвердження видалення",
@@ -600,10 +660,10 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         RefreshPackages();
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(NotBusy))]
     private async Task OpenRequirementsAsync()
     {
-        if (SelectedPackage is null) return;
+        if (SelectedPackage is null || IsBusy) return;
 
         var vm = _serviceProvider.GetRequiredService<PackageRequirementsViewModel>();
         await vm.InitializeAsync(SelectedPackage.Id, null);
@@ -611,18 +671,41 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         {
             _messenger.Send(new MatrixChangedMessage());
             RefreshPackages();
-            if (SelectedPackage is not null) await RefreshForPackageAsync(SelectedPackage);
+            await RefreshPackageContentAsync();
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(CanExecute = nameof(NotBusy))]
     private async Task PickOutputFolderAsync()
     {
         var dialog = new OpenFolderDialog { Title = "Оберіть папку для документів" };
         if (dialog.ShowDialog() != true) return;
 
+        var confirm = MessageBox.Show(
+            OutputFolderChangeQuestion(dialog.FolderName), "Спільне налаштування",
+            MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes) return;
+
         OutputFolder = dialog.FolderName;
         await _outputFolderService.SaveDefaultAsync(dialog.FolderName);
+    }
+
+    internal static string OutputFolderChangeQuestion(string folder)
+        => $"Тека документів - спільне налаштування програми: «{folder}» стане текою для всіх користувачів, "
+           + "а не лише для вас.\n\nЗмінити?";
+
+    internal static string? OutputFolderProblem(string folder)
+    {
+        try
+        {
+            Directory.CreateDirectory(folder);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return $"Тека документів «{folder}» недоступна: {ex.Message}\n\n"
+                   + "Перевірте, чи підключений диск або мережева тека, або оберіть іншу теку кнопкою «Змінити…».";
+        }
     }
 
     private bool CanGenerateAll() =>
@@ -635,10 +718,17 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
 
         var packageId = SelectedPackage.Id;
         var outputFolderPath = OutputFolder;
+        if (OutputFolderProblem(outputFolderPath) is { } problem)
+        {
+            MessageBox.Show(problem, "Тека документів", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
         var regenerate = RegenerateExisting;
-        var manualValues = ManualTagForm?.GetValues() ?? new Dictionary<string, string>();
+        var form = ManualTagForm;
+        var manualValues = form?.GetValues() ?? new Dictionary<string, string>();
         ApplyDocumentDate(manualValues, DocumentDate);
-        var courseOfficerId = ManualTagForm?.CourseOfficer?.Selected?.RecipientId;
+        var courseOfficerId = form?.CourseOfficer?.Selected?.RecipientId;
         var progress = new Progress<string>(message => ProgressText = message);
         var rosterSelection = BuildRosterSelection();
 
@@ -651,12 +741,18 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
             var result = await Task.Run(() =>
                 _generationService.RunPackage(packageId, outputFolderPath, manualValues, regenerate, rosterSelection, progress, courseOfficerId));
 
-            if (ManualTagForm is not null)
-                await _manualTagFormBuilder.SaveAsync($"pkg:{packageId}", ManualTagForm);
+            if (form is not null)
+                await _manualTagFormBuilder.SaveAsync($"pkg:{packageId}", form);
 
             LastResult = new GenerationResultViewModel(result, outputFolderPath);
             if (result.Generated + result.GroupGenerated + result.DocxGroupGenerated > 0)
                 _messenger.Send(new MatrixChangedMessage());
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Генерацію перервано: {ex.Message}\n\nДокументи цього запуску не записано - виправте причину й запустіть ще раз.",
+                "Генерація не завершена", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {

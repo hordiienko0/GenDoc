@@ -57,6 +57,7 @@ namespace GenDoc.Services.Generation
 
         List<string> GetManualTags(int packageId);
         bool PackageNeedsCourseOfficer(int packageId);
+        bool PackageUsesAutoGrades(int packageId);
 
         LastRunInfo? GetLastRun();
 

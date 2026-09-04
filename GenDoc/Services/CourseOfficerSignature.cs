@@ -22,13 +22,17 @@ namespace GenDoc.Services
         }
 
         private static string Compose(Models.Recipient courseOfficer)
+            => Compose(courseOfficer.Unit?.Name, courseOfficer.Rank,
+                courseOfficer.LastName, courseOfficer.FirstName, courseOfficer.MiddleName);
+
+        public static string Compose(string? unitName, string? rank, string lastName, string firstName, string? middleName)
         {
             var parts = new[]
             {
                 "Курсовий офіцер",
-                courseOfficer.Unit?.Name,
-                courseOfficer.Rank,
-                NameFormatter.ShortName(courseOfficer.LastName, courseOfficer.FirstName, courseOfficer.MiddleName)
+                unitName,
+                rank,
+                NameFormatter.ShortName(lastName, firstName, middleName)
             };
 
             return string.Join(' ', parts.Where(p => !string.IsNullOrWhiteSpace(p)));

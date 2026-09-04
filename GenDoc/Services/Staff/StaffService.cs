@@ -72,7 +72,8 @@ namespace GenDoc.Services.Staff
             return await db.Recipients
                 .Where(r => r.IntakeId == null)
                 .OrderBy(r => r.LastName).ThenBy(r => r.FirstName)
-                .Select(r => new StaffPickerPerson(r.Id, r.LastName, r.FirstName, r.Rank))
+                .Select(r => new StaffPickerPerson(
+                    r.Id, r.LastName, r.FirstName, r.Rank, r.MiddleName, r.Unit != null ? r.Unit.Name : null))
                 .ToListAsync();
         }
 
@@ -82,7 +83,8 @@ namespace GenDoc.Services.Staff
             return await db.Recipients
                 .Where(r => r.IntakeId == null && r.IsCourseOfficer)
                 .OrderBy(r => r.LastName).ThenBy(r => r.FirstName)
-                .Select(r => new StaffPickerPerson(r.Id, r.LastName, r.FirstName, r.Rank))
+                .Select(r => new StaffPickerPerson(
+                    r.Id, r.LastName, r.FirstName, r.Rank, r.MiddleName, r.Unit != null ? r.Unit.Name : null))
                 .ToListAsync();
         }
 

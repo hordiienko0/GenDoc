@@ -128,7 +128,8 @@ namespace GenDoc.ViewModels.Generation
         }
     }
 
-    public record StaffPickerOption(int RecipientId, string Rank, string SignatureName, string DisplayLabel);
+    public record StaffPickerOption(
+        int RecipientId, string Rank, string SignatureName, string DisplayLabel, string? SignaturePreview = null);
 
     public partial class SignerPickerViewModel : ObservableObject
     {
@@ -140,7 +141,14 @@ namespace GenDoc.ViewModels.Generation
 
         public ObservableCollection<StaffPickerOption> Options { get; }
 
-        [ObservableProperty] private StaffPickerOption? selected;
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(SelectedSignaturePreview))]
+        [NotifyPropertyChangedFor(nameof(HasSignaturePreview))]
+        private StaffPickerOption? selected;
+
+        public string? SelectedSignaturePreview => Selected?.SignaturePreview;
+
+        public bool HasSignaturePreview => !string.IsNullOrWhiteSpace(SelectedSignaturePreview);
     }
 
     public class ManualTagFormViewModel

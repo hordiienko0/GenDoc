@@ -253,8 +253,13 @@ namespace GenDoc.Services.Generation
 
             foreach (var templateId in templateIds)
             {
+                var perRecipient = db.Templates.Any(t => t.Id == templateId && t.Kind == TemplateKind.PerRecipient);
                 var manualTags = db.TemplateFieldMappings
-                    .Where(m => m.TemplateId == templateId && m.SourceType == MappingSourceType.Manual && !m.IsInsideRepeatingBlock)
+                    .Where(m => m.TemplateId == templateId && !m.IsInsideRepeatingBlock
+                                && (m.SourceType == MappingSourceType.Manual
+                                    || (perRecipient
+                                        && m.SourceType == MappingSourceType.Recipient
+                                        && m.FieldName == nameof(ExportFieldKey.RowNumber))))
                     .OrderBy(m => m.PlaceholderTag)
                     .Select(m => m.PlaceholderTag)
                     .ToList();
@@ -309,6 +314,28 @@ namespace GenDoc.Services.Generation
                 .Select(pt => pt.TemplateId);
 
             return NeedsCourseOfficer(db, templateIds, exportTemplateIds);
+        }
+
+        public bool PackageUsesAutoGrades(int packageId)
+        {
+            using var db = _dbFactory.CreateDbContext();
+
+            var exportTemplateIds = db.GenerationPackageExportTemplates
+                .Where(pt => pt.GenerationPackageId == packageId)
+                .Select(pt => pt.ExportTemplateId);
+
+            var templateIds = db.GenerationPackageTemplates
+                .Where(pt => pt.GenerationPackageId == packageId)
+                .Select(pt => pt.TemplateId);
+
+            var gradeFields = new[] { nameof(ExportFieldKey.GradeRandom34), nameof(ExportFieldKey.GradeOverall34) };
+
+            return db.ExportTemplateColumnMappings.Any(m =>
+                       exportTemplateIds.Contains(m.ExportTemplateId) && gradeFields.Contains(m.FieldKey))
+                   || db.TemplateFieldMappings.Any(m =>
+                       templateIds.Contains(m.TemplateId)
+                       && m.SourceType == MappingSourceType.Recipient
+                       && m.FieldName != null && gradeFields.Contains(m.FieldName));
         }
 
         public bool TemplatesNeedCourseOfficer(IReadOnlyList<int> templateIds, IReadOnlyList<int> exportTemplateIds)
@@ -382,6 +409,8 @@ namespace GenDoc.Services.Generation
             var recipients = LoadRosterRecipients(db, rosterSelection);
             var orgSettings = db.OrganizationSettings.FirstOrDefault();
 
+            Directory.CreateDirectory(outputFolder);
+
             var run = new GenerationPackageRun
             {
                 GenerationPackageId = packageId,
@@ -397,13 +426,23 @@ namespace GenDoc.Services.Generation
             }
             db.SaveChanges();
 
-            Directory.CreateDirectory(outputFolder);
             var usedFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var runStamp = ResolveRunStamp(outputFolder);
 
-            var docx = RunDocxPhase(db, templates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress, courseOfficerId);
-            var xlsx = RunXlsxPhase(db, exportLinks, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress, courseOfficerId);
-            var docxGroup = RunDocxGroupPhase(db, groupDocxTemplates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress);
+            DocxPhaseResult docx;
+            XlsxPhaseResult xlsx;
+            DocxGroupPhaseResult docxGroup;
+            try
+            {
+                docx = RunDocxPhase(db, templates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress, courseOfficerId);
+                xlsx = RunXlsxPhase(db, exportLinks, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress, courseOfficerId);
+                docxGroup = RunDocxGroupPhase(db, groupDocxTemplates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress);
+            }
+            catch
+            {
+                DiscardRun(run);
+                throw;
+            }
 
             run.GeneratedCount = docx.Generated + xlsx.Generated + docxGroup.Generated;
             run.SkippedCount = docx.Skipped + xlsx.Skipped + docxGroup.Skipped;
@@ -426,6 +465,15 @@ namespace GenDoc.Services.Generation
                 xlsx.Generated, xlsx.Skipped, xlsx.Errors,
                 docxGroup.Generated, docxGroup.Skipped, docxGroup.Errors,
                 run.Id, issues, docx.FirstGeneratedPath ?? xlsx.FirstGeneratedPath ?? docxGroup.FirstGeneratedPath);
+        }
+
+        private void DiscardRun(GenerationPackageRun run)
+        {
+            using var cleanup = _dbFactory.CreateDbContext();
+            var stored = cleanup.GenerationPackageRuns.FirstOrDefault(r => r.Id == run.Id);
+            if (stored is null) return;
+            cleanup.GenerationPackageRuns.Remove(stored);
+            cleanup.SaveChanges();
         }
 
         public RunResult GenerateTemplatesForRecipients(
