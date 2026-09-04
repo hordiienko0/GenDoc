@@ -69,14 +69,52 @@ namespace GenDoc.Services.Documents
             return query;
         }
 
+        private sealed record SearchCandidate(int Id, string LastName, string? FirstName, string? MiddleName, string FileName, long SizeBytes);
+
+        private static async Task<List<SearchCandidate>> SearchCandidatesAsync(AppDbContext db, ArchiveFilter filter, string query)
+        {
+            var candidates = await ApplyFilter(db, filter)
+                .OrderByDescending(g => g.GeneratedAt)
+                .Select(g => new SearchCandidate(
+                    g.Id,
+                    db.Recipients.IgnoreQueryFilters()
+                        .Where(r => r.Id == g.RecipientId).Select(r => r.LastName).FirstOrDefault() ?? "-",
+                    db.Recipients.IgnoreQueryFilters()
+                        .Where(r => r.Id == g.RecipientId).Select(r => r.FirstName).FirstOrDefault(),
+                    db.Recipients.IgnoreQueryFilters()
+                        .Where(r => r.Id == g.RecipientId).Select(r => r.MiddleName).FirstOrDefault(),
+                    g.FileName,
+                    g.SizeBytes))
+                .ToListAsync();
+
+            return candidates
+                .Where(c => SearchNormalization.Contains(
+                    string.Join(' ', new[] { c.LastName, c.FirstName, c.MiddleName, c.FileName }), query))
+                .ToList();
+        }
+
         public async Task<List<ArchiveRowDto>> QueryAsync(ArchiveFilter filter)
         {
             using var db = _dbFactory.CreateDbContext();
 
-            return await ApplyFilter(db, filter)
-                .OrderByDescending(g => g.GeneratedAt)
-                .Skip(filter.Skip)
-                .Take(filter.Take)
+            IQueryable<GeneratedDocument> page;
+            if (SearchNormalization.PrepareQuery(filter.Search) is { } query)
+            {
+                var ids = (await SearchCandidatesAsync(db, filter, query))
+                    .Skip(filter.Skip).Take(filter.Take).Select(c => c.Id).ToList();
+                page = db.GeneratedDocuments.IgnoreQueryFilters()
+                    .Where(g => ids.Contains(g.Id))
+                    .OrderByDescending(g => g.GeneratedAt);
+            }
+            else
+            {
+                page = ApplyFilter(db, filter)
+                    .OrderByDescending(g => g.GeneratedAt)
+                    .Skip(filter.Skip)
+                    .Take(filter.Take);
+            }
+
+            return await page
                 .Select(g => new ArchiveRowDto(
                     g.Id,
                     g.RecipientId,
@@ -116,6 +154,12 @@ namespace GenDoc.Services.Documents
         public async Task<ArchiveStats> GetStatsAsync(ArchiveFilter filter)
         {
             using var db = _dbFactory.CreateDbContext();
+            if (SearchNormalization.PrepareQuery(filter.Search) is { } search)
+            {
+                var matches = await SearchCandidatesAsync(db, filter, search);
+                return new ArchiveStats(matches.Count, matches.Sum(m => m.SizeBytes));
+            }
+
             var query = ApplyFilter(db, filter);
             var count = await query.CountAsync();
             var totalBytes = await query.SumAsync(g => (long?)g.SizeBytes) ?? 0;

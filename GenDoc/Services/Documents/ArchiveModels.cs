@@ -9,7 +9,8 @@ namespace GenDoc.Services.Documents
         int? UserId,
         int? Year,
         int Skip,
-        int Take);
+        int Take,
+        string? Search = null);
 
     public record ArchiveRowDto(
         int Id,

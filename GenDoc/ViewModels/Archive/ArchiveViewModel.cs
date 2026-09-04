@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Globalization;
 using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -18,7 +17,6 @@ namespace GenDoc.ViewModels.Archive
     public partial class ArchiveViewModel : ObservableObject, Services.Navigation.INavigationTarget
     {
         private const int PageSize = 200;
-        private static readonly CompareInfo UkCompare = CultureInfo.GetCultureInfo("uk-UA").CompareInfo;
         private static bool _openWarningShownThisSession;
 
         private readonly IDocumentArchiveService _archiveService;
@@ -59,9 +57,11 @@ namespace GenDoc.ViewModels.Archive
             _searchDebounceTimer.Tick += (_, _) =>
             {
                 _searchDebounceTimer.Stop();
-                ApplySearch();
+                FilterReload = ApplySearchAsync();
             };
         }
+
+        internal Task ApplySearchAsync() => IsDocsTab ? ResetAndReloadAsync() : Task.CompletedTask;
 
         public ObservableCollection<ArchiveRowViewModel> Rows { get; } = new();
         public ObservableCollection<RunGroupViewModel> Runs { get; } = new();
@@ -251,10 +251,13 @@ namespace GenDoc.ViewModels.Archive
             FilterReload = ReloadActiveTabAsync();
         }
 
-        private ArchiveFilter BuildFilter(int skip) => new(
+        private ArchiveFilter BuildFilter(int skip, bool withSearch = true) => new(
             SelectedIntake?.Id, SelectedTemplate?.Id, SelectedPackage?.Id,
             MineOnly ? _currentUser.CurrentUserId : SelectedAuthor?.Id,
-            SelectedYear?.Id, skip, PageSize);
+            SelectedYear?.Id, skip, PageSize,
+            withSearch ? SearchNormalization.PrepareQuery(SearchText) : null);
+
+        private bool IsSearchActive => SearchNormalization.PrepareQuery(SearchText) is not null;
 
         private async Task ResetAndReloadAsync()
         {
@@ -277,7 +280,7 @@ namespace GenDoc.ViewModels.Archive
                     _loadedRows.Add(row);
                 }
                 CanLoadMore = page.Count == PageSize;
-                ApplySearch();
+                ShowLoadedRows();
             }
             finally
             {
@@ -291,24 +294,26 @@ namespace GenDoc.ViewModels.Archive
         private async Task ReloadStatsAsync()
         {
             var stats = await _archiveService.GetStatsAsync(BuildFilter(0));
-            StatsText = $"{stats.Count} документів · {stats.TotalBytes / 1024.0 / 1024.0:0.#} МБ";
+            var size = $"{stats.TotalBytes / 1024.0 / 1024.0:0.#} МБ";
+            if (IsSearchActive)
+            {
+                var total = await _archiveService.GetStatsAsync(BuildFilter(0, withSearch: false));
+                StatsText = $"показано {stats.Count} з {total.Count} документів · {size}";
+            }
+            else
+            {
+                StatsText = $"{stats.Count} документів · {size}";
+            }
+
             ArchiveHasAnyDocuments = stats.Count > 0
                 || _loadedRows.Count > 0
                 || (await _archiveService.GetStatsAsync(new ArchiveFilter(null, null, null, null, null, 0, 1))).Count > 0;
         }
 
-        private void ApplySearch()
+        private void ShowLoadedRows()
         {
-            var query = SearchText?.Trim();
-            IEnumerable<ArchiveRowViewModel> filtered = _loadedRows;
-            if (!string.IsNullOrEmpty(query))
-            {
-                filtered = _loadedRows.Where(r =>
-                    UkCompare.IndexOf(r.SearchHaystack, query, CompareOptions.IgnoreCase) >= 0);
-            }
-
             Rows.Clear();
-            foreach (var row in filtered) Rows.Add(row);
+            foreach (var row in _loadedRows) Rows.Add(row);
             RowCount = Rows.Count;
             RefreshCheckedState();
         }
@@ -323,6 +328,7 @@ namespace GenDoc.ViewModels.Archive
             SelectedAuthor = AuthorOptions.FirstOrDefault();
             SelectedYear = YearOptions.FirstOrDefault();
             SearchText = null;
+            _searchDebounceTimer.Stop();
 
             if (MineOnly)
             {
