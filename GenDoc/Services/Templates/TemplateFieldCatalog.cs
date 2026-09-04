@@ -7,6 +7,7 @@ public static class TemplateFieldCatalog
     public static readonly IReadOnlyList<TemplateFieldOption> RecipientFields = new List<TemplateFieldOption>
     {
         new("FullNameFormatted", "ПІБ (ПРІЗВИЩЕ Ім'я По батькові)"),
+        new("ShortName", "ПІБ скорочено (ПРІЗВИЩЕ І.П.)"),
         new("LastName", "Прізвище"),
         new("FirstName", "Ім'я"),
         new("MiddleName", "По батькові"),
@@ -34,6 +35,7 @@ public static class TemplateFieldCatalog
         new("IdDocumentNumber", "Номер посвідчення офіцера/військового квитка"),
         new("MedicalBoard", "ВЛК, №, дата"),
         new("MedicalBoardConclusion", "Висновок ВЛК"),
+        new("FitnessCategory", "Категорія придатності"),
         new("OriginUnit", "З якої частини прибув"),
         new("Vehicle", "Автомобіль, номер авто"),
         new("IsCourseOfficer", "Курсовий офіцер (Так/Ні)"),
@@ -44,7 +46,11 @@ public static class TemplateFieldCatalog
         new("RankAccusative", "Звання (знахідний відмінок)"),
         new("FullNameAccusative", "ПІБ (знахідний відмінок)"),
         new("ArrivedVerb", "«прибув/прибула» (узгодження за родом)"),
-        new("SuchPronoun", "«таким/такою» (узгодження за родом)")
+        new("SuchPronoun", "«таким/такою» (узгодження за родом)"),
+        new("RowNumber", "№ з/п (рядок відомості)"),
+        new("GradeRandom34", "Оцінка (3 або 4, стабільна)"),
+        new("GradeOverall34", "Загальна оцінка (середнє по рядку)"),
+        new("CourseOfficerSignature", "Підпис курсового офіцера")
     };
 
     public static readonly IReadOnlyList<TemplateFieldOption> OrganizationFields = new List<TemplateFieldOption>

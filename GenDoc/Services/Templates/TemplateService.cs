@@ -163,7 +163,7 @@ namespace GenDoc.Services.Templates
                 if (mapping is null) continue;
 
                 mapping.SourceType = sourceType;
-                mapping.FieldName = sourceType == MappingSourceType.Manual ? null : fieldName;
+                mapping.FieldName = sourceType == MappingSourceType.Manual ? null : fieldName ?? mapping.FieldName;
                 mapping.DateFormat = sourceType == MappingSourceType.Manual ? null : dateFormat;
             }
 
