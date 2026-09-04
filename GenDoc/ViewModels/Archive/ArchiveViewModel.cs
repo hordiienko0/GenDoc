@@ -384,7 +384,7 @@ namespace GenDoc.ViewModels.Archive
         public bool CanOpen => CheckedCount == 1 && CheckedRows.All(r => r.HasContent);
         public bool CanSaveAs => CheckedCount >= 1 && CheckedRows.All(r => r.HasContent);
         public bool CanRegenerate => CheckedCount >= 1
-            && CheckedRows.All(r => r.SourceType == DocumentSourceType.Generated && r.TemplateAlive);
+            && CheckedRows.All(r => r.SourceType == DocumentSourceType.Generated && r.TemplateAlive && r.RecipientAlive);
         public bool CanUpload => CheckedCount == 1;
         public bool CanAttach => CheckedCount == 1;
         public bool CanHistory => CheckedCount == 1;
@@ -582,9 +582,17 @@ namespace GenDoc.ViewModels.Archive
             {
                 foreach (var row in rows)
                 {
-                    var result = await _archiveService.RegenerateAsync(row.Id, manualValues);
-                    if (result.Success) done++;
-                    else errors.Add($"{row.ShortName}: {result.ErrorMessage}");
+                    try
+                    {
+                        var result = await _archiveService.RegenerateAsync(row.Id, manualValues);
+                        if (result.Success) done++;
+                        else errors.Add($"{row.ShortName}: {result.ErrorMessage}");
+                    }
+                    catch (Exception ex)
+                    {
+                        ErrorLog.Write(ex, _currentUser.CurrentUserFullName);
+                        errors.Add($"{row.ShortName}: {ex.Message}");
+                    }
                 }
             }
             finally

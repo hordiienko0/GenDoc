@@ -21,6 +21,7 @@ namespace GenDoc.ViewModels.Archive
         public int TemplateId => Dto.TemplateId;
         public bool HasContent => Dto.HasContent;
         public bool TemplateAlive => Dto.TemplateAlive;
+        public bool RecipientAlive => Dto.RecipientAlive;
         public DocumentSourceType SourceType => Dto.SourceType;
 
         public string ShortName

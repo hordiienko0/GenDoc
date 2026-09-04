@@ -20,6 +20,9 @@ namespace GenDoc.Services.Documents
             "Цей документ уже відсутній в архіві - можливо, його видалили в іншому сеансі. " +
             "Оновіть список і спробуйте ще раз.";
 
+        private const string DeletedRecipientMessage =
+            "Особу переміщено в кошик - відновіть її, щоб перегенерувати";
+
         private readonly IDbContextFactory<AppDbContext> _dbFactory;
         private readonly IAuditLogService _auditLogService;
         private readonly ICurrentUserContext _currentUserContext;
@@ -101,7 +104,9 @@ namespace GenDoc.Services.Documents
                     g.HasContent,
                     g.SourceType,
                     g.FileName,
-                    g.SizeBytes))
+                    g.SizeBytes,
+                    db.Recipients.IgnoreQueryFilters()
+                        .Any(r => r.Id == g.RecipientId && r.DeletedAt == null)))
                 .ToListAsync();
         }
 
@@ -279,15 +284,25 @@ namespace GenDoc.Services.Documents
             int documentId, Dictionary<string, string> manualValues, int? courseOfficerId = null)
         {
             using var db = _dbFactory.CreateDbContext();
-            var doc = await db.GeneratedDocuments
-                .Include(g => g.Recipient!).ThenInclude(r => r.Unit)
-                .Include(g => g.Recipient!).ThenInclude(r => r.Room)
-                .Include(g => g.Recipient!).ThenInclude(r => r.OrgNode)
-                .Include(g => g.Recipient!).ThenInclude(r => r.Weapons)
-                .FirstAsync(g => g.Id == documentId);
+            var doc = await db.GeneratedDocuments.FirstOrDefaultAsync(g => g.Id == documentId);
+            if (doc is null) return new ArchiveOpResult(false, RecordGoneMessage);
+
+            var recipientState = await db.Recipients.IgnoreQueryFilters()
+                .Where(r => r.Id == doc.RecipientId)
+                .Select(r => new { r.DeletedAt })
+                .FirstOrDefaultAsync();
+            if (recipientState is null || recipientState.DeletedAt is not null)
+                return new ArchiveOpResult(false, DeletedRecipientMessage);
+
+            doc.Recipient = await db.Recipients
+                .Include(r => r.Unit)
+                .Include(r => r.Room)
+                .Include(r => r.OrgNode)
+                .Include(r => r.Weapons)
+                .FirstAsync(r => r.Id == doc.RecipientId);
 
             var template = await db.Templates.FirstOrDefaultAsync(t => t.Id == doc.TemplateId);
-            if (template is null || doc.Recipient is null)
+            if (template is null)
                 return new ArchiveOpResult(false, "Шаблон видалено - перегенерація неможлива");
 
             if (template.Kind == TemplateKind.Group)
@@ -452,7 +467,9 @@ namespace GenDoc.Services.Documents
                     db.Users.IgnoreQueryFilters()
                         .Where(u => u.Id == g.GeneratedByUserId).Select(u => u.FullName).FirstOrDefault() ?? "-",
                     g.Attachments.Count(a => a.DeletedAt == null),
-                    g.HasContent, g.SourceType, g.FileName, g.SizeBytes))
+                    g.HasContent, g.SourceType, g.FileName, g.SizeBytes,
+                    db.Recipients.IgnoreQueryFilters()
+                        .Any(r => r.Id == g.RecipientId && r.DeletedAt == null)))
                 .FirstOrDefaultAsync();
         }
 

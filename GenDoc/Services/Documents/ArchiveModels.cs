@@ -30,7 +30,8 @@ namespace GenDoc.Services.Documents
         bool HasContent,
         DocumentSourceType SourceType,
         string FileName,
-        long SizeBytes);
+        long SizeBytes,
+        bool RecipientAlive = true);
 
     public record ArchiveStats(int Count, long TotalBytes);
 
