@@ -2,7 +2,7 @@
 
 namespace GenDoc.Services.Recipients
 {
-    public record RecipientListItem(int Id, string FullName, string Rank, string Position, string UnitName, string RoomDisplay);
+    public record RecipientListItem(int Id, string FullName, string Rank, string Position, string UnitName, string RoomDisplay, int? IntakeId = null);
 
     public enum RecipientSortColumn
     {

@@ -8,11 +8,12 @@ namespace GenDoc.Tests.Generation;
 
 public class RecipientCountMatchesRosterTests
 {
-    private static void Seed(TestDb db)
+    private static (int ActiveIntakeId, int OtherIntakeId) Seed(TestDb db)
     {
         using var ctx = db.Factory.CreateDbContext();
         var intake = new Intake { Number = 1, DisplayNumber = "Набір №1" };
-        ctx.Intakes.Add(intake);
+        var other = new Intake { Number = 2, DisplayNumber = "Набір №2" };
+        ctx.Intakes.AddRange(intake, other);
         ctx.SaveChanges();
 
         ctx.Recipients.AddRange(
@@ -21,17 +22,53 @@ public class RecipientCountMatchesRosterTests
             new Recipient { LastName = "В", FirstName = "В", Rank = "солдат", IntakeId = intake.Id },
             new Recipient { LastName = "Г", FirstName = "Г", Rank = "солдат", IntakeId = intake.Id },
             new Recipient { LastName = "Д", FirstName = "Д", Rank = "солдат", IntakeId = intake.Id },
-            new Recipient { LastName = "Е", FirstName = "Е", Rank = "підполковник", IntakeId = null });
+            new Recipient { LastName = "Е", FirstName = "Е", Rank = "підполковник", IntakeId = null },
+            new Recipient { LastName = "Є", FirstName = "Є", Rank = "лейтенант", IntakeId = other.Id });
         ctx.SaveChanges();
+
+        return (intake.Id, other.Id);
     }
 
     [Fact]
-    public void Count_WithoutFilters_IsEveryone()
+    public void Count_WithoutActiveIntake_IsEveryone()
     {
         using var db = new TestDb();
         Seed(db);
 
-        Assert.Equal(6, TestServices.Generation(db).GetRecipientCount(RosterSelection.Everyone));
+        Assert.Equal(7, TestServices.Generation(db).GetRecipientCount(RosterSelection.Everyone));
+    }
+
+    [Fact]
+    public void Count_WithActiveIntake_ExcludesPermanentStaffAndOtherIntakes()
+    {
+        using var db = new TestDb();
+        var (activeIntakeId, _) = Seed(db);
+
+        var selection = RosterSelection.Everyone with { IntakeId = activeIntakeId };
+
+        Assert.Equal(5, TestServices.Generation(db).GetRecipientCount(selection));
+    }
+
+    [Fact]
+    public void Count_WithActiveIntakeAndPermanentStaff_AddsStaffButNotOtherIntakes()
+    {
+        using var db = new TestDb();
+        var (activeIntakeId, _) = Seed(db);
+
+        var selection = RosterSelection.Everyone with { IntakeId = activeIntakeId, IncludePermanentStaff = true };
+
+        Assert.Equal(6, TestServices.Generation(db).GetRecipientCount(selection));
+    }
+
+    [Fact]
+    public void Count_WithActiveIntakeAndRankFilter_CombinesWithAnd()
+    {
+        using var db = new TestDb();
+        var (_, otherIntakeId) = Seed(db);
+
+        var selection = RosterSelection.Everyone with { IntakeId = otherIntakeId, Ranks = new[] { "солдат" } };
+
+        Assert.Equal(0, TestServices.Generation(db).GetRecipientCount(selection));
     }
 
     [Fact]
@@ -69,6 +106,24 @@ public class RecipientCountMatchesRosterTests
         var selection = new RosterSelection(
             AllRecipients: false, RecipientIds: ids, FitnessFilter.All,
             PermanentStaffOnly: false, Array.Empty<RankCategory>(), Array.Empty<string>());
+
+        Assert.Equal(2, TestServices.Generation(db).GetRecipientCount(selection));
+    }
+
+    [Fact]
+    public void Count_WithExplicitSelection_KeepsCheckedPeopleOutsideTheIntake()
+    {
+        using var db = new TestDb();
+        var (activeIntakeId, _) = Seed(db);
+
+        int[] ids;
+        using (var ctx = db.Factory.CreateDbContext())
+            ids = ctx.Recipients.Where(r => r.IntakeId != activeIntakeId).Select(r => r.Id).ToArray();
+
+        var selection = new RosterSelection(
+            AllRecipients: false, RecipientIds: ids, FitnessFilter.All,
+            PermanentStaffOnly: false, Array.Empty<RankCategory>(), Array.Empty<string>(),
+            IntakeId: activeIntakeId);
 
         Assert.Equal(2, TestServices.Generation(db).GetRecipientCount(selection));
     }

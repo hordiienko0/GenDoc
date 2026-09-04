@@ -32,7 +32,8 @@ namespace GenDoc.Services.Recipients
                 r.Rank,
                 r.Position,
                 r.Unit != null ? r.Unit.Name : "-",
-                FormatRoom(r.Room))).ToList();
+                FormatRoom(r.Room),
+                r.IntakeId)).ToList();
         }
 
         public List<Recipient> SearchEntities(string? searchText, RecipientSortColumn sortColumn = RecipientSortColumn.FullName, bool sortDescending = false)

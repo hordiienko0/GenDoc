@@ -362,4 +362,47 @@ public class RunPackageTests : IDisposable
         using var check = db.Factory.CreateDbContext();
         Assert.Null(check.GeneratedGroupDocuments.Single().IntakeId);
     }
+
+    [Fact]
+    public void RunPackage_IntakeScope_GeneratesOnlyForMembersOfThatIntake()
+    {
+        using var db = new TestDb();
+        var (packageId, recipientIds) = SeedPackage(db, TemplateFixtures.Roster(3));
+        var intakeId = AttachToNewIntake(db, recipientIds[0]);
+
+        var result = Run(db, packageId, selection: RosterSelection.Everyone with { IntakeId = intakeId });
+
+        Assert.Equal(1, result.Generated);
+        Assert.Single(Directory.GetFiles(_folder, "*.docx", SearchOption.AllDirectories));
+    }
+
+    [Fact]
+    public void RunPackage_IntakeScopeWithPermanentStaff_KeepsStaffInPermanentStaffFolder()
+    {
+        using var db = new TestDb();
+        var (packageId, recipientIds) = SeedPackage(db, TemplateFixtures.Roster(3));
+        var intakeId = AttachToNewIntake(db, recipientIds[0]);
+
+        var result = Run(db, packageId, selection: RosterSelection.Everyone with
+        {
+            IntakeId = intakeId,
+            IncludePermanentStaff = true
+        });
+
+        Assert.Equal(3, result.Generated);
+        Assert.Equal(2, Directory.GetFiles(Path.Combine(_folder, "Постійний склад"), "*.docx", SearchOption.AllDirectories).Length);
+        Assert.Single(Directory.GetFiles(Path.Combine(_folder, "Набір №29"), "*.docx", SearchOption.AllDirectories));
+    }
+
+    private static int AttachToNewIntake(TestDb db, int recipientId)
+    {
+        using var ctx = db.Factory.CreateDbContext();
+        var intake = new Intake { Number = 29, DisplayNumber = "Набір №29", Status = IntakeStatus.Active };
+        ctx.Intakes.Add(intake);
+        ctx.SaveChanges();
+
+        ctx.Recipients.First(r => r.Id == recipientId).IntakeId = intake.Id;
+        ctx.SaveChanges();
+        return intake.Id;
+    }
 }

@@ -26,6 +26,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     private readonly IManualTagFormBuilder _manualTagFormBuilder;
     private readonly IOutputFolderService _outputFolderService;
     private readonly IUserSettingsService _userSettings;
+    private readonly Services.Completeness.IIntakeServiceAccessor _intakeAccessor;
 
     public GenerationViewModel(
         IGenerationService generationService,
@@ -35,7 +36,8 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         IRecipientService recipientService,
         IManualTagFormBuilder manualTagFormBuilder,
         IOutputFolderService outputFolderService,
-        IUserSettingsService userSettings)
+        IUserSettingsService userSettings,
+        Services.Completeness.IIntakeServiceAccessor intakeAccessor)
     {
         _generationService = generationService;
         _dialogService = dialogService;
@@ -45,8 +47,12 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         _manualTagFormBuilder = manualTagFormBuilder;
         _outputFolderService = outputFolderService;
         _userSettings = userSettings;
+        _intakeAccessor = intakeAccessor;
+        WeakReferenceMessenger.Default.Register<GenerationViewModel, ActiveIntakeChangedMessage>(this,
+            static (recipient, message) => recipient.OnActiveIntakeChanged());
         RefreshPackages();
         RefreshRecipientOptions();
+        RefreshAllRecipientsCount();
         _ = LoadDefaultOutputFolderAsync();
     }
 
@@ -154,16 +160,73 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         foreach (var row in RecipientOptions) row.MatchesSearch = RecipientCheckRowViewModel.Matches(row.FullName, value);
     }
 
-    public string GenerateButtonText => BuildGenerateButtonText(UseAllRecipients, RecipientCount, SelectedRecipientsCount);
+    public string GenerateButtonText => BuildGenerateButtonText(UseAllRecipients, RecipientCount, SelectedRecipientsCount, IntakeLabel);
 
-    internal static string BuildGenerateButtonText(bool useAll, int all, int selected)
-        => useAll ? $"Згенерувати всім ({all})" : $"Згенерувати обраним ({selected})";
+    internal static string BuildGenerateButtonText(bool useAll, int all, int selected, string? intakeLabel = null)
+    {
+        if (!useAll) return $"Згенерувати обраним ({selected})";
+        return intakeLabel is null ? $"Згенерувати всім ({all})" : $"Згенерувати всім ({intakeLabel}: {all})";
+    }
+
+    partial void OnUseAllRecipientsChanged(bool value) => RefreshPackageTemplateCounts();
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RosterScopeHint))]
+    private bool includePermanentStaff;
+
+    partial void OnIncludePermanentStaffChanged(bool value) => RefreshRosterScope();
+
+    private Models.Intake? ActiveIntake => _intakeAccessor.ActiveIntake;
+
+    public bool HasActiveIntake => ActiveIntake is not null;
+
+    private string? IntakeLabel => ActiveIntake is { } intake ? BuildIntakeLabel(intake.Number, intake.DisplayNumber) : null;
+
+    internal static string BuildIntakeLabel(int number, string? displayNumber)
+        => string.IsNullOrWhiteSpace(displayNumber) ? $"набір №{number}" : displayNumber.Trim();
+
+    public string RosterScopeHint => BuildRosterScopeHint(IntakeLabel, IncludePermanentStaff);
+
+    internal static string BuildRosterScopeHint(string? intakeLabel, bool includePermanentStaff)
+    {
+        if (intakeLabel is null) return "Активного набору немає — у списку всі люди бази, включно з постійним складом.";
+        return includePermanentStaff
+            ? $"У списку — {intakeLabel} і постійний склад."
+            : $"У списку — {intakeLabel}, без постійного складу.";
+    }
+
+    private void OnActiveIntakeChanged()
+    {
+        OnPropertyChanged(nameof(HasActiveIntake));
+        OnPropertyChanged(nameof(RosterScopeHint));
+        RefreshRosterScope();
+    }
+
+    private void RefreshRosterScope()
+    {
+        RefreshRecipientOptions();
+        RefreshAllRecipientsCount();
+        OnPropertyChanged(nameof(GenerateButtonText));
+    }
+
+    private RosterSelection BuildRosterSelection() => new(
+        UseAllRecipients,
+        UseAllRecipients ? Array.Empty<int>() : RecipientOptions.Where(r => r.IsChecked && r.IsVisible).Select(r => r.Id).ToList(),
+        FitnessFilter.All,
+        false,
+        Array.Empty<RankCategory>(),
+        RankOptions.Where(o => o.IsChecked).Select(o => o.Rank).ToList(),
+        ActiveIntake?.Id,
+        IncludePermanentStaff);
 
     private void RefreshRecipientOptions()
     {
+        var intakeId = ActiveIntake?.Id;
         RecipientOptions.Clear();
         foreach (var item in _recipientService.Search(null))
         {
+            if (!RosterSelection.InScope(item.IntakeId, intakeId, IncludePermanentStaff)) continue;
+
             var row = new RecipientCheckRowViewModel(item.Id, item.Rank, item.FullName, item.UnitName);
             row.PropertyChanged += OnRecipientOptionPropertyChanged;
             RecipientOptions.Add(row);
@@ -175,7 +238,34 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
 
     private void OnRecipientOptionPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(RecipientCheckRowViewModel.IsChecked)) RefreshSelectedRecipientsCount();
+        if (e.PropertyName != nameof(RecipientCheckRowViewModel.IsChecked) || _batchingRecipientChecks) return;
+        RefreshSelectedRecipientsCount();
+        RefreshPackageTemplateCounts();
+    }
+
+    private bool _batchingRecipientChecks;
+
+    private void BatchRecipientChecks(Action apply)
+    {
+        _batchingRecipientChecks = true;
+        try
+        {
+            apply();
+        }
+        finally
+        {
+            _batchingRecipientChecks = false;
+        }
+
+        RefreshSelectedRecipientsCount();
+        RefreshPackageTemplateCounts();
+    }
+
+    private void RefreshPackageTemplateCounts()
+    {
+        var selection = BuildRosterSelection();
+        foreach (var item in PackageTemplates.Where(t => t.IsXlsx))
+            item.PersonCount = _generationService.GetRecipientCount(selection with { FitnessFilter = item.FitnessFilter });
     }
 
     private void RefreshSelectedRecipientsCount()
@@ -184,16 +274,16 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     }
 
     [RelayCommand]
-    private void CheckAllRecipients()
+    private void CheckAllRecipients() => BatchRecipientChecks(() =>
     {
         foreach (var row in RecipientOptions.Where(r => r.IsVisible)) row.IsChecked = true;
-    }
+    });
 
     [RelayCommand]
-    private void UncheckAllRecipients()
+    private void UncheckAllRecipients() => BatchRecipientChecks(() =>
     {
         foreach (var row in RecipientOptions) row.IsChecked = false;
-    }
+    });
 
     private bool _suppressRankSync;
 
@@ -293,11 +383,19 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
             RankOptions.Where(o => o.IsChecked).Select(o => RankOrder.Normalize(o.Rank)),
             StringComparer.Ordinal);
 
-        foreach (var row in RecipientOptions)
+        _batchingRecipientChecks = true;
+        try
         {
-            var visible = checkedRanks.Count == 0 || checkedRanks.Contains(RankOrder.Normalize(row.Rank));
-            row.IsVisible = visible;
-            if (!visible) row.IsChecked = false;
+            foreach (var row in RecipientOptions)
+            {
+                var visible = checkedRanks.Count == 0 || checkedRanks.Contains(RankOrder.Normalize(row.Rank));
+                row.IsVisible = visible;
+                if (!visible) row.IsChecked = false;
+            }
+        }
+        finally
+        {
+            _batchingRecipientChecks = false;
         }
 
         RefreshSelectedRecipientsCount();
@@ -307,15 +405,12 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
 
     private void RefreshAllRecipientsCount()
     {
-        var checkedRanks = RankOptions.Where(o => o.IsChecked).Select(o => o.Rank).ToList();
-
-        RecipientCount = _generationService.GetRecipientCount(new RosterSelection(
-            AllRecipients: true,
-            RecipientIds: Array.Empty<int>(),
-            FitnessFilter.All,
-            PermanentStaffOnly: false,
-            Array.Empty<RankCategory>(),
-            checkedRanks));
+        RecipientCount = _generationService.GetRecipientCount(BuildRosterSelection() with
+        {
+            AllRecipients = true,
+            RecipientIds = Array.Empty<int>()
+        });
+        RefreshPackageTemplateCounts();
     }
 
     private void RefreshPackages()
@@ -372,12 +467,14 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         item.IsSelected = true;
         SelectedPackage = item;
 
+        var rosterSelection = BuildRosterSelection();
         var summary = new List<PackageTemplateSummaryItemViewModel>();
         summary.AddRange(_generationService.GetPackageTemplates(item.Id)
             .Select(t => new PackageTemplateSummaryItemViewModel(t.TemplateName)));
         summary.AddRange(_generationService.GetPackageExportTemplates(item.Id)
             .Select(t => new PackageTemplateSummaryItemViewModel(
-                t.Name, t.FitnessFilter, _generationService.GetRecipientCount(t.FitnessFilter))));
+                t.Name, t.FitnessFilter,
+                _generationService.GetRecipientCount(rosterSelection with { FitnessFilter = t.FitnessFilter }))));
         PackageTemplates = new ObservableCollection<PackageTemplateSummaryItemViewModel>(summary);
 
         var tags = _generationService.GetManualTags(item.Id);
@@ -500,16 +597,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         ApplyDocumentDate(manualValues, DocumentDate);
         var courseOfficerId = ManualTagForm?.CourseOfficer?.Selected?.RecipientId;
         var progress = new Progress<string>(message => ProgressText = message);
-
-        var checkedRanks = RankOptions.Where(o => o.IsChecked).Select(o => o.Rank).ToList();
-
-        var rosterSelection = new RosterSelection(
-            UseAllRecipients,
-            UseAllRecipients ? Array.Empty<int>() : RecipientOptions.Where(r => r.IsChecked && r.IsVisible).Select(r => r.Id).ToList(),
-            FitnessFilter.All,
-            false,
-            Array.Empty<RankCategory>(),
-            checkedRanks);
+        var rosterSelection = BuildRosterSelection();
 
         IsBusy = true;
         ProgressText = "Підготовка…";

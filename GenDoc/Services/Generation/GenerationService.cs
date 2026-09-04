@@ -317,25 +317,10 @@ namespace GenDoc.Services.Generation
                 .FirstOrDefault();
         }
 
-        public int GetRecipientCount()
-        {
-            using var db = _dbFactory.CreateDbContext();
-            return db.Recipients.Count();
-        }
-
         public int GetRecipientCount(RosterSelection selection)
         {
             using var db = _dbFactory.CreateDbContext();
             return LoadRosterRecipients(db, selection).Count;
-        }
-
-        public int GetRecipientCount(FitnessFilter filter)
-        {
-            if (filter == FitnessFilter.All) return GetRecipientCount();
-
-            using var db = _dbFactory.CreateDbContext();
-            return db.Recipients.Select(r => r.FitnessCategory).AsEnumerable()
-                .Count(f => FitnessCategoryHelper.Matches(filter, f));
         }
 
         public RunResult RunPackage(
@@ -496,6 +481,9 @@ namespace GenDoc.Services.Generation
                 query = query.Where(r => r.IntakeId == null);
 
             var recipients = query.ToList();
+
+            if (selection.AllRecipients && !selection.PermanentStaffOnly)
+                recipients = recipients.Where(r => selection.Covers(r.IntakeId)).ToList();
 
             if (selection.FitnessFilter != FitnessFilter.All)
                 recipients = recipients.Where(r => FitnessCategoryHelper.Matches(selection.FitnessFilter, r.FitnessCategory)).ToList();

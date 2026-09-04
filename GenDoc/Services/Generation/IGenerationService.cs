@@ -19,10 +19,19 @@ namespace GenDoc.Services.Generation
         FitnessFilter FitnessFilter,
         bool PermanentStaffOnly,
         IReadOnlyList<RankCategory> RankCategories,
-        IReadOnlyList<string> Ranks)
+        IReadOnlyList<string> Ranks,
+        int? IntakeId = null,
+        bool IncludePermanentStaff = false)
     {
         public static RosterSelection Everyone { get; } =
             new(true, Array.Empty<int>(), FitnessFilter.All, false, Array.Empty<RankCategory>(), Array.Empty<string>());
+
+        public static bool InScope(int? recipientIntakeId, int? intakeId, bool includePermanentStaff)
+            => intakeId is not int id
+               || recipientIntakeId == id
+               || (includePermanentStaff && recipientIntakeId is null);
+
+        public bool Covers(int? recipientIntakeId) => InScope(recipientIntakeId, IntakeId, IncludePermanentStaff);
     }
 
     public interface IGenerationService
@@ -50,8 +59,6 @@ namespace GenDoc.Services.Generation
         bool PackageNeedsCourseOfficer(int packageId);
 
         LastRunInfo? GetLastRun();
-        int GetRecipientCount();
-        int GetRecipientCount(FitnessFilter filter);
 
         int GetRecipientCount(RosterSelection selection);
 
