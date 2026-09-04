@@ -33,6 +33,27 @@ public class DocxMappingRowViewModelTests
     }
 
     [Fact]
+    public void ChangingSource_ResetsFieldAndDateFormat()
+    {
+        var row = new DocxMappingRowViewModel(1, "{{дата_народження}}", MappingSourceType.Recipient, "DateOfBirth", dateFormat: "yyyy-MM-dd");
+
+        row.SourceType = MappingSourceType.Organization;
+
+        Assert.Null(row.SelectedFieldName);
+        Assert.Null(row.SelectedDateFormat);
+    }
+
+    [Fact]
+    public void ExportRow_ChangingSource_ResetsField()
+    {
+        var row = new TemplateMappingRowViewModel(1, "{{піб}}", MappingSourceType.Recipient, "FullNameFormatted");
+
+        row.SourceType = MappingSourceType.Organization;
+
+        Assert.Null(row.SelectedFieldName);
+    }
+
+    [Fact]
     public void Constructor_PreservesSuppliedDateFormat()
     {
         var row = new DocxMappingRowViewModel(1, "{{дата_народження}}", MappingSourceType.Recipient, "DateOfBirth", dateFormat: "yyyy-MM-dd");

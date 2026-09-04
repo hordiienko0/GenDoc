@@ -91,10 +91,7 @@ namespace GenDoc.ViewModels.Staff
             Templates.Clear();
             const Models.Enums.TemplateAudience audience = Models.Enums.TemplateAudience.PermanentStaff;
 
-            var source = kind is null
-                ? _generationService.GetPerRecipientTemplates(audience)
-                : _generationService.GetAllTemplates(audience);
-            foreach (var (id, name) in source)
+            foreach (var (id, name) in _generationService.GetPerRecipientTemplates(audience))
             {
                 var item = new TemplateCheckOptionViewModel(id, name);
                 item.PropertyChanged += async (_, e) =>

@@ -57,6 +57,7 @@ public partial class TemplateMappingRowViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsFieldEnabled))]
+    [NotifyPropertyChangedFor(nameof(RecipientOrOrgFieldOptions))]
     private MappingSourceType sourceType;
 
     [ObservableProperty]
@@ -76,8 +77,5 @@ public partial class TemplateMappingRowViewModel : ObservableObject
         .Select(f => new TemplateFieldOption(f.ToString(), ExportFieldKeyNames.DisplayNames[f]))
         .ToList();
 
-    partial void OnSourceTypeChanged(MappingSourceType value)
-    {
-        if (value == MappingSourceType.Manual) SelectedFieldName = null;
-    }
+    partial void OnSourceTypeChanged(MappingSourceType value) => SelectedFieldName = null;
 }

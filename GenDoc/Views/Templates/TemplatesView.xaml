@@ -5,8 +5,20 @@
              xmlns:local="clr-namespace:GenDoc.Views.Templates">
 
     <UserControl.Resources>
+        <Style x:Key="TemplateRowBorderStyle" TargetType="Border">
+            <Setter Property="BorderThickness" Value="0,1,0,0"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                    <Setter Property="Background" Value="{StaticResource AccentSoftBrush}"/>
+                    <Setter Property="BorderThickness" Value="3,1,0,0"/>
+                    <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
                             <DataTemplate x:Key="DocxTemplateRowTemplate">
-                                <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderLineBrush}">
+                                <Border Style="{StaticResource TemplateRowBorderStyle}">
                                     <StackPanel>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -21,11 +33,19 @@
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="*"/>
                                                     <ColumnDefinition Width="Auto"/>
+                                                    <ColumnDefinition Width="Auto"/>
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
                                                            VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"
                                                            TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}"/>
-                                                <Border Grid.Column="1" Background="{StaticResource AccentSoftBrush}" Padding="6,2"
+                                                <Border Grid.Column="1" Background="{StaticResource SkySoftBrush}" Padding="6,2"
+                                                        Margin="8,0,0,0" VerticalAlignment="Center"
+                                                        ToolTip="Один документ на весь список - таблиця повторює рядок на кожну особу"
+                                                        Visibility="{Binding IsGroup, Converter={StaticResource BoolToVisibility}}">
+                                                    <TextBlock Text="Груповий" FontSize="10.5" FontWeight="Bold"
+                                                               Foreground="{StaticResource NavyBrush}"/>
+                                                </Border>
+                                                <Border Grid.Column="2" Background="{StaticResource AccentSoftBrush}" Padding="6,2"
                                                         Margin="8,0,0,0" VerticalAlignment="Center"
                                                         Visibility="{Binding IsFromBuilder, Converter={StaticResource BoolToVisibility}}">
                                                     <TextBlock Text="Конструктор" FontSize="10.5" FontWeight="Bold"
@@ -71,7 +91,7 @@
             <Setter Property="Margin" Value="0,0,0,10"/>
         </Style>
                             <DataTemplate DataType="{x:Type templatesVm:ExportTemplateListItemViewModel}">
-                                <Border BorderThickness="0,1,0,0" BorderBrush="{StaticResource BorderLineBrush}">
+                                <Border Style="{StaticResource TemplateRowBorderStyle}">
                                     <StackPanel>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -394,6 +414,9 @@
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 ToolTip="Відомість Excel: заголовок, колонки, підписи"
                                 Command="{Binding CreateVidomistWithBuilderCommand}"/>
+                        <TextBlock Text="{Binding ListStatusMessage}" VerticalAlignment="Center" Margin="14,0,0,0"
+                                   FontSize="12" Foreground="{StaticResource SuccessBrush}"
+                                   MaxWidth="360" TextTrimming="CharacterEllipsis" ToolTip="{Binding ListStatusMessage}"/>
                     </StackPanel>
                 </StackPanel>
             </Border>

@@ -105,7 +105,7 @@ namespace GenDoc.Services.Templates
             return new UploadResult(true, null);
         }
 
-        public List<(int Id, string Name, string? ShortName, string OriginalFileName, DateTime UploadedAt, int TagCount, bool IsFromBuilder, TemplateAudience Audience)> GetTemplateListItems()
+        public List<(int Id, string Name, string? ShortName, string OriginalFileName, DateTime UploadedAt, int TagCount, bool IsFromBuilder, TemplateAudience Audience, TemplateKind Kind)> GetTemplateListItems()
         {
             using var db = _dbFactory.CreateDbContext();
             return db.Templates
@@ -115,10 +115,10 @@ namespace GenDoc.Services.Templates
                     t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt,
                     TagCount = t.FieldMappings.Count,
                     IsFromBuilder = t.BuilderJson != null,
-                    t.Audience
+                    t.Audience, t.Kind
                 })
                 .AsEnumerable()
-                .Select(t => (t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, t.TagCount, t.IsFromBuilder, t.Audience))
+                .Select(t => (t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, t.TagCount, t.IsFromBuilder, t.Audience, t.Kind))
                 .ToList();
         }
 
@@ -126,7 +126,11 @@ namespace GenDoc.Services.Templates
         {
             using var db = _dbFactory.CreateDbContext();
             var template = db.Templates.First(t => t.Id == templateId);
+            var old = template.Audience;
             template.Audience = audience;
+
+            _auditLogService.LogUpdate(db, "Template", template.Id, old.ToString(), audience.ToString(),
+                $"{template.Name}: змінено призначення шаблону");
             db.SaveChanges();
         }
 
@@ -134,7 +138,11 @@ namespace GenDoc.Services.Templates
         {
             using var db = _dbFactory.CreateDbContext();
             var template = db.Templates.First(t => t.Id == templateId);
+            var old = template.ShortName;
             template.ShortName = string.IsNullOrWhiteSpace(shortName) ? null : shortName.Trim();
+
+            _auditLogService.LogUpdate(db, "Template", template.Id, old, template.ShortName,
+                $"{template.Name}: змінено коротку назву");
             db.SaveChanges();
         }
 

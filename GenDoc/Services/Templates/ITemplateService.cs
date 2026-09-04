@@ -8,7 +8,7 @@ namespace GenDoc.Services.Templates
     {
         UploadResult Upload(string filePath);
 
-        List<(int Id, string Name, string? ShortName, string OriginalFileName, DateTime UploadedAt, int TagCount, bool IsFromBuilder, TemplateAudience Audience)> GetTemplateListItems();
+        List<(int Id, string Name, string? ShortName, string OriginalFileName, DateTime UploadedAt, int TagCount, bool IsFromBuilder, TemplateAudience Audience, TemplateKind Kind)> GetTemplateListItems();
         void SaveShortName(int templateId, string? shortName);
 
         void SaveAudience(int templateId, TemplateAudience audience);

@@ -9,7 +9,8 @@ public partial class DocxTemplateListItemViewModel : ObservableObject
     public DocxTemplateListItemViewModel(
         int id, string name, string? shortName, string originalFileName, DateTime uploadedAt, int tagCount,
         bool isFromBuilder = false,
-        TemplateAudience audience = TemplateAudience.Intake)
+        TemplateAudience audience = TemplateAudience.Intake,
+        TemplateKind kind = TemplateKind.PerRecipient)
     {
         Id = id;
         Name = name;
@@ -19,6 +20,7 @@ public partial class DocxTemplateListItemViewModel : ObservableObject
         TagCount = tagCount;
         IsFromBuilder = isFromBuilder;
         this.audience = audience;
+        Kind = kind;
     }
 
     public int Id { get; }
@@ -28,6 +30,12 @@ public partial class DocxTemplateListItemViewModel : ObservableObject
     public int TagCount { get; }
 
     public bool IsFromBuilder { get; }
+
+    public TemplateKind Kind { get; }
+
+    public bool IsGroup => Kind == TemplateKind.Group;
+
+    public string KindBadge => IsGroup ? "Груповий" : "На кожного";
 
     [ObservableProperty]
     private string shortNameEdit;

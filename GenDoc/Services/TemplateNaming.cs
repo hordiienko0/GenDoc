@@ -10,10 +10,14 @@ namespace GenDoc.Services
 
         private static readonly Regex WhitespaceRegex = new(@"\s+", RegexOptions.Compiled);
 
+        private static readonly Regex CopySuffixRegex = new(
+            @"(\s*\(\d+\)|\s*[\-–—]\s*копія)\s*$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
         public static string Clean(string? name)
         {
             var value = (name ?? string.Empty).Replace('_', ' ');
             value = TemplatePrefixRegex.Replace(value, string.Empty);
+            while (CopySuffixRegex.IsMatch(value)) value = CopySuffixRegex.Replace(value, string.Empty);
             value = WhitespaceRegex.Replace(value, " ").Trim();
 
             return value.Length == 0 ? (name ?? string.Empty).Trim() : value;

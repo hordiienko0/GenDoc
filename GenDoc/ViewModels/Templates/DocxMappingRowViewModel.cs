@@ -62,7 +62,8 @@ public partial class DocxMappingRowViewModel : ObservableObject
 
     partial void OnSourceTypeChanged(MappingSourceType value)
     {
-        if (value == MappingSourceType.Manual) SelectedFieldName = null;
+        SelectedFieldName = null;
+        SelectedDateFormat = null;
     }
 
     partial void OnSelectedFieldNameChanged(string? value)

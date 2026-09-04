@@ -27,6 +27,21 @@ public class TemplateNamingTests
     public void Clean_DoesNotBiteIntoLongerWordStartingWithTemplate(string input, string expected)
         => Assert.Equal(expected, TemplateNaming.Clean(input));
 
+    [Theory]
+    [InlineData("Рапорт котлове ГРУПОВИЙ (3)", "Рапорт котлове ГРУПОВИЙ")]
+    [InlineData("Шаблон_Залік - копія", "Залік")]
+    [InlineData("Залік - копія (2)", "Залік")]
+    [InlineData("Залік – копія", "Залік")]
+    [InlineData("Роздавальна (1) (2)", "Роздавальна")]
+    public void Clean_StripsCopySuffixesFromFileNames(string input, string expected)
+        => Assert.Equal(expected, TemplateNaming.Clean(input));
+
+    [Theory]
+    [InlineData("Допуск (Додаток 5)", "Допуск (Додаток 5)")]
+    [InlineData("Залік 2026", "Залік 2026")]
+    public void Clean_KeepsMeaningfulParenthesesAndNumbers(string input, string expected)
+        => Assert.Equal(expected, TemplateNaming.Clean(input));
+
     [Fact]
     public void Clean_IsIdempotent()
     {

@@ -51,6 +51,9 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
     [ObservableProperty]
     private bool hasPermanentStaffTemplates;
 
+    [ObservableProperty]
+    private string? listStatusMessage;
+
     private void Refresh()
     {
         var all = _exportTemplateService.GetTemplateListItems()
@@ -63,13 +66,15 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
             all.Where(t => t.UsesPlaceholders));
         ListExportTemplates = new ObservableCollection<ExportTemplateListItemViewModel>(
             all.Where(t => !t.UsesPlaceholders));
+
+        RebindSelection();
     }
 
     private void RefreshDocxTemplates()
     {
         var items = _templateService.GetTemplateListItems()
             .Select(t => new DocxTemplateListItemViewModel(
-                t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, t.TagCount, t.IsFromBuilder, t.Audience))
+                t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, t.TagCount, t.IsFromBuilder, t.Audience, t.Kind))
             .ToList();
 
         foreach (var item in items) item.AudienceChanged += OnTemplateAudienceChanged;
@@ -80,6 +85,30 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
         PermanentStaffTemplatesView = TemplateAudienceGroups.PermanentStaff(DocxTemplates);
 
         RefreshAudienceGroups();
+        RebindSelection();
+    }
+
+    internal void RefreshLists()
+    {
+        RefreshDocxTemplates();
+        Refresh();
+    }
+
+    private void RebindSelection()
+    {
+        switch (SelectedTemplate)
+        {
+            case DocxTemplateListItemViewModel docx:
+                var freshDocx = DocxTemplates.FirstOrDefault(t => t.Id == docx.Id);
+                if (freshDocx is null) ClearTemplateSelection();
+                else if (!ReferenceEquals(freshDocx, docx)) SelectTemplate(freshDocx);
+                break;
+            case ExportTemplateListItemViewModel export:
+                var freshExport = DocumentExcelTemplates.Concat(ListExportTemplates).FirstOrDefault(t => t.Id == export.Id);
+                if (freshExport is null) ClearTemplateSelection();
+                else if (!ReferenceEquals(freshExport, export)) SelectTemplate(freshExport);
+                break;
+        }
     }
 
     private void RefreshAudienceGroups()
@@ -163,11 +192,7 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
     {
         var builderViewModel = _serviceProvider.GetRequiredService<TemplateBuilderViewModel>();
         builderViewModel.RequestClose += () => Builder = null;
-        builderViewModel.Saved += () =>
-        {
-            RefreshDocxTemplates();
-            Refresh();
-        };
+        builderViewModel.Saved += RefreshLists;
         return builderViewModel;
     }
 
@@ -197,7 +222,13 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
                 break;
 
             case ".xlsx":
-                _exportTemplateService.UploadTemplate(dialog.FileName);
+                var xlsxResult = _exportTemplateService.UploadTemplate(dialog.FileName);
+                if (!xlsxResult.Success)
+                {
+                    MessageBox.Show(xlsxResult.ErrorMessage, "Помилка завантаження", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
                 Refresh();
                 break;
 
@@ -313,6 +344,7 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
     {
         _templateService.SaveAudience(item.Id, item.Audience);
         RefreshAudienceGroups();
+        ListStatusMessage = $"«{item.Name}»: тепер для «{item.AudienceCaption}» ({DateTime.Now:HH:mm}).";
     }
 
     [RelayCommand]
@@ -320,6 +352,7 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
     {
         if (item is null) return;
         _templateService.SaveShortName(item.Id, item.ShortNameEdit);
+        ListStatusMessage = $"Коротку назву збережено ({DateTime.Now:HH:mm}).";
     }
 
     [RelayCommand]
@@ -334,14 +367,19 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
 
         if (confirm != MessageBoxResult.Yes) return;
 
-        var (success, errorMessage) = _templateService.Delete(item.Id);
+        var (success, errorMessage) = DeleteDocxTemplateCore(item);
         if (!success)
-        {
             MessageBox.Show(errorMessage, "Неможливо видалити", MessageBoxButton.OK, MessageBoxImage.Error);
-            return;
-        }
+    }
 
+    internal (bool Success, string? ErrorMessage) DeleteDocxTemplateCore(DocxTemplateListItemViewModel item)
+    {
+        var result = _templateService.Delete(item.Id);
+        if (!result.Success) return result;
+
+        if (ReferenceEquals(SelectedTemplate, item)) ClearTemplateSelection();
         RefreshDocxTemplates();
+        return result;
     }
 
     [RelayCommand]
@@ -386,13 +424,18 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
 
         if (result != MessageBoxResult.Yes) return;
 
-        var (success, errorMessage) = _exportTemplateService.Delete(item.Id);
+        var (success, errorMessage) = DeleteExportTemplateCore(item);
         if (!success)
-        {
             MessageBox.Show(errorMessage, "Неможливо видалити", MessageBoxButton.OK, MessageBoxImage.Error);
-            return;
-        }
+    }
 
+    internal (bool Success, string? ErrorMessage) DeleteExportTemplateCore(ExportTemplateListItemViewModel item)
+    {
+        var result = _exportTemplateService.Delete(item.Id);
+        if (!result.Success) return result;
+
+        if (ReferenceEquals(SelectedTemplate, item)) ClearTemplateSelection();
         Refresh();
+        return result;
     }
 }

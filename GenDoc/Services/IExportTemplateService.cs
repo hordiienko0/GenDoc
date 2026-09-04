@@ -13,7 +13,7 @@ namespace GenDoc.Services
         void SaveMappings(int templateId, List<(int ColumnIndex, string FieldKey)> mappings);
         void SavePlaceholderMappings(int templateId, List<(int Id, MappingSourceType SourceType, string? FieldKey)> mappings);
         void SetRepeatSheetPerDate(int templateId, bool value);
-        void UploadTemplate(string filePath);
+        Templates.UploadResult UploadTemplate(string filePath);
         (bool Success, string? ErrorMessage) Delete(int templateId);
     }
 }

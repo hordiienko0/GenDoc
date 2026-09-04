@@ -226,52 +226,100 @@ namespace GenDoc.Services
             db.SaveChanges();
         }
 
-        public void UploadTemplate(string filePath)
+        public UploadResult UploadTemplate(string filePath)
         {
-            using var db = _dbFactory.CreateDbContext();
+            byte[] content;
+            try
+            {
+                content = File.ReadAllBytes(filePath);
+            }
+            catch (FileNotFoundException)
+            {
+                return new UploadResult(false, $"Файл не знайдено: {filePath}");
+            }
+            catch (DirectoryNotFoundException)
+            {
+                return new UploadResult(false, $"Теку не знайдено: {Path.GetDirectoryName(filePath)}");
+            }
+            catch (IOException ex)
+            {
+                return new UploadResult(false,
+                    $"Не вдалося прочитати файл «{Path.GetFileName(filePath)}»: він зайнятий іншою програмою. "
+                    + $"Закрийте файл в Excel і спробуйте ще раз. Технічна причина: {ex.Message}");
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return new UploadResult(false, "Немає прав на читання цього файлу.");
+            }
 
             var template = new ExportTemplate
             {
                 Name = TemplateNaming.Clean(Path.GetFileNameWithoutExtension(filePath)),
                 OriginalFileName = Path.GetFileName(filePath),
-                Content = File.ReadAllBytes(filePath),
+                Content = content,
                 IsBuiltIn = false,
                 UploadedAt = DateTime.Now
             };
 
-            using (var workbook = new XLWorkbook(filePath))
+            try
             {
-                var sheet = workbook.Worksheets.First();
-                var usedRange = sheet.RangeUsed();
-                if (usedRange is null)
-                {
-                    db.ExportTemplates.Add(template);
-                    db.SaveChanges();
-                    _auditLogService.LogCreate(db, "ExportTemplate", template.Id, template.Name, $"Завантажено файл {template.OriginalFileName}");
-                    db.SaveChanges();
-                    return;
-                }
-
-                var templateRowIndex = FindTemplateRow(usedRange);
-
-                if (templateRowIndex is null)
-                {
-                    BuildHeaderRowMappings(template, usedRange);
-                }
-                else
-                {
-                    template.UsesPlaceholders = true;
-                    template.TemplateRowIndex = templateRowIndex.Value;
-                    BuildPlaceholderMappings(template, usedRange, templateRowIndex.Value);
-                }
+                using var stream = new MemoryStream(content);
+                using var workbook = new XLWorkbook(stream);
+                ScanWorkbook(template, workbook);
+            }
+            catch (Exception ex)
+            {
+                return new UploadResult(false,
+                    "Файл не є книгою Excel (.xlsx). Якщо це старий формат .xls або таблиця з іншої програми - "
+                    + $"відкрийте її в Excel і збережіть як .xlsx. Технічна причина: {ex.Message}");
             }
 
+            using var db = _dbFactory.CreateDbContext();
             db.ExportTemplates.Add(template);
             db.SaveChanges();
 
             _auditLogService.LogCreate(db, "ExportTemplate", template.Id, template.Name,
                 $"Завантажено файл {template.OriginalFileName}" + (template.UsesPlaceholders ? $", рядок-шаблон {template.TemplateRowIndex}" : string.Empty));
             db.SaveChanges();
+
+            return new UploadResult(true, null);
+        }
+
+        private static void ScanWorkbook(ExportTemplate template, XLWorkbook workbook)
+        {
+            var usedRanges = workbook.Worksheets
+                .Select(sheet => sheet.RangeUsed())
+                .Where(range => range is not null)
+                .Select(range => range!)
+                .ToList();
+
+            if (usedRanges.Count == 0) return;
+
+            var templateSheet = usedRanges
+                .Select(range => (Range: range, Row: FindTemplateRow(range)))
+                .FirstOrDefault(x => x.Row is not null);
+
+            if (templateSheet.Row is null)
+            {
+                BuildHeaderRowMappings(template, usedRanges[0]);
+                return;
+            }
+
+            template.UsesPlaceholders = true;
+            template.TemplateRowIndex = templateSheet.Row.Value;
+
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var range in usedRanges)
+            {
+                var scanned = new ExportTemplate();
+                BuildPlaceholderMappings(scanned, range, ReferenceEquals(range, templateSheet.Range) ? templateSheet.Row.Value : 0);
+
+                foreach (var mapping in scanned.ColumnMappings)
+                {
+                    var key = mapping.ColumnIndex > 0 ? $"{mapping.ColumnIndex}:{mapping.PlaceholderTag}" : mapping.PlaceholderTag;
+                    if (seen.Add(key)) template.ColumnMappings.Add(mapping);
+                }
+            }
         }
 
         internal static int? FindTemplateRow(IXLRange usedRange)
