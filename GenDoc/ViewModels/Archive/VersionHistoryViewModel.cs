@@ -73,7 +73,7 @@ namespace GenDoc.ViewModels.Archive
 
         public string HeaderText { get; }
 
-        public bool HasChanges { get; private set; }
+        public bool HasChanges { get; internal set; }
 
         public ObservableCollection<VersionRowViewModel> Versions { get; } = new();
         public ObservableCollection<AttachmentRowViewModel> Attachments { get; } = new();

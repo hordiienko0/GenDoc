@@ -36,7 +36,6 @@ namespace GenDoc.ViewModels.Completeness
         private readonly List<MatrixRowViewModel> _allRows = new();
         private readonly GenDoc.ViewModels.Shell.ReloadGeneration _reload = new();
         private MatrixData? _matrixData;
-        private bool _initialized;
         private bool _suppressFilterReload;
         private bool _suppressHeaderCheck;
 
@@ -76,13 +75,30 @@ namespace GenDoc.ViewModels.Completeness
         partial void OnSelectedIntakeChanged(IntakeFilterOption? value)
         {
             if (_suppressFilterReload) return;
-            _ = RebuildAsync();
+            RebuildInBackground();
         }
 
         partial void OnSelectedPackageChanged(PackageFilterOption? value)
         {
             if (_suppressFilterReload) return;
-            _ = RebuildAsync();
+            RebuildInBackground();
+        }
+
+        private void RebuildInBackground() => _ = RebuildObservedAsync();
+
+        internal async Task RebuildObservedAsync()
+        {
+            try
+            {
+                await RebuildAsync();
+            }
+            catch (Exception ex)
+            {
+                var user = _serviceProvider.GetService(typeof(ICurrentUserContext)) as ICurrentUserContext;
+                ErrorLog.Write(ex, user?.CurrentUserFullName);
+                IsBusy = false;
+                FooterText = $"Не вдалося побудувати матрицю: {ex.Message}";
+            }
         }
 
         [ObservableProperty]
@@ -164,16 +180,7 @@ namespace GenDoc.ViewModels.Completeness
             OnPropertyChanged(nameof(HeaderChecked));
         }
 
-        public async Task InitializeAsync()
-        {
-            if (_initialized)
-            {
-                await RebuildAsync();
-                return;
-            }
-            _initialized = true;
-            await ReloadIntakesAsync();
-        }
+        public Task InitializeAsync() => ReloadIntakesAsync();
 
         public async Task ApplyNavigationPayloadAsync(object payload)
         {
@@ -194,23 +201,32 @@ namespace GenDoc.ViewModels.Completeness
         private async Task ReloadIntakesAsync()
         {
             var intakes = await GetIntakeOptionsAsync();
+            var previousId = SelectedIntake?.Id;
 
             _suppressFilterReload = true;
-            IntakeOptions.Clear();
-            foreach (var option in intakes) IntakeOptions.Add(option);
+            try
+            {
+                IntakeOptions.Clear();
+                foreach (var option in intakes) IntakeOptions.Add(option);
 
-            var mine = _serviceProvider.GetService(typeof(Services.ActiveIntakeState))
-                as Services.ActiveIntakeState;
+                var mine = _serviceProvider.GetService(typeof(Services.ActiveIntakeState))
+                    as Services.ActiveIntakeState;
 
-            SelectedIntake =
-                (mine?.Current is { } current
-                    ? IntakeOptions.FirstOrDefault(o => o.Id == current.Id)
-                    : null)
-                ?? IntakeOptions.FirstOrDefault(o => o.Label.Contains("активний"))
-                ?? IntakeOptions.FirstOrDefault();
-            _suppressFilterReload = false;
+                SelectedIntake =
+                    (previousId is int previous ? IntakeOptions.FirstOrDefault(o => o.Id == previous) : null)
+                    ?? (mine?.Current is { } current
+                        ? IntakeOptions.FirstOrDefault(o => o.Id == current.Id)
+                        : null)
+                    ?? IntakeOptions.FirstOrDefault(o => o.Label.Contains("активний"))
+                    ?? IntakeOptions.FirstOrDefault();
+            }
+            finally
+            {
+                _suppressFilterReload = false;
+            }
 
             HasNoIntakes = IntakeOptions.Count == 0;
+            await ReloadPackagesAsync();
             if (SelectedIntake is not null) await RebuildAsync();
         }
 
@@ -223,18 +239,27 @@ namespace GenDoc.ViewModels.Completeness
         private async Task ReloadPackagesAsync()
         {
             var options = await _archiveService.GetFilterOptionsAsync();
-            _suppressFilterReload = true;
-            PackageOptions.Clear();
-            foreach (var (id, name) in options.Packages)
-                PackageOptions.Add(new PackageFilterOption(id, name));
-
+            var previousId = SelectedPackage?.Id;
             var defaultId = SelectedIntake is { } intake
                 ? await _completenessService.GetDefaultPackageIdAsync(intake.Id)
                 : await _completenessService.GetDefaultPackageIdAsync();
-            SelectedPackage = defaultId is int d
-                ? PackageOptions.FirstOrDefault(o => o.Id == d) ?? PackageOptions.FirstOrDefault()
-                : PackageOptions.FirstOrDefault();
-            _suppressFilterReload = false;
+
+            _suppressFilterReload = true;
+            try
+            {
+                PackageOptions.Clear();
+                foreach (var (id, name) in options.Packages)
+                    PackageOptions.Add(new PackageFilterOption(id, name));
+
+                SelectedPackage =
+                    (previousId is int previous ? PackageOptions.FirstOrDefault(o => o.Id == previous) : null)
+                    ?? (defaultId is int d ? PackageOptions.FirstOrDefault(o => o.Id == d) : null)
+                    ?? PackageOptions.FirstOrDefault();
+            }
+            finally
+            {
+                _suppressFilterReload = false;
+            }
         }
 
         private async Task RebuildAsync()
@@ -731,9 +756,11 @@ namespace GenDoc.ViewModels.Completeness
                 _archiveService, cell.RecipientId, cell.TemplateId, docId,
                 row?.FullName ?? "-", template?.Name ?? "-");
             await vm.InitializeAsync();
-            _dialogService.ShowDialog(vm, Application.Current.MainWindow);
+            _dialogService.ShowDialog(vm, Application.Current?.MainWindow);
 
-            if (vm.HasChanges) await RefreshCellAsync(cell);
+            if (!vm.HasChanges) return;
+            await RefreshCellAsync(cell);
+            WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
         }
 
         public async Task SaveAsAsync(MatrixCellViewModel cell)

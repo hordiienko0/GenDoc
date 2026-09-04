@@ -518,7 +518,9 @@ namespace GenDoc.Services.Completeness
             AppDbContext db, int packageId, bool includeGroup, bool includeSheets = false)
         {
             var query = db.GenerationPackageTemplates
-                .Where(pt => pt.GenerationPackageId == packageId && pt.Template != null && pt.Template.DeletedAt == null);
+                .Where(pt => pt.GenerationPackageId == packageId
+                             && pt.GenerationPackage != null && pt.GenerationPackage.DeletedAt == null
+                             && pt.Template != null && pt.Template.DeletedAt == null);
             if (!includeGroup) query = query.Where(pt => pt.Template!.Kind != TemplateKind.Group);
 
             var links = await query
@@ -533,6 +535,7 @@ namespace GenDoc.Services.Completeness
 
             var sheets = await db.GenerationPackageExportTemplates
                 .Where(pt => pt.GenerationPackageId == packageId
+                             && pt.GenerationPackage != null && pt.GenerationPackage.DeletedAt == null
                              && pt.ExportTemplate != null && pt.ExportTemplate.DeletedAt == null)
                 .OrderBy(pt => pt.SortOrder)
                 .Select(pt => new
