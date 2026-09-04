@@ -4,10 +4,14 @@ using System.Linq;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using GenDoc.Services;
 using GenDoc.Services.Import;
 using GenDoc.Services.Intakes;
 using GenDoc.Services.OrgTree;
+using GenDoc.ViewModels.Personnel;
 using GenDoc.ViewModels.Shell;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Win32;
 
 namespace GenDoc.ViewModels.Import;
@@ -40,16 +44,22 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
     private readonly IImportService _importService;
     private readonly IIntakeService _intakeService;
     private readonly IOrgTreeService _orgTreeService;
+    private readonly IDialogService _dialogService;
+    private readonly IServiceProvider _serviceProvider;
     private ImportParseResult? _parsed;
 
     public ImportViewModel(
         IImportService importService,
         IIntakeService intakeService,
-        IOrgTreeService orgTreeService)
+        IOrgTreeService orgTreeService,
+        IDialogService dialogService,
+        IServiceProvider serviceProvider)
     {
         _importService = importService;
         _intakeService = intakeService;
         _orgTreeService = orgTreeService;
+        _dialogService = dialogService;
+        _serviceProvider = serviceProvider;
         Reset();
     }
 
@@ -136,17 +146,41 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
     public bool CanGoNext => CurrentStep switch
     {
         1 => HasFile,
-        2 => TargetPermanentStaff || TargetNewIntake || SelectedIntake is not null,
+        2 => TargetPermanentStaff || TargetNewIntake || (TargetExistingIntake && SelectedIntake is not null),
         3 => true,
         _ => false
     };
 
     [RelayCommand]
-    private void GoNext()
+    private async Task GoNextAsync()
     {
         if (!CanGoNext) return;
+        if (CurrentStep == 2 && TargetNewIntake && !await CreateNewIntakeAsync()) return;
         CurrentStep = Math.Min(CurrentStep + 1, 4);
         RecalculateValidation();
+    }
+
+    private async Task<bool> CreateNewIntakeAsync()
+    {
+        var tree = _serviceProvider.GetRequiredService<OrgTreeViewModel>();
+        await tree.EnsureLoadedAsync();
+
+        var wizard = _serviceProvider.GetRequiredService<IntakeWizardViewModel>();
+        await wizard.InitializeAsync();
+        if (_dialogService.ShowDialog(wizard, Application.Current?.MainWindow) != true
+            || wizard.CreatedIntake is not { } created)
+            return false;
+
+        await tree.ReloadAsync();
+        WeakReferenceMessenger.Default.Send(new CountsChangedMessage());
+
+        await LoadIntakesAsync();
+        SelectedIntake = Intakes.FirstOrDefault(i => i.Id == created.Id);
+        if (SelectedIntake is null) return false;
+
+        TargetNewIntake = false;
+        TargetExistingIntake = true;
+        return true;
     }
 
     [RelayCommand]
@@ -186,7 +220,7 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
 
     [ObservableProperty]
     private string newIntakeHint =
-        "Новий набір створюється в розділі «Набори» - тут його ще немає в списку.";
+        "Після «Далі» відкриється майстер створення набору - список буде імпортовано в цей новий набір.";
 
     partial void OnSelectedIntakeChanged(IntakeOption? value) => LoadBranchesCommand.Execute(null);
 
@@ -286,12 +320,14 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
     [ObservableProperty]
     private bool hasSkippedRows;
 
-    private ImportTarget BuildTarget()
+    internal ImportTarget BuildTarget()
     {
         if (TargetPermanentStaff) return new ImportTarget(ImportTargetKind.PermanentStaff);
 
         if (TargetExistingIntake && SelectedIntake is { } intake)
             return new ImportTarget(ImportTargetKind.Intake, intake.Id, SelectedBranch?.Id);
+
+        if (TargetNewIntake) return new ImportTarget(ImportTargetKind.Intake);
 
         return ImportTarget.FromFile;
     }

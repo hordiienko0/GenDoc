@@ -164,7 +164,15 @@ public class DirtyGuardTests
         new GenDoc.Services.Intakes.IntakeService(
             db.Factory, new FakeAuditLog(), new FakeCurrentUser(), new NullServiceProvider()),
         new GenDoc.Services.OrgTree.OrgTreeService(
-            db.Factory, new FakeAuditLog(), new FakeCurrentUser()));
+            db.Factory, new FakeAuditLog(), new FakeCurrentUser()),
+        new NoDialogs(),
+        new NullServiceProvider());
+
+    private sealed class NoDialogs : GenDoc.Services.IDialogService
+    {
+        public bool? ShowDialog<TViewModel>(TViewModel viewModel, System.Windows.Window? owner = null)
+            where TViewModel : notnull => null;
+    }
 
     [Fact]
     public void ImportWizard_HasNothingToLoseBeforeAFileIsChosen()
