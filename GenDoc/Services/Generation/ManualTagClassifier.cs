@@ -7,6 +7,9 @@ namespace GenDoc.Services.Generation
         private const string ArrivalDateTag = "дата_прибуття";
         private const string EnrollmentDateTag = "дата_зарахування";
         private const string ReportDateTag = "дата_рапорту";
+        private const string PlainDateTag = "дата";
+        private const string SheetDateTag = "дата_аркуша";
+        private const string DayMonthYear = "dd.MM.yyyy";
 
         public static string Normalize(string tag) => tag.Trim().Trim('{', '}').Trim();
 
@@ -14,10 +17,13 @@ namespace GenDoc.Services.Generation
 
         public static ManualTagKind Classify(string tag) => Normalize(tag) switch
         {
-            ArrivalDateTag or EnrollmentDateTag or ReportDateTag => ManualTagKind.Date,
+            ArrivalDateTag or EnrollmentDateTag or ReportDateTag or PlainDateTag or SheetDateTag => ManualTagKind.Date,
             var t when t == PeriodTag => ManualTagKind.Period,
             _ => ManualTagKind.Text
         };
+
+        public static bool IsDocumentDate(string tag) =>
+            Normalize(tag) is PlainDateTag or ReportDateTag or SheetDateTag;
 
         public static bool IsSignerRank(string tag) => Normalize(tag) == ManualTagFormViewModel.SignerRankTag;
 
@@ -30,11 +36,11 @@ namespace GenDoc.Services.Generation
         {
             ArrivalDateTag => intakeArrivalDate,
             EnrollmentDateTag => intakeArrivalDate.AddDays(1),
-            ReportDateTag => DateOnly.FromDateTime(DateTime.Today),
+            ReportDateTag or PlainDateTag or SheetDateTag => DateOnly.FromDateTime(DateTime.Today),
             _ => throw new ArgumentException($"Тег «{tag}» не є датою.", nameof(tag))
         };
 
         public static string FormatDate(string tag, DateOnly date) =>
-            Normalize(tag) == ReportDateTag ? date.ToString("dd.MM.yyyy") : UkrainianDate.Long(date);
+            IsDocumentDate(tag) ? date.ToString(DayMonthYear) : UkrainianDate.Long(date);
     }
 }

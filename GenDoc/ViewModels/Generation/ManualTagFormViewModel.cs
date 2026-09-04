@@ -8,8 +8,10 @@ namespace GenDoc.ViewModels.Generation
     public partial class ManualTagRowViewModel : ObservableObject
     {
         private const string PeriodLabel = "Період (з – по)";
+        private const string DocumentDateLabel = "Дата документа";
+        public const string DocumentDateTag = "{{дата}}";
 
-        private readonly Func<DateOnly, string>? _dateFormatter;
+        private Func<DateOnly, string>? _dateFormatter;
         private readonly string? _labelOverride;
         private bool _syncingPeriod;
 
@@ -44,11 +46,26 @@ namespace GenDoc.ViewModels.Generation
             return row;
         }
 
+        public static ManualTagRowViewModel DocumentDate(IReadOnlyList<string> drivenTags, DateOnly initialDate)
+        {
+            var row = new ManualTagRowViewModel(DocumentDateTag, ManualTagKind.Date, null, DocumentDateLabel)
+            {
+                DrivenTags = drivenTags,
+                _dateFormatter = d => Services.Generation.ManualTagClassifier.FormatDate(DocumentDateTag, d)
+            };
+            row.DateValue = initialDate.ToDateTime(TimeOnly.MinValue);
+            return row;
+        }
+
         public string Tag { get; }
 
         public string Label => _labelOverride ?? Services.Generation.ManualTagLabel.Human(Tag);
 
         public ManualTagKind Kind { get; }
+
+        public IReadOnlyList<string> DrivenTags { get; private init; } = Array.Empty<string>();
+
+        public bool IsDocumentDate => DrivenTags.Count > 0;
 
         [ObservableProperty] private string value = string.Empty;
         [ObservableProperty] private DateTime? dateValue;
@@ -156,9 +173,23 @@ namespace GenDoc.ViewModels.Generation
 
         public bool HasContent => Rows.Count > 0 || Signer is not null || CourseOfficer is not null;
 
+        public ManualTagRowViewModel? DocumentDateRow => Rows.FirstOrDefault(r => r.IsDocumentDate);
+
+        public void SetDocumentDate(DateTime? date)
+        {
+            if (DocumentDateRow is { } row) row.DateValue = date ?? DateTime.Today;
+        }
+
         public Dictionary<string, string> GetValues()
         {
             var values = Rows.ToDictionary(r => r.Tag, r => r.Value);
+
+            if (DocumentDateRow is { DateValue: DateTime documentDate } dateRow)
+            {
+                var date = DateOnly.FromDateTime(documentDate);
+                foreach (var tag in dateRow.DrivenTags)
+                    values[tag] = Services.Generation.ManualTagClassifier.FormatDate(tag, date);
+            }
 
             if (Signer?.Selected is { } signer)
             {

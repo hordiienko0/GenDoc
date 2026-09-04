@@ -128,6 +128,10 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     [ObservableProperty]
     private DateTime? documentDate = DateTime.Today;
 
+    partial void OnDocumentDateChanged(DateTime? value) => ManualTagForm?.SetDocumentDate(value);
+
+    partial void OnManualTagFormChanged(ManualTagFormViewModel? value) => value?.SetDocumentDate(DocumentDate);
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NotBusy))]
     private bool isBusy;
@@ -650,7 +654,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         }
     }
 
-    internal const string DocumentDateTag = "{{дата}}";
+    internal const string DocumentDateTag = ManualTagRowViewModel.DocumentDateTag;
 
     internal static void ApplyDocumentDate(Dictionary<string, string> manualValues, DateTime? documentDate)
     {

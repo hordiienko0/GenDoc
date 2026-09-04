@@ -36,10 +36,16 @@ namespace GenDoc.Services.Generation
             var lastValues = needsLastValues ? await GetLastValuesAsync() : new Dictionary<string, string>();
 
             var rows = new ObservableCollection<ManualTagRowViewModel>();
+
+            var documentDateTags = tags.Where(ManualTagClassifier.IsDocumentDate).ToList();
+            if (documentDateTags.Count > 0)
+                rows.Add(ManualTagRowViewModel.DocumentDate(documentDateTags, DateOnly.FromDateTime(DateTime.Today)));
+
             foreach (var tag in tags)
             {
                 if (hasSigner && (ManualTagClassifier.IsSignerRank(tag) || ManualTagClassifier.IsSignerName(tag)))
                     continue;
+                if (ManualTagClassifier.IsDocumentDate(tag)) continue;
 
                 rows.Add(ManualTagClassifier.Classify(tag) switch
                 {
