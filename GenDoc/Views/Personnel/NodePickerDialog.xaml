@@ -72,8 +72,8 @@
         </TextBlock>
 
         <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
-            <Button Content="Скасувати" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelCommand}"/>
-            <Button Content="OK" Margin="8,0,0,0" MinWidth="90" Command="{Binding OkCommand}"/>
+            <Button Content="Скасувати" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelCommand}" IsCancel="True"/>
+            <Button Content="OK" Margin="8,0,0,0" MinWidth="90" Command="{Binding OkCommand}" IsDefault="True"/>
         </StackPanel>
     </Grid>
 </Window>

@@ -9,7 +9,8 @@ namespace GenDoc.Services.Documents
         int? UserId,
         int? Year,
         int Skip,
-        int Take);
+        int Take,
+        string? Search = null);
 
     public record ArchiveRowDto(
         int Id,
@@ -64,7 +65,8 @@ namespace GenDoc.Services.Documents
         int GeneratedCount,
         int SkippedCount,
         int ErrorCount,
-        int? IntakeId = null);
+        int? IntakeId = null,
+        string? IntakeLabel = null);
 
     public record GroupParticipantDto(int RecipientId, string Rank, string FullName, string UnitName);
 

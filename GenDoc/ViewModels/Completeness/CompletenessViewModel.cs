@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -22,8 +21,6 @@ namespace GenDoc.ViewModels.Completeness
 
     public partial class CompletenessViewModel : ObservableObject, ICellActionCoordinator, INavigationTarget
     {
-        private static readonly CompareInfo UkCompare = CultureInfo.GetCultureInfo("uk-UA").CompareInfo;
-
         private readonly ICompletenessService _completenessService;
         private readonly IDocumentArchiveService _archiveService;
         private readonly IDialogService _dialogService;
@@ -166,7 +163,7 @@ namespace GenDoc.ViewModels.Completeness
             set
             {
                 if (_suppressHeaderCheck) return;
-                var target = value == true;
+                var target = value == true || HeaderChecked is null;
                 _suppressHeaderCheck = true;
                 foreach (var row in Rows) row.IsChecked = target;
                 _suppressHeaderCheck = false;
@@ -322,12 +319,12 @@ namespace GenDoc.ViewModels.Completeness
             }
         }
 
-        private void ApplySearch()
+        internal void ApplySearch()
         {
-            var query = SearchText?.Trim();
+            var query = SearchNormalization.PrepareQuery(SearchText);
             IEnumerable<MatrixRowViewModel> filtered = _allRows;
-            if (!string.IsNullOrEmpty(query))
-                filtered = _allRows.Where(r => UkCompare.IndexOf(r.SearchHaystack, query, CompareOptions.IgnoreCase) >= 0);
+            if (query is not null)
+                filtered = _allRows.Where(r => SearchNormalization.Contains(r.SearchHaystack, query));
 
             Rows.Clear();
             foreach (var row in filtered) Rows.Add(row);
@@ -346,7 +343,7 @@ namespace GenDoc.ViewModels.Completeness
                 var column = _matrixData.Templates[i];
                 if (!column.IsGroup) continue;
 
-                var covered = Rows
+                var covered = _allRows
                     .Where(r => i < r.Cells.Count
                                 && r.Cells[i].Requirement == TemplateRequirement.Required)
                     .ToList();
@@ -369,7 +366,7 @@ namespace GenDoc.ViewModels.Completeness
             {
                 var column = _matrixData.Templates[i];
                 if (!column.IsGroup) continue;
-                if (!Rows.Any(r => i < r.Cells.Count && r.Cells[i].IsStale)) continue;
+                if (!_allRows.Any(r => i < r.Cells.Count && r.Cells[i].IsStale)) continue;
 
                 result.Add((column, ApplicableRecipientIds(i)));
             }
@@ -388,18 +385,21 @@ namespace GenDoc.ViewModels.Completeness
         {
             var gaps = _matrixData is null
                 ? new CompletenessGaps(0, 0, 0, 0, 0, 0)
-                : ICompletenessService.CountGaps(_matrixData, Rows.Select(r => r.RecipientId).ToHashSet());
+                : ICompletenessService.CountGaps(_matrixData, _allRows.Select(r => r.RecipientId).ToHashSet());
 
             MissingRequiredCount = gaps.MissingRequired;
             MissingOptionalCount = gaps.MissingOptional;
             StaleCount = gaps.Stale;
 
-            IsFullyComplete = Rows.Count > 0 && gaps.RequiredCells > 0 && gaps.SatisfiedCells == gaps.RequiredCells;
+            IsFullyComplete = _allRows.Count > 0 && gaps.RequiredCells > 0 && gaps.SatisfiedCells == gaps.RequiredCells;
 
             var optionalSuffix = MissingOptionalCount > 0 ? $" · {MissingOptionalCount} опц." : string.Empty;
-            FooterText = Rows.Count == 0
+            var people = Rows.Count == _allRows.Count
+                ? $"{_allRows.Count} осіб"
+                : $"показано {Rows.Count} з {_allRows.Count} осіб";
+            FooterText = _allRows.Count == 0
                 ? string.Empty
-                : $"{Rows.Count} осіб · {gaps.SatisfiedCells} документів з {gaps.RequiredCells} обов'язкових · {StaleCount} застарілих{optionalSuffix}";
+                : $"{people} · {gaps.SatisfiedCells} документів з {gaps.RequiredCells} обов'язкових · {StaleCount} застарілих{optionalSuffix}";
         }
 
         [RelayCommand]
@@ -415,16 +415,16 @@ namespace GenDoc.ViewModels.Completeness
             }
         }
 
-        private sealed record MissingTargets(
+        internal sealed record MissingTargets(
             List<(int RecipientId, int TemplateId)> Required,
             List<(int RecipientId, int TemplateId)> Optional,
             List<(MatrixTemplateInfo Column, List<int> RecipientIds)> Groups);
 
-        private MissingTargets CollectMissingTargets()
+        internal MissingTargets CollectMissingTargets()
         {
             var missingRequired = new List<(int RecipientId, int TemplateId)>();
             var missingOptional = new List<(int RecipientId, int TemplateId)>();
-            foreach (var row in Rows)
+            foreach (var row in _allRows)
             {
                 foreach (var cell in row.Cells)
                 {
@@ -533,7 +533,7 @@ namespace GenDoc.ViewModels.Completeness
 
         internal async Task<(int Done, int Attempted, List<string> Errors)?> RegenerateStaleCoreAsync()
         {
-            var personal = Rows.SelectMany(r => r.Cells)
+            var personal = _allRows.SelectMany(r => r.Cells)
                 .Where(c => c.IsStale && !c.IsGroupColumn && c.DocumentId is not null)
                 .ToList();
             var groups = StaleGroupColumns();
@@ -793,7 +793,7 @@ namespace GenDoc.ViewModels.Completeness
                 else _matrixData.Docs[key] = doc;
             }
 
-            var row = Rows.FirstOrDefault(r => r.RecipientId == cell.RecipientId);
+            var row = _allRows.FirstOrDefault(r => r.RecipientId == cell.RecipientId);
             row?.RecomputeReadiness();
             RecomputeAggregates();
         }

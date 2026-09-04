@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using GenDoc.Services;
 using GenDoc.Services.Documents;
 using GenDoc.Services.OrgTree;
+using GenDoc.Services.Personnel;
 using GenDoc.ViewModels.Personnel;
 
 namespace GenDoc.ViewModels.Trash
@@ -50,27 +51,46 @@ namespace GenDoc.ViewModels.Trash
         public string DeletedByDisplay => Info.DeletedBy ?? "-";
     }
 
+    public partial class DeletedPersonRowViewModel : ObservableObject
+    {
+        public DeletedPersonRowViewModel(DeletedPersonInfo info)
+        {
+            Info = info;
+        }
+
+        public DeletedPersonInfo Info { get; }
+        public string Title => Info.FullName;
+        public string Subtitle => string.Join(" · ", new[] { Info.Rank, Info.Folder }.Where(p => !string.IsNullOrWhiteSpace(p)));
+        public string DeletedAtDisplay => Info.DeletedAt.ToString("dd.MM.yyyy HH:mm");
+        public string DeletedByDisplay => Info.DeletedBy ?? "-";
+        public bool FolderDead => !Info.FolderAlive;
+    }
+
     public partial class TrashViewModel : ObservableObject
     {
         private readonly IOrgTreeService _orgTreeService;
         private readonly IDocumentArchiveService _archiveService;
         private readonly IDialogService _dialogService;
         private readonly OrgTreeViewModel _tree;
+        private readonly IPersonnelService _personnelService;
 
         public TrashViewModel(
             IOrgTreeService orgTreeService,
             IDocumentArchiveService archiveService,
             IDialogService dialogService,
-            OrgTreeViewModel tree)
+            OrgTreeViewModel tree,
+            IPersonnelService personnelService)
         {
             _orgTreeService = orgTreeService;
             _archiveService = archiveService;
             _dialogService = dialogService;
             _tree = tree;
+            _personnelService = personnelService;
             _ = LoadAsync();
         }
 
         public ObservableCollection<DeletedFolderRowViewModel> Folders { get; } = new();
+        public ObservableCollection<DeletedPersonRowViewModel> People { get; } = new();
         public ObservableCollection<DeletedDocumentRowViewModel> Documents { get; } = new();
         public ObservableCollection<DeletedGroupDocumentRowViewModel> GroupDocuments { get; } = new();
 
@@ -79,6 +99,20 @@ namespace GenDoc.ViewModels.Trash
         private int folderCount;
 
         public bool HasFolders => FolderCount > 0;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasPeople))]
+        private int personCount;
+
+        public bool HasPeople => PersonCount > 0;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasNotice))]
+        private string? notice;
+
+        [ObservableProperty] private bool noticeIsError;
+
+        public bool HasNotice => !string.IsNullOrEmpty(Notice);
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasDocuments))]
@@ -100,6 +134,12 @@ namespace GenDoc.ViewModels.Trash
                 Folders.Add(new DeletedFolderRowViewModel(folder));
             FolderCount = Folders.Count;
 
+            var people = await _personnelService.GetDeletedAsync();
+            People.Clear();
+            foreach (var person in people)
+                People.Add(new DeletedPersonRowViewModel(person));
+            PersonCount = People.Count;
+
             var documents = await _archiveService.GetDeletedDocumentsAsync();
             Documents.Clear();
             foreach (var document in documents)
@@ -111,6 +151,23 @@ namespace GenDoc.ViewModels.Trash
             foreach (var document in groupDocuments)
                 GroupDocuments.Add(new DeletedGroupDocumentRowViewModel(document));
             GroupDocumentCount = GroupDocuments.Count;
+        }
+
+        [RelayCommand]
+        private async Task RestorePersonAsync(DeletedPersonRowViewModel? row)
+        {
+            if (row is null) return;
+
+            var result = await _personnelService.RestoreAsync(row.Info.Id);
+            NoticeIsError = !result.Success;
+            Notice = result.Success
+                ? result.Message ?? $"Відновлено: {row.Title}"
+                : $"{row.Title}: {result.Message}";
+            if (!result.Success) return;
+
+            await _tree.RefreshCountsAsync();
+            WeakReferenceMessenger.Default.Send(new CountsChangedMessage());
+            await LoadAsync();
         }
 
         [RelayCommand]

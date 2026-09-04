@@ -13,6 +13,7 @@ public partial class RoomsViewModel : ObservableObject
 {
     private readonly IRoomService _roomService;
     private readonly DispatcherTimer _assignSearchDebounceTimer;
+    private readonly List<RoomCardViewModel> _drafts = new();
     private List<RoomCardViewModel> _allRooms = new();
 
     public RoomsViewModel(IRoomService roomService)
@@ -117,7 +118,8 @@ public partial class RoomsViewModel : ObservableObject
         CloseRoom();
 
         IsLoading = true;
-        Mouse.OverrideCursor = Cursors.Wait;
+        var hasUi = Application.Current is not null;
+        if (hasUi) Mouse.OverrideCursor = Cursors.Wait;
         try
         {
             _allRooms = _roomService.GetAll().Select(r => new RoomCardViewModel(r)).ToList();
@@ -125,7 +127,7 @@ public partial class RoomsViewModel : ObservableObject
         }
         finally
         {
-            Mouse.OverrideCursor = null;
+            if (hasUi) Mouse.OverrideCursor = null;
             IsLoading = false;
         }
     }
@@ -134,16 +136,15 @@ public partial class RoomsViewModel : ObservableObject
     {
         IEnumerable<RoomCardViewModel> filtered = _allRooms;
 
-        if (!string.IsNullOrWhiteSpace(SearchText))
+        if (SearchNormalization.PrepareQuery(SearchText) is { } text)
         {
-            var text = SearchText.Trim();
             filtered = _allRooms.Where(r =>
-                r.Building.Contains(text, StringComparison.OrdinalIgnoreCase) ||
-                r.Number.Contains(text, StringComparison.OrdinalIgnoreCase) ||
-                r.OccupantNames.Any(n => n.Contains(text, StringComparison.OrdinalIgnoreCase)));
+                SearchNormalization.Contains(r.Building, text) ||
+                SearchNormalization.Contains(r.Number, text) ||
+                r.OccupantNames.Any(n => SearchNormalization.Contains(n, text)));
         }
 
-        Rooms = new ObservableCollection<RoomCardViewModel>(filtered);
+        Rooms = new ObservableCollection<RoomCardViewModel>(_drafts.Concat(filtered));
         NotifyComputedProperties();
     }
 
@@ -162,7 +163,15 @@ public partial class RoomsViewModel : ObservableObject
     private void AddRoom()
     {
         var card = RoomCardViewModel.CreateNew();
+        _drafts.Insert(0, card);
         Rooms.Insert(0, card);
+        NotifyComputedProperties();
+    }
+
+    private void DiscardDraft(RoomCardViewModel card)
+    {
+        _drafts.Remove(card);
+        Rooms.Remove(card);
         NotifyComputedProperties();
     }
 
@@ -211,6 +220,7 @@ public partial class RoomsViewModel : ObservableObject
             return;
         }
 
+        _drafts.Remove(card);
         Load();
     }
 
@@ -220,14 +230,9 @@ public partial class RoomsViewModel : ObservableObject
         if (card is null) return;
 
         if (card.IsNew)
-        {
-            Rooms.Remove(card);
-            NotifyComputedProperties();
-        }
+            DiscardDraft(card);
         else
-        {
             card.Rollback();
-        }
     }
 
     [RelayCommand]
@@ -237,8 +242,7 @@ public partial class RoomsViewModel : ObservableObject
 
         if (card.IsNew)
         {
-            Rooms.Remove(card);
-            NotifyComputedProperties();
+            DiscardDraft(card);
             return;
         }
 

@@ -105,8 +105,6 @@
                                             </Border>
                                             <TextBlock Text="{Binding TitleText}" FontSize="15" FontWeight="Bold"
                                                        Foreground="{StaticResource TextPrimaryBrush}" VerticalAlignment="Center"/>
-                                            <TextBlock Text="{Binding CodeText}" FontSize="12.5" Margin="6,0,0,0"
-                                                       Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
                                         </StackPanel>
 
                                         <TextBlock Text="{Binding PeriodText}" FontSize="12.5"

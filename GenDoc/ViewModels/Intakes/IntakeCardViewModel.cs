@@ -18,8 +18,7 @@ namespace GenDoc.ViewModels.Intakes
             DateEnd = overview.DateEnd;
             DateClosed = overview.DateClosed;
 
-            TitleText = $"Набір №{overview.Number}";
-            CodeText = $"· {overview.DisplayNumber}";
+            TitleText = IntakeLabel.Of(overview.Number, overview.DisplayNumber);
 
             peopleCount = overview.PeopleCount;
             isSummaryLoading = HasPackage && overview.CompletenessPercent < 0;
@@ -37,7 +36,6 @@ namespace GenDoc.ViewModels.Intakes
         public DateOnly? DateClosed { get; }
 
         public string TitleText { get; }
-        public string CodeText { get; }
 
         public bool IsCompleted => Status == IntakeStatus.Completed;
         public bool IsNotCompleted => !IsCompleted;

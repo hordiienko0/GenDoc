@@ -20,7 +20,7 @@
         </Style>
 
         <DataTemplate x:Key="CheckBoxHeaderTemplate">
-            <CheckBox IsThreeState="True" HorizontalAlignment="Center"
+            <CheckBox IsThreeState="False" HorizontalAlignment="Center"
                       IsChecked="{Binding DataContext.HeaderChecked, ElementName=CompletenessRoot, Mode=TwoWay}"/>
         </DataTemplate>
         <DataTemplate x:Key="CheckBoxCellTemplate">

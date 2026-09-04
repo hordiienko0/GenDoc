@@ -58,8 +58,8 @@
                     </TextBlock.Style>
                 </TextBlock>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Button Content="Скасувати" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelCommand}"/>
-                    <Button Content="Зберегти" Margin="8,0,0,0" MinWidth="100" Command="{Binding SaveCommand}"/>
+                    <Button Content="Скасувати" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelCommand}" IsCancel="True"/>
+                    <Button Content="Зберегти" Margin="8,0,0,0" MinWidth="100" Command="{Binding SaveCommand}" IsDefault="True"/>
                 </StackPanel>
             </StackPanel>
         </Border>

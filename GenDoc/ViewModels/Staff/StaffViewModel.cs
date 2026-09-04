@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -18,8 +17,6 @@ namespace GenDoc.ViewModels.Staff
 
     public partial class StaffViewModel : ObservableObject, Shell.IGuardedSection
     {
-        private static readonly CompareInfo UkCompare = CultureInfo.GetCultureInfo("uk-UA").CompareInfo;
-
         private readonly IStaffService _staffService;
         private readonly IDialogService _dialogService;
         private readonly IServiceProvider _serviceProvider;
@@ -133,12 +130,12 @@ namespace GenDoc.ViewModels.Staff
             if (ShowOnlyCourseOfficers)
                 filtered = filtered.Where(o => o.IsCourseOfficer);
 
-            var query = SearchText?.Trim();
-            if (!string.IsNullOrEmpty(query))
+            var query = SearchNormalization.PrepareQuery(SearchText);
+            if (query is not null)
             {
                 filtered = filtered.Where(o =>
-                    UkCompare.IndexOf(o.FullName, query, CompareOptions.IgnoreCase) >= 0
-                    || UkCompare.IndexOf(o.Position, query, CompareOptions.IgnoreCase) >= 0);
+                    SearchNormalization.Contains(o.FullName, query)
+                    || SearchNormalization.Contains(o.Position, query));
             }
 
             Rows.Clear();

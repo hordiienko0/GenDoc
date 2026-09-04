@@ -5,6 +5,7 @@ using GenDoc.Data;
 using GenDoc.Models.Enums;
 using GenDoc.Services.Completeness;
 using GenDoc.Services.Generation;
+using GenDoc.Services.Intakes;
 using GenDoc.ViewModels.Personnel;
 using Microsoft.EntityFrameworkCore;
 
@@ -114,6 +115,12 @@ namespace GenDoc.ViewModels.Completeness
             using var db = _dbFactory.CreateDbContext();
             PackageName = await db.GenerationPackages.Where(p => p.Id == packageId)
                 .Select(p => p.Name).FirstOrDefaultAsync() ?? "-";
+            _previewIntakeLabel = previewIntakeId is int intakeId
+                ? (await db.Intakes.Where(i => i.Id == intakeId)
+                    .Select(i => new { i.Number, i.DisplayNumber }).FirstOrDefaultAsync()) is { } intake
+                    ? IntakeLabel.Of(intake.Number, intake.DisplayNumber)
+                    : null
+                : null;
 
             var links = await _completenessService.GetPackageLinksAsync(packageId);
             var withDocs = await _completenessService.GetTemplateIdsWithDocumentsAsync(
@@ -135,6 +142,7 @@ namespace GenDoc.ViewModels.Completeness
         }
 
         private int? _previewIntakeId;
+        private string? _previewIntakeLabel;
 
         private async Task ReloadAvailableTemplatesAsync()
         {
@@ -306,7 +314,7 @@ namespace GenDoc.ViewModels.Completeness
 
         private void RefreshPreview()
         {
-            if (_previewIntakeId is null)
+            if (_previewIntakeId is null || _previewIntakeLabel is null)
             {
                 PreviewText = string.Empty;
                 return;
@@ -317,11 +325,11 @@ namespace GenDoc.ViewModels.Completeness
             var optionalRegular = Rows.Count(r => r.Regular == TemplateRequirement.Optional);
             var optionalLimited = Rows.Count(r => r.Limited == TemplateRequirement.Optional);
 
-            PreviewText = BuildPreviewText(_previewIntakeId.Value, requiredRegular, optionalRegular, requiredLimited, optionalLimited);
+            PreviewText = BuildPreviewText(_previewIntakeLabel, requiredRegular, optionalRegular, requiredLimited, optionalLimited);
         }
 
-        internal static string BuildPreviewText(int intakeNumber, int requiredRegular, int optionalRegular, int requiredLimited, int optionalLimited)
-            => $"Для набору №{intakeNumber}: придатні - {requiredRegular} {Plural(requiredRegular, "обов'язковий", "обов'язкових")}, " +
+        internal static string BuildPreviewText(string intakeLabel, int requiredRegular, int optionalRegular, int requiredLimited, int optionalLimited)
+            => $"Для набору «{intakeLabel}»: придатні - {requiredRegular} {Plural(requiredRegular, "обов'язковий", "обов'язкових")}, " +
                $"{optionalRegular} {Plural(optionalRegular, "опційний", "опційних")} · " +
                $"обмежено придатні - {requiredLimited} {Plural(requiredLimited, "обов'язковий", "обов'язкових")}, " +
                $"{optionalLimited} {Plural(optionalLimited, "опційний", "опційних")}";

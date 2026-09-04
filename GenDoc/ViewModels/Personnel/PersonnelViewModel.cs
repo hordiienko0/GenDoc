@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Globalization;
 using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -24,8 +23,6 @@ namespace GenDoc.ViewModels.Personnel
 
     public partial class PersonnelViewModel : ObservableObject, IGuardedSection, INavigationTarget
     {
-        private static readonly CompareInfo UkCompare = CultureInfo.GetCultureInfo("uk-UA").CompareInfo;
-
         private readonly IPersonnelService _personnelService;
         private readonly ICompletenessService _completenessService;
         private readonly IDocumentArchiveService _archiveService;
@@ -107,20 +104,28 @@ namespace GenDoc.ViewModels.Personnel
         private int checkedCount;
 
         public bool HasChecked => CheckedCount > 0;
-        public string SelectionInfoText => $"Обрано {CheckedCount}";
+
+        public int HiddenCheckedCount => CheckedCount - Rows.Count(r => r.IsChecked);
+
+        public string SelectionInfoText => HiddenCheckedCount > 0
+            ? $"Обрано {CheckedCount} ({HiddenCheckedCount} приховано пошуком)"
+            : $"Обрано {CheckedCount}";
+
+        public IReadOnlyList<PersonRowViewModel> CheckedRows => _allRows.Where(r => r.IsChecked).ToList();
 
         public bool? HeaderChecked
         {
             get
             {
-                if (Rows.Count == 0 || CheckedCount == 0) return false;
-                if (CheckedCount == Rows.Count) return true;
+                var visibleChecked = Rows.Count(r => r.IsChecked);
+                if (Rows.Count == 0 || visibleChecked == 0) return false;
+                if (visibleChecked == Rows.Count) return true;
                 return null;
             }
             set
             {
                 if (_suppressHeaderCheck) return;
-                var target = value == true;
+                var target = value == true || HeaderChecked is null;
                 _suppressHeaderCheck = true;
                 foreach (var row in Rows) row.IsChecked = target;
                 _suppressHeaderCheck = false;
@@ -210,21 +215,18 @@ namespace GenDoc.ViewModels.Personnel
             UpdateFooter(node);
         }
 
-        private void ApplySearch()
+        internal void ApplySearch()
         {
-            var query = SearchText?.Trim();
+            var query = SearchNormalization.PrepareQuery(SearchText);
             IEnumerable<PersonRowViewModel> filtered = _allRows;
 
-            if (!string.IsNullOrEmpty(query))
-            {
-                filtered = _allRows.Where(r =>
-                    UkCompare.IndexOf(r.SearchHaystack, query, CompareOptions.IgnoreCase) >= 0);
-            }
+            if (query is not null)
+                filtered = _allRows.Where(r => SearchNormalization.Contains(r.SearchHaystack, query));
 
             Rows.Clear();
             foreach (var row in filtered) Rows.Add(row);
             RowCount = Rows.Count;
-            EmptyMessage = string.IsNullOrEmpty(query)
+            EmptyMessage = query is null
                 ? "У цій гілці ще немає людей"
                 : $"Нічого не знайдено за запитом «{query}»";
             RefreshCheckedState();
@@ -238,7 +240,9 @@ namespace GenDoc.ViewModels.Personnel
 
         private void RefreshCheckedState()
         {
-            CheckedCount = Rows.Count(r => r.IsChecked);
+            CheckedCount = _allRows.Count(r => r.IsChecked);
+            OnPropertyChanged(nameof(HiddenCheckedCount));
+            OnPropertyChanged(nameof(SelectionInfoText));
             OnPropertyChanged(nameof(HeaderChecked));
         }
 
@@ -283,7 +287,7 @@ namespace GenDoc.ViewModels.Personnel
             {
                 var intakeRoot = Tree.FindById(intake.RootOrgNodeId);
                 if (intakeRoot is not null)
-                    text += $" · {intakeRoot.TotalCount} у наборі №{intake.Number}";
+                    text += $" · {intakeRoot.TotalCount} у наборі «{IntakeLabel.Of(intake.Number, intake.DisplayNumber)}»";
             }
 
             FooterText = text;
@@ -301,7 +305,7 @@ namespace GenDoc.ViewModels.Personnel
         [RelayCommand]
         private void GenerateForChecked()
         {
-            var people = Rows.Where(r => r.IsChecked).Select(r => (r.Id, r.ShortName)).ToList();
+            var people = CheckedRows.Select(r => (r.Id, r.ShortName)).ToList();
             if (people.Count == 0) return;
             var dialog = new GenerateDocumentsDialogViewModel(
                 _generationService, _completenessService, _archiveService, _manualTagFormBuilder,
@@ -312,7 +316,7 @@ namespace GenDoc.ViewModels.Personnel
         [RelayCommand]
         private async Task MoveCheckedAsync()
         {
-            var checkedRows = Rows.Where(r => r.IsChecked).ToList();
+            var checkedRows = CheckedRows;
             if (checkedRows.Count == 0 || Tree.SelectedNode is null) return;
 
             var picker = NodePickerDialogViewModel.ForRecipients(
@@ -330,7 +334,7 @@ namespace GenDoc.ViewModels.Personnel
         [RelayCommand]
         private async Task DeleteCheckedAsync()
         {
-            var checkedRows = Rows.Where(r => r.IsChecked).ToList();
+            var checkedRows = CheckedRows;
             if (checkedRows.Count == 0) return;
 
             var result = MessageBox.Show(
