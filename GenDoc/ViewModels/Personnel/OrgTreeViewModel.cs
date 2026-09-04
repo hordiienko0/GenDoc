@@ -49,6 +49,8 @@ namespace GenDoc.ViewModels.Personnel
 
         public event Action<OrgNodeViewModel?>? SelectedNodeChanged;
 
+        public event Action<OrgNodeViewModel>? NodeRenamed;
+
         [ObservableProperty]
         private OrgNodeViewModel? selectedNode;
 
@@ -297,11 +299,12 @@ namespace GenDoc.ViewModels.Personnel
                 NodeName = node.Name,
                 DocumentName = node.DocumentName
             };
-            if (_dialogService.ShowDialog(vm, Application.Current.MainWindow) != true) return;
+            if (_dialogService.ShowDialog(vm, Application.Current?.MainWindow) != true) return;
 
             await _orgTreeService.RenameAsync(node.Id, vm.NodeName, vm.DocumentName);
             node.Name = vm.NodeName.Trim();
             node.DocumentName = string.IsNullOrWhiteSpace(vm.DocumentName) ? null : vm.DocumentName.Trim();
+            NodeRenamed?.Invoke(node);
         }
 
         [RelayCommand]

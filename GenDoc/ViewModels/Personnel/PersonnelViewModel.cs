@@ -72,6 +72,7 @@ namespace GenDoc.ViewModels.Personnel
 
             Tree.LeaveGuard = TryLeaveEditAsync;
             Tree.SelectedNodeChanged += OnTreeSelectionChanged;
+            Tree.NodeRenamed += OnTreeNodeRenamed;
             Tree.PropertyChanged += OnTreePropertyChanged;
 
             WeakReferenceMessenger.Default.Register<CountsChangedMessage>(this,
@@ -157,6 +158,13 @@ namespace GenDoc.ViewModels.Personnel
         }
 
         private async void OnTreeSelectionChanged(OrgNodeViewModel? node) => await ReloadListAsync();
+
+        private void OnTreeNodeRenamed(OrgNodeViewModel renamed)
+        {
+            if (Tree.SelectedNode is not { } node) return;
+            BuildBreadcrumb(node);
+            UpdateFooter(node);
+        }
 
         private void OnTreePropertyChanged(object? sender, PropertyChangedEventArgs e)
         {

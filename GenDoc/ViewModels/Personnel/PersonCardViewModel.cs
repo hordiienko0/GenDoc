@@ -428,6 +428,8 @@ namespace GenDoc.ViewModels.Personnel
             TakeSnapshot();
             RefreshHeader();
             IsEditing = false;
+            _documentsLoaded = false;
+            if (IsDocumentsTab) await LoadDocumentsAsync();
             Saved?.Invoke(result.Id);
             return true;
         }

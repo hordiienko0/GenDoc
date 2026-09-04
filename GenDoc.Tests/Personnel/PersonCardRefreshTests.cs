@@ -142,6 +142,21 @@ public class PersonCardRefreshTests
         }
     }
 
+    [Fact]
+    public async Task Save_RefreshesTheOpenDocumentsTab_SoAFreshDocumentBecomesStale()
+    {
+        using var db = new TestDb();
+        var s = await SeedAsync(db);
+        var card = await OpenCardAsync(db, s.PersonId);
+        await card.GenerateDocumentCommand.ExecuteAsync(card.DocumentRows[0]);
+        Assert.Equal("Є", card.DocumentRows[0].StateText);
+
+        card.LastName = "ФРАНКО";
+        Assert.True(await card.SaveAsync());
+
+        Assert.Equal("Застарів", Assert.Single(card.DocumentRows).StateText);
+    }
+
     private sealed class NoDialogs : IDialogService
     {
         public bool? ShowDialog<TViewModel>(TViewModel viewModel, Window? owner = null) where TViewModel : notnull => null;
