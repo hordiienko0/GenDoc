@@ -226,7 +226,7 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <Border Style="{StaticResource ChipStyle}">
-                                                    <CheckBox Content="{Binding Label}" IsThreeState="True"
+                                                    <CheckBox Content="{Binding Label}" IsThreeState="False"
                                                               IsChecked="{Binding IsChecked, Mode=TwoWay}"/>
                                                 </Border>
                                             </DataTemplate>

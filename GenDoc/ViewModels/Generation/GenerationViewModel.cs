@@ -285,7 +285,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     [RelayCommand]
     private void CheckAllRecipients() => BatchRecipientChecks(() =>
     {
-        foreach (var row in RecipientOptions.Where(r => r.IsVisible)) row.IsChecked = true;
+        foreach (var row in RecipientOptions.Where(r => r.IsShown)) row.IsChecked = true;
     });
 
     [RelayCommand]
@@ -345,6 +345,12 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         var chip = (RankCategoryChipViewModel)sender!;
         if (chip.IsChecked is not bool value) return;
 
+        if (!value && IsPartiallyChecked(chip.Category))
+        {
+            chip.IsChecked = true;
+            return;
+        }
+
         _suppressRankSync = true;
         try
         {
@@ -364,6 +370,12 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         if (e.PropertyName != nameof(RankOptionViewModel.IsChecked)) return;
         if (!_suppressRankSync) SyncCategoryChipState((RankOptionViewModel)sender!);
         ApplyRecipientRankFilter();
+    }
+
+    private bool IsPartiallyChecked(RankCategory category)
+    {
+        var siblings = RankOptions.Where(o => o.Category == category).ToList();
+        return siblings.Any(o => o.IsChecked) && !siblings.All(o => o.IsChecked);
     }
 
     private void SyncCategoryChipState(RankOptionViewModel changed)
@@ -396,11 +408,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         try
         {
             foreach (var row in RecipientOptions)
-            {
-                var visible = checkedRanks.Count == 0 || checkedRanks.Contains(RankOrder.Normalize(row.Rank));
-                row.IsVisible = visible;
-                if (!visible) row.IsChecked = false;
-            }
+                row.IsVisible = checkedRanks.Count == 0 || checkedRanks.Contains(RankOrder.Normalize(row.Rank));
         }
         finally
         {
@@ -410,6 +418,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         RefreshSelectedRecipientsCount();
         OnPropertyChanged(nameof(SelectedRecipientsCountLabel));
         RefreshAllRecipientsCount();
+        RefreshPackageTemplateCounts();
     }
 
     private void RefreshAllRecipientsCount()
