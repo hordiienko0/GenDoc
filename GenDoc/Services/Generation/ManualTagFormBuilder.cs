@@ -104,20 +104,20 @@ namespace GenDoc.Services.Generation
 
         public async Task SaveAsync(string contextKey, ManualTagFormViewModel form)
         {
-            var textValues = form.Rows
-                .Where(r => r.Kind == ManualTagKind.Text && !string.IsNullOrWhiteSpace(r.Value))
-                .ToDictionary(r => r.Tag, r => r.Value);
+            var textRows = form.Rows.Where(r => r.Kind == ManualTagKind.Text).ToList();
             var hasSignerChoice = form.Signer?.Selected is not null || form.CourseOfficer?.Selected is not null;
-            if (textValues.Count == 0 && !hasSignerChoice) return;
+            if (textRows.Count == 0 && !hasSignerChoice) return;
 
             await _userSettings.UpdateAsync(settings =>
             {
-                if (textValues.Count > 0)
+                if (textRows.Count > 0)
                 {
-                    var mergedValues = string.IsNullOrWhiteSpace(settings.LastManualValuesJson)
-                        ? new Dictionary<string, string>()
-                        : JsonSerializer.Deserialize<Dictionary<string, string>>(settings.LastManualValuesJson) ?? new Dictionary<string, string>();
-                    foreach (var (tag, value) in textValues) mergedValues[tag] = value;
+                    var mergedValues = Parse<string>(settings.LastManualValuesJson);
+                    foreach (var row in textRows)
+                    {
+                        if (string.IsNullOrWhiteSpace(row.Value)) mergedValues.Remove(row.Tag);
+                        else mergedValues[row.Tag] = row.Value;
+                    }
                     settings.LastManualValuesJson = JsonSerializer.Serialize(mergedValues);
                 }
 

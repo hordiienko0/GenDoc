@@ -91,4 +91,44 @@ public class ManualValuesMergeTests
         Assert.NotNull(form.CourseOfficer?.Selected);
         Assert.Equal(2, form.CourseOfficer!.Selected!.RecipientId);
     }
+
+    [Fact]
+    public async Task Save_ClearedValue_DoesNotComeBackNextTime()
+    {
+        using var db = new TestDb();
+        Seed(db,
+            globalJson: null,
+            userJson: JsonSerializer.Serialize(new Dictionary<string, string>
+            {
+                ["{{номер_наказу}}"] = "77",
+                ["{{місто}}"] = "Харків"
+            }));
+        var builder = Build(db);
+
+        var form = await builder.BuildAsync(new[] { "{{номер_наказу}}", "{{місто}}" }, "pkg:1");
+        form.Rows.Single(r => r.Tag == "{{номер_наказу}}").Value = string.Empty;
+        await builder.SaveAsync("pkg:1", form);
+
+        var next = await builder.BuildAsync(new[] { "{{номер_наказу}}", "{{місто}}" }, "pkg:1");
+
+        Assert.Equal(string.Empty, next.Rows.Single(r => r.Tag == "{{номер_наказу}}").Value);
+        Assert.Equal("Харків", next.Rows.Single(r => r.Tag == "{{місто}}").Value);
+    }
+
+    [Fact]
+    public async Task Save_OnlyClearedValues_StillRemovesThemFromTheStore()
+    {
+        using var db = new TestDb();
+        Seed(db,
+            globalJson: null,
+            userJson: JsonSerializer.Serialize(new Dictionary<string, string> { ["{{місто}}"] = "Харків" }));
+        var builder = Build(db);
+
+        var form = await builder.BuildAsync(new[] { "{{місто}}" }, "pkg:1");
+        Assert.Single(form.Rows).Value = "   ";
+        await builder.SaveAsync("pkg:1", form);
+
+        var stored = (await TestServices.UserSettings(db, UserId).GetForCurrentUserAsync()).LastManualValuesJson;
+        Assert.DoesNotContain("Харків", stored ?? string.Empty);
+    }
 }
