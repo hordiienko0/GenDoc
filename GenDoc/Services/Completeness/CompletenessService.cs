@@ -523,17 +523,24 @@ namespace GenDoc.Services.Completeness
         public async Task<List<PackageGroupDocumentStatus>> GetPackageGroupDocumentsAsync(int packageId, int? intakeId, int? recipientId = null)
         {
             using var db = _dbFactory.CreateDbContext();
-            var groupTemplates = (await GetPackageLinksInternalAsync(db, packageId, includeGroup: true))
+            var groupTemplates = (await GetPackageLinksInternalAsync(db, packageId, includeGroup: true, includeSheets: true))
                 .Where(t => t.IsGroup).ToList();
             if (groupTemplates.Count == 0) return new List<PackageGroupDocumentStatus>();
 
-            var ids = groupTemplates.Select(t => t.TemplateId).ToList();
+            var fitnessCategory = recipientId is int rid
+                ? await db.Recipients.Where(r => r.Id == rid).Select(r => r.FitnessCategory).FirstOrDefaultAsync()
+                : null;
+
+            var docxIds = groupTemplates.Where(t => !t.IsExport).Select(t => t.TemplateId).ToList();
+            var sheetIds = groupTemplates.Where(t => t.IsExport).Select(t => t.TemplateId).ToList();
             var docs = await db.GeneratedGroupDocuments
-                .Where(g => g.TemplateId != null && ids.Contains(g.TemplateId.Value) && g.IsCurrent
-                            && (g.IntakeId == intakeId || g.IntakeId == null))
+                .Where(g => g.IsCurrent
+                            && (g.IntakeId == intakeId || g.IntakeId == null)
+                            && ((g.TemplateId != null && docxIds.Contains(g.TemplateId.Value))
+                                || (g.ExportTemplateId != null && sheetIds.Contains(g.ExportTemplateId.Value))))
                 .Select(g => new
                 {
-                    g.TemplateId, g.IntakeId, g.Id, g.Version, g.RecipientCount,
+                    g.TemplateId, g.ExportTemplateId, g.IntakeId, g.Id, g.Version, g.RecipientCount,
                     ParticipantCount = g.Recipients.Count,
                     IsParticipant = recipientId != null && g.Recipients.Any(r => r.RecipientId == recipientId)
                 })
@@ -541,13 +548,18 @@ namespace GenDoc.Services.Completeness
 
             return groupTemplates.Select(t =>
             {
-                var doc = docs.Where(d => d.TemplateId == t.TemplateId)
+                var doc = docs
+                    .Where(d => t.IsExport ? d.ExportTemplateId == t.TemplateId : d.TemplateId == t.TemplateId)
                     .OrderByDescending(d => d.IntakeId == intakeId)
+                    .ThenByDescending(d => d.Version)
+                    .ThenByDescending(d => d.Id)
                     .FirstOrDefault();
                 return new PackageGroupDocumentStatus(
                     t.TemplateId, t.Name, doc?.Id, doc?.Version ?? 0,
                     IsParticipant: doc?.IsParticipant ?? false,
-                    RosterUnknown: doc is not null && doc.RecipientCount > 0 && doc.ParticipantCount == 0);
+                    RosterUnknown: doc is not null && doc.RecipientCount > 0 && doc.ParticipantCount == 0,
+                    Requirement: recipientId is null ? TemplateRequirement.Required : ICompletenessService.Resolve(t, fitnessCategory),
+                    IsExport: t.IsExport);
             }).ToList();
         }
 

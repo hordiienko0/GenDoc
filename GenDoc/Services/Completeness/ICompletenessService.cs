@@ -11,7 +11,18 @@ namespace GenDoc.Services.Completeness
 
     public record PackageGroupDocumentStatus(
         int TemplateId, string TemplateName, int? GroupDocumentId, int Version,
-        bool IsParticipant = false, bool RosterUnknown = false);
+        bool IsParticipant = false, bool RosterUnknown = false,
+        TemplateRequirement Requirement = TemplateRequirement.Required, bool IsExport = false);
+
+    public static class RequirementLabels
+    {
+        public static string Of(TemplateRequirement requirement) => requirement switch
+        {
+            TemplateRequirement.Required => "обов'язковий",
+            TemplateRequirement.Optional => "необов'язковий",
+            _ => "не застосовується"
+        };
+    }
 
     public record MatrixDocDto(
         int Id, int RecipientId, int TemplateId, int Version, bool HasContent, bool IsStale,

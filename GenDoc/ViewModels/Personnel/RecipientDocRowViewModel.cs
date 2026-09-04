@@ -11,7 +11,8 @@ namespace GenDoc.ViewModels.Personnel
             DocumentId = status.DocumentId;
             HasContent = status.HasContent;
             IsStale = status.IsStale;
-            MetaText = status.HasContent ? $"версія {status.Version}" : string.Empty;
+            Requirement = status.Requirement;
+            MetaText = status.HasContent ? $"версія {status.Version}" : RequirementLabels.Of(status.Requirement);
         }
 
         public int TemplateId { get; }
@@ -19,6 +20,7 @@ namespace GenDoc.ViewModels.Personnel
         public int? DocumentId { get; }
         public bool HasContent { get; }
         public bool IsStale { get; }
+        public Models.Enums.TemplateRequirement Requirement { get; }
         public string MetaText { get; }
 
         public string StateText => !HasContent ? "Немає" : IsStale ? "Застарів" : "Є";

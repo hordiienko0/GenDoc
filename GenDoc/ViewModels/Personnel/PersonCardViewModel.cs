@@ -156,8 +156,22 @@ namespace GenDoc.ViewModels.Personnel
         public ObservableCollection<GroupDocumentRowViewModel> GroupDocumentRows { get; } = new();
         [ObservableProperty] private bool hasGroupDocuments;
 
+        public const string GroupGapsHint = "Відомості формуються на екрані «Генерація» або в «Комплектності»";
+
         [ObservableProperty] private bool documentsLoading;
-        [ObservableProperty] private bool hasMissingDocuments;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsPackageComplete))]
+        private bool hasMissingDocuments;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsPackageComplete))]
+        private bool hasGroupGaps;
+
+        [ObservableProperty] private string? groupGapsNote;
+
+        public bool IsPackageComplete => !HasMissingDocuments && !HasGroupGaps;
+
         [ObservableProperty] private string? documentsFooterNote;
         [ObservableProperty] private string? documentsEmptyNote;
 
@@ -200,6 +214,8 @@ namespace GenDoc.ViewModels.Personnel
                 {
                     DocumentRows.Clear();
                     HasMissingDocuments = false;
+                    HasGroupGaps = false;
+                    GroupGapsNote = null;
                     DocumentsFooterNote = null;
                     DocumentsEmptyNote = "Пакет генерації за замовчуванням не налаштовано.";
                     return;
@@ -217,15 +233,21 @@ namespace GenDoc.ViewModels.Personnel
                 foreach (var g in groupDocs) GroupDocumentRows.Add(new GroupDocumentRowViewModel(g));
                 HasGroupDocuments = GroupDocumentRows.Count > 0;
 
-                HasMissingDocuments =
-                    statuses.Any(s => s.Requirement == Models.Enums.TemplateRequirement.Required && !s.HasContent)
-                    || groupDocs.Any(g => !g.IsParticipant);
+                var gaps = FindGaps(statuses, groupDocs);
+                HasMissingDocuments = gaps.Personal;
+                HasGroupGaps = gaps.Group;
+                GroupGapsNote = gaps.Group ? GroupGapsHint : null;
             }
             finally
             {
                 DocumentsLoading = false;
             }
         }
+
+        internal static (bool Personal, bool Group) FindGaps(
+            IEnumerable<RecipientDocStatus> statuses, IEnumerable<PackageGroupDocumentStatus> groupDocs)
+            => (statuses.Any(s => s.Requirement == Models.Enums.TemplateRequirement.Required && !s.HasContent),
+                groupDocs.Any(g => g.Requirement == Models.Enums.TemplateRequirement.Required && !g.IsParticipant));
 
         private async Task<string> BuildDocumentsFooterNoteAsync(int packageId)
         {
