@@ -300,7 +300,10 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     public ObservableCollection<RankOptionViewModel> RankOptions { get; } = new();
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RankListToggleLabel))]
     private bool isRankListExpanded;
+
+    public string RankListToggleLabel => IsRankListExpanded ? "Окремі звання ▴" : "Окремі звання ▾";
 
     private void RefreshRankFilters()
     {
@@ -507,7 +510,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         var rosterSelection = BuildRosterSelection();
         var summary = new List<PackageTemplateSummaryItemViewModel>();
         summary.AddRange(_generationService.GetPackageTemplates(item.Id)
-            .Select(t => new PackageTemplateSummaryItemViewModel(t.TemplateName)));
+            .Select(t => new PackageTemplateSummaryItemViewModel(t.TemplateName, t.Kind)));
         summary.AddRange(_generationService.GetPackageExportTemplates(item.Id)
             .Select(t => new PackageTemplateSummaryItemViewModel(
                 t.Name, t.FitnessFilter,

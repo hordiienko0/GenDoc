@@ -135,15 +135,15 @@ namespace GenDoc.Services.Generation
             db.SaveChanges();
         }
 
-        public List<(int TemplateId, string TemplateName)> GetPackageTemplates(int packageId)
+        public List<(int TemplateId, string TemplateName, TemplateKind Kind)> GetPackageTemplates(int packageId)
         {
             using var db = _dbFactory.CreateDbContext();
             return db.GenerationPackageTemplates
                 .Where(pt => pt.GenerationPackageId == packageId)
                 .OrderBy(pt => pt.SortOrder)
-                .Select(pt => new { pt.TemplateId, Name = pt.Template!.Name })
+                .Select(pt => new { pt.TemplateId, Name = pt.Template!.Name, pt.Template!.Kind })
                 .AsEnumerable()
-                .Select(pt => (pt.TemplateId, pt.Name))
+                .Select(pt => (pt.TemplateId, pt.Name, pt.Kind))
                 .ToList();
         }
 
@@ -425,7 +425,7 @@ namespace GenDoc.Services.Generation
                 docx.Generated, docx.Skipped, docx.Errors,
                 xlsx.Generated, xlsx.Skipped, xlsx.Errors,
                 docxGroup.Generated, docxGroup.Skipped, docxGroup.Errors,
-                run.Id, issues);
+                run.Id, issues, docx.FirstGeneratedPath ?? xlsx.FirstGeneratedPath ?? docxGroup.FirstGeneratedPath);
         }
 
         public RunResult GenerateTemplatesForRecipients(
@@ -500,7 +500,8 @@ namespace GenDoc.Services.Generation
             return new RunResult(
                 docx.Generated, docx.Skipped, docx.Errors,
                 xlsx.Generated, xlsx.Skipped, xlsx.Errors,
-                docxGroup.Generated, docxGroup.Skipped, docxGroup.Errors, run.Id, issues);
+                docxGroup.Generated, docxGroup.Skipped, docxGroup.Errors, run.Id, issues,
+                docx.FirstGeneratedPath ?? xlsx.FirstGeneratedPath ?? docxGroup.FirstGeneratedPath);
         }
 
         private static List<Recipient> LoadRosterRecipients(AppDbContext db, RosterSelection selection)
@@ -546,7 +547,7 @@ namespace GenDoc.Services.Generation
             return upToDate && ExistsInOutputFolder(outputFolder, current.FileName) ? SkippedUpToDate : null;
         }
 
-        private sealed record DocxPhaseResult(int Generated, int Skipped, int Errors, List<RunIssue> Issues);
+        private sealed record DocxPhaseResult(int Generated, int Skipped, int Errors, List<RunIssue> Issues, string? FirstGeneratedPath);
 
         private DocxPhaseResult RunDocxPhase(
             AppDbContext db,
@@ -589,6 +590,7 @@ namespace GenDoc.Services.Generation
             var intakeNames = LoadIntakeNames(db);
 
             var generated = 0;
+            string? firstGeneratedPath = null;
             var skipped = 0;
             var errors = 0;
             var issues = new List<RunIssue>();
@@ -674,6 +676,7 @@ namespace GenDoc.Services.Generation
                         db.GeneratedDocuments.Add(doc);
 
                         generated++;
+                        firstGeneratedPath ??= outputPath;
 
                         if (result.UnfilledTags.Count > 0)
                             issues.Add(new RunIssue(RunIssue.PhaseDocx,
@@ -689,10 +692,10 @@ namespace GenDoc.Services.Generation
                 }
             }
 
-            return new DocxPhaseResult(generated, skipped, errors, issues);
+            return new DocxPhaseResult(generated, skipped, errors, issues, firstGeneratedPath);
         }
 
-        private sealed record XlsxPhaseResult(int Generated, int Skipped, int Errors, List<RunIssue> Issues);
+        private sealed record XlsxPhaseResult(int Generated, int Skipped, int Errors, List<RunIssue> Issues, string? FirstGeneratedPath);
 
         private XlsxPhaseResult RunXlsxPhase(
             AppDbContext db,
@@ -709,6 +712,7 @@ namespace GenDoc.Services.Generation
             int? courseOfficerId)
         {
             var generated = 0;
+            string? firstGeneratedPath = null;
             var skipped = 0;
             var errors = 0;
             var issues = new List<RunIssue>();
@@ -817,6 +821,7 @@ namespace GenDoc.Services.Generation
                     db.GeneratedGroupDocuments.Add(groupDoc);
 
                     generated++;
+                    firstGeneratedPath ??= outputPath;
 
                     if (result.UnfilledTags.Count > 0)
                         issues.Add(new RunIssue(RunIssue.PhaseXlsx, string.Empty, template.Name,
@@ -829,7 +834,7 @@ namespace GenDoc.Services.Generation
                 }
             }
 
-            return new XlsxPhaseResult(generated, skipped, errors, issues);
+            return new XlsxPhaseResult(generated, skipped, errors, issues, firstGeneratedPath);
         }
 
         internal static string ComputeRecipientSourceHash(
@@ -877,7 +882,7 @@ namespace GenDoc.Services.Generation
             _ => string.Empty
         };
 
-        private sealed record DocxGroupPhaseResult(int Generated, int Skipped, int Errors, List<RunIssue> Issues);
+        private sealed record DocxGroupPhaseResult(int Generated, int Skipped, int Errors, List<RunIssue> Issues, string? FirstGeneratedPath);
 
         private DocxGroupPhaseResult RunDocxGroupPhase(
             AppDbContext db,
@@ -893,6 +898,7 @@ namespace GenDoc.Services.Generation
             IProgress<string> progress)
         {
             var generated = 0;
+            string? firstGeneratedPath = null;
             var skipped = 0;
             var errors = 0;
             var issues = new List<RunIssue>();
@@ -989,6 +995,7 @@ namespace GenDoc.Services.Generation
                     db.GeneratedGroupDocuments.Add(groupDoc);
 
                     generated++;
+                    firstGeneratedPath ??= outputPath;
 
                     if (result.UnfilledTags.Count > 0)
                         issues.Add(new RunIssue(RunIssue.PhaseDocxGroup, string.Empty, template.Name,
@@ -1001,7 +1008,7 @@ namespace GenDoc.Services.Generation
                 }
             }
 
-            return new DocxGroupPhaseResult(generated, skipped, errors, issues);
+            return new DocxGroupPhaseResult(generated, skipped, errors, issues, firstGeneratedPath);
         }
 
         private static string? BuildOrgPathSnapshot(int? orgNodeId, Dictionary<int, (string Name, int? ParentId)> nodes)

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace GenDoc.Services.Generation
 {
@@ -7,6 +8,9 @@ namespace GenDoc.Services.Generation
         public const string PhaseDocx = "docx";
         public const string PhaseXlsx = "xlsx";
         public const string PhaseDocxGroup = "docx-group";
+
+        [JsonIgnore]
+        public string Subject => string.IsNullOrWhiteSpace(Person) ? TemplateName : $"{Person} · {TemplateName}";
 
         private static readonly JsonSerializerOptions Options = new()
         {

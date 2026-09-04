@@ -5,11 +5,13 @@ namespace GenDoc.ViewModels.Generation;
 
 public sealed partial class PackageTemplateSummaryItemViewModel : ObservableObject
 {
-    public PackageTemplateSummaryItemViewModel(string name)
+    public PackageTemplateSummaryItemViewModel(
+        string name, Models.Enums.TemplateKind templateKind = Models.Enums.TemplateKind.PerRecipient)
     {
         Name = name;
         Kind = TemplateKind.Docx;
         FitnessFilter = FitnessFilter.All;
+        IsGroup = templateKind == Models.Enums.TemplateKind.Group;
     }
 
     public PackageTemplateSummaryItemViewModel(string name, FitnessFilter filter, int personCount)
@@ -32,6 +34,7 @@ public sealed partial class PackageTemplateSummaryItemViewModel : ObservableObje
     public string? FitnessLabel { get; }
     public FitnessFilter FitnessFilter { get; }
     public bool IsXlsx => Kind == TemplateKind.Xlsx;
+    public bool IsGroup { get; }
     public string XlsxDetail => $"{FitnessLabel} · {PersonCount} осіб";
 
     [ObservableProperty]

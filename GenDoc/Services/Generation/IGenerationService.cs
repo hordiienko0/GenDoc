@@ -7,7 +7,7 @@ namespace GenDoc.Services.Generation
         int Generated, int Skipped, int Errors,
         int GroupGenerated, int GroupSkipped, int GroupErrors,
         int DocxGroupGenerated, int DocxGroupSkipped, int DocxGroupErrors,
-        int RunId = 0, IReadOnlyList<RunIssue>? Issues = null);
+        int RunId = 0, IReadOnlyList<RunIssue>? Issues = null, string? FirstGeneratedPath = null);
 
     public record LastRunInfo(
         int PackageId, string PackageName, DateTime RunAt,
@@ -49,7 +49,7 @@ namespace GenDoc.Services.Generation
             List<(int ExportTemplateId, FitnessFilter Filter)> exportTemplates);
 
         void DeletePackage(int packageId);
-        List<(int TemplateId, string TemplateName)> GetPackageTemplates(int packageId);
+        List<(int TemplateId, string TemplateName, TemplateKind Kind)> GetPackageTemplates(int packageId);
 
         List<(int LinkId, int ExportTemplateId, string Name, int SortOrder, FitnessFilter FitnessFilter)> GetPackageExportTemplates(int packageId);
         List<(int Id, string Name)> GetExportTemplatesNotInPackage(int packageId);
