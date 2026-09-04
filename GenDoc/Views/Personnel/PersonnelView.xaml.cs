@@ -8,9 +8,17 @@ namespace GenDoc.Views.Personnel;
 
 public partial class PersonnelView : UserControl
 {
+    public static readonly RoutedCommand FocusSearchCommand = new(nameof(FocusSearchCommand), typeof(PersonnelView));
+
     public PersonnelView()
     {
         InitializeComponent();
+    }
+
+    private void FocusSearch_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        SearchBox.Focus();
+        SearchBox.SelectAll();
     }
 
     private async void PersonnelView_Loaded(object sender, RoutedEventArgs e)

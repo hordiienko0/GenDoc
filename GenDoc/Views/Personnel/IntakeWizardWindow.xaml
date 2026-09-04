@@ -48,8 +48,8 @@
         </TextBlock>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
-            <Button Content="Скасувати" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelCommand}"/>
-            <Button Content="Створити набір" Margin="8,0,0,0" Command="{Binding CreateCommand}"/>
+            <Button Content="Скасувати" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelCommand}" IsCancel="True"/>
+            <Button Content="Створити набір" Margin="8,0,0,0" Command="{Binding CreateCommand}" IsDefault="True"/>
         </StackPanel>
     </StackPanel>
 </Window>

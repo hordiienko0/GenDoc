@@ -16,8 +16,8 @@
                    FontSize="10.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0" TextWrapping="Wrap"/>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
-            <Button Content="Скасувати" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelCommand}"/>
-            <Button Content="OK" Margin="8,0,0,0" MinWidth="90" Command="{Binding OkCommand}"/>
+            <Button Content="Скасувати" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelCommand}" IsCancel="True"/>
+            <Button Content="OK" Margin="8,0,0,0" MinWidth="90" Command="{Binding OkCommand}" IsDefault="True"/>
         </StackPanel>
     </StackPanel>
 </Window>

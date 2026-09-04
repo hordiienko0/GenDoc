@@ -19,5 +19,6 @@ public partial class GenerateDocumentsDialog : Window
             Close();
         };
         Loaded += async (_, _) => await viewModel.InitializeAsync();
+        Closing += (_, e) => e.Cancel = !viewModel.CanClose;
     }
 }

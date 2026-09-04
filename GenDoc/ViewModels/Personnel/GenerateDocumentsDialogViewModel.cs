@@ -71,7 +71,9 @@ namespace GenDoc.ViewModels.Personnel
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(CanGenerate))]
         [NotifyPropertyChangedFor(nameof(NotBusy))]
+        [NotifyPropertyChangedFor(nameof(CanClose))]
         [NotifyCanExecuteChangedFor(nameof(GenerateCommand))]
+        [NotifyCanExecuteChangedFor(nameof(CancelCommand))]
         private bool isBusy;
 
         [ObservableProperty] private string progressText = string.Empty;
@@ -82,6 +84,7 @@ namespace GenDoc.ViewModels.Personnel
         private GenerationResultViewModel? result;
 
         public bool NotBusy => !IsBusy;
+        public bool CanClose => !IsBusy;
         public bool HasResult => Result is not null;
         public bool IsChoosing => Result is null;
         public bool CanGenerate => SelectedCount > 0 && !IsBusy;
@@ -181,7 +184,7 @@ namespace GenDoc.ViewModels.Personnel
             result?.ShowInArchiveCommand.Execute(null);
         }
 
-        [RelayCommand] private void Cancel() => CloseDialog(false);
+        [RelayCommand(CanExecute = nameof(CanClose))] private void Cancel() => CloseDialog(false);
         [RelayCommand] private void Done() => CloseDialog(true);
     }
 }

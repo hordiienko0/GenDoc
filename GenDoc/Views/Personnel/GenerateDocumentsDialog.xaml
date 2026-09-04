@@ -16,11 +16,11 @@
         <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
             <TextBlock Text="{Binding ProgressText}" VerticalAlignment="Center" Margin="0,0,12,0" FontSize="12"
                        Foreground="{StaticResource NavyBrush}"/>
-            <Button Content="Скасувати" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelCommand}"
+            <Button Content="Скасувати" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding CancelCommand}" IsCancel="True"
                     Visibility="{Binding IsChoosing, Converter={StaticResource BoolToVisibility}}"/>
-            <Button Content="{Binding GenerateButtonText}" Margin="8,0,0,0" MinWidth="130" Command="{Binding GenerateCommand}"
+            <Button Content="{Binding GenerateButtonText}" Margin="8,0,0,0" MinWidth="130" Command="{Binding GenerateCommand}" IsDefault="True"
                     Visibility="{Binding IsChoosing, Converter={StaticResource BoolToVisibility}}"/>
-            <Button Content="Готово" MinWidth="110" Command="{Binding DoneCommand}"
+            <Button Content="Готово" MinWidth="110" Command="{Binding DoneCommand}" IsDefault="True" IsCancel="True"
                     Visibility="{Binding HasResult, Converter={StaticResource BoolToVisibility}}"/>
         </StackPanel>
 
