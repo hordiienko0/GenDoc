@@ -9,8 +9,8 @@ public class RequirementsSummaryTests
     [Fact]
     public void BuildPreviewText_ReadsAsSentence()
     {
-        var text = PackageRequirementsViewModel.BuildPreviewText(4, requiredRegular: 1, optionalRegular: 1, requiredLimited: 2, optionalLimited: 0);
-        Assert.Equal("Для набору №4: придатні - 1 обов'язковий, 1 опційний · обмежено придатні - 2 обов'язкових, 0 опційних", text);
+        var text = PackageRequirementsViewModel.BuildPreviewText("Набір 2026-А", requiredRegular: 1, optionalRegular: 1, requiredLimited: 2, optionalLimited: 0);
+        Assert.Equal("Для набору «Набір 2026-А»: придатні - 1 обов'язковий, 1 опційний · обмежено придатні - 2 обов'язкових, 0 опційних", text);
     }
 
     [Fact]

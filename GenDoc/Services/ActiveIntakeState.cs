@@ -22,7 +22,7 @@ namespace GenDoc.Services
                 if (Current is null) return "Активного набору немає";
 
                 var (day, totalDays) = DayOfTotal(Current, DateOnly.FromDateTime(DateTime.Today));
-                return $"Активний набір: №{Current.Number} · {Current.DisplayNumber} · день {day} з {totalDays}";
+                return $"Активний набір: {IntakeLabel.Of(Current.Number, Current.DisplayNumber)} · день {day} з {totalDays}";
             }
         }
 

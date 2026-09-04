@@ -4,6 +4,7 @@ using GenDoc.Data;
 using GenDoc.Models;
 using GenDoc.Models.Enums;
 using GenDoc.Services.Generation;
+using GenDoc.Services.Intakes;
 using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.Services.Documents
@@ -172,9 +173,9 @@ namespace GenDoc.Services.Documents
 
             var intakes = (await db.Intakes.AsNoTracking()
                     .OrderByDescending(i => i.Number)
-                    .Select(i => new { i.Id, i.Number, i.Status })
+                    .Select(i => new { i.Id, i.Number, i.DisplayNumber, i.Status })
                     .ToListAsync())
-                .Select(i => (i.Id, $"Набір №{i.Number} · {StatusLabel(i.Status)}"))
+                .Select(i => (i.Id, $"{IntakeLabel.Of(i.Number, i.DisplayNumber)} · {StatusLabel(i.Status)}"))
                 .ToList();
 
             var templates = (await db.Templates
@@ -728,14 +729,19 @@ namespace GenDoc.Services.Documents
                 })
                 .ToListAsync();
 
-            var intakeNumbers = await db.Intakes.IgnoreQueryFilters()
-                .Select(x => new { x.Id, x.Number }).ToListAsync();
-            var numberById = intakeNumbers.ToDictionary(x => x.Id, x => x.Number);
+            var intakes = await db.Intakes.IgnoreQueryFilters()
+                .Select(x => new { x.Id, x.Number, x.DisplayNumber }).ToListAsync();
+            var intakeById = intakes.ToDictionary(x => x.Id);
 
-            return runs.Select(r => new RunDto(
-                r.Id, r.RunAt, r.PackageName,
-                r.IntakeId is int iid ? numberById.GetValueOrDefault(iid) : null,
-                r.BranchName, r.GeneratedCount, r.SkippedCount, r.ErrorCount, r.IntakeId)).ToList();
+            return runs.Select(r =>
+            {
+                var intake = r.IntakeId is int iid ? intakeById.GetValueOrDefault(iid) : null;
+                return new RunDto(
+                    r.Id, r.RunAt, r.PackageName,
+                    intake?.Number,
+                    r.BranchName, r.GeneratedCount, r.SkippedCount, r.ErrorCount, r.IntakeId,
+                    intake is null ? null : IntakeLabel.Of(intake.Number, intake.DisplayNumber));
+            }).ToList();
         }
 
         public async Task<List<RunItemDto>> GetRunItemsAsync(int runId)

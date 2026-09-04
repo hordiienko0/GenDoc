@@ -145,7 +145,8 @@ namespace GenDoc.Services.Intakes
                 intake.RootOrgNodeId = rootNode.Id;
                 var folderList = string.Join(", ", IntakeFitnessFolders.AllFolderNames);
                 _auditLogService.Log(db, "Створено набір", "Intake", intake.Id, null, intake.DisplayNumber,
-                    $"{categoryNodes.Count + 1} папки (Всі; {folderList}), "
+                    $"{IntakeLabel.Of(intake.Number, intake.DisplayNumber)} (внутрішній №{intake.Number}): "
+                    + $"{categoryNodes.Count + 1} папки (Всі; {folderList}), "
                     + $"{request.DateStart:dd.MM.yyyy} - {request.DateEnd:dd.MM.yyyy}");
                 await db.SaveChangesAsync();
             }

@@ -287,7 +287,7 @@ namespace GenDoc.ViewModels.Personnel
             {
                 var intakeRoot = Tree.FindById(intake.RootOrgNodeId);
                 if (intakeRoot is not null)
-                    text += $" · {intakeRoot.TotalCount} у наборі №{intake.Number}";
+                    text += $" · {intakeRoot.TotalCount} у наборі «{IntakeLabel.Of(intake.Number, intake.DisplayNumber)}»";
             }
 
             FooterText = text;

@@ -230,7 +230,7 @@ namespace GenDoc.ViewModels.Intakes
             if (card is null) return;
 
             var confirm = MessageBox.Show(
-                $"Відкрити повторно набір {card.CodeText.TrimStart('·', ' ')}? " +
+                $"Відкрити повторно набір «{card.TitleText}»? " +
                 "Звільнені кімнати та переміщення до «Випускників» відновлені НЕ будуть.",
                 "Повторне відкриття набору", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (confirm != MessageBoxResult.Yes) return;
