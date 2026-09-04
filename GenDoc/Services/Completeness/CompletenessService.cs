@@ -112,7 +112,8 @@ namespace GenDoc.Services.Completeness
                     && peopleById.TryGetValue(doc.RecipientId, out var person)
                     && mappingsByTemplate.TryGetValue(doc.TemplateId, out var mappings))
                 {
-                    stale = _documentHashService.ComputeSourceHash(mappings, person, orgSettings) != doc.SourceHash;
+                    stale = _documentHashService.ComputeSourceHash(mappings, person, orgSettings)
+                            != DocumentHashService.AutoPart(doc.SourceHash);
                 }
 
                 dict[(doc.RecipientId, doc.TemplateId, false)] =
@@ -186,7 +187,8 @@ namespace GenDoc.Services.Completeness
                     .Where(m => m.TemplateId == templateId).AsNoTracking().ToListAsync();
                 var orgSettings = await db.OrganizationSettings.AsNoTracking().FirstOrDefaultAsync();
                 if (recipient is not null)
-                    stale = _documentHashService.ComputeSourceHash(mappings, recipient, orgSettings) != doc.SourceHash;
+                    stale = _documentHashService.ComputeSourceHash(mappings, recipient, orgSettings)
+                            != DocumentHashService.AutoPart(doc.SourceHash);
             }
 
             return new MatrixDocDto(doc.Id, recipientId, templateId, doc.Version, doc.HasContent, stale, doc.SourceType);
@@ -211,8 +213,8 @@ namespace GenDoc.Services.Completeness
 
             var mappings = await db.TemplateFieldMappings.Where(m => m.TemplateId == templateId).ToListAsync();
             var orgSettings = await db.OrganizationSettings.FirstOrDefaultAsync();
-            var values = GenerationService.BuildValues(mappings, recipient, orgSettings, manualValues,
-                GenerationService.CourseOfficerSignatureFor(db, mappings));
+            var courseOfficerSignature = GenerationService.CourseOfficerSignatureFor(db, mappings);
+            var values = GenerationService.BuildValues(mappings, recipient, orgSettings, manualValues, courseOfficerSignature);
 
             var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.docx");
             try
@@ -244,7 +246,8 @@ namespace GenDoc.Services.Completeness
                         $"{recipient.LastName} {recipient.FirstName} - {template.Name}.docx"),
                     SizeBytes = bytes.LongLength,
                     ContentHash = Convert.ToHexString(SHA256.HashData(bytes)),
-                    SourceHash = _documentHashService.ComputeSourceHash(mappings, recipient, orgSettings),
+                    SourceHash = _documentHashService.ComputeSourceHash(
+                        mappings, recipient, orgSettings, manualValues, courseOfficerSignature),
                     Version = maxVersion + 1,
                     IsCurrent = true,
                     SourceType = DocumentSourceType.Generated,

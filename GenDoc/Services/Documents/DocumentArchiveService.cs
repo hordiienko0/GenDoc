@@ -296,8 +296,8 @@ namespace GenDoc.Services.Documents
 
             var mappings = await db.TemplateFieldMappings.Where(m => m.TemplateId == template.Id).ToListAsync();
             var orgSettings = await db.OrganizationSettings.FirstOrDefaultAsync();
-            var values = GenerationService.BuildValues(mappings, doc.Recipient, orgSettings, manualValues,
-                GenerationService.CourseOfficerSignatureFor(db, mappings));
+            var courseOfficerSignature = GenerationService.CourseOfficerSignatureFor(db, mappings);
+            var values = GenerationService.BuildValues(mappings, doc.Recipient, orgSettings, manualValues, courseOfficerSignature);
 
             var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.docx");
             try
@@ -312,7 +312,8 @@ namespace GenDoc.Services.Documents
                         ? stem + ".docx"
                         : $"{template.Name}.docx",
                     DocumentSourceType.Generated,
-                    _documentHashService.ComputeSourceHash(mappings, doc.Recipient, orgSettings));
+                    _documentHashService.ComputeSourceHash(
+                        mappings, doc.Recipient, orgSettings, manualValues, courseOfficerSignature));
 
                 _auditLogService.Log(db, "Перегенеровано", "GeneratedDocument", doc.Id, null, template.Name);
                 await db.SaveChangesAsync();

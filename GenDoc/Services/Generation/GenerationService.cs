@@ -508,6 +508,19 @@ namespace GenDoc.Services.Generation
             return recipients;
         }
 
+        internal const string SkippedUpToDate = "пропущено - актуальна версія вже є";
+        internal const string SkippedManualUpload = "пропущено - підписана версія завантажена вручну";
+
+        internal sealed record CurrentDocument(string FileName, string? SourceHash, DocumentSourceType SourceType);
+
+        internal static string? SkipReason(CurrentDocument current, string sourceHash, string outputFolder)
+        {
+            if (current.SourceType == DocumentSourceType.ManualUpload) return SkippedManualUpload;
+
+            var upToDate = current.SourceHash is null || current.SourceHash == sourceHash;
+            return upToDate && ExistsInOutputFolder(outputFolder, current.FileName) ? SkippedUpToDate : null;
+        }
+
         private sealed record DocxPhaseResult(int Generated, int Skipped, int Errors, List<RunIssue> Issues);
 
         private DocxPhaseResult RunDocxPhase(
@@ -530,12 +543,12 @@ namespace GenDoc.Services.Generation
 
             var courseOfficerSignature = CourseOfficerSignatureFor(db, mappingsByTemplate.Values.SelectMany(m => m), courseOfficerId);
 
-            var existingFileNames = db.GeneratedDocuments
+            var currentDocuments = db.GeneratedDocuments
                 .Where(g => g.IsCurrent)
-                .Select(g => new { g.RecipientId, g.TemplateId, g.FileName })
+                .Select(g => new { g.RecipientId, g.TemplateId, g.FileName, g.SourceHash, g.SourceType })
                 .AsEnumerable()
                 .GroupBy(g => (g.RecipientId, g.TemplateId))
-                .ToDictionary(g => g.Key, g => g.First().FileName);
+                .ToDictionary(g => g.Key, g => new CurrentDocument(g.First().FileName, g.First().SourceHash, g.First().SourceType));
 
             var maxVersions = db.GeneratedDocuments.IgnoreQueryFilters()
                 .GroupBy(g => new { g.RecipientId, g.TemplateId })
@@ -565,16 +578,21 @@ namespace GenDoc.Services.Generation
                     n++;
                     progress.Report($"Генерація {n} з {total}…");
 
-                    if (!regenerateExisting
-                        && existingFileNames.TryGetValue((recipient.Id, template.Id), out var existingFileName)
-                        && ExistsInOutputFolder(outputFolder, existingFileName))
-                    {
-                        skipped++;
-                        continue;
-                    }
-
                     try
                     {
+                        var sourceHash = _documentHashService.ComputeSourceHash(
+                            mappingsByTemplate[template.Id], recipient, orgSettings, manualValues, courseOfficerSignature);
+
+                        if (!regenerateExisting
+                            && currentDocuments.TryGetValue((recipient.Id, template.Id), out var current)
+                            && SkipReason(current, sourceHash, outputFolder) is { } skipReason)
+                        {
+                            skipped++;
+                            issues.Add(new RunIssue(RunIssue.PhaseDocx,
+                                $"{recipient.LastName} {recipient.FirstName}", template.Name, skipReason, IsError: false));
+                            continue;
+                        }
+
                         var values = BuildValues(mappingsByTemplate[template.Id], recipient, orgSettings, manualValues, courseOfficerSignature);
                         var intakeName = recipient.IntakeId is int id && intakeNames.TryGetValue(id, out var display)
                             ? display
@@ -617,8 +635,7 @@ namespace GenDoc.Services.Generation
                             FileName = fileName,
                             SizeBytes = bytes.LongLength,
                             ContentHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(bytes)),
-                            SourceHash = _documentHashService.ComputeSourceHash(
-                                mappingsByTemplate[template.Id], recipient, orgSettings),
+                            SourceHash = sourceHash,
                             Version = version,
                             IsCurrent = true,
                             SourceType = Models.Enums.DocumentSourceType.Generated,
@@ -631,7 +648,6 @@ namespace GenDoc.Services.Generation
                         };
                         db.GeneratedDocuments.Add(doc);
 
-                        existingFileNames[pair] = fileName;
                         generated++;
 
                         if (result.UnfilledTags.Count > 0)
@@ -700,8 +716,11 @@ namespace GenDoc.Services.Generation
                         .OrderBy(m => m.ColumnIndex)
                         .ToList();
 
+                    var courseOfficerSignature = ResolveCourseOfficerSignature(db, courseOfficerId);
+
                     var rosterEntries = roster.Select(r => (r.Id, SourceHash: ComputeRecipientSourceHash(mappings, r, orgSettings))).ToList();
-                    var rosterHash = _documentHashService.ComputeRosterHash(template.Id, rosterEntries);
+                    var rosterHash = _documentHashService.ComputeRosterHash(template.Id, rosterEntries,
+                        SheetManualFingerprint(mappings, manualValues, courseOfficerSignature, template.RepeatSheetPerDate));
 
                     var currents = db.GeneratedGroupDocuments
                         .Where(g => g.ExportTemplateId == template.Id && g.IntakeId == run.IntakeId && g.IsCurrent)
@@ -712,10 +731,9 @@ namespace GenDoc.Services.Generation
                         && ExistsInOutputFolder(outputFolder, current.FileName))
                     {
                         skipped++;
+                        issues.Add(new RunIssue(RunIssue.PhaseXlsx, string.Empty, template.Name, SkippedUpToDate, IsError: false));
                         continue;
                     }
-
-                    var courseOfficerSignature = ResolveCourseOfficerSignature(db, courseOfficerId);
 
                     if (mappings.Any(m => m.FieldKey == nameof(ExportFieldKey.CourseOfficerSignature))
                         && string.IsNullOrEmpty(courseOfficerSignature))
@@ -797,6 +815,35 @@ namespace GenDoc.Services.Generation
             }
         }
 
+        internal static string? SheetManualFingerprint(
+            List<ExportTemplateColumnMapping> mappings, Dictionary<string, string> manualValues,
+            string? courseOfficerSignature, bool repeatSheetPerDate)
+        {
+            var entries = new Dictionary<string, string>();
+
+            foreach (var mapping in mappings.Where(DocumentHashService.IsManualDriven))
+            {
+                entries[mapping.PlaceholderTag] = mapping.FieldKey == nameof(ExportFieldKey.CourseOfficerSignature)
+                    ? courseOfficerSignature ?? string.Empty
+                    : manualValues.GetValueOrDefault(mapping.PlaceholderTag, string.Empty);
+            }
+
+            if (repeatSheetPerDate)
+                entries[XlsxGenerationService.PeriodTag] = manualValues.GetValueOrDefault(XlsxGenerationService.PeriodTag, string.Empty);
+
+            return entries.Count == 0 ? null : DocumentHashService.ManualFingerprint(entries);
+        }
+
+        internal static string? GroupDocxManualFingerprint(
+            List<TemplateFieldMapping> mappings, Recipient first, OrganizationSettings? orgSettings,
+            Dictionary<string, string> manualValues)
+        {
+            var manualMappings = mappings.Where(DocumentHashService.IsManualDriven).ToList();
+            return manualMappings.Count == 0
+                ? null
+                : DocumentHashService.ManualFingerprint(BuildValues(manualMappings, first, orgSettings, manualValues));
+        }
+
         private static string ResolveHashField(ExportTemplateColumnMapping mapping, Recipient r, OrganizationSettings? org) => mapping.SourceType switch
         {
             MappingSourceType.Recipient => GetRecipientFieldValue(r, mapping.FieldKey, dateFormat: null),
@@ -854,7 +901,8 @@ namespace GenDoc.Services.Generation
                     var rosterEntries = roster
                         .Select(r => (r.Id, SourceHash: _documentHashService.ComputeSourceHash(perRecipientMappings, r, orgSettings)))
                         .ToList();
-                    var rosterHash = _documentHashService.ComputeRosterHash(template.Id, rosterEntries);
+                    var rosterHash = _documentHashService.ComputeRosterHash(template.Id, rosterEntries,
+                        GroupDocxManualFingerprint(mappings, roster[0], orgSettings, manualValues));
 
                     var currents = db.GeneratedGroupDocuments
                         .Where(g => g.TemplateId == template.Id && g.IntakeId == run.IntakeId && g.IsCurrent)
@@ -865,6 +913,7 @@ namespace GenDoc.Services.Generation
                         && ExistsInOutputFolder(outputFolder, current.FileName))
                     {
                         skipped++;
+                        issues.Add(new RunIssue(RunIssue.PhaseDocxGroup, string.Empty, template.Name, SkippedUpToDate, IsError: false));
                         continue;
                     }
 
