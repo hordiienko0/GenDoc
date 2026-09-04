@@ -87,7 +87,7 @@ namespace GenDoc.ViewModels.Personnel
             var dialog = new NodePickerDialogViewModel($"Перемістити «{moving.Name}» до…", null);
             dialog.Build(tree, vm =>
                 !vm.Path.StartsWith(moving.Path, StringComparison.Ordinal)
-                && (moving.IntakeId is null || vm.IntakeId is null || vm.IntakeId == moving.IntakeId));
+                && vm.IntakeId == moving.IntakeId);
             return dialog;
         }
 

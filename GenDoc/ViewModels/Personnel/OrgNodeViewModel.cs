@@ -57,7 +57,12 @@ namespace GenDoc.ViewModels.Personnel
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(StatusGlyph))]
+        [NotifyPropertyChangedFor(nameof(CanMove))]
         private bool isIntakeRoot;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(CanMove))]
+        private bool isIntakeSystemFolder;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(StatusGlyph))]
@@ -79,7 +84,7 @@ namespace GenDoc.ViewModels.Personnel
         public bool IsRoot => ParentId is null;
         public bool CanAddChild => true;
         public bool CanRename => !IsIntakeRoot;
-        public bool CanMove => !IsRoot && !IsIntakeRoot;
+        public bool CanMove => !IsRoot && !IsIntakeRoot && !IsIntakeSystemFolder;
         public bool CanDelete => !IsRoot;
 
         [ObservableProperty]

@@ -111,22 +111,19 @@ namespace GenDoc.Services.OrgTree
                 node.ParentId = newParentId;
                 node.Path = newPrefix;
                 node.Depth = newParent.Depth + 1;
-                node.IntakeId = newParent.IntakeId ?? node.IntakeId;
+                node.IntakeId = newParent.IntakeId;
 
                 foreach (var child in subtree)
                 {
                     child.Path = string.Concat(newPrefix, child.Path.AsSpan(oldPrefix.Length));
                     child.Depth += depthDelta;
-                    if (newParent.IntakeId is not null) child.IntakeId = newParent.IntakeId;
+                    child.IntakeId = newParent.IntakeId;
                 }
 
-                if (newParent.IntakeId is not null)
-                {
-                    var nodeIds = subtree.Select(c => c.Id).Append(node.Id).ToList();
-                    await db.Recipients
-                        .Where(r => r.OrgNodeId != null && nodeIds.Contains(r.OrgNodeId.Value))
-                        .ExecuteUpdateAsync(s => s.SetProperty(r => r.IntakeId, newParent.IntakeId));
-                }
+                var nodeIds = subtree.Select(c => c.Id).Append(node.Id).ToList();
+                await db.Recipients
+                    .Where(r => r.OrgNodeId != null && nodeIds.Contains(r.OrgNodeId.Value))
+                    .ExecuteUpdateAsync(s => s.SetProperty(r => r.IntakeId, newParent.IntakeId));
 
                 await db.SaveChangesAsync();
 

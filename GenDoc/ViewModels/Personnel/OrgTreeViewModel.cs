@@ -129,6 +129,7 @@ namespace GenDoc.ViewModels.Personnel
             {
                 vm.IntakeStatus = intake.Status;
                 vm.IsIntakeRoot = intake.RootOrgNodeId == vm.Id;
+                vm.IsIntakeSystemFolder = IsIntakeSystemFolder(vm);
                 vm.IsCompletedBranch = intake.Status == IntakeStatus.Completed;
                 vm.IsActiveIntakeBranch = intake.Status == IntakeStatus.Active;
             }
@@ -136,9 +137,24 @@ namespace GenDoc.ViewModels.Personnel
             {
                 vm.IntakeStatus = null;
                 vm.IsIntakeRoot = false;
+                vm.IsIntakeSystemFolder = false;
                 vm.IsCompletedBranch = false;
                 vm.IsActiveIntakeBranch = false;
             }
+        }
+
+        private bool IsIntakeSystemFolder(OrgNodeViewModel vm)
+        {
+            if (vm.ParentId is not int parentId || !_byId.TryGetValue(parentId, out var parent)
+                || parent.IntakeId != vm.IntakeId)
+                return false;
+
+            if (parent.IsIntakeRoot)
+                return UkrainianCollation.IgnoreCase.Equals(vm.Name, IntakeFolderNames.All);
+
+            return parent.IsIntakeSystemFolder
+                && UkrainianCollation.IgnoreCase.Equals(parent.Name, IntakeFolderNames.All)
+                && IntakeFitnessFolders.AllFolderNames.Any(n => UkrainianCollation.IgnoreCase.Equals(n, vm.Name));
         }
 
         public async Task RefreshCountsAsync()
@@ -325,7 +341,7 @@ namespace GenDoc.ViewModels.Personnel
         {
             node.Path = $"{parent.Path}{node.Id}/";
             node.Depth = parent.Depth + 1;
-            if (parent.IntakeId is not null) node.IntakeId = parent.IntakeId;
+            node.IntakeId = parent.IntakeId;
             ApplyIntakeFlags(node);
             foreach (var child in node.Children)
                 RecomputeSubtreePaths(child, node);
