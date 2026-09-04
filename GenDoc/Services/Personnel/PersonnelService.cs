@@ -200,6 +200,89 @@ namespace GenDoc.Services.Personnel
             }
         }
 
+        public async Task<List<DeletedPersonInfo>> GetDeletedAsync()
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var rows = await db.Recipients.IgnoreQueryFilters()
+                .Where(r => r.DeletedAt != null)
+                .Select(r => new
+                {
+                    r.Id, r.LastName, r.FirstName, r.MiddleName, r.Rank, r.DeletedAt, r.DeletedBy,
+                    Folder = r.OrgNodeId != null
+                        ? db.OrgNodes.IgnoreQueryFilters().Where(n => n.Id == r.OrgNodeId).Select(n => n.Name).FirstOrDefault()
+                        : null,
+                    FolderAlive = r.OrgNodeId != null
+                        && db.OrgNodes.IgnoreQueryFilters().Any(n => n.Id == r.OrgNodeId && n.DeletedAt == null)
+                })
+                .OrderByDescending(r => r.DeletedAt)
+                .ToListAsync();
+
+            return rows.Select(r => new DeletedPersonInfo(
+                    r.Id,
+                    string.Join(' ', new[] { r.LastName, r.FirstName, r.MiddleName }.Where(p => !string.IsNullOrWhiteSpace(p))),
+                    r.Rank, r.Folder, r.FolderAlive, r.DeletedAt!.Value, r.DeletedBy))
+                .ToList();
+        }
+
+        public async Task<PersonRestoreResult> RestoreAsync(int id)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var recipient = await db.Recipients.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(r => r.Id == id && r.DeletedAt != null);
+            if (recipient is null)
+                return new PersonRestoreResult(false, "Запис уже відновлено або його немає в кошику");
+
+            if (recipient.ServiceNumber.Length > 0)
+            {
+                var duplicate = await db.Recipients
+                    .FirstOrDefaultAsync(r => r.ServiceNumber == recipient.ServiceNumber && r.Id != recipient.Id);
+                if (duplicate is not null)
+                    return new PersonRestoreResult(false,
+                        $"Особовий номер {recipient.ServiceNumber} вже використовує {duplicate.LastName} {duplicate.FirstName} - " +
+                        "спершу змініть номер у тій картці");
+            }
+
+            string? notice = null;
+            var folderAlive = recipient.OrgNodeId is int nodeId && await db.OrgNodes.AnyAsync(n => n.Id == nodeId);
+            if (!folderAlive)
+            {
+                var formerName = recipient.OrgNodeId is int formerId
+                    ? await db.OrgNodes.IgnoreQueryFilters().Where(n => n.Id == formerId).Select(n => n.Name).FirstOrDefaultAsync()
+                    : null;
+                var target = await ResolveFallbackFolderAsync(db, recipient.IntakeId);
+                if (target is null)
+                    return new PersonRestoreResult(false, "Немає папки, куди повернути особу - створіть папку в дереві");
+
+                recipient.OrgNodeId = target.Id;
+                recipient.IntakeId = target.IntakeId;
+                notice = formerName is null
+                    ? $"Особу повернуто до «{target.Name}»"
+                    : $"Папку «{formerName}» видалено - особу повернуто до «{target.Name}»";
+            }
+
+            recipient.DeletedAt = null;
+            recipient.DeletedBy = null;
+            _auditLogService.Log(db, "Відновлено", "Recipient", recipient.Id, null, BuildSnapshot(recipient), notice);
+            await db.SaveChangesAsync();
+
+            return new PersonRestoreResult(true, notice);
+        }
+
+        private static async Task<OrgNode?> ResolveFallbackFolderAsync(AppDbContext db, int? intakeId)
+        {
+            if (intakeId is int id)
+            {
+                var intakeNodes = await db.OrgNodes.Where(n => n.IntakeId == id).ToListAsync();
+                var all = intakeNodes.FirstOrDefault(n => UkrainianCollation.IgnoreCase.Equals(n.Name, IntakeFolderNames.All));
+                if (all is not null) return all;
+            }
+
+            return await db.OrgNodes
+                .Where(n => n.ParentId == null)
+                .OrderBy(n => n.SortOrder).ThenBy(n => n.Id)
+                .FirstOrDefaultAsync();
+        }
+
         private static async Task<int?> ResolveRoomIdAsync(AppDbContext db, string? building, string? number)
         {
             if (string.IsNullOrWhiteSpace(building) || string.IsNullOrWhiteSpace(number)) return null;
