@@ -577,6 +577,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         MigrateGeneratedGroupDocumentsForDocxSupport(db);
         BackfillRunIntakeIds(db);
         BackfillGroupDocumentIntakeIds(db);
+        HealUnitFullNameMappings(db);
 
         AddMissingColumns(db, "AppSettings", AppSettingsColumnsV13);
         AddMissingColumns(db, "Recipients", RecipientColumnsV14);
@@ -1480,6 +1481,38 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                                        AND m."IntakeId" IS d."IntakeId"));
             """;
         promote.ExecuteNonQuery();
+    }
+
+    private static void HealUnitFullNameMappings(AppDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        var wasClosed = connection.State != System.Data.ConnectionState.Open;
+        if (wasClosed) connection.Open();
+        try { HealUnitFullNameMappings(connection); }
+        finally { if (wasClosed) connection.Close(); }
+    }
+
+    internal static void HealUnitFullNameMappings(System.Data.Common.DbConnection connection)
+    {
+        HealUnitFullNameColumn(connection, "TemplateFieldMappings", "FieldName");
+        HealUnitFullNameColumn(connection, "ExportTemplateColumnMappings", "FieldKey");
+    }
+
+    private static void HealUnitFullNameColumn(System.Data.Common.DbConnection connection, string table, string fieldColumn)
+    {
+        if (!TableExists(connection, table)) return;
+        if (!GetExistingColumns(connection, table).IsSupersetOf(new[] { "PlaceholderTag", fieldColumn })) return;
+
+        using var heal = connection.CreateCommand();
+        heal.CommandText = $"""
+            UPDATE "{table}" SET "{fieldColumn}" = 'UnitFullName'
+            WHERE "PlaceholderTag" = $tag AND "{fieldColumn}" = 'UnitNumber';
+            """;
+        var tag = heal.CreateParameter();
+        tag.ParameterName = "$tag";
+        tag.Value = "{{назва_вч}}";
+        heal.Parameters.Add(tag);
+        heal.ExecuteNonQuery();
     }
 
     private static bool TableExists(System.Data.Common.DbConnection connection, string tableName)

@@ -295,9 +295,17 @@ namespace GenDoc.Services.Generation
                 .Where(pt => pt.GenerationPackageId == packageId)
                 .Select(pt => pt.ExportTemplateId);
 
+            var templateIds = db.GenerationPackageTemplates
+                .Where(pt => pt.GenerationPackageId == packageId)
+                .Select(pt => pt.TemplateId);
+
             return db.ExportTemplateColumnMappings.Any(m =>
-                exportTemplateIds.Contains(m.ExportTemplateId)
-                && m.FieldKey == nameof(ExportFieldKey.CourseOfficerSignature));
+                       exportTemplateIds.Contains(m.ExportTemplateId)
+                       && m.FieldKey == nameof(ExportFieldKey.CourseOfficerSignature))
+                   || db.TemplateFieldMappings.Any(m =>
+                       templateIds.Contains(m.TemplateId)
+                       && m.SourceType == MappingSourceType.Recipient
+                       && m.FieldName == nameof(ExportFieldKey.CourseOfficerSignature));
         }
 
         public LastRunInfo? GetLastRun()
@@ -368,7 +376,7 @@ namespace GenDoc.Services.Generation
             var usedFileNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var runStamp = ResolveRunStamp(outputFolder);
 
-            var docx = RunDocxPhase(db, templates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress);
+            var docx = RunDocxPhase(db, templates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress, courseOfficerId);
             var xlsx = RunXlsxPhase(db, exportLinks, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress, courseOfficerId);
             var docxGroup = RunDocxGroupPhase(db, groupDocxTemplates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress);
 
@@ -444,7 +452,7 @@ namespace GenDoc.Services.Generation
             var runStamp = ResolveRunStamp(outputFolder);
 
             var docx = RunDocxPhase(db, templates, recipients, orgSettings, run, manualValues, outputFolder,
-                usedFileNames, runStamp, regenerateExisting: true, progress);
+                usedFileNames, runStamp, regenerateExisting: true, progress, courseOfficerId);
             var xlsx = RunXlsxPhase(db, exportLinks, recipients, orgSettings, run, manualValues, outputFolder,
                 usedFileNames, runStamp, regenerateExisting: true, progress, courseOfficerId);
             var docxGroup = RunDocxGroupPhase(db, groupTemplates, recipients, orgSettings, run, manualValues,
@@ -513,11 +521,14 @@ namespace GenDoc.Services.Generation
             HashSet<string> usedFileNames,
             string runStamp,
             bool regenerateExisting,
-            IProgress<string> progress)
+            IProgress<string> progress,
+            int? courseOfficerId)
         {
             var mappingsByTemplate = templates.ToDictionary(
                 t => t.Id,
                 t => db.TemplateFieldMappings.Where(m => m.TemplateId == t.Id).ToList());
+
+            var courseOfficerSignature = CourseOfficerSignatureFor(db, mappingsByTemplate.Values.SelectMany(m => m), courseOfficerId);
 
             var existingFileNames = db.GeneratedDocuments
                 .Where(g => g.IsCurrent)
@@ -564,7 +575,7 @@ namespace GenDoc.Services.Generation
 
                     try
                     {
-                        var values = BuildValues(mappingsByTemplate[template.Id], recipient, orgSettings, manualValues);
+                        var values = BuildValues(mappingsByTemplate[template.Id], recipient, orgSettings, manualValues, courseOfficerSignature);
                         var intakeName = recipient.IntakeId is int id && intakeNames.TryGetValue(id, out var display)
                             ? display
                             : null;
@@ -704,9 +715,7 @@ namespace GenDoc.Services.Generation
                         continue;
                     }
 
-                    var courseOfficerSignature = courseOfficerId is int chosenId
-                        ? Services.CourseOfficerSignature.BuildFor(db, chosenId)
-                        : Services.CourseOfficerSignature.Build(db);
+                    var courseOfficerSignature = ResolveCourseOfficerSignature(db, courseOfficerId);
 
                     if (mappings.Any(m => m.FieldKey == nameof(ExportFieldKey.CourseOfficerSignature))
                         && string.IsNullOrEmpty(courseOfficerSignature))
@@ -934,16 +943,35 @@ namespace GenDoc.Services.Generation
             return string.Join(" / ", names);
         }
 
+        private static string? ResolveCourseOfficerSignature(AppDbContext db, int? courseOfficerId)
+            => courseOfficerId is int chosenId
+                ? Services.CourseOfficerSignature.BuildFor(db, chosenId)
+                : Services.CourseOfficerSignature.Build(db);
+
+        internal static string? CourseOfficerSignatureFor(
+            AppDbContext db, IEnumerable<TemplateFieldMapping> mappings, int? courseOfficerId = null)
+            => mappings.Any(m => m.SourceType == MappingSourceType.Recipient
+                                 && m.FieldName == nameof(ExportFieldKey.CourseOfficerSignature))
+                ? ResolveCourseOfficerSignature(db, courseOfficerId)
+                : null;
+
         internal static Dictionary<string, string> BuildValues(
-            List<TemplateFieldMapping> mappings, Recipient recipient, OrganizationSettings? org, Dictionary<string, string> manualValues)
+            List<TemplateFieldMapping> mappings, Recipient recipient, OrganizationSettings? org,
+            Dictionary<string, string> manualValues, string? courseOfficerSignature = null)
         {
             var values = new Dictionary<string, string>();
+
+            var gradeSlots = mappings
+                .Where(m => m.SourceType == MappingSourceType.Recipient && m.FieldName == nameof(ExportFieldKey.GradeRandom34))
+                .Select(m => GradeSlot(m.PlaceholderTag))
+                .Distinct()
+                .ToList();
 
             foreach (var mapping in mappings)
             {
                 values[mapping.PlaceholderTag] = mapping.SourceType switch
                 {
-                    MappingSourceType.Recipient => GetRecipientFieldValue(recipient, mapping.FieldName, mapping.DateFormat),
+                    MappingSourceType.Recipient => ResolveRecipientValue(mapping, recipient, manualValues, courseOfficerSignature, gradeSlots),
                     MappingSourceType.Organization => GetOrganizationFieldValue(org, mapping.FieldName),
                     MappingSourceType.Manual => manualValues.TryGetValue(mapping.PlaceholderTag, out var manualValue) ? manualValue : string.Empty,
                     _ => string.Empty
@@ -951,6 +979,31 @@ namespace GenDoc.Services.Generation
             }
 
             return values;
+        }
+
+        private static string ResolveRecipientValue(
+            TemplateFieldMapping mapping, Recipient recipient, Dictionary<string, string> manualValues,
+            string? courseOfficerSignature, IReadOnlyList<int> gradeSlots) => mapping.FieldName switch
+        {
+            nameof(ExportFieldKey.CourseOfficerSignature) => courseOfficerSignature ?? string.Empty,
+            nameof(ExportFieldKey.RowNumber) => manualValues.TryGetValue(mapping.PlaceholderTag, out var rowNumber) ? rowNumber : string.Empty,
+            nameof(ExportFieldKey.GradeRandom34) => XlsxGenerationService
+                .ComputeGradeRandom34(recipient.Id, GradeSlot(mapping.PlaceholderTag))
+                .ToString(CultureInfo.InvariantCulture),
+            nameof(ExportFieldKey.GradeOverall34) => XlsxGenerationService
+                .ComputeGradeOverall34(recipient.Id, gradeSlots)?
+                .ToString(CultureInfo.InvariantCulture) ?? string.Empty,
+            _ => GetRecipientFieldValue(recipient, mapping.FieldName, mapping.DateFormat)
+        };
+
+        internal static int GradeSlot(string placeholderTag)
+        {
+            var inner = placeholderTag.Trim('{', '}').Trim();
+            var underscore = inner.LastIndexOf('_');
+            return underscore >= 0
+                   && int.TryParse(inner[(underscore + 1)..], NumberStyles.None, CultureInfo.InvariantCulture, out var slot)
+                ? slot
+                : 0;
         }
 
         private static string GetRecipientFieldValue(Recipient r, string? fieldName, string? dateFormat) => fieldName switch
@@ -992,7 +1045,6 @@ namespace GenDoc.Services.Generation
             "RoomDisplay" => FormatRoom(r.Room),
             "ShortName" => Services.NameFormatter.ShortName(r.LastName, r.FirstName, r.MiddleName),
             "FitnessCategory" => r.FitnessCategory ?? string.Empty,
-            "RowNumber" => string.Empty,
             "RankAccusative" => r.RankAccusative is { Length: > 0 }
                 ? r.RankAccusative
                 : Services.UkrainianGrammar.Accusative(r.Rank, Models.Enums.GrammaticalKind.Rank, Services.UkrainianGrammar.Detect(r)),

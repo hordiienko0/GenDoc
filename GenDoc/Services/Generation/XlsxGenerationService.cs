@@ -236,8 +236,7 @@ namespace GenDoc.Services.Generation
                                 return string.Empty;
                             }
 
-                            var avg = gradeRandomColumns.Average(col => ComputeGradeRandom34(person.Id, col));
-                            return Math.Round(avg, MidpointRounding.AwayFromZero)
+                            return ComputeGradeOverall34(person.Id, gradeRandomColumns)!.Value
                                 .ToString(CultureInfo.InvariantCulture);
                         }
 
@@ -296,6 +295,14 @@ namespace GenDoc.Services.Generation
 
                 return 3 + (int)(hash % 2);
             }
+        }
+
+        internal static int? ComputeGradeOverall34(int recipientId, IReadOnlyList<int> columns)
+        {
+            if (columns.Count == 0) return null;
+
+            var average = columns.Average(column => ComputeGradeRandom34(recipientId, column));
+            return (int)Math.Round(average, MidpointRounding.AwayFromZero);
         }
 
         private static string ResolveCourseOfficerSignature(

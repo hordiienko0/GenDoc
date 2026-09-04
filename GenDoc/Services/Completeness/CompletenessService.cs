@@ -211,7 +211,8 @@ namespace GenDoc.Services.Completeness
 
             var mappings = await db.TemplateFieldMappings.Where(m => m.TemplateId == templateId).ToListAsync();
             var orgSettings = await db.OrganizationSettings.FirstOrDefaultAsync();
-            var values = GenerationService.BuildValues(mappings, recipient, orgSettings, manualValues);
+            var values = GenerationService.BuildValues(mappings, recipient, orgSettings, manualValues,
+                GenerationService.CourseOfficerSignatureFor(db, mappings));
 
             var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.docx");
             try

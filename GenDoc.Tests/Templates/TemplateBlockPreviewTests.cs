@@ -49,7 +49,7 @@ public class TemplateBlockPreviewTests
     }
 
     [Fact]
-    public void Empty_database_value_shows_the_tag_itself()
+    public void Empty_database_value_shows_the_empty_marker_in_the_warning_style()
     {
         var document = new TemplateBuilderDocument(new[]
         {
@@ -61,8 +61,24 @@ public class TemplateBlockPreviewTests
             ["{{група}}"] = string.Empty
         })).Runs;
 
-        var value = Assert.Single(runs.Where(r => r.Kind == PreviewRunKind.DbValue));
-        Assert.Equal("{{група}}", value.Text);
+        Assert.Empty(runs.Where(r => r.Kind == PreviewRunKind.DbValue));
+        var empty = Assert.Single(runs.Where(r => r.Kind == PreviewRunKind.ManualValue));
+        Assert.Equal(TemplateBlockPreview.EmptyPlaceholder, empty.Text);
+        Assert.Equal("‹порожньо›", empty.Text);
+    }
+
+    [Fact]
+    public void Database_tag_without_any_value_also_shows_the_empty_marker()
+    {
+        var document = new TemplateBuilderDocument(new[]
+        {
+            new TemplateBlock(TemplateBlockKind.Paragraph, "{{курсовий_офіцер}}")
+        });
+
+        var run = Assert.Single(Assert.Single(Lines(document, NoValues)).Runs);
+
+        Assert.Equal(PreviewRunKind.ManualValue, run.Kind);
+        Assert.Equal(TemplateBlockPreview.EmptyPlaceholder, run.Text);
     }
 
     [Fact]

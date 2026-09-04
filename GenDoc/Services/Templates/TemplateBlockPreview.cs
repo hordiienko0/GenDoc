@@ -37,6 +37,7 @@ namespace GenDoc.Services.Templates
     public static class TemplateBlockPreview
     {
         public const string ManualPlaceholder = "‹вводиться при генерації›";
+        public const string EmptyPlaceholder = "‹порожньо›";
 
         private const string SignatureRule = "_______________";
 
@@ -242,11 +243,9 @@ namespace GenDoc.Services.Templates
             if (sourceType == MappingSourceType.Manual)
                 return new PreviewRun(ManualPlaceholder, PreviewRunKind.ManualValue);
 
-            var value = values.TryGetValue(tag, out var resolved) && !string.IsNullOrWhiteSpace(resolved)
-                ? resolved
-                : tag;
-
-            return new PreviewRun(value, PreviewRunKind.DbValue);
+            return values.TryGetValue(tag, out var resolved) && !string.IsNullOrWhiteSpace(resolved)
+                ? new PreviewRun(resolved, PreviewRunKind.DbValue)
+                : new PreviewRun(EmptyPlaceholder, PreviewRunKind.ManualValue);
         }
 
         private static IEnumerable<string> SplitLines(string? text)

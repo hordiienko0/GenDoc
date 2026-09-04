@@ -95,7 +95,8 @@ namespace GenDoc.Services.Templates
                 .ToList();
 
             return GenerationService.BuildValues(
-                mappings, recipient, organization, new Dictionary<string, string>());
+                mappings, recipient, organization, new Dictionary<string, string>(),
+                GenerationService.CourseOfficerSignatureFor(db, mappings));
         }
 
         public byte[] BuildDocx(TemplateBuilderDocument document)

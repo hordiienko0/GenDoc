@@ -24,6 +24,17 @@ public class PlaceholderTagMapsTests
     }
 
     [Theory]
+    [InlineData("{{номер_вч}}", "UnitNumber")]
+    [InlineData("{{назва_вч}}", "UnitFullName")]
+    public void Classify_UnitTags_DistinguishNumberFromFullName(string tag, string expectedField)
+    {
+        var (sourceType, fieldName) = PlaceholderTagMaps.Classify(tag);
+
+        Assert.Equal(MappingSourceType.Organization, sourceType);
+        Assert.Equal(expectedField, fieldName);
+    }
+
+    [Theory]
     [InlineData("{{зброя}}")]
     [InlineData("{{курсовий_офіцер}}")]
     [InlineData("{{оцінка_загальна}}")]

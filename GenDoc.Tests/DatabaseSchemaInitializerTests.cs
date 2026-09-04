@@ -553,6 +553,50 @@ public class DatabaseSchemaInitializerTests
     }
 
     [Fact]
+    public void HealUnitFullNameMappings_RewritesOnlyTheOldUnitNumberMappingOfNazvaVch()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        Exec(connection, """
+            CREATE TABLE "TemplateFieldMappings" ("Id" INTEGER PRIMARY KEY, "PlaceholderTag" TEXT NOT NULL, "SourceType" INTEGER NOT NULL, "FieldName" TEXT NULL);
+            CREATE TABLE "ExportTemplateColumnMappings" ("Id" INTEGER PRIMARY KEY, "PlaceholderTag" TEXT NULL, "SourceType" INTEGER NOT NULL, "FieldKey" TEXT NOT NULL);
+            INSERT INTO "TemplateFieldMappings" VALUES
+                (1, '{{назва_вч}}', 1, 'UnitNumber'),
+                (2, '{{номер_вч}}', 1, 'UnitNumber'),
+                (3, '{{назва_вч}}', 1, 'City'),
+                (4, '{{назва_вч}}', 2, NULL);
+            INSERT INTO "ExportTemplateColumnMappings" VALUES
+                (1, '{{назва_вч}}', 1, 'UnitNumber'),
+                (2, '{{номер_вч}}', 1, 'UnitNumber'),
+                (3, NULL, 0, 'RowNumber');
+            """);
+
+        DatabaseSchemaInitializer.HealUnitFullNameMappings((DbConnection)connection);
+        DatabaseSchemaInitializer.HealUnitFullNameMappings((DbConnection)connection);
+
+        object Field(int id) => Scalar(connection, $"""SELECT "FieldName" FROM "TemplateFieldMappings" WHERE "Id" = {id}""");
+        object Key(int id) => Scalar(connection, $"""SELECT "FieldKey" FROM "ExportTemplateColumnMappings" WHERE "Id" = {id}""");
+
+        Assert.Equal("UnitFullName", Field(1));
+        Assert.Equal("UnitNumber", Field(2));
+        Assert.Equal("City", Field(3));
+        Assert.Equal(DBNull.Value, Field(4));
+
+        Assert.Equal("UnitFullName", Key(1));
+        Assert.Equal("UnitNumber", Key(2));
+        Assert.Equal("RowNumber", Key(3));
+    }
+
+    [Fact]
+    public void HealUnitFullNameMappings_WithoutTables_IsANoOp()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+
+        DatabaseSchemaInitializer.HealUnitFullNameMappings((DbConnection)connection);
+    }
+
+    [Fact]
     public void MigrateGenerationPackageRunsForAdHocRuns_MakesPackageNullableAndKeepsRows()
     {
         using var connection = new SqliteConnection("Data Source=:memory:");

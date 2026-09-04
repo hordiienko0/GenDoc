@@ -54,7 +54,7 @@ namespace GenDoc.Services.Templates
         public static readonly IReadOnlyDictionary<string, string> OrganizationTagMap = new Dictionary<string, string>
         {
             ["номер_вч"] = "UnitNumber",
-            ["назва_вч"] = "UnitNumber",
+            ["назва_вч"] = "UnitFullName",
             ["місто"] = "City",
             ["звання_командира"] = "CommanderRank",
             ["піб_командира"] = "CommanderFullName",
