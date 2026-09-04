@@ -192,7 +192,9 @@ namespace GenDoc.ViewModels.Personnel
             DocumentsLoading = true;
             try
             {
-                var packageId = await _completenessService.GetDefaultPackageIdAsync();
+                var packageId = IntakeId is int intakeId
+                    ? await _completenessService.GetDefaultPackageIdAsync(intakeId)
+                    : await _completenessService.GetDefaultPackageIdAsync();
                 _packageId = packageId;
                 if (packageId is null)
                 {

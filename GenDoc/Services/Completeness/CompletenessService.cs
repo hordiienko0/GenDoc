@@ -438,6 +438,37 @@ namespace GenDoc.Services.Completeness
             return await db.GenerationPackages.OrderBy(p => p.Name).Select(p => (int?)p.Id).FirstOrDefaultAsync();
         }
 
+        public async Task<int?> GetDefaultPackageIdAsync(int intakeId)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var intake = await db.Intakes.FirstOrDefaultAsync(i => i.Id == intakeId);
+            if (intake is null) return await GetDefaultPackageIdAsync();
+
+            if (intake.DefaultPackageId is int own && await db.GenerationPackages.AnyAsync(p => p.Id == own))
+                return own;
+
+            var used = await db.GenerationPackageRuns
+                .Where(r => r.IntakeId == intakeId && r.GenerationPackageId != null)
+                .OrderByDescending(r => r.RunAt).ThenByDescending(r => r.Id)
+                .Select(r => r.GenerationPackageId)
+                .ToListAsync();
+            int? resolved = null;
+            foreach (var candidate in used.Distinct())
+            {
+                if (candidate is int c && await db.GenerationPackages.AnyAsync(p => p.Id == c))
+                {
+                    resolved = c;
+                    break;
+                }
+            }
+            resolved ??= await GetDefaultPackageIdAsync();
+            if (resolved is null) return null;
+
+            intake.DefaultPackageId = resolved;
+            await db.SaveChangesAsync();
+            return resolved;
+        }
+
         public async Task<int> GetBadgeCountAsync()
         {
             var breakdown = await GetBadgeBreakdownAsync();
@@ -449,7 +480,7 @@ namespace GenDoc.Services.Completeness
             var intake = _intakeAccessor.ActiveIntake;
             if (intake is null) return (0, 0);
 
-            var packageId = await GetDefaultPackageIdAsync();
+            var packageId = await GetDefaultPackageIdAsync(intake.Id);
             if (packageId is not int pid) return (0, 0);
 
             var data = await BuildAsync(intake.Id, pid);

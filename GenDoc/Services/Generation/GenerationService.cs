@@ -113,6 +113,9 @@ namespace GenDoc.Services.Generation
             db.GenerationPackages.Add(package);
             db.SaveChanges();
 
+            foreach (var intake in db.Intakes.Where(i => i.DefaultPackageId == null && i.Status != IntakeStatus.Completed))
+                intake.DefaultPackageId = package.Id;
+
             _auditLogService.LogCreate(db, "GenerationPackage", package.Id, package.Name,
                 $"Шаблонів: {templateIds.Count}, XLSX: {exportTemplates.Count}");
             db.SaveChanges();
@@ -381,6 +384,11 @@ namespace GenDoc.Services.Generation
                 IntakeId = RunIntakeResolver.Resolve(recipients.Select(r => r.IntakeId))
             };
             db.GenerationPackageRuns.Add(run);
+            if (run.IntakeId is int runIntakeId)
+            {
+                var intake = db.Intakes.FirstOrDefault(i => i.Id == runIntakeId && i.DefaultPackageId == null);
+                if (intake is not null) intake.DefaultPackageId = packageId;
+            }
             db.SaveChanges();
 
             Directory.CreateDirectory(outputFolder);

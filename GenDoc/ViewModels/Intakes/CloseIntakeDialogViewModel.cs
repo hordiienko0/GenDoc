@@ -72,9 +72,10 @@ namespace GenDoc.ViewModels.Intakes
         {
             if (_info is null) return;
             var intakeId = _info.IntakeId;
+            var packageId = _info.PackageId;
             CloseDialog(false);
             WeakReferenceMessenger.Default.Send(new NavigateToSectionMessage(
-                MainViewModel.CompletenessSectionTitle, new IntakeNavigationPayload(intakeId, 0, null)));
+                MainViewModel.CompletenessSectionTitle, new IntakeNavigationPayload(intakeId, 0, packageId)));
         }
 
         public IntakeCloseRequest BuildRequest() => new(

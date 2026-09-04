@@ -228,7 +228,9 @@ namespace GenDoc.ViewModels.Completeness
             foreach (var (id, name) in options.Packages)
                 PackageOptions.Add(new PackageFilterOption(id, name));
 
-            var defaultId = await _completenessService.GetDefaultPackageIdAsync();
+            var defaultId = SelectedIntake is { } intake
+                ? await _completenessService.GetDefaultPackageIdAsync(intake.Id)
+                : await _completenessService.GetDefaultPackageIdAsync();
             SelectedPackage = defaultId is int d
                 ? PackageOptions.FirstOrDefault(o => o.Id == d) ?? PackageOptions.FirstOrDefault()
                 : PackageOptions.FirstOrDefault();

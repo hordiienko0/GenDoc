@@ -196,11 +196,17 @@ namespace GenDoc.Services.Intakes
                 .Select(g => new { IntakeId = g.Key, Count = g.Count() })
                 .ToDictionaryAsync(x => x.IntakeId, x => x.Count);
 
-            return intakes.Select(i => new IntakeOverview(
-                i.Id, i.Number, i.DisplayNumber, i.Status, i.DateStart, i.DateEnd, i.DateClosed,
-                i.RootOrgNodeId, peopleCounts.GetValueOrDefault(i.Id),
-                CompletenessPercent: -1, IncompletePeopleCount: -1,
-                HasPackage: i.DefaultPackageId is not null)).ToList();
+            var completenessService = _serviceProvider.GetRequiredService<Completeness.ICompletenessService>();
+            var overviews = new List<IntakeOverview>(intakes.Count);
+            foreach (var i in intakes)
+            {
+                overviews.Add(new IntakeOverview(
+                    i.Id, i.Number, i.DisplayNumber, i.Status, i.DateStart, i.DateEnd, i.DateClosed,
+                    i.RootOrgNodeId, peopleCounts.GetValueOrDefault(i.Id),
+                    CompletenessPercent: -1, IncompletePeopleCount: -1,
+                    PackageId: await completenessService.GetDefaultPackageIdAsync(i.Id)));
+            }
+            return overviews;
         }
 
         public async Task<IReadOnlyList<int>> GetYearsAsync()
@@ -220,10 +226,11 @@ namespace GenDoc.Services.Intakes
                 .Select(r => r.RoomId!.Value).Distinct().CountAsync();
 
             var incompletePeopleCount = 0;
-            if (intake.DefaultPackageId is int packageId)
+            var completenessService = _serviceProvider.GetRequiredService<Completeness.ICompletenessService>();
+            var packageId = await completenessService.GetDefaultPackageIdAsync(intakeId);
+            if (packageId is int pid)
             {
-                var completenessService = _serviceProvider.GetRequiredService<Completeness.ICompletenessService>();
-                var summary = await completenessService.GetIntakeSummaryAsync(intakeId, packageId);
+                var summary = await completenessService.GetIntakeSummaryAsync(intakeId, pid);
                 incompletePeopleCount = summary.IncompletePeople;
             }
 
@@ -236,7 +243,7 @@ namespace GenDoc.Services.Intakes
             var targets = new List<(int NodeId, string Name)> { (-1, "Створити папку «Випускники»") };
             targets.AddRange(graduateNodes.Select(n => (n.Id, n.Name)));
 
-            return new IntakeCloseInfo(intakeId, intake.DisplayNumber, peopleCount, incompletePeopleCount, occupiedRoomCount, targets);
+            return new IntakeCloseInfo(intakeId, intake.DisplayNumber, peopleCount, incompletePeopleCount, occupiedRoomCount, targets, packageId);
         }
 
         public async Task CloseAsync(IntakeCloseRequest request)

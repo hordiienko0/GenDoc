@@ -12,6 +12,7 @@ namespace GenDoc.ViewModels.Intakes
             Id = overview.Id;
             RootOrgNodeId = overview.RootOrgNodeId;
             Status = overview.Status;
+            PackageId = overview.PackageId;
             HasPackage = overview.HasPackage;
             DateStart = overview.DateStart;
             DateEnd = overview.DateEnd;
@@ -21,13 +22,14 @@ namespace GenDoc.ViewModels.Intakes
             CodeText = $"· {overview.DisplayNumber}";
 
             peopleCount = overview.PeopleCount;
-            isSummaryLoading = overview.CompletenessPercent < 0;
+            isSummaryLoading = HasPackage && overview.CompletenessPercent < 0;
             completenessPercent = Math.Max(overview.CompletenessPercent, 0);
             incompletePeopleCount = overview.IncompletePeopleCount;
         }
 
         public int Id { get; }
         public int RootOrgNodeId { get; }
+        public int? PackageId { get; }
         public IntakeStatus Status { get; }
         public bool HasPackage { get; }
         public DateOnly DateStart { get; }

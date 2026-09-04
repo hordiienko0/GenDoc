@@ -150,11 +150,7 @@ namespace GenDoc.ViewModels.Intakes
             foreach (var card in cards)
             {
                 if (token.IsCancellationRequested) return;
-                if (!card.HasPackage) continue;
-
-                var intake = await _intakeService.GetByIdAsync(card.Id);
-                if (token.IsCancellationRequested) return;
-                if (intake?.DefaultPackageId is not int packageId) continue;
+                if (card.PackageId is not int packageId) continue;
 
                 var summary = await _completenessService.GetIntakeSummaryAsync(card.Id, packageId);
                 if (token.IsCancellationRequested) return;
@@ -183,7 +179,7 @@ namespace GenDoc.ViewModels.Intakes
             if (card is null) return;
             WeakReferenceMessenger.Default.Send(new NavigateToSectionMessage(
                 MainViewModel.CompletenessSectionTitle,
-                new IntakeNavigationPayload(card.Id, card.RootOrgNodeId, null)));
+                new IntakeNavigationPayload(card.Id, card.RootOrgNodeId, card.PackageId)));
         }
 
         [RelayCommand]
@@ -192,7 +188,7 @@ namespace GenDoc.ViewModels.Intakes
             if (card is null) return;
             WeakReferenceMessenger.Default.Send(new NavigateToSectionMessage(
                 MainViewModel.PersonnelSectionTitle,
-                new IntakeNavigationPayload(card.Id, card.RootOrgNodeId, null)));
+                new IntakeNavigationPayload(card.Id, card.RootOrgNodeId, card.PackageId)));
         }
 
         [RelayCommand]
@@ -201,7 +197,7 @@ namespace GenDoc.ViewModels.Intakes
             if (card is null) return;
             WeakReferenceMessenger.Default.Send(new NavigateToSectionMessage(
                 MainViewModel.GenerationSectionTitle,
-                new IntakeNavigationPayload(card.Id, card.RootOrgNodeId, null)));
+                new IntakeNavigationPayload(card.Id, card.RootOrgNodeId, card.PackageId)));
         }
 
         [RelayCommand]

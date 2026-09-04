@@ -45,6 +45,7 @@ namespace GenDoc.Services.Completeness
 
         Task<(int Missing, int Stale)> GetBadgeBreakdownAsync();
         Task<int?> GetDefaultPackageIdAsync();
+        Task<int?> GetDefaultPackageIdAsync(int intakeId);
 
         Task<List<RecipientDocStatus>> GetRecipientStatusAsync(int recipientId, int packageId);
         Task<List<PackageGroupDocumentStatus>> GetPackageGroupDocumentsAsync(int packageId, int? intakeId, int? recipientId = null);

@@ -62,7 +62,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     {
         if (payload is not IntakeNavigationPayload nav) return;
 
-        var packageId = nav.PackageId ?? await _completenessService.GetDefaultPackageIdAsync();
+        var packageId = nav.PackageId ?? await _completenessService.GetDefaultPackageIdAsync(nav.IntakeId);
         if (packageId is not int id) return;
 
         var item = Packages.FirstOrDefault(p => p.Id == id);
