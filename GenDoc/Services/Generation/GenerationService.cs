@@ -622,6 +622,11 @@ namespace GenDoc.Services.Generation
 
                         existingFileNames[pair] = fileName;
                         generated++;
+
+                        if (result.UnfilledTags.Count > 0)
+                            issues.Add(new RunIssue(RunIssue.PhaseDocx,
+                                $"{recipient.LastName} {recipient.FirstName}", template.Name,
+                                $"не заповнено теги - {string.Join(", ", result.UnfilledTags)}", IsError: false));
                     }
                     catch (Exception ex)
                     {

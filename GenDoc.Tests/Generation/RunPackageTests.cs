@@ -394,6 +394,41 @@ public class RunPackageTests : IDisposable
         Assert.Single(Directory.GetFiles(Path.Combine(_folder, "Набір №29"), "*.docx", SearchOption.AllDirectories));
     }
 
+    [Fact]
+    public void RunPackage_UnfilledTagsInPersonalDocx_AreReportedAsInformationalIssues()
+    {
+        using var db = new TestDb();
+        var (packageId, _) = SeedPackage(db, new List<Recipient>
+        {
+            TemplateFixtures.Person(1, "ШЕВЧЕНКО", "Тарас"),
+            TemplateFixtures.Person(2, "ФРАНКО", "Іван")
+        });
+
+        var result = Run(db, packageId);
+
+        Assert.Equal(2, result.Generated);
+        Assert.Equal(0, result.Errors);
+        Assert.Equal(2, Directory.GetFiles(_folder, "*.docx", SearchOption.AllDirectories).Length);
+
+        var issues = Assert.IsAssignableFrom<IReadOnlyList<RunIssue>>(result.Issues);
+        Assert.Equal(2, issues.Count);
+        Assert.All(issues, issue =>
+        {
+            Assert.Equal(RunIssue.PhaseDocx, issue.Phase);
+            Assert.False(issue.IsError);
+            Assert.StartsWith("не заповнено теги - ", issue.Message);
+            Assert.Contains("{{номер_посвідчення}}", issue.Message);
+            Assert.Contains("{{прод_атестат}}", issue.Message);
+        });
+        Assert.Contains(issues, issue => issue.Person == "ШЕВЧЕНКО Тарас");
+        Assert.Contains(issues, issue => issue.Person == "ФРАНКО Іван");
+
+        using var ctx = db.Factory.CreateDbContext();
+        var run = ctx.GenerationPackageRuns.Single();
+        Assert.True(RunIssue.TryDeserialize(run.Summary, out var stored));
+        Assert.Equal(2, stored.Count);
+    }
+
     private static int AttachToNewIntake(TestDb db, int recipientId)
     {
         using var ctx = db.Factory.CreateDbContext();
