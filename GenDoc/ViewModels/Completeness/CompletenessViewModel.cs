@@ -1,5 +1,4 @@
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -22,8 +21,6 @@ namespace GenDoc.ViewModels.Completeness
 
     public partial class CompletenessViewModel : ObservableObject, ICellActionCoordinator, INavigationTarget
     {
-        private static readonly CompareInfo UkCompare = CultureInfo.GetCultureInfo("uk-UA").CompareInfo;
-
         private readonly ICompletenessService _completenessService;
         private readonly IDocumentArchiveService _archiveService;
         private readonly IDialogService _dialogService;
@@ -324,10 +321,10 @@ namespace GenDoc.ViewModels.Completeness
 
         internal void ApplySearch()
         {
-            var query = SearchText?.Trim();
+            var query = SearchNormalization.PrepareQuery(SearchText);
             IEnumerable<MatrixRowViewModel> filtered = _allRows;
-            if (!string.IsNullOrEmpty(query))
-                filtered = _allRows.Where(r => UkCompare.IndexOf(r.SearchHaystack, query, CompareOptions.IgnoreCase) >= 0);
+            if (query is not null)
+                filtered = _allRows.Where(r => SearchNormalization.Contains(r.SearchHaystack, query));
 
             Rows.Clear();
             foreach (var row in filtered) Rows.Add(row);

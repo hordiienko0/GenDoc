@@ -57,7 +57,7 @@ namespace GenDoc.Services.Recipients
                 .Include(r => r.Weapons)
                 .ToList();
 
-            var words = (searchText ?? string.Empty).Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            var words = SearchNormalization.NormalizeApostrophes(searchText).Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (words.Length > 0)
             {
                 entities = entities.Where(r => MatchesAllWords(r, words)).ToList();
@@ -101,9 +101,9 @@ namespace GenDoc.Services.Recipients
             var haystack = string.Join(' ', new[]
             {
                 r.LastName, r.FirstName, r.MiddleName, r.Rank, r.Position, r.ServiceNumber, r.Unit?.Name
-            }).ToLowerInvariant();
+            });
 
-            return words.All(w => haystack.Contains(w.ToLowerInvariant()));
+            return words.All(w => SearchNormalization.Contains(haystack, w));
         }
 
         private static string FormatRoom(Room? room)

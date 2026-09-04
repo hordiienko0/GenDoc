@@ -6,9 +6,8 @@ public static class HeaderNormalization
 {
     public static string Normalize(string header)
     {
-        var normalized = header.ToLowerInvariant()
+        var normalized = SearchNormalization.NormalizeApostrophes(header.ToLowerInvariant())
             .Replace("'", string.Empty)
-            .Replace("’", string.Empty)
             .Replace('-', ' ')
             .Replace('\n', ' ')
             .Replace('\r', ' ');

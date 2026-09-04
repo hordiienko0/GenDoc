@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Globalization;
 using System.Windows;
 using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -24,8 +23,6 @@ namespace GenDoc.ViewModels.Personnel
 
     public partial class PersonnelViewModel : ObservableObject, IGuardedSection, INavigationTarget
     {
-        private static readonly CompareInfo UkCompare = CultureInfo.GetCultureInfo("uk-UA").CompareInfo;
-
         private readonly IPersonnelService _personnelService;
         private readonly ICompletenessService _completenessService;
         private readonly IDocumentArchiveService _archiveService;
@@ -220,19 +217,16 @@ namespace GenDoc.ViewModels.Personnel
 
         internal void ApplySearch()
         {
-            var query = SearchText?.Trim();
+            var query = SearchNormalization.PrepareQuery(SearchText);
             IEnumerable<PersonRowViewModel> filtered = _allRows;
 
-            if (!string.IsNullOrEmpty(query))
-            {
-                filtered = _allRows.Where(r =>
-                    UkCompare.IndexOf(r.SearchHaystack, query, CompareOptions.IgnoreCase) >= 0);
-            }
+            if (query is not null)
+                filtered = _allRows.Where(r => SearchNormalization.Contains(r.SearchHaystack, query));
 
             Rows.Clear();
             foreach (var row in filtered) Rows.Add(row);
             RowCount = Rows.Count;
-            EmptyMessage = string.IsNullOrEmpty(query)
+            EmptyMessage = query is null
                 ? "У цій гілці ще немає людей"
                 : $"Нічого не знайдено за запитом «{query}»";
             RefreshCheckedState();

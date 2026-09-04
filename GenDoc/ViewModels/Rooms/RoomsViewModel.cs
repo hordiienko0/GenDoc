@@ -117,7 +117,8 @@ public partial class RoomsViewModel : ObservableObject
         CloseRoom();
 
         IsLoading = true;
-        Mouse.OverrideCursor = Cursors.Wait;
+        var hasUi = Application.Current is not null;
+        if (hasUi) Mouse.OverrideCursor = Cursors.Wait;
         try
         {
             _allRooms = _roomService.GetAll().Select(r => new RoomCardViewModel(r)).ToList();
@@ -125,7 +126,7 @@ public partial class RoomsViewModel : ObservableObject
         }
         finally
         {
-            Mouse.OverrideCursor = null;
+            if (hasUi) Mouse.OverrideCursor = null;
             IsLoading = false;
         }
     }
@@ -134,13 +135,12 @@ public partial class RoomsViewModel : ObservableObject
     {
         IEnumerable<RoomCardViewModel> filtered = _allRooms;
 
-        if (!string.IsNullOrWhiteSpace(SearchText))
+        if (SearchNormalization.PrepareQuery(SearchText) is { } text)
         {
-            var text = SearchText.Trim();
             filtered = _allRooms.Where(r =>
-                r.Building.Contains(text, StringComparison.OrdinalIgnoreCase) ||
-                r.Number.Contains(text, StringComparison.OrdinalIgnoreCase) ||
-                r.OccupantNames.Any(n => n.Contains(text, StringComparison.OrdinalIgnoreCase)));
+                SearchNormalization.Contains(r.Building, text) ||
+                SearchNormalization.Contains(r.Number, text) ||
+                r.OccupantNames.Any(n => SearchNormalization.Contains(n, text)));
         }
 
         Rooms = new ObservableCollection<RoomCardViewModel>(filtered);

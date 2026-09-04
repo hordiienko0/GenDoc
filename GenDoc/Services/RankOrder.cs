@@ -65,8 +65,7 @@ namespace GenDoc.Services
         {
             if (string.IsNullOrWhiteSpace(rank)) return string.Empty;
 
-            var text = rank.Trim().ToLower(Uk);
-            text = text.Replace('ʼ', '\'').Replace('’', '\'');
+            var text = SearchNormalization.NormalizeApostrophes(rank.Trim().ToLower(Uk));
             text = text.Replace('ґ', 'г');
             text = Regex.Replace(text, @"\s+", " ");
 
