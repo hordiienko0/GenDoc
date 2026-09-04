@@ -53,8 +53,10 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         RefreshPackages();
         RefreshRecipientOptions();
         RefreshAllRecipientsCount();
-        _ = LoadDefaultOutputFolderAsync();
+        InitialLoad = LoadDefaultOutputFolderAsync();
     }
+
+    internal Task InitialLoad { get; }
 
     public async Task ApplyNavigationPayloadAsync(object payload)
     {

@@ -1,4 +1,5 @@
 using System.Windows;
+using CommunityToolkit.Mvvm.Messaging;
 using GenDoc.Models;
 using GenDoc.Models.Enums;
 using GenDoc.Services;
@@ -47,24 +48,31 @@ public class GenerationViewModelRosterScopeTests
         return new Seeded(active, cadets.Select(c => c.Id).ToArray(), staff.Id, otherMember.Id, package.Id);
     }
 
-    private static GenerationViewModel CreateViewModel(TestDb db, Intake? activeIntake) => new(
-        TestServices.Generation(db),
-        new NoDialogs(),
-        null!,
-        TestServices.Completeness(db, 1, activeIntake),
-        new RecipientService(db.Factory, new FakeAuditLog(), new FakeCurrentUser()),
-        new NoManualTags(),
-        new OutputFolderService(db.Factory),
-        TestServices.UserSettings(db, 1),
-        activeIntake is null ? new FakeIntakeAccessor() : new FakeIntakeAccessor(activeIntake));
+    private static async Task<GenerationViewModel> CreateViewModelAsync(TestDb db, Intake? activeIntake)
+    {
+        var vm = new GenerationViewModel(
+            TestServices.Generation(db),
+            new NoDialogs(),
+            null!,
+            TestServices.Completeness(db, 1, activeIntake),
+            new RecipientService(db.Factory, new FakeAuditLog(), new FakeCurrentUser()),
+            new NoManualTags(),
+            new OutputFolderService(db.Factory),
+            TestServices.UserSettings(db, 1),
+            activeIntake is null ? new FakeIntakeAccessor() : new FakeIntakeAccessor(activeIntake));
+
+        WeakReferenceMessenger.Default.UnregisterAll(vm);
+        await vm.InitialLoad;
+        return vm;
+    }
 
     [Fact]
-    public void Roster_WithActiveIntake_ListsOnlyItsMembers()
+    public async Task Roster_WithActiveIntake_ListsOnlyItsMembers()
     {
         using var db = new TestDb();
         var seeded = Seed(db);
 
-        var vm = CreateViewModel(db, seeded.ActiveIntake);
+        var vm = await CreateViewModelAsync(db, seeded.ActiveIntake);
 
         Assert.Equal(seeded.CadetIds.OrderBy(i => i), vm.RecipientOptions.Select(r => r.Id).OrderBy(i => i));
         Assert.Equal(2, vm.RecipientCount);
@@ -75,11 +83,11 @@ public class GenerationViewModelRosterScopeTests
     }
 
     [Fact]
-    public void Roster_IncludePermanentStaff_AddsStaffButNotOtherIntakes()
+    public async Task Roster_IncludePermanentStaff_AddsStaffButNotOtherIntakes()
     {
         using var db = new TestDb();
         var seeded = Seed(db);
-        var vm = CreateViewModel(db, seeded.ActiveIntake);
+        var vm = await CreateViewModelAsync(db, seeded.ActiveIntake);
 
         vm.IncludePermanentStaff = true;
 
@@ -91,12 +99,12 @@ public class GenerationViewModelRosterScopeTests
     }
 
     [Fact]
-    public void Roster_WithoutActiveIntake_FallsBackToEveryoneWithHint()
+    public async Task Roster_WithoutActiveIntake_FallsBackToEveryoneWithHint()
     {
         using var db = new TestDb();
         Seed(db);
 
-        var vm = CreateViewModel(db, null);
+        var vm = await CreateViewModelAsync(db, null);
 
         Assert.Equal(4, vm.RecipientOptions.Count);
         Assert.Equal(4, vm.RecipientCount);
@@ -110,7 +118,7 @@ public class GenerationViewModelRosterScopeTests
     {
         using var db = new TestDb();
         var seeded = Seed(db);
-        var vm = CreateViewModel(db, seeded.ActiveIntake);
+        var vm = await CreateViewModelAsync(db, seeded.ActiveIntake);
 
         await vm.SelectPackageCommand.ExecuteAsync(vm.Packages.Single(p => p.Id == seeded.PackageId));
         var chip = vm.PackageTemplates.Single(t => t.IsXlsx);
