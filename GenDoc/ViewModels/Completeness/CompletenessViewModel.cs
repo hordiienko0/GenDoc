@@ -329,11 +329,35 @@ namespace GenDoc.ViewModels.Completeness
 
                 if (covered.All(r => r.Cells[i].IsPresent)) continue;
 
-                result.Add((column, covered.Select(r => r.RecipientId).ToList()));
+                result.Add((column, ApplicableRecipientIds(i)));
             }
 
             return result;
         }
+
+        private List<(MatrixTemplateInfo Column, List<int> RecipientIds)> StaleGroupColumns()
+        {
+            var result = new List<(MatrixTemplateInfo, List<int>)>();
+            if (_matrixData is null) return result;
+
+            for (var i = 0; i < _matrixData.Templates.Count; i++)
+            {
+                var column = _matrixData.Templates[i];
+                if (!column.IsGroup) continue;
+                if (!Rows.Any(r => i < r.Cells.Count && r.Cells[i].IsStale)) continue;
+
+                result.Add((column, ApplicableRecipientIds(i)));
+            }
+
+            return result;
+        }
+
+        private List<int> ApplicableRecipientIds(int columnIndex)
+            => _allRows
+                .Where(r => columnIndex < r.Cells.Count
+                            && r.Cells[columnIndex].Requirement != TemplateRequirement.NotApplicable)
+                .Select(r => r.RecipientId)
+                .ToList();
 
         private void RecomputeAggregates()
         {
@@ -467,20 +491,65 @@ namespace GenDoc.ViewModels.Completeness
         [RelayCommand(CanExecute = nameof(CanRegenerateStale))]
         private async Task RegenerateStaleAsync()
         {
-            var staleCells = Rows.SelectMany(r => r.Cells).Where(c => c.IsStale).ToList();
-            if (staleCells.Count == 0) return;
+            if (StaleCount == 0) return;
 
             var confirm = MessageBox.Show(
-                $"Буде створено нові версії для {staleCells.Count} документів.",
+                $"Буде створено нові версії для {StaleCount} документів.",
                 "Перегенерація застарілих", MessageBoxButton.OKCancel, MessageBoxImage.Question);
             if (confirm != MessageBoxResult.OK) return;
 
-            var outcome = await RegenerateCellsAsync(staleCells);
+            var outcome = await RegenerateStaleCoreAsync();
             if (outcome is not { } result) return;
 
-            ShowBatchSummary("Перегенерація завершена", result.Done, staleCells.Count - result.Done, result.Errors);
+            ShowBatchSummary("Перегенерація завершена", result.Done, result.Attempted - result.Done, result.Errors);
             await RebuildAsync();
             WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
+        }
+
+        internal async Task<(int Done, int Attempted, List<string> Errors)?> RegenerateStaleCoreAsync()
+        {
+            var personal = Rows.SelectMany(r => r.Cells)
+                .Where(c => c.IsStale && !c.IsGroupColumn && c.DocumentId is not null)
+                .ToList();
+            var groups = StaleGroupColumns();
+            if (personal.Count == 0 && groups.Count == 0) return (0, 0, new List<string>());
+
+            var templateIds = personal.Select(c => c.TemplateId)
+                .Concat(groups.Where(g => !g.Column.IsExport).Select(g => g.Column.TemplateId))
+                .Distinct().ToList();
+            var exportTemplateIds = groups
+                .Where(g => g.Column.IsExport).Select(g => g.Column.TemplateId)
+                .Distinct().ToList();
+
+            var input = await CollectManualInputAsync(templateIds, exportTemplateIds);
+            if (input is null) return null;
+
+            IsBusy = true;
+            var done = 0;
+            var errors = new List<string>();
+            try
+            {
+                foreach (var cell in personal)
+                {
+                    var result = await _archiveService.RegenerateAsync(cell.DocumentId!.Value, input.Values, input.CourseOfficerId);
+                    if (result.Success) done++;
+                    else errors.Add(result.ErrorMessage ?? "невідома помилка");
+                }
+
+                foreach (var group in groups)
+                {
+                    var (ok, error) = await GenerateGroupDocumentAsync(
+                        group.Column, group.RecipientIds, input.Values, input.CourseOfficerId);
+                    if (ok) done++;
+                    else errors.Add($"«{group.Column.Name}»: {error}");
+                }
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+
+            return (done, personal.Count + groups.Count, errors);
         }
 
         internal async Task<(int Done, List<string> Errors)?> RegenerateCellsAsync(IReadOnlyList<MatrixCellViewModel> cells)

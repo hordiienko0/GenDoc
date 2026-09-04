@@ -65,11 +65,9 @@ namespace GenDoc.Services.Documents
         {
             var joined = $"template={exportTemplateId};" + string.Join(
                 ";", roster.Select(r => $"{r.RecipientId}={r.SourceHash}"));
+            var auto = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(joined)));
 
-            if (!string.IsNullOrEmpty(manualFingerprint))
-                joined += $";manual={manualFingerprint}";
-
-            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(joined)));
+            return string.IsNullOrEmpty(manualFingerprint) ? auto : auto + ManualSeparator + manualFingerprint;
         }
 
         public static string AutoPart(string? sourceHash)

@@ -116,9 +116,21 @@ namespace GenDoc.Services.Completeness
                     .Select(g => new
                     {
                         g.TemplateId, g.ExportTemplateId, g.IntakeId, g.Id, g.Version, g.HasContent, g.RecipientCount,
+                        g.RosterHash,
                         ParticipantIds = g.Recipients.Select(r => r.RecipientId).ToList()
                     })
                     .ToListAsync();
+
+                var sheetMappings = detectStale && sheetIds.Count > 0
+                    ? (await db.ExportTemplateColumnMappings.Where(m => sheetIds.Contains(m.ExportTemplateId))
+                        .OrderBy(m => m.ColumnIndex).AsNoTracking().ToListAsync())
+                        .GroupBy(m => m.ExportTemplateId).ToDictionary(g => g.Key, g => g.ToList())
+                    : new Dictionary<int, List<ExportTemplateColumnMapping>>();
+                var groupMappings = detectStale && docxIds.Count > 0
+                    ? (await db.TemplateFieldMappings.Where(m => docxIds.Contains(m.TemplateId) && m.IsInsideRepeatingBlock)
+                        .AsNoTracking().ToListAsync())
+                        .GroupBy(m => m.TemplateId).ToDictionary(g => g.Key, g => g.ToList())
+                    : new Dictionary<int, List<TemplateFieldMapping>>();
 
                 foreach (var column in groupColumns)
                 {
@@ -135,18 +147,45 @@ namespace GenDoc.Services.Completeness
                     var rosterUnknown = doc.RecipientCount > 0 && doc.ParticipantIds.Count == 0;
                     var participants = rosterUnknown ? null : doc.ParticipantIds.ToHashSet();
 
+                    var stale = false;
+                    if (detectStale && !rosterUnknown && doc.RosterHash is not null)
+                    {
+                        var expected = ComputeColumnRosterHash(
+                            column, people, orgSettings,
+                            sheetMappings.GetValueOrDefault(column.TemplateId) ?? new List<ExportTemplateColumnMapping>(),
+                            groupMappings.GetValueOrDefault(column.TemplateId) ?? new List<TemplateFieldMapping>());
+                        stale = expected != DocumentHashService.AutoPart(doc.RosterHash);
+                    }
+
                     foreach (var person in people)
                     {
                         if (rosterUnknown || participants!.Contains(person.Id))
                             dict[(person.Id, column.TemplateId, column.IsExport)] = new MatrixDocDto(
                                 doc.Id, person.Id, column.TemplateId, doc.Version, doc.HasContent,
-                                IsStale: false, DocumentSourceType.Generated,
+                                stale, DocumentSourceType.Generated,
                                 IsGroup: true, RosterUnknown: rosterUnknown, IsExport: column.IsExport);
                     }
                 }
             }
 
             return new MatrixData(people, templates, dict, detectStale);
+        }
+
+        private string ComputeColumnRosterHash(
+            MatrixTemplateInfo column, List<Recipient> people, OrganizationSettings? orgSettings,
+            List<ExportTemplateColumnMapping> sheetMappings, List<TemplateFieldMapping> groupMappings)
+        {
+            var roster = RosterOrdering.Apply(
+                    people.Where(p => ICompletenessService.IsApplicable(column, p.FitnessCategory)))
+                .ToList();
+
+            var entries = roster
+                .Select(r => (r.Id, SourceHash: column.IsExport
+                    ? GenerationService.ComputeRecipientSourceHash(sheetMappings, r, orgSettings)
+                    : _documentHashService.ComputeSourceHash(groupMappings, r, orgSettings)))
+                .ToList();
+
+            return _documentHashService.ComputeRosterHash(column.TemplateId, entries);
         }
 
         public async Task<MatrixDocDto?> GetCellAsync(int recipientId, int templateId)

@@ -79,6 +79,19 @@ public class DocumentHashServiceTests
         Assert.NotEqual(withValues, otherValues);
         Assert.Equal(plain, service.ComputeRosterHash(5, roster, null));
     }
+
+    [Fact]
+    public void ComputeRosterHash_AutoPartIgnoresTheManualFingerprint()
+    {
+        var service = new DocumentHashService();
+        var roster = new (int RecipientId, string SourceHash)[] { (1, "a"), (2, "b") };
+
+        var plain = service.ComputeRosterHash(5, roster);
+        var withValues = service.ComputeRosterHash(5, roster, "відбиток-1");
+
+        Assert.Equal(plain, DocumentHashService.AutoPart(withValues));
+        Assert.Equal(plain, DocumentHashService.AutoPart(plain));
+    }
     [Fact]
     public void ComputeRosterHash_DifferentSubsetOfSameRoster_ProducesDifferentHash()
     {

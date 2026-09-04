@@ -824,14 +824,15 @@ namespace GenDoc.Services.Generation
             }
 
             return new XlsxPhaseResult(generated, skipped, errors, issues);
+        }
 
-            string ComputeRecipientSourceHash(List<ExportTemplateColumnMapping> mappings, Recipient r, OrganizationSettings? org)
-            {
-                var auto = mappings.Where(m => m.SourceType != MappingSourceType.Manual);
-                return string.Join("|", auto
-                    .OrderBy(m => m.PlaceholderTag, StringComparer.Ordinal)
-                    .Select(m => $"{m.PlaceholderTag}={ResolveHashField(m, r, org)}"));
-            }
+        internal static string ComputeRecipientSourceHash(
+            List<ExportTemplateColumnMapping> mappings, Recipient r, OrganizationSettings? org)
+        {
+            var auto = mappings.Where(m => m.SourceType != MappingSourceType.Manual);
+            return string.Join("|", auto
+                .OrderBy(m => m.PlaceholderTag, StringComparer.Ordinal)
+                .Select(m => $"{m.PlaceholderTag}={ResolveHashField(m, r, org)}"));
         }
 
         internal static string? SheetManualFingerprint(
