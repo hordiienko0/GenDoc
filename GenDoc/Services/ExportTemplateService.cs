@@ -382,11 +382,20 @@ namespace GenDoc.Services
             }
         }
 
-        public void Delete(int templateId)
+        public (bool Success, string? ErrorMessage) Delete(int templateId)
         {
             using var db = _dbFactory.CreateDbContext();
             var template = db.ExportTemplates.First(t => t.Id == templateId);
-            if (template.IsBuiltIn) return;
+            if (template.IsBuiltIn) return (false, "Вбудований шаблон видалити не можна.");
+
+            var packageNames = db.GenerationPackageExportTemplates
+                .Where(pt => pt.ExportTemplateId == templateId)
+                .Select(pt => pt.GenerationPackage!.Name)
+                .Distinct()
+                .ToList();
+
+            if (packageNames.Count > 0)
+                return (false, $"Неможливо видалити: шаблон використовується в пакетах: {string.Join(", ", packageNames)}.");
 
             var snapshot = template.Name;
             template.DeletedAt = DateTime.Now;
@@ -394,6 +403,8 @@ namespace GenDoc.Services
 
             _auditLogService.LogDelete(db, "ExportTemplate", template.Id, snapshot);
             db.SaveChanges();
+
+            return (true, null);
         }
 
         private static ExportFieldKey AutoMapExportHeader(string header, ref bool noteAssigned)

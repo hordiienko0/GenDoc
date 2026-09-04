@@ -14,6 +14,6 @@ namespace GenDoc.Services
         void SavePlaceholderMappings(int templateId, List<(int Id, MappingSourceType SourceType, string? FieldKey)> mappings);
         void SetRepeatSheetPerDate(int templateId, bool value);
         void UploadTemplate(string filePath);
-        void Delete(int templateId);
+        (bool Success, string? ErrorMessage) Delete(int templateId);
     }
 }

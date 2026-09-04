@@ -382,7 +382,13 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
 
         if (result != MessageBoxResult.Yes) return;
 
-        _exportTemplateService.Delete(item.Id);
+        var (success, errorMessage) = _exportTemplateService.Delete(item.Id);
+        if (!success)
+        {
+            MessageBox.Show(errorMessage, "Неможливо видалити", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
         Refresh();
     }
 }
