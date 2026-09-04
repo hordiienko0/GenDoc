@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.Messaging;
 using GenDoc.ViewModels.Personnel;
 
 namespace GenDoc.Tests.Personnel;
@@ -25,8 +26,61 @@ public class GenerateDocumentsDialogViewModelTests
     }
 }
 
-public class GenerateDocumentsDialogInitializeTests
+public class GenerateDocumentsDialogInitializeTests : IDisposable
 {
+    private readonly string _folder = Path.Combine(Path.GetTempPath(), $"gendoc-dialog-{Guid.NewGuid():N}");
+    public void Dispose() { if (Directory.Exists(_folder)) Directory.Delete(_folder, true); }
+
+    [Fact]
+    public async Task Generate_SendsMatrixChangedAfterASuccessfulRun()
+    {
+        using var db = new GenDoc.Tests.Infrastructure.TestDb();
+        int templateId, personId;
+        using (var ctx = db.Factory.CreateDbContext())
+        {
+            ctx.Users.Add(new GenDoc.Models.UserProfile { FullName = "Тест", PasswordHash = "x", CreatedAt = DateTime.Now });
+            ctx.AppSettings.Add(new GenDoc.Models.AppSettings { DefaultOutputFolder = _folder });
+            var template = new GenDoc.Models.Template
+            {
+                Name = "Рапорт", OriginalFileName = "rapport.docx",
+                Content = GenDoc.Tests.Infrastructure.TemplateFixtures.Bytes(GenDoc.Tests.Infrastructure.TemplateFixtures.RaportIndividualDocx),
+                UploadedAt = DateTime.Now, Kind = GenDoc.Models.Enums.TemplateKind.PerRecipient
+            };
+            ctx.Templates.Add(template);
+            var person = GenDoc.Tests.Infrastructure.TemplateFixtures.Person(1, "ШЕВЧЕНКО", "Тарас");
+            ctx.Recipients.Add(person);
+            ctx.SaveChanges();
+            templateId = template.Id;
+            personId = person.Id;
+        }
+
+        var vm = new GenerateDocumentsDialogViewModel(
+            GenDoc.Tests.Infrastructure.TestServices.Generation(db),
+            GenDoc.Tests.Infrastructure.TestServices.Completeness(db),
+            GenDoc.Tests.Infrastructure.TestServices.Archive(db),
+            null!, null!, new GenDoc.Services.Generation.OutputFolderService(db.Factory),
+            new[] { (personId, "ШЕВЧЕНКО Т.Г.") });
+        await vm.InitializeAsync();
+        vm.Templates.Single(t => t.Id == templateId && !t.IsExport).IsChecked = true;
+
+        var recipient = new object();
+        var received = 0;
+        CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger.Default
+            .Register<GenDoc.Services.MatrixChangedMessage>(recipient, (_, _) => received++);
+        try
+        {
+            await vm.GenerateCommand.ExecuteAsync(null);
+        }
+        finally
+        {
+            CommunityToolkit.Mvvm.Messaging.WeakReferenceMessenger.Default.UnregisterAll(recipient);
+        }
+
+        Assert.NotNull(vm.Result);
+        Assert.StartsWith("Згенеровано 1", vm.Result!.SummaryText);
+        Assert.True(received >= 1);
+    }
+
     [Fact]
     public async Task Initialize_PutsDefaultPackageTemplatesFirst()
     {

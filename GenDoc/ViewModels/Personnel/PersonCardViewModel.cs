@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using GenDoc.Services;
 using GenDoc.Services.Completeness;
 using GenDoc.Services.Documents;
@@ -188,9 +189,11 @@ namespace GenDoc.ViewModels.Personnel
                 IsDirty = CurrentState() != _snapshot;
         }
 
+        internal Task DocumentsLoad { get; private set; } = Task.CompletedTask;
+
         partial void OnSelectedTabIndexChanged(int value)
         {
-            if (value == 1) _ = LoadDocumentsAsync();
+            if (value == 1) DocumentsLoad = LoadDocumentsAsync();
         }
 
         private async Task LoadDocumentsAsync()
@@ -326,6 +329,7 @@ namespace GenDoc.ViewModels.Personnel
             }
 
             await RefreshDocumentsAsync();
+            if (result.Success) WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
         }
 
         [RelayCommand]
@@ -347,6 +351,7 @@ namespace GenDoc.ViewModels.Personnel
             }
 
             await RefreshDocumentsAsync();
+            if (generated > 0) WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
         }
 
         private async Task<Dictionary<string, string>?> CollectManualValuesAsync(IReadOnlyList<int> templateIds)

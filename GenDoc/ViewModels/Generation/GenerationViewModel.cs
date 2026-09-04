@@ -604,6 +604,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         var progress = new Progress<string>(message => ProgressText = message);
         var rosterSelection = BuildRosterSelection();
 
+        LastResult = null;
         IsBusy = true;
         ProgressText = "Підготовка…";
 
@@ -616,11 +617,14 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
                 await _manualTagFormBuilder.SaveAsync($"pkg:{packageId}", ManualTagForm);
 
             LastResult = new GenerationResultViewModel(result, outputFolderPath);
+            if (result.Generated + result.GroupGenerated + result.DocxGroupGenerated > 0)
+                _messenger.Send(new MatrixChangedMessage());
         }
         finally
         {
             IsBusy = false;
             ProgressText = string.Empty;
+            RefreshLastRun();
         }
     }
 

@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
 using GenDoc.Services;
 using GenDoc.Services.Completeness;
 using GenDoc.Services.Documents;
@@ -162,6 +163,8 @@ namespace GenDoc.ViewModels.Personnel
                     _generationService.GenerateTemplatesForRecipients(
                         templateIds, exportTemplateIds, recipientIds, folder, manualValues, progress, courseOfficerId));
                 Result = new GenerationResultViewModel(runResult, folder);
+                if (runResult.Generated + runResult.GroupGenerated + runResult.DocxGroupGenerated > 0)
+                    WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
             }
             finally
             {
