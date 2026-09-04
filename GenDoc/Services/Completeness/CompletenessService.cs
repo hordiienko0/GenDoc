@@ -195,7 +195,7 @@ namespace GenDoc.Services.Completeness
         }
 
         public async Task<ArchiveOpResult> GenerateForPairAsync(
-            int recipientId, int templateId, Dictionary<string, string> manualValues)
+            int recipientId, int templateId, Dictionary<string, string> manualValues, int? courseOfficerId = null)
         {
             using var db = _dbFactory.CreateDbContext();
             var recipient = await db.Recipients
@@ -213,7 +213,7 @@ namespace GenDoc.Services.Completeness
 
             var mappings = await db.TemplateFieldMappings.Where(m => m.TemplateId == templateId).ToListAsync();
             var orgSettings = await db.OrganizationSettings.FirstOrDefaultAsync();
-            var courseOfficerSignature = GenerationService.CourseOfficerSignatureFor(db, mappings);
+            var courseOfficerSignature = GenerationService.CourseOfficerSignatureFor(db, mappings, courseOfficerId);
             var values = GenerationService.BuildValues(mappings, recipient, orgSettings, manualValues, courseOfficerSignature);
 
             var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.docx");

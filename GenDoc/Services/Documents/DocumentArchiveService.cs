@@ -275,7 +275,8 @@ namespace GenDoc.Services.Documents
                 .ToListAsync();
         }
 
-        public async Task<ArchiveOpResult> RegenerateAsync(int documentId, Dictionary<string, string> manualValues)
+        public async Task<ArchiveOpResult> RegenerateAsync(
+            int documentId, Dictionary<string, string> manualValues, int? courseOfficerId = null)
         {
             using var db = _dbFactory.CreateDbContext();
             var doc = await db.GeneratedDocuments
@@ -296,7 +297,7 @@ namespace GenDoc.Services.Documents
 
             var mappings = await db.TemplateFieldMappings.Where(m => m.TemplateId == template.Id).ToListAsync();
             var orgSettings = await db.OrganizationSettings.FirstOrDefaultAsync();
-            var courseOfficerSignature = GenerationService.CourseOfficerSignatureFor(db, mappings);
+            var courseOfficerSignature = GenerationService.CourseOfficerSignatureFor(db, mappings, courseOfficerId);
             var values = GenerationService.BuildValues(mappings, doc.Recipient, orgSettings, manualValues, courseOfficerSignature);
 
             var tempPath = Path.Combine(Path.GetTempPath(), $"{Guid.NewGuid():N}.docx");

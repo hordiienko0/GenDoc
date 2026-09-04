@@ -364,11 +364,13 @@ namespace GenDoc.ViewModels.Completeness
             }
         }
 
-        [RelayCommand(CanExecute = nameof(CanGenerateMissing))]
-        private async Task GenerateMissingAsync()
-        {
-            if (_matrixData is null) return;
+        private sealed record MissingTargets(
+            List<(int RecipientId, int TemplateId)> Required,
+            List<(int RecipientId, int TemplateId)> Optional,
+            List<(MatrixTemplateInfo Column, List<int> RecipientIds)> Groups);
 
+        private MissingTargets CollectMissingTargets()
+        {
             var missingRequired = new List<(int RecipientId, int TemplateId)>();
             var missingOptional = new List<(int RecipientId, int TemplateId)>();
             foreach (var row in Rows)
@@ -381,50 +383,73 @@ namespace GenDoc.ViewModels.Completeness
                 }
             }
 
-            var missingGroups = MissingGroupColumns();
+            return new MissingTargets(missingRequired, missingOptional, MissingGroupColumns());
+        }
 
-            var includeOptional = false;
-            {
-                var groupLine = missingGroups.Count == 0
-                    ? string.Empty
-                    : $"групових документів і відомостей: {missingGroups.Count} "
-                      + "(по одному на весь склад)\n";
+        [RelayCommand(CanExecute = nameof(CanGenerateMissing))]
+        private async Task GenerateMissingAsync()
+        {
+            if (_matrixData is null) return;
 
-                var confirm = MessageBox.Show(
-                    $"Набір «{SelectedIntake?.Label}» · пакет «{SelectedPackage?.Label}» · буде згенеровано:\n" +
-                    $"обов'язкових персональних: {missingRequired.Count}\n" +
-                    groupLine +
-                    $"Також згенерувати опційні ({missingOptional.Count})? Так - з опційними, Ні - лише обов'язкові.",
-                    "Генерація відсутніх документів", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
-                if (confirm == MessageBoxResult.Cancel) return;
-                includeOptional = confirm == MessageBoxResult.Yes;
-            }
+            var missing = CollectMissingTargets();
 
-            var targets = includeOptional ? missingRequired.Concat(missingOptional).ToList() : missingRequired;
-            if (targets.Count == 0 && missingGroups.Count == 0) return;
+            var groupLine = missing.Groups.Count == 0
+                ? string.Empty
+                : $"групових документів і відомостей: {missing.Groups.Count} "
+                  + "(по одному на весь склад)\n";
 
-            var tagSources = targets.Select(t => t.TemplateId)
-                .Concat(missingGroups.Where(g => !g.Column.IsExport).Select(g => g.Column.TemplateId))
+            var confirm = MessageBox.Show(
+                $"Набір «{SelectedIntake?.Label}» · пакет «{SelectedPackage?.Label}» · буде згенеровано:\n" +
+                $"обов'язкових персональних: {missing.Required.Count}\n" +
+                groupLine +
+                $"Також згенерувати опційні ({missing.Optional.Count})? Так - з опційними, Ні - лише обов'язкові.",
+                "Генерація відсутніх документів", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+            if (confirm == MessageBoxResult.Cancel) return;
+
+            var outcome = await GenerateMissingCoreAsync(confirm == MessageBoxResult.Yes);
+            if (outcome is not { } result || result.Attempted == 0) return;
+
+            ShowBatchSummary("Генерація завершена", result.Done, result.Attempted - result.Done, result.Errors);
+            await RebuildAsync();
+            WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
+        }
+
+        internal async Task<(int Done, int Attempted, List<string> Errors)?> GenerateMissingCoreAsync(bool includeOptional)
+        {
+            if (_matrixData is null) return null;
+
+            var missing = CollectMissingTargets();
+            var targets = includeOptional ? missing.Required.Concat(missing.Optional).ToList() : missing.Required;
+            if (targets.Count == 0 && missing.Groups.Count == 0) return (0, 0, new List<string>());
+
+            var templateIds = targets.Select(t => t.TemplateId)
+                .Concat(missing.Groups.Where(g => !g.Column.IsExport).Select(g => g.Column.TemplateId))
                 .Distinct().ToList();
-            var manualValues = await CollectManualValuesAsync(tagSources);
-            if (manualValues is null) return;
+            var exportTemplateIds = missing.Groups
+                .Where(g => g.Column.IsExport).Select(g => g.Column.TemplateId)
+                .Distinct().ToList();
+
+            var input = await CollectManualInputAsync(templateIds, exportTemplateIds);
+            if (input is null) return null;
 
             IsBusy = true;
             var done = 0;
-            var attempted = targets.Count + missingGroups.Count;
+            var attempted = targets.Count + missing.Groups.Count;
             var errors = new List<string>();
             try
             {
                 foreach (var (recipientId, templateId) in targets)
                 {
-                    var result = await _completenessService.GenerateForPairAsync(recipientId, templateId, manualValues);
+                    var result = await _completenessService.GenerateForPairAsync(
+                        recipientId, templateId, input.Values, input.CourseOfficerId);
                     if (result.Success) done++;
                     else errors.Add(result.ErrorMessage ?? "невідома помилка");
                 }
 
-                foreach (var group in missingGroups)
+                foreach (var group in missing.Groups)
                 {
-                    var (ok, error) = await GenerateGroupDocumentAsync(group.Column, group.RecipientIds, manualValues);
+                    var (ok, error) = await GenerateGroupDocumentAsync(
+                        group.Column, group.RecipientIds, input.Values, input.CourseOfficerId);
                     if (ok) done++;
                     else errors.Add($"«{group.Column.Name}»: {error}");
                 }
@@ -434,9 +459,7 @@ namespace GenDoc.ViewModels.Completeness
                 IsBusy = false;
             }
 
-            ShowBatchSummary("Генерація завершена", done, attempted - done, errors);
-            await RebuildAsync();
-            WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
+            return (done, attempted, errors);
         }
 
         [RelayCommand(CanExecute = nameof(CanRegenerateStale))]
@@ -450,15 +473,29 @@ namespace GenDoc.ViewModels.Completeness
                 "Перегенерація застарілих", MessageBoxButton.OKCancel, MessageBoxImage.Question);
             if (confirm != MessageBoxResult.OK) return;
 
+            var outcome = await RegenerateCellsAsync(staleCells);
+            if (outcome is not { } result) return;
+
+            ShowBatchSummary("Перегенерація завершена", result.Done, staleCells.Count - result.Done, result.Errors);
+            await RebuildAsync();
+            WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
+        }
+
+        internal async Task<(int Done, List<string> Errors)?> RegenerateCellsAsync(IReadOnlyList<MatrixCellViewModel> cells)
+        {
+            var input = await CollectManualInputAsync(
+                cells.Select(c => c.TemplateId).Distinct().ToList(), Array.Empty<int>());
+            if (input is null) return null;
+
             IsBusy = true;
             var done = 0;
             var errors = new List<string>();
             try
             {
-                foreach (var cell in staleCells)
+                foreach (var cell in cells)
                 {
                     if (cell.DocumentId is not int docId) continue;
-                    var result = await _archiveService.RegenerateAsync(docId, new Dictionary<string, string>());
+                    var result = await _archiveService.RegenerateAsync(docId, input.Values, input.CourseOfficerId);
                     if (result.Success) done++;
                     else errors.Add(result.ErrorMessage ?? "невідома помилка");
                 }
@@ -468,9 +505,7 @@ namespace GenDoc.ViewModels.Completeness
                 IsBusy = false;
             }
 
-            ShowBatchSummary("Перегенерація завершена", done, staleCells.Count - done, errors);
-            await RebuildAsync();
-            WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
+            return (done, errors);
         }
 
         [RelayCommand(CanExecute = nameof(CanExportSelected))]
@@ -509,7 +544,8 @@ namespace GenDoc.ViewModels.Completeness
         }
 
         private async Task<(bool Ok, string? Error)> GenerateGroupDocumentAsync(
-            MatrixTemplateInfo column, List<int> recipientIds, Dictionary<string, string> manualValues)
+            MatrixTemplateInfo column, List<int> recipientIds, Dictionary<string, string> manualValues,
+            int? courseOfficerId)
         {
             try
             {
@@ -522,7 +558,7 @@ namespace GenDoc.ViewModels.Completeness
 
                 var result = await Task.Run(() => generation.GenerateTemplatesForRecipients(
                     templateIds, exportIds, recipientIds, outputFolder, manualValues,
-                    new Progress<string>()));
+                    new Progress<string>(), courseOfficerId));
 
                 if (result.DocxGroupErrors + result.GroupErrors > 0)
                 {
@@ -538,17 +574,22 @@ namespace GenDoc.ViewModels.Completeness
             }
         }
 
-        private async Task<Dictionary<string, string>?> CollectManualValuesAsync(List<int> templateIds)
-        {
-            var tags = await _archiveService.GetManualTagsAsync(templateIds);
-            if (tags.Count == 0) return new Dictionary<string, string>();
+        internal sealed record ManualInput(Dictionary<string, string> Values, int? CourseOfficerId);
 
-            var form = await _manualTagFormBuilder.BuildAsync(tags, ManualTagContextKey);
+        internal async Task<ManualInput?> CollectManualInputAsync(
+            IReadOnlyList<int> templateIds, IReadOnlyList<int> exportTemplateIds)
+        {
+            var generation = _serviceProvider.GetRequiredService<Services.Generation.IGenerationService>();
+            var tags = generation.GetManualTagsForTemplates(templateIds, exportTemplateIds);
+            var needsCourseOfficer = generation.TemplatesNeedCourseOfficer(templateIds, exportTemplateIds);
+            if (tags.Count == 0 && !needsCourseOfficer) return new ManualInput(new Dictionary<string, string>(), null);
+
+            var form = await _manualTagFormBuilder.BuildAsync(tags, ManualTagContextKey, needsCourseOfficer);
             var dialog = new ManualValuesDialogViewModel(form);
-            if (_dialogService.ShowDialog(dialog, Application.Current.MainWindow) != true) return null;
+            if (_dialogService.ShowDialog(dialog, Application.Current?.MainWindow) != true) return null;
 
             await _manualTagFormBuilder.SaveAsync(ManualTagContextKey, form);
-            return dialog.GetValues();
+            return new ManualInput(dialog.GetValues(), form.CourseOfficer?.Selected?.RecipientId);
         }
 
         public async Task OpenAsync(MatrixCellViewModel cell)
@@ -573,10 +614,11 @@ namespace GenDoc.ViewModels.Completeness
 
         public async Task GenerateAsync(MatrixCellViewModel cell)
         {
-            var manualValues = await CollectManualValuesAsync(new List<int> { cell.TemplateId });
-            if (manualValues is null) return;
+            var input = await CollectManualInputAsync(new[] { cell.TemplateId }, Array.Empty<int>());
+            if (input is null) return;
 
-            var result = await _completenessService.GenerateForPairAsync(cell.RecipientId, cell.TemplateId, manualValues);
+            var result = await _completenessService.GenerateForPairAsync(
+                cell.RecipientId, cell.TemplateId, input.Values, input.CourseOfficerId);
             if (!result.Success)
             {
                 MessageBox.Show(result.ErrorMessage, "Генерація", MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -596,10 +638,11 @@ namespace GenDoc.ViewModels.Completeness
                 "Перегенерація", MessageBoxButton.OKCancel, MessageBoxImage.Question);
             if (confirm != MessageBoxResult.OK) return;
 
-            var result = await _archiveService.RegenerateAsync(docId, new Dictionary<string, string>());
-            if (!result.Success)
+            var outcome = await RegenerateCellsAsync(new[] { cell });
+            if (outcome is not { } result) return;
+            if (result.Errors.Count > 0)
             {
-                MessageBox.Show(result.ErrorMessage, "Перегенерація", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(result.Errors[0], "Перегенерація", MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 

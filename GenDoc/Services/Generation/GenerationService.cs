@@ -299,14 +299,25 @@ namespace GenDoc.Services.Generation
                 .Where(pt => pt.GenerationPackageId == packageId)
                 .Select(pt => pt.TemplateId);
 
-            return db.ExportTemplateColumnMappings.Any(m =>
-                       exportTemplateIds.Contains(m.ExportTemplateId)
-                       && m.FieldKey == nameof(ExportFieldKey.CourseOfficerSignature))
-                   || db.TemplateFieldMappings.Any(m =>
-                       templateIds.Contains(m.TemplateId)
-                       && m.SourceType == MappingSourceType.Recipient
-                       && m.FieldName == nameof(ExportFieldKey.CourseOfficerSignature));
+            return NeedsCourseOfficer(db, templateIds, exportTemplateIds);
         }
+
+        public bool TemplatesNeedCourseOfficer(IReadOnlyList<int> templateIds, IReadOnlyList<int> exportTemplateIds)
+        {
+            if (templateIds.Count == 0 && exportTemplateIds.Count == 0) return false;
+            using var db = _dbFactory.CreateDbContext();
+            return NeedsCourseOfficer(db, templateIds, exportTemplateIds);
+        }
+
+        private static bool NeedsCourseOfficer(
+            AppDbContext db, IEnumerable<int> templateIds, IEnumerable<int> exportTemplateIds)
+            => db.ExportTemplateColumnMappings.Any(m =>
+                   exportTemplateIds.Contains(m.ExportTemplateId)
+                   && m.FieldKey == nameof(ExportFieldKey.CourseOfficerSignature))
+               || db.TemplateFieldMappings.Any(m =>
+                   templateIds.Contains(m.TemplateId)
+                   && m.SourceType == MappingSourceType.Recipient
+                   && m.FieldName == nameof(ExportFieldKey.CourseOfficerSignature));
 
         public LastRunInfo? GetLastRun()
         {

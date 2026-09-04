@@ -83,5 +83,7 @@ namespace GenDoc.Services.Generation
         List<string> GetManualTagsForTemplates(IReadOnlyList<int> templateIds, IReadOnlyList<int> exportTemplateIds);
 
         bool ExportTemplatesNeedCourseOfficer(IReadOnlyList<int> exportTemplateIds);
+
+        bool TemplatesNeedCourseOfficer(IReadOnlyList<int> templateIds, IReadOnlyList<int> exportTemplateIds);
     }
 }

@@ -13,7 +13,8 @@ namespace GenDoc.Services.Documents
         Task<(int Saved, List<string> Errors)> SaveManyAsync(IReadOnlyList<int> documentIds, string targetFolder);
 
         Task<List<string>> GetManualTagsAsync(IReadOnlyList<int> templateIds);
-        Task<ArchiveOpResult> RegenerateAsync(int documentId, Dictionary<string, string> manualValues);
+        Task<ArchiveOpResult> RegenerateAsync(
+            int documentId, Dictionary<string, string> manualValues, int? courseOfficerId = null);
 
         Task<ArchiveOpResult> UploadManualAsync(int documentId, string filePath, string? note);
         Task<ArchiveOpResult> AttachAsync(int documentId, string filePath, string? note);
