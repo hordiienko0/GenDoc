@@ -194,41 +194,84 @@ public class CompletenessConsistencyTests
         Assert.Equal(0, badge);
     }
 
+    private static int AddSecondPersonAndGroupTemplate(TestDb db, int packageId, int intakeId)
+    {
+        using var ctx = db.Factory.CreateDbContext();
+        var second = TemplateFixtures.Person(2, "ФРАНКО", "Іван");
+        second.FitnessCategory = "придатний";
+        second.IntakeId = intakeId;
+        ctx.Recipients.Add(second);
+
+        var group = new Template
+        {
+            Name = "Рапорт ГРУПОВИЙ", OriginalFileName = "g.docx", Content = new byte[] { 1 },
+            UploadedAt = DateTime.Now, Kind = TemplateKind.Group
+        };
+        ctx.Templates.Add(group);
+        ctx.SaveChanges();
+
+        ctx.GenerationPackageTemplates.Add(new GenerationPackageTemplate
+        {
+            GenerationPackageId = packageId, TemplateId = group.Id, SortOrder = 1,
+            RequirementRegular = TemplateRequirement.Required,
+            RequirementLimited = TemplateRequirement.Required
+        });
+        ctx.SaveChanges();
+        return group.Id;
+    }
+
     [Fact]
-    public async Task Badge_CountsOnlyWhatTheScreenButtonsCanFix()
+    public async Task Badge_CountsAMissingGroupColumnOnce_LikeTheButtonAndTheIntakeCard()
     {
         using var db = new TestDb();
-        var (packageId, intakeId, personId, _) = SeedOnePersonalTemplate(db);
-
-        int groupTemplateId;
-        using (var ctx = db.Factory.CreateDbContext())
-        {
-            var group = new Template
-            {
-                Name = "Рапорт ГРУПОВИЙ", OriginalFileName = "g.docx", Content = new byte[] { 1 },
-                UploadedAt = DateTime.Now, Kind = TemplateKind.Group
-            };
-            ctx.Templates.Add(group);
-            ctx.SaveChanges();
-            groupTemplateId = group.Id;
-
-            ctx.GenerationPackageTemplates.Add(new GenerationPackageTemplate
-            {
-                GenerationPackageId = packageId, TemplateId = groupTemplateId, SortOrder = 1,
-                RequirementRegular = TemplateRequirement.Required,
-                RequirementLimited = TemplateRequirement.Required
-            });
-            ctx.SaveChanges();
-        }
+        var (packageId, intakeId, _, _) = SeedOnePersonalTemplate(db);
+        AddSecondPersonAndGroupTemplate(db, packageId, intakeId);
 
         Intake activeIntake;
         using (var ctx = db.Factory.CreateDbContext())
             activeIntake = ctx.Intakes.First(i => i.Id == intakeId);
 
-        var badge = await TestServices.Completeness(db, activeIntake: activeIntake).GetBadgeCountAsync();
+        var service = TestServices.Completeness(db, activeIntake: activeIntake);
+        var badge = await service.GetBadgeCountAsync();
+        var gaps = ICompletenessService.CountGaps(await service.BuildAsync(intakeId, packageId));
+        var summary = await service.GetIntakeSummaryAsync(intakeId, packageId);
+
+        Assert.Equal(3, badge);
+        Assert.Equal(3, gaps.MissingRequired);
+        Assert.Equal(2, summary.IncompletePeople);
+        Assert.Equal(4, summary.RequiredCells);
+    }
+
+    [Fact]
+    public async Task Badge_IgnoresAGroupColumnThatCoversEveryone()
+    {
+        using var db = new TestDb();
+        var (packageId, intakeId, personId, templateId) = SeedOnePersonalTemplate(db);
+        var groupTemplateId = AddSecondPersonAndGroupTemplate(db, packageId, intakeId);
+        AddDocument(db, personId, templateId, intakeId, stale: false);
+
+        Intake activeIntake;
+        using (var ctx = db.Factory.CreateDbContext())
+        {
+            activeIntake = ctx.Intakes.First(i => i.Id == intakeId);
+            var doc = new GeneratedGroupDocument
+            {
+                TemplateId = groupTemplateId, IntakeId = intakeId, GeneratedAt = DateTime.Now, GeneratedByUserId = 1,
+                FileName = "g.docx", Version = 1, IsCurrent = true, HasContent = true, RecipientCount = 2
+            };
+            foreach (var id in ctx.Recipients.Where(r => r.IntakeId == intakeId).Select(r => r.Id).ToList())
+                doc.Recipients.Add(new GeneratedGroupDocumentRecipient { RecipientId = id });
+            ctx.GeneratedGroupDocuments.Add(doc);
+            ctx.SaveChanges();
+        }
+
+        var service = TestServices.Completeness(db, activeIntake: activeIntake);
+        var badge = await service.GetBadgeCountAsync();
+        var summary = await service.GetIntakeSummaryAsync(intakeId, packageId);
 
         Assert.Equal(1, badge);
-        Assert.True(personId > 0);
+        Assert.Equal(1, summary.IncompletePeople);
+        Assert.Equal(3, summary.SatisfiedCells);
     }
 
     private static MatrixRowViewModel BuildRow(MatrixData data, int personId, int templateId)

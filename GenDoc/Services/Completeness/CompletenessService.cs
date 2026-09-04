@@ -50,30 +50,12 @@ namespace GenDoc.Services.Completeness
             int intakeId, int packageId)
         {
             using var db = _dbFactory.CreateDbContext();
-            var data = await LoadAsync(db, intakeId, packageId);
+            var gaps = ICompletenessService.CountGaps(await LoadAsync(db, intakeId, packageId));
 
-            var requiredCells = 0;
-            var satisfiedCells = 0;
-            var incompletePeople = 0;
-
-            foreach (var person in data.People)
-            {
-                var personIncomplete = false;
-                foreach (var template in data.Templates)
-                {
-                    if (ICompletenessService.Resolve(template, person.FitnessCategory) != TemplateRequirement.Required)
-                        continue;
-
-                    requiredCells++;
-                    var hasDoc = data.Docs.TryGetValue((person.Id, template.TemplateId, template.IsExport), out var doc);
-                    if (hasDoc && !doc!.IsStale) satisfiedCells++;
-                    else personIncomplete = true;
-                }
-                if (personIncomplete) incompletePeople++;
-            }
-
-            var percent = requiredCells == 0 ? 0 : (int)Math.Round(satisfiedCells * 100.0 / requiredCells);
-            return (percent, incompletePeople, requiredCells, satisfiedCells);
+            var percent = gaps.RequiredCells == 0
+                ? 0
+                : (int)Math.Round(gaps.SatisfiedCells * 100.0 / gaps.RequiredCells);
+            return (percent, gaps.IncompletePeople, gaps.RequiredCells, gaps.SatisfiedCells);
         }
 
         private async Task<MatrixData> LoadAsync(AppDbContext db, int intakeId, int packageId)
@@ -483,29 +465,8 @@ namespace GenDoc.Services.Completeness
             var packageId = await GetDefaultPackageIdAsync(intake.Id);
             if (packageId is not int pid) return (0, 0);
 
-            var data = await BuildAsync(intake.Id, pid);
-            var missing = 0;
-            var stale = 0;
-            foreach (var person in data.People)
-            {
-                foreach (var template in data.Templates)
-                {
-                    if (ICompletenessService.Resolve(template, person.FitnessCategory) != TemplateRequirement.Required)
-                        continue;
-
-                    var hasDoc = data.Docs.TryGetValue((person.Id, template.TemplateId, template.IsExport), out var doc);
-
-                    if (!hasDoc)
-                    {
-                        if (!template.IsGroup) missing++;
-                    }
-                    else if (doc!.IsStale)
-                    {
-                        stale++;
-                    }
-                }
-            }
-            return (missing, stale);
+            var gaps = ICompletenessService.CountGaps(await BuildAsync(intake.Id, pid));
+            return (gaps.MissingRequired, gaps.Stale);
         }
 
         public async Task<List<MatrixTemplateInfo>> GetPackageLinksAsync(int packageId)

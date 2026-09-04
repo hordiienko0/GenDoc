@@ -337,20 +337,20 @@ namespace GenDoc.ViewModels.Completeness
 
         private void RecomputeAggregates()
         {
-            MissingRequiredCount =
-                Rows.Sum(r => r.Cells.Count(c => c.IsMissingRequired && !c.IsGroupColumn))
-                + MissingGroupColumns().Count;
-            MissingOptionalCount = Rows.Sum(r => r.Cells.Count(c => c.IsMissingOptional));
-            StaleCount = Rows.Sum(r => r.Cells.Count(c => c.IsStale));
+            var gaps = _matrixData is null
+                ? new CompletenessGaps(0, 0, 0, 0, 0, 0)
+                : ICompletenessService.CountGaps(_matrixData, Rows.Select(r => r.RecipientId).ToHashSet());
 
-            var requiredPresentTotal = Rows.Sum(r => r.RequiredPresent);
-            var requiredTotal = Rows.Sum(r => r.RequiredTotal);
-            IsFullyComplete = Rows.Count > 0 && requiredTotal > 0 && requiredPresentTotal == requiredTotal;
+            MissingRequiredCount = gaps.MissingRequired;
+            MissingOptionalCount = gaps.MissingOptional;
+            StaleCount = gaps.Stale;
+
+            IsFullyComplete = Rows.Count > 0 && gaps.RequiredCells > 0 && gaps.SatisfiedCells == gaps.RequiredCells;
 
             var optionalSuffix = MissingOptionalCount > 0 ? $" · {MissingOptionalCount} опц." : string.Empty;
             FooterText = Rows.Count == 0
                 ? string.Empty
-                : $"{Rows.Count} осіб · {requiredPresentTotal} документів з {requiredTotal} обов'язкових · {StaleCount} застарілих{optionalSuffix}";
+                : $"{Rows.Count} осіб · {gaps.SatisfiedCells} документів з {gaps.RequiredCells} обов'язкових · {StaleCount} застарілих{optionalSuffix}";
         }
 
         [RelayCommand]
@@ -685,10 +685,17 @@ namespace GenDoc.ViewModels.Completeness
                     MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
-        private async Task RefreshCellAsync(MatrixCellViewModel cell)
+        internal async Task RefreshCellAsync(MatrixCellViewModel cell)
         {
             var doc = await _completenessService.GetCellAsync(cell.RecipientId, cell.TemplateId);
             cell.Initialize(doc);
+
+            if (_matrixData is not null)
+            {
+                var key = (cell.RecipientId, cell.TemplateId, false);
+                if (doc is null) _matrixData.Docs.Remove(key);
+                else _matrixData.Docs[key] = doc;
+            }
 
             var row = Rows.FirstOrDefault(r => r.RecipientId == cell.RecipientId);
             row?.RecomputeReadiness();

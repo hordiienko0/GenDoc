@@ -32,6 +32,10 @@ namespace GenDoc.Services.Completeness
         int TemplateId, string TemplateName, int? DocumentId, int Version, bool HasContent, bool IsStale,
         TemplateRequirement Requirement = TemplateRequirement.Required);
 
+    public record CompletenessGaps(
+        int MissingRequired, int MissingOptional, int Stale,
+        int RequiredCells, int SatisfiedCells, int IncompletePeople);
+
     public interface ICompletenessService
     {
         Task<MatrixData> BuildAsync(int intakeId, int packageId);
@@ -61,5 +65,84 @@ namespace GenDoc.Services.Completeness
             => FitnessCategoryHelper.IsRegular(fitnessCategory)
                 ? template.RequirementRegular
                 : template.RequirementLimited;
+
+        static bool IsApplicable(MatrixTemplateInfo template, string? fitnessCategory)
+            => Resolve(template, fitnessCategory) != TemplateRequirement.NotApplicable;
+
+        static CompletenessGaps CountGaps(MatrixData data, IReadOnlySet<int>? recipientIds = null)
+        {
+            var people = recipientIds is null
+                ? data.People
+                : data.People.Where(p => recipientIds.Contains(p.Id)).ToList();
+
+            var missingRequired = 0;
+            var missingOptional = 0;
+            var stale = 0;
+            var requiredCells = 0;
+            var satisfiedCells = 0;
+            var incompletePeople = 0;
+
+            foreach (var person in people)
+            {
+                var personIncomplete = false;
+                foreach (var template in data.Templates)
+                {
+                    var requirement = Resolve(template, person.FitnessCategory);
+                    if (requirement == TemplateRequirement.NotApplicable) continue;
+
+                    var hasDoc = data.Docs.TryGetValue((person.Id, template.TemplateId, template.IsExport), out var doc);
+                    var present = hasDoc && !doc!.RosterUnknown;
+
+                    if (requirement == TemplateRequirement.Required)
+                    {
+                        requiredCells++;
+                        if (present && !doc!.IsStale) satisfiedCells++;
+                        else personIncomplete = true;
+                    }
+
+                    if (template.IsGroup) continue;
+
+                    if (!present)
+                    {
+                        if (requirement == TemplateRequirement.Required) missingRequired++;
+                        else missingOptional++;
+                    }
+                    else if (doc!.IsStale)
+                    {
+                        stale++;
+                    }
+                }
+                if (personIncomplete) incompletePeople++;
+            }
+
+            foreach (var column in data.Templates.Where(t => t.IsGroup))
+            {
+                var lacksRequired = false;
+                var lacksOptional = false;
+                var columnStale = false;
+                foreach (var person in people)
+                {
+                    var requirement = Resolve(column, person.FitnessCategory);
+                    if (requirement == TemplateRequirement.NotApplicable) continue;
+
+                    var hasDoc = data.Docs.TryGetValue((person.Id, column.TemplateId, column.IsExport), out var doc);
+                    if (!hasDoc || doc!.RosterUnknown)
+                    {
+                        if (requirement == TemplateRequirement.Required) lacksRequired = true;
+                        else lacksOptional = true;
+                    }
+                    else if (doc.IsStale)
+                    {
+                        columnStale = true;
+                    }
+                }
+                if (lacksRequired) missingRequired++;
+                else if (lacksOptional) missingOptional++;
+                if (columnStale) stale++;
+            }
+
+            return new CompletenessGaps(
+                missingRequired, missingOptional, stale, requiredCells, satisfiedCells, incompletePeople);
+        }
     }
 }
