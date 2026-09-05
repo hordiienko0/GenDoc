@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -35,6 +35,13 @@ public partial class LoginViewModel : ObservableObject
     private string? errorMessage;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NotBusy))]
+    [NotifyCanExecuteChangedFor(nameof(UnlockDatabaseCommand))]
+    private bool isBusy;
+
+    public bool NotBusy => !IsBusy;
+
+    [ObservableProperty]
     private ObservableCollection<UserProfileListItem> profiles = new();
 
     [ObservableProperty]
@@ -51,8 +58,8 @@ public partial class LoginViewModel : ObservableObject
     public bool? LoginResult { get; private set; }
     public event EventHandler? RequestClose;
 
-    [RelayCommand]
-    private void UnlockDatabase()
+    [RelayCommand(CanExecute = nameof(NotBusy))]
+    private async Task UnlockDatabaseAsync()
     {
         ErrorMessage = null;
 
@@ -77,16 +84,37 @@ public partial class LoginViewModel : ObservableObject
             }
         }
 
-        if (!_unlockService.TryUnlock(DatabasePassword, out var error))
+        var password = DatabasePassword;
+        IsBusy = true;
+        try
         {
-            ErrorMessage = error;
-            return;
+            var outcome = await Task.Run(() =>
+            {
+                if (!_unlockService.TryUnlock(password, out var error))
+                    return (Error: error, Profiles: (List<UserProfileListItem>?)null);
+
+                _schemaInitializer.EnsureInitialized();
+                return (Error: null, Profiles: _userProfileService.GetActiveProfiles());
+            });
+
+            if (outcome.Profiles is null)
+            {
+                ErrorMessage = outcome.Error;
+                return;
+            }
+
+            Profiles = new ObservableCollection<UserProfileListItem>(outcome.Profiles);
+            SelectedProfile = Profiles.Count == 1 ? Profiles[0] : null;
+            Stage = LoginStage.ProfileSelect;
         }
-
-        _schemaInitializer.EnsureInitialized();
-
-        Profiles = new ObservableCollection<UserProfileListItem>(_userProfileService.GetActiveProfiles());
-        Stage = LoginStage.ProfileSelect;
+        catch (Exception ex)
+        {
+            ErrorMessage = $"Не вдалося відкрити базу даних: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+        }
     }
 
     [RelayCommand]

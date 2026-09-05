@@ -87,6 +87,11 @@
                                          PasswordChanged="DatabasePasswordBox_PasswordChanged"/>
                             <Button Content="Розблокувати" Command="{Binding UnlockDatabaseCommand}"
                                     Margin="0 18 0 0" Padding="0,11" HorizontalAlignment="Stretch"/>
+                            <StackPanel Margin="0 12 0 0" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
+                                <ProgressBar IsIndeterminate="True" Height="4"/>
+                                <TextBlock Text="Відкриваємо базу даних і перевіряємо структуру…" FontSize="11.5" Margin="0 6 0 0"
+                                           Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center"/>
+                            </StackPanel>
                         </StackPanel>
 
                         <StackPanel Grid.Row="2" Margin="24,20,24,0"

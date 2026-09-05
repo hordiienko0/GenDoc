@@ -29,7 +29,7 @@
         xmlns:staffVm="clr-namespace:GenDoc.ViewModels.Staff"
         xmlns:staffView="clr-namespace:GenDoc.Views.Staff"
         Style="{StaticResource {x:Type Window}}"
-        Title="GenDoc - Облік особового складу" Height="720" Width="1180"
+        Title="{Binding WindowTitleText}" Height="720" Width="1180"
         MinWidth="960" MinHeight="600"
         Background="{StaticResource BackgroundBrush}"
         WindowStyle="None" ResizeMode="CanResize"
@@ -170,11 +170,16 @@
         </Border>
 
         <Menu DockPanel.Dock="Top">
-            <MenuItem Header="Файл" Click="MenuItem_Click"/>
-            <MenuItem Header="Правка" Click="MenuItem_Click"/>
-            <MenuItem Header="Вигляд" Click="MenuItem_Click"/>
-            <MenuItem Header="Сервіс" Click="MenuItem_Click"/>
-            <MenuItem Header="Довідка" Click="MenuItem_Click"/>
+            <MenuItem Header="Файл">
+                <MenuItem Header="Змінити профіль…" Click="SwitchProfile_Click"
+                          ToolTip="Закриває програму й відкриває вікно входу"/>
+                <Separator/>
+                <MenuItem Header="Вихід" Click="CloseButton_Click" InputGestureText="Alt+F4"/>
+            </MenuItem>
+            <MenuItem Header="Довідка">
+                <MenuItem Header="Відкрити теку журналів помилок" Click="OpenLogs_Click"/>
+                <MenuItem Header="Про програму…" Click="About_Click"/>
+            </MenuItem>
         </Menu>
 
         <Border DockPanel.Dock="Bottom" Height="24" Background="{StaticResource PanelBrush}"

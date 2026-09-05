@@ -40,7 +40,7 @@ public class MissingDatabaseGuardTests
         => new(unlock, new FakeProfiles(), schema) { ConfirmCreateDatabase = confirm };
 
     [Fact]
-    public void MissingDatabase_AndUserDeclines_DoesNotUnlockOrInitialize()
+    public async Task MissingDatabase_AndUserDeclines_DoesNotUnlockOrInitialize()
     {
         var unlock = new FakeUnlock { Exists = false };
         var schema = new FakeSchema();
@@ -49,7 +49,7 @@ public class MissingDatabaseGuardTests
         var vm = Vm(unlock, schema, _ => { confirmed = true; return false; });
         vm.DatabasePassword = "pwd";
 
-        vm.UnlockDatabaseCommand.Execute(null);
+        await vm.UnlockDatabaseCommand.ExecuteAsync(null);
 
         Assert.True(confirmed, "Користувача не спитали про створення нової бази.");
         Assert.Equal(0, unlock.UnlockCalls);
@@ -58,7 +58,7 @@ public class MissingDatabaseGuardTests
     }
 
     [Fact]
-    public void MissingDatabase_AndUserAgrees_ProceedsToProfileSelect()
+    public async Task MissingDatabase_AndUserAgrees_ProceedsToProfileSelect()
     {
         var unlock = new FakeUnlock { Exists = false };
         var schema = new FakeSchema();
@@ -66,14 +66,14 @@ public class MissingDatabaseGuardTests
         var vm = Vm(unlock, schema, _ => true);
         vm.DatabasePassword = "pwd";
 
-        vm.UnlockDatabaseCommand.Execute(null);
+        await vm.UnlockDatabaseCommand.ExecuteAsync(null);
 
         Assert.Equal(1, unlock.UnlockCalls);
         Assert.Equal(LoginStage.ProfileSelect, vm.Stage);
     }
 
     [Fact]
-    public void ExistingDatabase_AsksNothing()
+    public async Task ExistingDatabase_AsksNothing()
     {
         var unlock = new FakeUnlock { Exists = true };
         var asked = false;
@@ -81,14 +81,14 @@ public class MissingDatabaseGuardTests
         var vm = Vm(unlock, new FakeSchema(), _ => { asked = true; return true; });
         vm.DatabasePassword = "pwd";
 
-        vm.UnlockDatabaseCommand.Execute(null);
+        await vm.UnlockDatabaseCommand.ExecuteAsync(null);
 
         Assert.False(asked);
         Assert.Equal(LoginStage.ProfileSelect, vm.Stage);
     }
 
     [Fact]
-    public void ConfirmationMessage_NamesTheFullPath()
+    public async Task ConfirmationMessage_NamesTheFullPath()
     {
         var unlock = new FakeUnlock { Exists = false };
         string? shown = null;
@@ -96,7 +96,7 @@ public class MissingDatabaseGuardTests
         var vm = Vm(unlock, new FakeSchema(), message => { shown = message; return false; });
         vm.DatabasePassword = "pwd";
 
-        vm.UnlockDatabaseCommand.Execute(null);
+        await vm.UnlockDatabaseCommand.ExecuteAsync(null);
 
         Assert.NotNull(shown);
         Assert.Contains(unlock.DatabasePath, shown!, StringComparison.Ordinal);
