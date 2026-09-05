@@ -17,13 +17,27 @@ namespace GenDoc.ViewModels.Personnel
     public partial class PersonCardViewModel : ObservableObject
     {
         public static readonly string[] FitnessOptions =
-            { "придатний", "обмежено придатний", "непридатний" };
+            { FitnessCategoryHelper.Regular, FitnessCategoryHelper.Limited, FitnessCategoryHelper.Unfit };
+
+        public const string NoFitnessOption = "— без категорії —";
+
+        public const string SaveFirstNote = "Спершу збережіть особу - документи з'являться після збереження";
 
         private static readonly HashSet<string> EditableFields = new()
         {
             nameof(LastName), nameof(FirstMiddle), nameof(Rank), nameof(Position),
             nameof(ServiceNumber), nameof(RoomBuilding), nameof(RoomNumber), nameof(Fitness)
         };
+
+        internal static string NormalizeFitness(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return NoFitnessOption;
+            var trimmed = value.Trim();
+            return FitnessOptions.FirstOrDefault(o => UkrainianCollation.IgnoreCase.Equals(o, trimmed)) ?? trimmed;
+        }
+
+        internal static string? FitnessToSave(string? value)
+            => value is null || value == NoFitnessOption || string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
         private readonly IPersonnelService _personnelService;
         private readonly ICompletenessService _completenessService;
@@ -73,12 +87,19 @@ namespace GenDoc.ViewModels.Personnel
             serviceNumber = model.ServiceNumber;
             roomBuilding = model.RoomBuilding;
             roomNumber = model.RoomNumber;
-            fitness = model.FitnessCategory;
+            fitness = NormalizeFitness(model.FitnessCategory);
+
+            FitnessList = new ObservableCollection<string> { NoFitnessOption };
+            foreach (var option in FitnessOptions) FitnessList.Add(option);
+            if (!FitnessList.Contains(fitness)) FitnessList.Add(fitness);
 
             isEditing = IsNew;
+            if (IsNew) documentsEmptyNote = SaveFirstNote;
 
             TakeSnapshot();
         }
+
+        public bool CanWorkWithDocuments => !IsNew;
 
         public event Action<int>? Saved;
         public event Action? CloseRequested;
@@ -114,7 +135,7 @@ namespace GenDoc.ViewModels.Personnel
             OnPropertyChanged(nameof(HeaderSub));
         }
 
-        public IReadOnlyList<string> FitnessList => FitnessOptions;
+        public ObservableCollection<string> FitnessList { get; }
 
         [ObservableProperty] private string lastName;
         [ObservableProperty] private string firstMiddle;
@@ -143,6 +164,7 @@ namespace GenDoc.ViewModels.Personnel
 
         [ObservableProperty] private string? lastNameError;
         [ObservableProperty] private string? serviceNumberError;
+        [ObservableProperty] private string? roomError;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(IsDataTab))]
@@ -271,8 +293,10 @@ namespace GenDoc.ViewModels.Personnel
             if (row?.DocumentId is not int documentId) return;
             var result = await _archiveService.OpenAsync(documentId);
             if (!result.Success)
-                MessageBox.Show(result.ErrorMessage, "Відкриття документа",
+                MessageBox.Show(result.ErrorMessage ?? "Не вдалося відкрити документ.", "Відкриття документа",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
+            else if (result.Warning is not null)
+                MessageBox.Show(result.Warning, "Відкриття документа", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         [RelayCommand]
@@ -283,7 +307,8 @@ namespace GenDoc.ViewModels.Personnel
             {
                 var result = await _archiveService.PrintAsync(documentId);
                 if (!result.Success)
-                    MessageBox.Show(result.ErrorMessage, "Друк", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show(result.ErrorMessage ?? "Не вдалося надрукувати документ.", "Друк",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             catch (System.ComponentModel.Win32Exception)
             {
@@ -310,7 +335,8 @@ namespace GenDoc.ViewModels.Personnel
             if (row?.GroupDocumentId is not int id) return;
             var result = await _archiveService.OpenGroupAsync(id);
             if (!result.Success)
-                MessageBox.Show(result.ErrorMessage, "Відкриття відомості", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(result.ErrorMessage ?? "Не вдалося відкрити відомість.", "Відкриття відомості",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         [RelayCommand]
@@ -390,12 +416,14 @@ namespace GenDoc.ViewModels.Personnel
             Fitness = _clean.Fitness;
             LastNameError = null;
             ServiceNumberError = null;
+            RoomError = null;
         }
 
         public async Task<bool> SaveAsync()
         {
             LastNameError = null;
             ServiceNumberError = null;
+            RoomError = null;
 
             var parts = (FirstMiddle ?? string.Empty).Trim()
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -411,16 +439,18 @@ namespace GenDoc.ViewModels.Personnel
                 ServiceNumber = ServiceNumber?.Trim() ?? string.Empty,
                 RoomBuilding = RoomBuilding,
                 RoomNumber = RoomNumber,
-                FitnessCategory = Fitness,
+                FitnessCategory = FitnessToSave(Fitness),
                 OrgNodeId = OrgNodeId,
                 IntakeId = IntakeId
             };
 
+            var wasNew = IsNew;
             var result = await _personnelService.SaveAsync(model);
             if (!result.Success)
             {
                 LastNameError = result.Errors.GetValueOrDefault("LastName");
                 ServiceNumberError = result.Errors.GetValueOrDefault("ServiceNumber");
+                RoomError = result.Errors.GetValueOrDefault("Room");
                 return false;
             }
 
@@ -429,6 +459,12 @@ namespace GenDoc.ViewModels.Personnel
             RefreshHeader();
             IsEditing = false;
             _documentsLoaded = false;
+            if (wasNew)
+            {
+                DocumentsEmptyNote = null;
+                OnPropertyChanged(nameof(IsNew));
+                OnPropertyChanged(nameof(CanWorkWithDocuments));
+            }
             if (IsDocumentsTab) await LoadDocumentsAsync();
             Saved?.Invoke(result.Id);
             return true;
@@ -449,7 +485,7 @@ namespace GenDoc.ViewModels.Personnel
         [RelayCommand]
         private void Cancel()
         {
-            if (IsEditing)
+            if (IsEditing && !IsNew)
             {
                 RevertToClean();
                 IsEditing = false;

@@ -85,6 +85,9 @@ namespace GenDoc.Services.Personnel
                     errors["ServiceNumber"] = $"Номер вже використовується: {duplicate.LastName} {duplicate.FirstName}".Trim();
             }
 
+            if (string.IsNullOrWhiteSpace(model.RoomBuilding) != string.IsNullOrWhiteSpace(model.RoomNumber))
+                errors["Room"] = "Вкажіть і корпус, і номер";
+
             if (errors.Count > 0) return new PersonSaveResult(false, model.Id, errors);
 
             var isNew = model.Id == 0;

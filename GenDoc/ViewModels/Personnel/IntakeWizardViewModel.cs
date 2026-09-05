@@ -35,7 +35,7 @@ namespace GenDoc.ViewModels.Personnel
 
         [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(CreateCommand))]
-        private DateTime? dateEnd = DateTime.Today.AddMonths(1);
+        private DateTime? dateEnd = DateTime.Today.AddMonths(3);
 
         public string SummaryText =>
             $"Буде створено {Services.Intakes.IntakeFitnessFolders.AllFolderNames.Count + 1} папки: "

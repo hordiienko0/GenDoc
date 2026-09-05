@@ -15,18 +15,20 @@ namespace GenDoc.ViewModels.Personnel
 {
     public partial class TemplateChoiceItem : ObservableObject
     {
-        public TemplateChoiceItem(int id, string name, string group, bool isExport = false)
+        public TemplateChoiceItem(int id, string name, string group, bool isExport = false, bool isGroup = false)
         {
             Id = id;
             Name = name;
             Group = group;
             IsExport = isExport;
+            IsGroup = isGroup;
         }
 
         public int Id { get; }
         public string Name { get; }
         public string Group { get; }
         public bool IsExport { get; }
+        public bool IsGroup { get; }
 
         [ObservableProperty] private bool isChecked;
     }
@@ -102,18 +104,25 @@ namespace GenDoc.ViewModels.Personnel
                 all = all.Append((link.TemplateId, link.Name)).ToList();
 
             var exports = _generationService.GetAllExportTemplates();
+            var perRecipientIds = all.Select(t => t.Id).ToHashSet();
+            var groups = _generationService.GetAllTemplates(Models.Enums.TemplateAudience.Intake)
+                .Where(t => !perRecipientIds.Contains(t.Id))
+                .ToList();
 
             Templates.Clear();
-            foreach (var item in OrderTemplates(all, packageTemplateIds, exports))
+            foreach (var item in OrderTemplates(all, packageTemplateIds, exports, groups))
             {
                 item.PropertyChanged += OnTemplateChanged;
                 Templates.Add(item);
             }
         }
 
+        public const string GroupWordGroupName = "Групові документи (Word) - один на обраних";
+
         internal static List<TemplateChoiceItem> OrderTemplates(
             IReadOnlyList<(int Id, string Name)> all, IReadOnlyList<int> defaultPackageTemplateIds,
-            IReadOnlyList<(int Id, string Name)>? exportTemplates = null)
+            IReadOnlyList<(int Id, string Name)>? exportTemplates = null,
+            IReadOnlyList<(int Id, string Name)>? groupTemplates = null)
         {
             var byId = all.ToDictionary(t => t.Id);
             var result = new List<TemplateChoiceItem>();
@@ -122,6 +131,8 @@ namespace GenDoc.ViewModels.Personnel
             var rest = all.Where(t => !defaultPackageTemplateIds.Contains(t.Id))
                 .OrderBy(t => t.Name, UkrainianCollation.Surname);
             foreach (var t in rest) result.Add(new TemplateChoiceItem(t.Id, t.Name, "Інші шаблони"));
+            foreach (var t in (groupTemplates ?? Array.Empty<(int, string)>()).OrderBy(t => t.Name, UkrainianCollation.Surname))
+                result.Add(new TemplateChoiceItem(t.Id, t.Name, GroupWordGroupName, isGroup: true));
             foreach (var t in (exportTemplates ?? Array.Empty<(int, string)>()).OrderBy(t => t.Name, UkrainianCollation.Surname))
                 result.Add(new TemplateChoiceItem(t.Id, t.Name, "Відомості (Excel) - один аркуш на обраних", isExport: true));
             return result;
@@ -142,7 +153,7 @@ namespace GenDoc.ViewModels.Personnel
             var templateIds = Templates.Where(t => t.IsChecked && !t.IsExport).Select(t => t.Id).ToList();
             var exportTemplateIds = Templates.Where(t => t.IsChecked && t.IsExport).Select(t => t.Id).ToList();
             var manualTags = _generationService.GetManualTagsForTemplates(templateIds, exportTemplateIds);
-            var needsCourseOfficer = _generationService.ExportTemplatesNeedCourseOfficer(exportTemplateIds);
+            var needsCourseOfficer = _generationService.TemplatesNeedCourseOfficer(templateIds, exportTemplateIds);
             var manualValues = new Dictionary<string, string>();
             int? courseOfficerId = null;
             if (manualTags.Count > 0 || needsCourseOfficer)

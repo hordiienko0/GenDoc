@@ -96,15 +96,27 @@ namespace GenDoc.ViewModels.Personnel
         {
             var dialog = new NodePickerDialogViewModel(
                 count == 1 ? "Перемістити особу до…" : $"Перемістити {count} осіб до…",
-                node =>
-                {
-                    var crossing = sourceIntakeIds.Count(i => i != node.IntakeId);
-                    return crossing > 0
-                        ? $"Увага: {crossing} із {count} осіб буде переміщено між наборами."
-                        : null;
-                });
+                node => BuildMoveWarning(sourceIntakeIds, node.IntakeId, count));
             dialog.Build(tree, _ => true);
             return dialog;
+        }
+
+        internal static string? BuildMoveWarning(IReadOnlyCollection<int?> sourceIntakeIds, int? targetIntakeId, int count)
+        {
+            if (targetIntakeId is null)
+            {
+                var leaving = sourceIntakeIds.Count(i => i is not null);
+                return leaving > 0
+                    ? $"Увага: {leaving} із {count} осіб буде винесено з набору у звичайну папку - вони втратять прив'язку до набору."
+                    : null;
+            }
+
+            var crossing = sourceIntakeIds.Count(i => i is not null && i != targetIntakeId);
+            var joining = sourceIntakeIds.Count(i => i is null);
+            var parts = new List<string>();
+            if (crossing > 0) parts.Add($"{crossing} із {count} осіб буде переміщено між наборами");
+            if (joining > 0) parts.Add($"{joining} із {count} осіб буде додано до набору");
+            return parts.Count == 0 ? null : $"Увага: {string.Join("; ", parts)}.";
         }
 
         public static NodePickerDialogViewModel ForRestoreParent(OrgTreeViewModel tree)

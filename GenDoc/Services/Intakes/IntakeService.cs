@@ -348,8 +348,30 @@ namespace GenDoc.Services.Intakes
             return node;
         }
 
+        public async Task<string?> GetReopenConflictAsync(int intakeId)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var intake = await db.Intakes.AsNoTracking().FirstOrDefaultAsync(i => i.Id == intakeId);
+            if (intake is null) return null;
+
+            var today = DateOnly.FromDateTime(DateTime.Today);
+            if (intake.DateStart > today) return null;
+
+            var active = await db.Intakes.AsNoTracking()
+                .Where(i => i.Status == IntakeStatus.Active && i.Id != intakeId)
+                .OrderByDescending(i => i.Number)
+                .FirstOrDefaultAsync();
+            return active is null
+                ? null
+                : $"Набір «{IntakeLabel.Of(active.Number, active.DisplayNumber)}» уже активний. " +
+                  "Активним може бути лише один набір - спершу закрийте його.";
+        }
+
         public async Task ReopenAsync(int intakeId)
         {
+            if (await GetReopenConflictAsync(intakeId) is { } conflict)
+                throw new InvalidOperationException(conflict);
+
             using var db = _dbFactory.CreateDbContext();
 
             async Task ApplyAsync()

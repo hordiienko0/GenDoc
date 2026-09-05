@@ -211,7 +211,8 @@
 
                     <Border DockPanel.Dock="Top" Padding="10,8">
                         <UniformGrid Columns="3">
-                            <Button Content="Активні" Command="{Binding Tree.SetFilterCommand}" CommandParameter="Active">
+                            <Button Content="Поточні" Command="{Binding Tree.SetFilterCommand}" CommandParameter="Active"
+                                    ToolTip="Активний і заплановані набори; завершені - в «Архівних»">
                                 <Button.Style>
                                     <Style TargetType="Button" BasedOn="{StaticResource TreeFilterTabStyle}">
                                         <Style.Triggers>
@@ -577,9 +578,21 @@
                                     <ColumnDefinition Width="8"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBox Grid.Column="0" Text="{Binding RoomBuilding, UpdateSourceTrigger=PropertyChanged}"/>
-                                <TextBox Grid.Column="2" Text="{Binding RoomNumber, UpdateSourceTrigger=PropertyChanged}"/>
+                                <TextBox Grid.Column="0" Text="{Binding RoomBuilding, UpdateSourceTrigger=PropertyChanged}" Tag="корпус"/>
+                                <TextBox Grid.Column="2" Text="{Binding RoomNumber, UpdateSourceTrigger=PropertyChanged}" Tag="№"/>
                             </Grid>
+                            <TextBlock Text="{Binding RoomError}" FontSize="11" TextWrapping="Wrap"
+                                       Foreground="{StaticResource DangerBrush}" Margin="0,3,0,0">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding RoomError}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
 
                             <TextBlock Text="Придатність" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,10,0,4"/>
                             <TextBlock Text="{Binding Fitness}" Style="{StaticResource CardReadValueStyle}"/>
@@ -611,6 +624,9 @@
                                             <DataTrigger Binding="{Binding IsPackageComplete}" Value="False">
                                                 <Setter Property="Visibility" Value="Collapsed"/>
                                             </DataTrigger>
+                                            <DataTrigger Binding="{Binding CanWorkWithDocuments}" Value="False">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
                                         </Style.Triggers>
                                     </Style>
                                 </TextBlock.Style>
@@ -630,7 +646,8 @@
 
                             <Button Content="Згенерувати документ…" Style="{StaticResource SecondaryButtonStyle}"
                                     HorizontalAlignment="Stretch" Margin="0,0,0,10"
-                                    Command="{Binding GenerateAnyDocumentCommand}"/>
+                                    Command="{Binding GenerateAnyDocumentCommand}"
+                                    Visibility="{Binding CanWorkWithDocuments, Converter={StaticResource BoolToVisibility}}"/>
 
                             <ItemsControl ItemsSource="{Binding DocumentRows}">
                                 <ItemsControl.ItemTemplate>

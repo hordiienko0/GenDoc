@@ -165,12 +165,14 @@
                                                     CommandParameter="{Binding}"/>
                                             <Button Content="Згенерувати пакет" Style="{StaticResource CardActionButtonStyle}"
                                                     Command="{Binding DataContext.OpenGenerationCommand, ElementName=IntakesRoot}"
-                                                    CommandParameter="{Binding}"/>
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="Екран «Генерація» працює з активним набором"
+                                                    Visibility="{Binding IsActiveIntake, Converter={StaticResource BoolToVisibility}}"/>
                                             <Button Content="Закрити набір" Style="{StaticResource CardActionButtonStyle}"
                                                     Foreground="{StaticResource DangerBrush}"
                                                     Command="{Binding DataContext.CloseIntakeCommand, ElementName=IntakesRoot}"
                                                     CommandParameter="{Binding}"
-                                                    Visibility="{Binding IsNotCompleted, Converter={StaticResource BoolToVisibility}}"/>
+                                                    Visibility="{Binding IsActiveIntake, Converter={StaticResource BoolToVisibility}}"/>
                                             <Button Content="Відкрити повторно" Style="{StaticResource CardActionButtonStyle}"
                                                     Command="{Binding DataContext.ReopenIntakeCommand, ElementName=IntakesRoot}"
                                                     CommandParameter="{Binding}"

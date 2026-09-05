@@ -20,6 +20,7 @@ namespace GenDoc.Services.Intakes
         Task<IReadOnlyList<int>> GetYearsAsync();
         Task<IntakeCloseInfo> GetCloseInfoAsync(int intakeId);
         Task CloseAsync(IntakeCloseRequest request);
+        Task<string?> GetReopenConflictAsync(int intakeId);
         Task ReopenAsync(int intakeId);
     }
 }

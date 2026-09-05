@@ -140,6 +140,6 @@ public class IntakeDisplayNumberTests
         WeakReferenceMessenger.Default.Unregister<CountsChangedMessage>(vm);
         await vm.InitializeAsync();
 
-        Assert.Equal("1 записів у гілці «Набір №5» · 1 у наборі «Набір №5»", vm.FooterText);
+        Assert.Equal("1 запис у гілці «Набір №5» · 1 у наборі «Набір №5»", vm.FooterText);
     }
 }

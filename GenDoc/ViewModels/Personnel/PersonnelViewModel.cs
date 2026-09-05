@@ -159,10 +159,22 @@ namespace GenDoc.ViewModels.Personnel
 
             await Tree.EnsureLoadedAsync();
             var node = Tree.FindById(nav.RootOrgNodeId);
-            if (node is not null) Tree.SelectNode(node);
+            if (node is null) return;
+            if (!node.IsVisibleInFilter) Tree.SetFilterCommand.Execute("All");
+            Tree.SelectNode(node);
         }
 
-        private async void OnTreeSelectionChanged(OrgNodeViewModel? node) => await ReloadListAsync();
+        private async void OnTreeSelectionChanged(OrgNodeViewModel? node)
+        {
+            AddCommand.NotifyCanExecuteChanged();
+            await ReloadListAsync();
+        }
+
+        internal static string RecordsText(int count)
+            => $"{count} {PluralHelper.Pluralize(count, "запис", "записи", "записів")}";
+
+        internal static string DeleteConfirmationText(int count)
+            => $"Видалити {RecordsText(count)} до кошика?";
 
         private void OnTreeNodeRenamed(OrgNodeViewModel renamed)
         {
@@ -281,7 +293,7 @@ namespace GenDoc.ViewModels.Personnel
 
         private void UpdateFooter(OrgNodeViewModel node)
         {
-            var text = $"{_allRows.Count} записів у гілці «{node.Name}»";
+            var text = $"{RecordsText(_allRows.Count)} у гілці «{node.Name}»";
 
             if (node.IntakeId is int intakeId && Tree.GetIntake(intakeId) is { } intake)
             {
@@ -338,7 +350,7 @@ namespace GenDoc.ViewModels.Personnel
             if (checkedRows.Count == 0) return;
 
             var result = MessageBox.Show(
-                $"Видалити {checkedRows.Count} записів до кошика?",
+                DeleteConfirmationText(checkedRows.Count),
                 "Підтвердження видалення",
                 MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (result != MessageBoxResult.Yes) return;
@@ -362,7 +374,9 @@ namespace GenDoc.ViewModels.Personnel
             OpenCard(model);
         }
 
-        [RelayCommand]
+        private bool CanAdd => Tree.SelectedNode is not null;
+
+        [RelayCommand(CanExecute = nameof(CanAdd))]
         private async Task AddAsync()
         {
             if (Tree.SelectedNode is null) return;
@@ -399,18 +413,27 @@ namespace GenDoc.ViewModels.Personnel
                 return;
             }
 
-            _ = RefreshRowAsync(row);
-            _ = Tree.RefreshCountsAsync();
+            CardSavedReload = RefreshAfterSaveAsync(row);
         }
 
-        private async Task RefreshRowAsync(PersonRowViewModel row)
+        internal Task CardSavedReload { get; private set; } = Task.CompletedTask;
+
+        private async Task RefreshAfterSaveAsync(PersonRowViewModel row)
         {
             var node = Tree.SelectedNode;
             if (node is null) return;
             var items = await _personnelService.QueryByNodeAsync(node.Id, Tree.ShowDescendants);
             var fresh = items.FirstOrDefault(i => i.Id == row.Id);
-            if (fresh is not null) row.UpdateFrom(fresh);
-            UpdateFooter(node);
+            if (fresh is not null)
+            {
+                row.UpdateFrom(fresh);
+                UpdateFooter(node);
+            }
+            else
+            {
+                await ReloadListAsync();
+            }
+            await Tree.RefreshCountsAsync();
         }
 
         [RelayCommand]

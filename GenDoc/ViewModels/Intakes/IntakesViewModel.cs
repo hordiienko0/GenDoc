@@ -229,14 +229,30 @@ namespace GenDoc.ViewModels.Intakes
         {
             if (card is null) return;
 
+            if (await _intakeService.GetReopenConflictAsync(card.Id) is { } conflict)
+            {
+                MessageBox.Show(conflict, "Повторне відкриття набору", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             var confirm = MessageBox.Show(
                 $"Відкрити повторно набір «{card.TitleText}»? " +
                 "Звільнені кімнати та переміщення до «Випускників» відновлені НЕ будуть.",
                 "Повторне відкриття набору", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (confirm != MessageBoxResult.Yes) return;
 
-            await _intakeService.ReopenAsync(card.Id);
+            try
+            {
+                await _intakeService.ReopenAsync(card.Id);
+            }
+            catch (InvalidOperationException ex)
+            {
+                MessageBox.Show(ex.Message, "Повторне відкриття набору", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
             await _activeIntakeState.RefreshAsync();
+            await _tree.ReloadAsync();
             WeakReferenceMessenger.Default.Send(new CountsChangedMessage());
             await RefreshAsync();
         }
