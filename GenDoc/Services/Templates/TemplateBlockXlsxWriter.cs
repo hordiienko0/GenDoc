@@ -51,6 +51,8 @@ namespace GenDoc.Services.Templates
             SheetLayout layout,
             IReadOnlyDictionary<int, SignatoryInfo>? signatories)
         {
+            var widths = ColumnWidths(blocks, layout);
+
             foreach (var placement in layout.Placements)
             {
                 var block = blocks[placement.BlockIndex];
@@ -61,25 +63,25 @@ namespace GenDoc.Services.Templates
                 switch (block.Kind)
                 {
                     case TemplateBlockKind.Title:
-                        WriteBanner(sheet, row, layout.ColumnCount, block.Text, style);
+                        WriteBanner(sheet, row, placement, block.Text, style);
                         break;
 
                     case TemplateBlockKind.Header:
                     case TemplateBlockKind.Paragraph:
                     case TemplateBlockKind.DateAndCity:
                         foreach (var line in SplitLines(block.Text))
-                            WriteBanner(sheet, row++, layout.ColumnCount, line, style);
+                            WriteBanner(sheet, row++, placement, line, style);
                         break;
 
                     case TemplateBlockKind.Signatures:
                         foreach (var line in block.Signatures ?? Array.Empty<SignatureLine>())
-                            WriteBanner(sheet, row++, layout.ColumnCount,
+                            WriteBanner(sheet, row++, placement,
                                 RenderSignature(line, signatories), style);
                         break;
 
                     case TemplateBlockKind.Table when block.Table is not null:
-                        WriteHeaderRow(sheet, placement.FirstRow, block.Table, style);
-                        WriteTemplateRow(sheet, placement.FirstRow + 1, block.Table, style);
+                        WriteHeaderRow(sheet, placement, block.Table, style, widths);
+                        WriteTemplateRow(sheet, placement, block.Table, style);
                         break;
                 }
             }
@@ -100,18 +102,22 @@ namespace GenDoc.Services.Templates
             return cleaned.Length > 31 ? cleaned[..31] : cleaned;
         }
 
-        private static void WriteHeaderRow(IXLWorksheet sheet, int row, TableSpec table, ResolvedBlockStyle style)
+        private static void WriteHeaderRow(
+            IXLWorksheet sheet, SheetBlockPlacement placement, TableSpec table, ResolvedBlockStyle style,
+            IReadOnlyDictionary<int, double> widths)
         {
             var headerStyle = BlockStyleDefaults.ForTableHeader(style, BlockAlignment.Center);
+            var row = placement.FirstRow;
 
             for (var i = 0; i < table.Columns.Count; i++)
             {
-                var cell = sheet.Cell(row, i + 1);
+                var column = placement.FirstColumn + i;
+                var cell = sheet.Cell(row, column);
                 cell.Value = table.Columns[i].Title;
                 Style(cell, headerStyle);
                 Border(cell);
 
-                sheet.Column(i + 1).Width = ColumnWidthChars(table.Columns[i].Title);
+                sheet.Column(column).Width = widths[column];
             }
 
             sheet.Row(row).Height = 30;
@@ -120,11 +126,33 @@ namespace GenDoc.Services.Templates
         internal static double ColumnWidthChars(string title)
             => Math.Clamp(title.Length + 4, MinColumnWidth, MaxColumnWidth);
 
-        private static void WriteTemplateRow(IXLWorksheet sheet, int row, TableSpec table, ResolvedBlockStyle style)
+        internal static IReadOnlyDictionary<int, double> ColumnWidths(
+            IReadOnlyList<TemplateBlock> blocks, SheetLayout layout)
+        {
+            var widths = new Dictionary<int, double>();
+
+            foreach (var placement in layout.Placements)
+            {
+                var block = blocks[placement.BlockIndex];
+                if (block.Kind != TemplateBlockKind.Table || block.Table is null) continue;
+
+                for (var i = 0; i < block.Table.Columns.Count; i++)
+                {
+                    var column = placement.FirstColumn + i;
+                    var chars = ColumnWidthChars(block.Table.Columns[i].Title);
+                    widths[column] = widths.TryGetValue(column, out var known) ? Math.Max(known, chars) : chars;
+                }
+            }
+
+            return widths;
+        }
+
+        private static void WriteTemplateRow(
+            IXLWorksheet sheet, SheetBlockPlacement placement, TableSpec table, ResolvedBlockStyle style)
         {
             for (var i = 0; i < table.Columns.Count; i++)
             {
-                var cell = sheet.Cell(row, i + 1);
+                var cell = sheet.Cell(placement.FirstRow + 1, placement.FirstColumn + i);
                 cell.SetValue(table.Columns[i].Cell);
                 Style(cell, style);
                 Border(cell);
@@ -132,14 +160,14 @@ namespace GenDoc.Services.Templates
         }
 
         private static void WriteBanner(
-            IXLWorksheet sheet, int row, int columnCount, string? text, ResolvedBlockStyle style)
+            IXLWorksheet sheet, int row, SheetBlockPlacement placement, string? text, ResolvedBlockStyle style)
         {
-            var cell = sheet.Cell(row, 1);
+            var cell = sheet.Cell(row, placement.FirstColumn);
             cell.SetValue(text ?? string.Empty);
             Style(cell, style);
 
-            if (columnCount > 1)
-                sheet.Range(sheet.Cell(row, 1), sheet.Cell(row, columnCount)).Merge();
+            if (placement.LastColumn > placement.FirstColumn)
+                sheet.Range(cell, sheet.Cell(row, placement.LastColumn)).Merge();
         }
 
         private static void Style(IXLCell cell, ResolvedBlockStyle style)

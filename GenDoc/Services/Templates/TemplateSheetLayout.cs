@@ -2,14 +2,31 @@ using GenDoc.Models.TemplateBuilder;
 
 namespace GenDoc.Services.Templates
 {
-    public record SheetBlockPlacement(int BlockIndex, int FirstRow, int LastRow);
+    public record SheetBlockPlacement(int BlockIndex, int FirstRow, int LastRow, int FirstColumn = 1, int LastColumn = 1)
+    {
+        public bool Overlaps(SheetBlockPlacement other)
+            => LastRow >= FirstRow && other.LastRow >= other.FirstRow
+               && FirstRow <= other.LastRow && other.FirstRow <= LastRow
+               && FirstColumn <= other.LastColumn && other.FirstColumn <= LastColumn;
+
+        public bool CoversRow(int row) => row >= FirstRow && row <= LastRow;
+    }
+
+    public record SheetLayoutConflict(int BlockIndex, int OtherBlockIndex, string Cell, int FirstRow, int LastRow);
 
     public record SheetLayout(
         IReadOnlyList<SheetBlockPlacement> Placements,
         int ColumnCount,
         int HeaderRowIndex,
         int TemplateRowIndex,
-        int LastRow);
+        int LastRow,
+        int LastColumn,
+        IReadOnlyList<SheetLayoutConflict> Conflicts)
+    {
+        public bool RowConflicts(int blockIndex, int row)
+            => Conflicts.Any(c => (c.BlockIndex == blockIndex || c.OtherBlockIndex == blockIndex)
+                                  && row >= c.FirstRow && row <= c.LastRow);
+    }
 
     public static class TemplateSheetLayout
     {
@@ -26,36 +43,58 @@ namespace GenDoc.Services.Templates
             for (var i = 0; i < blocks.Count; i++)
             {
                 var block = blocks[i];
-                var first = row;
+                var first = Math.Max(block.AnchorRow ?? row, 1);
+                var firstColumn = Math.Max(block.AnchorColumn ?? 1, 1);
+                var last = first + RowCount(block) - 1;
+                var lastColumn = firstColumn + Math.Max(ColumnSpan(block, columnCount), 1) - 1;
 
-                switch (block.Kind)
+                if (block.Kind == TemplateBlockKind.Table && block.Table is not null && headerRowIndex == 0)
                 {
-                    case TemplateBlockKind.Title:
-                        row++;
-                        break;
-
-                    case TemplateBlockKind.Header:
-                    case TemplateBlockKind.Paragraph:
-                    case TemplateBlockKind.DateAndCity:
-                        row += LineCount(block.Text);
-                        break;
-
-                    case TemplateBlockKind.Signatures:
-                        row += Math.Max(block.Signatures?.Count ?? 0, 0);
-                        break;
-
-                    case TemplateBlockKind.Table when block.Table is not null:
-                        headerRowIndex = row;
-                        templateRowIndex = row + 1;
-                        row += 2;
-                        break;
+                    headerRowIndex = first;
+                    templateRowIndex = first + 1;
                 }
 
-                placements.Add(new SheetBlockPlacement(i, first, row - 1));
+                placements.Add(new SheetBlockPlacement(i, first, last, firstColumn, lastColumn));
+                row = last + 1;
             }
 
-            return new SheetLayout(placements, columnCount, headerRowIndex, templateRowIndex, row - 1);
+            var conflicts = new List<SheetLayoutConflict>();
+            for (var later = 1; later < placements.Count; later++)
+            {
+                for (var earlier = 0; earlier < later; earlier++)
+                {
+                    var a = placements[later];
+                    var b = placements[earlier];
+                    if (!a.Overlaps(b)) continue;
+
+                    var top = Math.Max(a.FirstRow, b.FirstRow);
+                    var left = Math.Max(a.FirstColumn, b.FirstColumn);
+                    var bottom = Math.Min(a.LastRow, b.LastRow);
+
+                    conflicts.Add(new SheetLayoutConflict(later, earlier, $"{ColumnLetter(left)}{top}", top, bottom));
+                }
+            }
+
+            var sheetLastRow = placements.Count == 0 ? 0 : placements.Max(p => p.LastRow);
+            var sheetLastColumn = placements.Count == 0 ? columnCount : Math.Max(placements.Max(p => p.LastColumn), 1);
+
+            return new SheetLayout(
+                placements, columnCount, headerRowIndex, templateRowIndex, sheetLastRow, sheetLastColumn, conflicts);
         }
+
+        private static int RowCount(TemplateBlock block) => block.Kind switch
+        {
+            TemplateBlockKind.Title => 1,
+            TemplateBlockKind.Header or TemplateBlockKind.Paragraph or TemplateBlockKind.DateAndCity => LineCount(block.Text),
+            TemplateBlockKind.Signatures => Math.Max(block.Signatures?.Count ?? 0, 0),
+            TemplateBlockKind.Table when block.Table is not null => 2,
+            _ => 0
+        };
+
+        private static int ColumnSpan(TemplateBlock block, int columnCount)
+            => block.Kind == TemplateBlockKind.Table && block.Table is not null
+                ? block.Table.Columns.Count
+                : block.SpanColumns ?? columnCount;
 
         public static string ColumnLetter(int index)
         {
@@ -72,10 +111,27 @@ namespace GenDoc.Services.Templates
             return letters;
         }
 
+        public static int ColumnIndex(string letters)
+        {
+            var index = 0;
+            foreach (var c in letters.ToUpperInvariant())
+            {
+                if (c < 'A' || c > 'Z') return 0;
+                index = index * 26 + (c - 'A' + 1);
+            }
+
+            return index;
+        }
+
         public static string Range(SheetLayout layout)
-            => layout.LastRow < 1
-                ? string.Empty
-                : $"A1:{ColumnLetter(layout.ColumnCount)}{layout.LastRow}";
+        {
+            if (layout.LastRow < 1 || layout.Placements.Count == 0) return string.Empty;
+
+            var firstRow = layout.Placements.Min(p => p.FirstRow);
+            var firstColumn = layout.Placements.Min(p => p.FirstColumn);
+
+            return $"{ColumnLetter(firstColumn)}{firstRow}:{ColumnLetter(layout.LastColumn)}{layout.LastRow}";
+        }
 
         public static int LineCount(string? text)
         {

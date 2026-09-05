@@ -36,7 +36,10 @@ namespace GenDoc.Models.TemplateBuilder
         TableSpec? Table = null,
         IReadOnlyList<SignatureLine>? Signatures = null,
         int SheetIndex = 0,
-        BlockStyle? Style = null);
+        BlockStyle? Style = null,
+        int? AnchorRow = null,
+        int? AnchorColumn = null,
+        int? SpanColumns = null);
 
     public enum TemplateBuilderMode { Word, Excel }
 
