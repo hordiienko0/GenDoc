@@ -75,7 +75,7 @@
                 BorderThickness="1" Padding="12,7" Margin="0,0,0,10"
                 Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
             <StackPanel Orientation="Horizontal">
-                <TextBlock Text="{Binding SelectedCount, StringFormat='Обрано {0}'}" FontWeight="Bold" FontSize="12.5"
+                <TextBlock Text="{Binding SelectionText}" FontWeight="Bold" FontSize="12.5"
                            VerticalAlignment="Center" Margin="0,0,16,0"/>
                 <Button Content="Оформити відрядження" Style="{StaticResource TextLinkButtonStyle}"
                         Foreground="{StaticResource AccentBrush}" Command="{Binding OpenTripCommand}" Margin="0,0,16,0"/>
@@ -193,7 +193,7 @@
                             <Border.InputBindings>
                                 <MouseBinding MouseAction="LeftClick" Command="{Binding OpenTripCommand}"/>
                             </Border.InputBindings>
-                            <TextBlock Text="{Binding SelectedCount, StringFormat='Оформити для обраних ({0})'}"
+                            <TextBlock Text="{Binding IssueTripLabel}"
                                        Foreground="White" FontWeight="Bold" FontSize="12.5" HorizontalAlignment="Center"/>
                         </Border>
                         <TextBlock Text="Документи потраплять в архів → «Постійний склад»" FontSize="11"

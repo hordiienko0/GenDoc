@@ -1,6 +1,7 @@
 <Window x:Class="GenDoc.Views.Staff.StaffDocDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:GenDoc.ViewModels.Staff"
         Style="{StaticResource {x:Type Window}}"
         Title="{Binding HeaderText}" Width="560" MaxHeight="760" SizeToContent="Height"
         Background="{StaticResource PanelBrush}"
@@ -109,15 +110,20 @@
 
             <TextBlock Text="Документи" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,6"/>
             <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1" MaxHeight="180" Margin="0,0,0,14">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                    <ItemsControl ItemsSource="{Binding Templates}" Margin="4">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" Margin="4,5"/>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
+                <Grid>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Templates}" Margin="4">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <CheckBox Content="{Binding Name}" IsChecked="{Binding IsChecked}" Margin="4,5"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                    <TextBlock Text="{x:Static vm:StaffDocDialogViewModel.NoTemplatesHint}" FontSize="11.5" TextWrapping="Wrap"
+                               Margin="10,8" Foreground="{StaticResource TextSecondaryBrush}"
+                               Visibility="{Binding HasNoTemplates, Converter={StaticResource BoolToVisibility}}"/>
+                </Grid>
             </Border>
 
             <StackPanel>

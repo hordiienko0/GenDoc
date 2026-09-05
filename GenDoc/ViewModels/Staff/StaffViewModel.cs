@@ -22,6 +22,8 @@ namespace GenDoc.ViewModels.Staff
         private readonly IServiceProvider _serviceProvider;
 
         private List<StaffRowOverview> _all = new();
+        private readonly HashSet<int> _checkedIds = new();
+        private bool _suppressCheckTracking;
 
         public StaffViewModel(IStaffService staffService, IDialogService dialogService, IServiceProvider serviceProvider)
         {
@@ -71,6 +73,8 @@ namespace GenDoc.ViewModels.Staff
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasSelection))]
+        [NotifyPropertyChangedFor(nameof(IssueTripLabel))]
+        [NotifyPropertyChangedFor(nameof(SelectionText))]
         [NotifyCanExecuteChangedFor(nameof(OpenTripCommand))]
         [NotifyCanExecuteChangedFor(nameof(OpenLeaveCommand))]
         [NotifyCanExecuteChangedFor(nameof(GenerateDocumentCommand))]
@@ -78,6 +82,16 @@ namespace GenDoc.ViewModels.Staff
         private int selectedCount;
 
         public bool HasSelection => SelectedCount > 0;
+        public string IssueTripLabel => $"Оформити відрядження для обраних ({SelectedCount})";
+
+        public string SelectionText
+        {
+            get
+            {
+                var hidden = SelectedCount - Rows.Count(r => r.IsChecked);
+                return hidden > 0 ? $"Обрано {SelectedCount} ({hidden} приховано фільтром)" : $"Обрано {SelectedCount}";
+            }
+        }
 
         [ObservableProperty] private bool isBusy;
 
@@ -138,42 +152,67 @@ namespace GenDoc.ViewModels.Staff
                     || SearchNormalization.Contains(o.Position, query));
             }
 
+            var aliveIds = _all.Select(o => o.Id).ToHashSet();
+            _checkedIds.RemoveWhere(id => !aliveIds.Contains(id));
+
+            _suppressCheckTracking = true;
             Rows.Clear();
             foreach (var overview in filtered)
             {
-                var row = new StaffRowViewModel(overview);
+                var row = new StaffRowViewModel(overview) { IsChecked = _checkedIds.Contains(overview.Id) };
                 row.PropertyChanged += (_, e) =>
                 {
-                    if (e.PropertyName == nameof(StaffRowViewModel.IsChecked)) RefreshSelectedCount();
+                    if (e.PropertyName == nameof(StaffRowViewModel.IsChecked) && !_suppressCheckTracking)
+                        TrackCheck(row);
                 };
                 Rows.Add(row);
             }
+            _suppressCheckTracking = false;
 
             RowCount = Rows.Count;
             RefreshSelectedCount();
         }
 
-        private void RefreshSelectedCount() => SelectedCount = Rows.Count(r => r.IsChecked);
+        private void TrackCheck(StaffRowViewModel row)
+        {
+            if (row.IsChecked) _checkedIds.Add(row.Id);
+            else _checkedIds.Remove(row.Id);
+            RefreshSelectedCount();
+        }
+
+        private void RefreshSelectedCount()
+        {
+            SelectedCount = _checkedIds.Count;
+            OnPropertyChanged(nameof(SelectionText));
+        }
+
+        private List<(int Id, string FullName)> CheckedPeople()
+            => _all.Where(o => _checkedIds.Contains(o.Id)).Select(o => (o.Id, o.FullName)).ToList();
 
         [RelayCommand]
         private void ClearSelection()
         {
+            _checkedIds.Clear();
+            _suppressCheckTracking = true;
             foreach (var row in Rows) row.IsChecked = false;
+            _suppressCheckTracking = false;
+            RefreshSelectedCount();
         }
 
         [RelayCommand(CanExecute = nameof(HasSelection))]
         private async Task DeleteSelectedAsync()
         {
-            var selected = Rows.Where(r => r.IsChecked).ToList();
+            var selected = CheckedPeople();
             if (selected.Count == 0) return;
 
             var result = MessageBox.Show(
-                $"Видалити {selected.Count} записів до кошика?",
+                $"Видалити {selected.Count} {PluralHelper.Pluralize(selected.Count, "запис", "записи", "записів")} до кошика?",
                 "Підтвердження видалення",
                 MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (result != MessageBoxResult.Yes) return;
 
             await _staffService.DeleteManyAsync(selected.Select(r => r.Id).ToList());
+            _checkedIds.Clear();
             await RefreshAsync();
         }
 
@@ -281,7 +320,7 @@ namespace GenDoc.ViewModels.Staff
 
         private async Task OpenDocDialogAsync(StaffEventKind? kind, IReadOnlyList<(int Id, string FullName)>? people = null)
         {
-            var selected = people ?? Rows.Where(r => r.IsChecked).Select(r => (r.Id, r.FullName)).ToList();
+            var selected = people ?? CheckedPeople();
             if (selected.Count == 0) return;
 
             var vm = _serviceProvider.GetRequiredService<StaffDocDialogViewModel>();

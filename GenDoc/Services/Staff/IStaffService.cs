@@ -16,7 +16,7 @@ namespace GenDoc.Services.Staff
         Task<IReadOnlyList<StaffPickerPerson>> GetPermanentStaffForPickerAsync();
 
         Task<IReadOnlyList<StaffPickerPerson>> GetCourseOfficersForPickerAsync();
-        Task IssueDocumentsAsync(
+        Task<int> IssueDocumentsAsync(
             StaffEventKind kind, IReadOnlyList<int> recipientIds, IReadOnlyList<int> templateIds,
             DateOnly dateStart, DateOnly dateEnd, string? note, Dictionary<string, string> manualValues);
         Task<int> GenerateDocumentsAsync(

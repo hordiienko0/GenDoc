@@ -50,6 +50,16 @@ namespace GenDoc.ViewModels.Staff
 
         public ObservableCollection<TemplateCheckOptionViewModel> Templates { get; } = new();
 
+        public const string NoTemplatesHint =
+            "Шаблонів для постійного складу ще немає. Завантажте шаблон у розділі «Шаблони» " +
+            "і вкажіть призначення «Постійний склад» - він з'явиться тут.";
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasNoTemplates))]
+        private bool hasTemplates;
+
+        public bool HasNoTemplates => !HasTemplates;
+
         [ObservableProperty]
         private ManualTagFormViewModel? manualTagForm;
 
@@ -104,6 +114,7 @@ namespace GenDoc.ViewModels.Staff
                 };
                 Templates.Add(item);
             }
+            HasTemplates = Templates.Count > 0;
 
             DateStart = DateTime.Today;
             DateEnd = DateTime.Today;
@@ -145,17 +156,20 @@ namespace GenDoc.ViewModels.Staff
                 var recipientIds = _people.Select(p => p.Id).ToList();
 
                 var generationStartedAt = DateTime.Now;
+                var generatedCount = 0;
 
                 if (Kind is null)
                 {
-                    await _staffService.GenerateDocumentsAsync(recipientIds, templateIds, manualValues);
+                    generatedCount = await _staffService.GenerateDocumentsAsync(recipientIds, templateIds, manualValues);
                 }
                 else
                 {
-                    await _staffService.IssueDocumentsAsync(
+                    generatedCount = await _staffService.IssueDocumentsAsync(
                         Kind.Value, recipientIds, templateIds,
                         DateOnly.FromDateTime(DateStart!.Value), DateOnly.FromDateTime(DateEnd!.Value),
                         Note, manualValues);
+                    if (generatedCount == 0)
+                        ErrorText = "Жодного документа не сформовано - стан «у відрядженні/відпустці» не записано.";
                 }
 
                 await SaveManualValuesAsync();

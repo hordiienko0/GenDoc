@@ -99,13 +99,28 @@ namespace GenDoc.Services.Staff
                 .ToListAsync();
         }
 
-        public async Task IssueDocumentsAsync(
+        public async Task<int> IssueDocumentsAsync(
             StaffEventKind kind, IReadOnlyList<int> recipientIds, IReadOnlyList<int> templateIds,
             DateOnly dateStart, DateOnly dateEnd, string? note, Dictionary<string, string> manualValues)
         {
-            using var db = _dbFactory.CreateDbContext();
-
+            var generatedFor = new HashSet<int>();
+            var generated = 0;
             foreach (var recipientId in recipientIds)
+            {
+                foreach (var templateId in templateIds)
+                {
+                    var result = await _completenessService.GenerateForPairAsync(recipientId, templateId, manualValues);
+                    if (!result.Success) continue;
+                    generated++;
+                    generatedFor.Add(recipientId);
+                }
+            }
+
+            await SaveLastManualValuesAsync(manualValues);
+            if (generatedFor.Count == 0) return 0;
+
+            using var db = _dbFactory.CreateDbContext();
+            foreach (var recipientId in generatedFor)
             {
                 db.StaffEvents.Add(new StaffEvent
                 {
@@ -121,17 +136,9 @@ namespace GenDoc.Services.Staff
 
             var kindLabel = kind == StaffEventKind.BusinessTrip ? "відрядження" : "відпустку";
             _auditLogService.Log(db, $"Оформлено {kindLabel}", "StaffEvent", 0, null, null,
-                $"{recipientIds.Count} осіб, {templateIds.Count} шаблонів, {dateStart:dd.MM.yyyy}–{dateEnd:dd.MM.yyyy}");
-            await SaveLastManualValuesAsync(manualValues);
+                $"{generatedFor.Count} осіб, {generated} документів, {dateStart:dd.MM.yyyy}–{dateEnd:dd.MM.yyyy}");
             await db.SaveChangesAsync();
-
-            foreach (var recipientId in recipientIds)
-            {
-                foreach (var templateId in templateIds)
-                {
-                    await _completenessService.GenerateForPairAsync(recipientId, templateId, manualValues);
-                }
-            }
+            return generated;
         }
 
         public async Task<int> GenerateDocumentsAsync(
