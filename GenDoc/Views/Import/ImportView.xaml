@@ -196,6 +196,12 @@
                                     Style="{StaticResource SecondaryButtonStyle}" VerticalAlignment="Center"/>
                         </Grid>
                     </Border>
+
+                    <Border Style="{StaticResource CardStyle}" Padding="20,14"
+                            Visibility="{Binding HasFileError, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="{Binding FileError}" TextWrapping="Wrap" FontSize="12.5"
+                                   Foreground="{StaticResource DangerBrush}"/>
+                    </Border>
                 </StackPanel>
 
                 <StackPanel Visibility="{Binding IsStep2, Converter={StaticResource BoolToVisibility}}">

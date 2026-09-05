@@ -380,10 +380,45 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
 
     private bool CanRunImport() => HasFile && (ReadyCount > 0 || MoveCount > 0);
 
-    private void LoadFile(string filePath)
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasFileError))]
+    private string? fileError;
+
+    public bool HasFileError => !string.IsNullOrEmpty(FileError);
+
+    internal void LoadFile(string filePath)
     {
-        _parsed = _importService.ParseFile(filePath);
-        FileName = Path.GetFileName(filePath);
+        FileError = null;
+
+        ImportParseResult parsed;
+        try
+        {
+            parsed = _importService.ParseFile(filePath);
+        }
+        catch (Exception ex)
+        {
+            FileError = DescribeFileError(filePath, ex);
+            return;
+        }
+
+        Load(parsed, Path.GetFileName(filePath));
+    }
+
+    internal static string DescribeFileError(string filePath, Exception ex) => ex switch
+    {
+        FileNotFoundException => $"Файл не знайдено: {filePath}",
+        DirectoryNotFoundException => $"Теку не знайдено: {Path.GetDirectoryName(filePath)}",
+        UnauthorizedAccessException => "Немає прав на читання цього файлу.",
+        IOException => $"Не вдалося прочитати файл «{Path.GetFileName(filePath)}»: він зайнятий іншою програмою. "
+                       + $"Закрийте файл в Excel і спробуйте ще раз. Технічна причина: {ex.Message}",
+        _ => "Файл не є книгою Excel (.xlsx). Якщо це старий формат .xls або таблиця з іншої програми - "
+             + $"відкрийте її в Excel і збережіть як .xlsx. Технічна причина: {ex.Message}"
+    };
+
+    internal void Load(ImportParseResult parsed, string fileName)
+    {
+        _parsed = parsed;
+        FileName = fileName;
         HasFile = true;
         CurrentStep = 2;
         LoadIntakesCommand.Execute(null);
@@ -423,16 +458,29 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
             : $"Перенести {MovableDuplicateCount} людей, які вже є в базі, у цей набір";
 
         Preview = new ObservableCollection<ImportPreviewRowViewModel>(
-            rows.Take(8).Select(r => new ImportPreviewRowViewModel(r)));
+            PreviewRows(rows).Select(r => new ImportPreviewRowViewModel(r)));
         foreach (var visible in Preview) visible.PropertyChanged += OnPreviewRowChanged;
 
-        PreviewHeaderText = $"Попередній перегляд ({Preview.Count} з {TotalRows} рядків)";
+        PreviewHeaderText = IssueCount > 0
+            ? $"Попередній перегляд ({Preview.Count} з {TotalRows} рядків) · показано всі {IssueCount} рядків, що потребують уваги"
+            : $"Попередній перегляд ({Preview.Count} з {TotalRows} рядків)";
 
         OnPropertyChanged(nameof(RowStatsText));
 
         UpdateImportButton();
         HasSkippedRows = IssueCount > 0;
         SkippedNoteText = IssueCount > 0 ? $"{IssueCount} рядків буде пропущено - причини вказані вище" : string.Empty;
+    }
+
+    internal const int PreviewSampleSize = 8;
+
+    internal static IEnumerable<ImportRowPreview> PreviewRows(IReadOnlyList<ImportRowPreview> rows)
+    {
+        static bool NeedsAttention(ImportRowPreview row)
+            => row.Status is ImportRowStatus.Error or ImportRowStatus.Duplicate;
+
+        var sample = rows.Where(r => !NeedsAttention(r)).Take(PreviewSampleSize);
+        return rows.Where(NeedsAttention).Concat(sample).OrderBy(r => r.RowNumber);
     }
 
     private void OnPreviewRowChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

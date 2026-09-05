@@ -563,9 +563,13 @@ public class ImportService : IImportService
         return result;
     }
 
+    public const string TrashedDuplicateNote =
+        "Особа з таким особовим номером є в кошику - рядок пропущено. "
+        + "Відновіть її через «Кошик» і повторіть імпорт, щоб перенести в цей набір";
+
     private static (ImportRowStatus Status, string Note, int? ExistingRecipientId) EvaluateRow(
         RowFields fields, bool incompleteFullName, bool courseArrivalDateInvalid,
-        Dictionary<string, int> existingServiceNumbers, HashSet<string> seenInFile,
+        Dictionary<string, ExistingByNumber> existingServiceNumbers, HashSet<string> seenInFile,
         int? intakeId, Dictionary<string, int> existingNameKeys, HashSet<string> seenNameKeysInFile)
     {
         if (string.IsNullOrWhiteSpace(fields.LastName) && string.IsNullOrWhiteSpace(fields.FirstName))
@@ -579,7 +583,11 @@ public class ImportService : IImportService
         if (serviceNumber.Length > 0)
         {
             if (existingServiceNumbers.TryGetValue(serviceNumber, out var byNumber))
-                return (ImportRowStatus.Duplicate, "Вже є в базі - рядок пропущено", byNumber);
+            {
+                return byNumber.InTrash
+                    ? (ImportRowStatus.Duplicate, TrashedDuplicateNote, null)
+                    : (ImportRowStatus.Duplicate, "Вже є в базі - рядок пропущено", byNumber.Id);
+            }
 
             if (!seenInFile.Add(serviceNumber))
                 return (ImportRowStatus.Duplicate, "Дублюється в файлі - рядок пропущено", null);
@@ -743,18 +751,22 @@ public class ImportService : IImportService
         return keys;
     }
 
-    private static Dictionary<string, int> LoadExistingServiceNumbers(AppDbContext db)
+    private readonly record struct ExistingByNumber(int Id, bool InTrash);
+
+    private static Dictionary<string, ExistingByNumber> LoadExistingServiceNumbers(AppDbContext db)
     {
         var people = db.Recipients
+            .IgnoreQueryFilters()
             .Where(r => r.ServiceNumber != null && r.ServiceNumber != "")
-            .Select(r => new { r.Id, r.ServiceNumber })
+            .Select(r => new { r.Id, r.ServiceNumber, InTrash = r.DeletedAt != null })
+            .OrderBy(p => p.InTrash)
             .ToList();
 
-        var map = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var map = new Dictionary<string, ExistingByNumber>(StringComparer.OrdinalIgnoreCase);
         foreach (var p in people)
         {
             var key = p.ServiceNumber.Trim();
-            if (!map.ContainsKey(key)) map[key] = p.Id;
+            if (!map.ContainsKey(key)) map[key] = new ExistingByNumber(p.Id, p.InTrash);
         }
 
         return map;
