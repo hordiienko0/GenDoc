@@ -918,6 +918,7 @@ public partial class TemplateBuilderViewModel : ObservableObject
     private void Attach(BuilderBlockViewModel block)
     {
         block.PropertyChanged += OnChildChanged;
+        block.HintRequested += ShowHint;
         foreach (var line in block.Signatures) line.PropertyChanged += OnChildChanged;
         foreach (var column in block.Columns) column.PropertyChanged += OnChildChanged;
     }
@@ -925,6 +926,7 @@ public partial class TemplateBuilderViewModel : ObservableObject
     private void Detach(BuilderBlockViewModel block)
     {
         block.PropertyChanged -= OnChildChanged;
+        block.HintRequested -= ShowHint;
         foreach (var line in block.Signatures) line.PropertyChanged -= OnChildChanged;
         foreach (var column in block.Columns) column.PropertyChanged -= OnChildChanged;
     }

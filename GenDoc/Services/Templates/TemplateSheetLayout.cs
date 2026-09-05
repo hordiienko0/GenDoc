@@ -123,6 +123,51 @@ namespace GenDoc.Services.Templates
             return index;
         }
 
+        public const int MaxColumn = 16384;
+        public const int MaxRow = 1048576;
+
+        private const string CyrillicLookalikes = "АВСЕНКМОРТХІ";
+        private const string LatinLookalikes = "ABCEHKMOPTXI";
+
+        public static bool TryParseCellAddress(string? text, out int? row, out int? column)
+        {
+            row = null;
+            column = null;
+
+            var cleaned = (text ?? string.Empty).Trim().ToUpperInvariant();
+            if (cleaned.Length == 0) return true;
+
+            var letters = 0;
+            while (letters < cleaned.Length && !char.IsDigit(cleaned[letters])) letters++;
+
+            var head = new string(cleaned[..letters]
+                .Select(c => CyrillicLookalikes.IndexOf(c) is var i and >= 0 ? LatinLookalikes[i] : c)
+                .ToArray());
+            var tail = cleaned[letters..];
+
+            if (head.Length > 3 || head.Any(c => c < 'A' || c > 'Z')) return false;
+            if (tail.Length > 0 && (tail.Length > 7 || !tail.All(char.IsDigit))) return false;
+
+            if (head.Length > 0)
+            {
+                var index = ColumnIndex(head);
+                if (index < 1 || index > MaxColumn) return false;
+                column = index;
+            }
+
+            if (tail.Length > 0)
+            {
+                var number = int.Parse(tail);
+                if (number < 1 || number > MaxRow) return false;
+                row = number;
+            }
+
+            return true;
+        }
+
+        public static string FormatCellAddress(int? row, int? column)
+            => (column is int c ? ColumnLetter(c) : string.Empty) + (row is int r ? r.ToString() : string.Empty);
+
         public static string Range(SheetLayout layout)
         {
             if (layout.LastRow < 1 || layout.Placements.Count == 0) return string.Empty;

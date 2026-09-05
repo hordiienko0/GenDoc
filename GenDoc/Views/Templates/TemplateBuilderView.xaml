@@ -330,6 +330,12 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Margin="0,0,0,10" Background="{StaticResource PanelBrush}">
+                                            <Border.InputBindings>
+                                                <KeyBinding Key="Left" Modifiers="Alt" Command="{Binding MoveBlockCellCommand}" CommandParameter="Left"/>
+                                                <KeyBinding Key="Up" Modifiers="Alt" Command="{Binding MoveBlockCellCommand}" CommandParameter="Up"/>
+                                                <KeyBinding Key="Down" Modifiers="Alt" Command="{Binding MoveBlockCellCommand}" CommandParameter="Down"/>
+                                                <KeyBinding Key="Right" Modifiers="Alt" Command="{Binding MoveBlockCellCommand}" CommandParameter="Right"/>
+                                            </Border.InputBindings>
                                             <Border.Style>
                                                 <Style TargetType="Border">
                                                     <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
@@ -390,6 +396,46 @@
                                                                    Visibility="{Binding IsCollapsed, Converter={StaticResource BoolToVisibility}}"/>
 
                                                         <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,12,0"
+                                                                        Visibility="{Binding IsCellControlVisible, Converter={StaticResource BoolToVisibility}}">
+                                                                <TextBlock Text="Клітинка:" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"
+                                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                                           ToolTip="Адреса верхньої лівої клітинки блока; порожньо - одразу під попереднім блоком"/>
+                                                                <TextBox Width="50" MinHeight="22" Padding="4,1" FontFamily="Consolas" FontSize="11.5"
+                                                                         CharacterCasing="Upper" Tag="авто"
+                                                                         ToolTip="Адреса верхньої лівої клітинки блока; порожньо - одразу під попереднім блоком"
+                                                                         Text="{Binding CellAddress, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                <Button Content="←" Style="{StaticResource BlockActionStyle}" Margin="2,0,0,0"
+                                                                        ToolTip="На клітинку ліворуч (Alt+←)"
+                                                                        Command="{Binding MoveBlockCellCommand}" CommandParameter="Left"/>
+                                                                <Button Content="↑" Style="{StaticResource BlockActionStyle}"
+                                                                        ToolTip="На клітинку вгору (Alt+↑)"
+                                                                        Command="{Binding MoveBlockCellCommand}" CommandParameter="Up"/>
+                                                                <Button Content="↓" Style="{StaticResource BlockActionStyle}"
+                                                                        ToolTip="На клітинку вниз (Alt+↓)"
+                                                                        Command="{Binding MoveBlockCellCommand}" CommandParameter="Down"/>
+                                                                <Button Content="→" Style="{StaticResource BlockActionStyle}"
+                                                                        ToolTip="На клітинку праворуч (Alt+→)"
+                                                                        Command="{Binding MoveBlockCellCommand}" CommandParameter="Right"/>
+
+                                                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0"
+                                                                            Visibility="{Binding IsSpanControlVisible, Converter={StaticResource BoolToVisibility}}">
+                                                                    <TextBlock Text="ширина (клітинок):" FontSize="11" VerticalAlignment="Center" Margin="0,0,4,0"
+                                                                               Foreground="{StaticResource TextSecondaryBrush}"
+                                                                               ToolTip="Скільки клітинок об'єднує блок; порожньо - на всю ширину таблиці"/>
+                                                                    <TextBox Width="34" MinHeight="22" Padding="4,1" FontFamily="Consolas" FontSize="11.5"
+                                                                             Tag="авто" TextAlignment="Center"
+                                                                             ToolTip="Скільки клітинок об'єднує блок; порожньо - на всю ширину таблиці"
+                                                                             Text="{Binding SpanText, UpdateSourceTrigger=PropertyChanged}"/>
+                                                                    <Button Content="−" Style="{StaticResource BlockActionStyle}" Margin="2,0,0,0"
+                                                                            ToolTip="Вужче на клітинку"
+                                                                            Command="{Binding ChangeSpanCommand}" CommandParameter="-1"/>
+                                                                    <Button Content="+" Style="{StaticResource BlockActionStyle}"
+                                                                            ToolTip="Ширше на клітинку"
+                                                                            Command="{Binding ChangeSpanCommand}" CommandParameter="1"/>
+                                                                </StackPanel>
+                                                            </StackPanel>
+
                                                             <ToggleButton x:Name="StyleToggle" Width="26" Height="22" Cursor="Hand"
                                                                           ToolTip="Шрифт, розмір, колір, вирівнювання"
                                                                           IsChecked="{Binding IsStyleOpen, Mode=TwoWay}">
@@ -509,10 +555,10 @@
                                                                 </Border>
                                                             </Popup>
 
-                                                            <Button Content="↑" Style="{StaticResource BlockActionStyle}" ToolTip="Вище"
+                                                            <Button Content="↑" Style="{StaticResource BlockActionStyle}" ToolTip="Вище в порядку блоків"
                                                                     Command="{Binding DataContext.MoveBlockUpCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                     CommandParameter="{Binding}"/>
-                                                            <Button Content="↓" Style="{StaticResource BlockActionStyle}" ToolTip="Нижче"
+                                                            <Button Content="↓" Style="{StaticResource BlockActionStyle}" ToolTip="Нижче в порядку блоків"
                                                                     Command="{Binding DataContext.MoveBlockDownCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                                                     CommandParameter="{Binding}"/>
                                                             <Button Content="✕" Style="{StaticResource BlockActionStyle}" ToolTip="Видалити блок"

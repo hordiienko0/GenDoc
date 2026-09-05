@@ -114,11 +114,21 @@ public partial class BuilderBlockViewModel : ObservableObject
 
     public int SheetIndex { get; set; }
 
-    [ObservableProperty]
     private int? anchorRow;
 
-    [ObservableProperty]
     private int? anchorColumn;
+
+    public int? AnchorRow
+    {
+        get => anchorRow;
+        set => SetAnchor(value, anchorColumn);
+    }
+
+    public int? AnchorColumn
+    {
+        get => anchorColumn;
+        set => SetAnchor(anchorRow, value);
+    }
 
     [ObservableProperty]
     private int? spanColumns;
@@ -315,10 +325,112 @@ public partial class BuilderBlockViewModel : ObservableObject
     [RelayCommand]
     private void ToggleCollapsed() => IsCollapsed = !IsCollapsed;
 
+    public event Action<string>? HintRequested;
+
+    public const string CellAddressHint =
+        "Адреса клітинки має вигляд «C4» - стовпець і рядок; порожньо - одразу під попереднім блоком.";
+
+    public const string SpanHint =
+        "Ширина блока - кількість клітинок, напр. 3; порожньо - на всю ширину таблиці.";
+
+    public bool IsCellControlVisible => Mode == TemplateBuilderMode.Excel;
+
+    public bool IsSpanControlVisible => Mode == TemplateBuilderMode.Excel && !IsTable;
+
+    public string CellAddress
+    {
+        get => TemplateSheetLayout.FormatCellAddress(AnchorRow, AnchorColumn);
+        set
+        {
+            if (!TemplateSheetLayout.TryParseCellAddress(value, out var row, out var column))
+            {
+                HintRequested?.Invoke(CellAddressHint);
+                OnPropertyChanged(nameof(CellAddress));
+                return;
+            }
+
+            SetAnchor(row, column);
+        }
+    }
+
+    public string SpanText
+    {
+        get => SpanColumns?.ToString() ?? string.Empty;
+        set
+        {
+            var cleaned = (value ?? string.Empty).Trim();
+
+            if (cleaned.Length == 0)
+            {
+                SpanColumns = null;
+                return;
+            }
+
+            if (!int.TryParse(cleaned, out var span) || span < 1 || span > TemplateSheetLayout.MaxColumn)
+            {
+                HintRequested?.Invoke(SpanHint);
+                OnPropertyChanged(nameof(SpanText));
+                return;
+            }
+
+            SpanColumns = span;
+        }
+    }
+
+    [RelayCommand]
+    private void MoveBlockCell(string? direction)
+    {
+        if (!IsCellControlVisible) return;
+
+        var row = AnchorRow ?? EffectiveRow;
+        var column = AnchorColumn ?? EffectiveColumn;
+
+        switch (direction)
+        {
+            case "Up": row--; break;
+            case "Down": row++; break;
+            case "Left": column--; break;
+            case "Right": column++; break;
+            default: return;
+        }
+
+        SetAnchor(
+            Math.Clamp(row, 1, TemplateSheetLayout.MaxRow),
+            Math.Clamp(column, 1, TemplateSheetLayout.MaxColumn));
+    }
+
+    [RelayCommand]
+    private void ChangeSpan(string? delta)
+    {
+        if (!IsSpanControlVisible || !int.TryParse(delta, out var step)) return;
+
+        SpanColumns = Math.Clamp((SpanColumns ?? EffectiveSpan) + step, 1, TemplateSheetLayout.MaxColumn);
+    }
+
+    private void SetAnchor(int? row, int? column)
+    {
+        if (row == anchorRow && column == anchorColumn)
+        {
+            OnPropertyChanged(nameof(CellAddress));
+            return;
+        }
+
+        var rowChanged = row != anchorRow;
+        var columnChanged = column != anchorColumn;
+        anchorRow = row;
+        anchorColumn = column;
+
+        if (rowChanged) OnPropertyChanged(nameof(AnchorRow));
+        if (columnChanged) OnPropertyChanged(nameof(AnchorColumn));
+        OnPropertyChanged(nameof(CellAddress));
+    }
+
+    partial void OnSpanColumnsChanged(int? value) => OnPropertyChanged(nameof(SpanText));
+
     public static IReadOnlySet<string> NonDocumentProperties { get; } = new HashSet<string>(StringComparer.Ordinal)
     {
         nameof(IsEditing), nameof(HeaderTitle), nameof(LayoutCaption), nameof(IsConflicting), nameof(IsStyleOpen),
-        nameof(DisplayStyle), nameof(RepeatHintText),
+        nameof(DisplayStyle), nameof(RepeatHintText), nameof(CellAddress), nameof(SpanText),
         nameof(IsCollapsed), nameof(IsExpanded), nameof(CollapseIcon),
         nameof(CollapseTooltip), nameof(CollapsedSummary),
         nameof(SelectedFont), nameof(SelectedFontSize), nameof(SelectedColor),
