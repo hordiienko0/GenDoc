@@ -1,4 +1,5 @@
 using System.Windows;
+using CommunityToolkit.Mvvm.Messaging;
 using GenDoc.Models;
 using GenDoc.Models.Enums;
 using GenDoc.Services;
@@ -199,7 +200,8 @@ public class TrashPeopleTests
             TestServices.Archive(db),
             new NoDialogs(),
             provider.GetRequiredService<OrgTreeViewModel>(),
-            service);
+            service,
+            new WeakReferenceMessenger());
         await vm.LoadAsync();
 
         Assert.True(vm.HasPeople);

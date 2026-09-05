@@ -87,19 +87,23 @@ namespace GenDoc.ViewModels.Trash
         private readonly IDialogService _dialogService;
         private readonly OrgTreeViewModel _tree;
         private readonly IPersonnelService _personnelService;
+        private readonly IMessenger _messenger;
+        private readonly SemaphoreSlim _loadGate = new(1, 1);
 
         public TrashViewModel(
             IOrgTreeService orgTreeService,
             IDocumentArchiveService archiveService,
             IDialogService dialogService,
             OrgTreeViewModel tree,
-            IPersonnelService personnelService)
+            IPersonnelService personnelService,
+            IMessenger messenger)
         {
             _orgTreeService = orgTreeService;
             _archiveService = archiveService;
             _dialogService = dialogService;
             _tree = tree;
             _personnelService = personnelService;
+            _messenger = messenger;
             _ = LoadAsync();
         }
 
@@ -148,6 +152,19 @@ namespace GenDoc.ViewModels.Trash
         public bool HasGroupDocuments => GroupDocumentCount > 0;
 
         public async Task LoadAsync()
+        {
+            await _loadGate.WaitAsync();
+            try
+            {
+                await LoadSectionsAsync();
+            }
+            finally
+            {
+                _loadGate.Release();
+            }
+        }
+
+        private async Task LoadSectionsAsync()
         {
             var folders = await _orgTreeService.GetDeletedFoldersAsync();
             Folders.Clear();
@@ -203,7 +220,7 @@ namespace GenDoc.ViewModels.Trash
             if (!result.Success) return;
 
             await _tree.RefreshCountsAsync();
-            WeakReferenceMessenger.Default.Send(new CountsChangedMessage());
+            _messenger.Send(new CountsChangedMessage());
             await LoadAsync();
         }
 
@@ -240,7 +257,7 @@ namespace GenDoc.ViewModels.Trash
 
             await _orgTreeService.RestoreAsync(row.Info.Id, newParentId);
             await _tree.ReloadAsync();
-            WeakReferenceMessenger.Default.Send(new CountsChangedMessage());
+            _messenger.Send(new CountsChangedMessage());
             await LoadAsync();
         }
     }
