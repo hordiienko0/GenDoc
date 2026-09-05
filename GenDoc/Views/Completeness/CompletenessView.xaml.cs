@@ -82,14 +82,22 @@ public partial class CompletenessView : UserControl
 
     private async void CompletenessView_Loaded(object sender, RoutedEventArgs e)
     {
-        if (DataContext is CompletenessViewModel vm)
-        {
-            DetachColumnsChanged();
-            _columnsChangedHandler = () => RebuildColumns(vm);
-            vm.ColumnsChanged += _columnsChangedHandler;
+        if (DataContext is not CompletenessViewModel vm) return;
 
+        DetachColumnsChanged();
+        _columnsChangedHandler = () => RebuildColumns(vm);
+        vm.ColumnsChanged += _columnsChangedHandler;
+
+        try
+        {
             await vm.InitializeAsync();
             RebuildColumns(vm);
+        }
+        catch (Exception ex)
+        {
+            GenDoc.Services.ErrorLog.Write(ex, null);
+            vm.IsBusy = false;
+            vm.FooterText = $"Не вдалося завантажити комплектність: {ex.Message}";
         }
     }
 

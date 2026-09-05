@@ -16,12 +16,13 @@ namespace GenDoc.ViewModels.Completeness
             RecipientId = recipient.Id;
             FullName = string.Join(' ', new[] { recipient.LastName, recipient.FirstName, recipient.MiddleName }
                 .Where(p => !string.IsNullOrWhiteSpace(p)));
+            FitnessCategory = recipient.FitnessCategory ?? "придатний";
             SubText = string.Join(" · ", new[]
             {
                 recipient.Rank,
-                recipient.OrgNode?.DocumentName ?? recipient.OrgNode?.Name ?? recipient.Unit?.Name
+                recipient.OrgNode?.DocumentName ?? recipient.OrgNode?.Name ?? recipient.Unit?.Name,
+                FitnessCategory
             }.Where(p => !string.IsNullOrWhiteSpace(p)));
-            FitnessCategory = recipient.FitnessCategory ?? "придатний";
         }
 
         public int RecipientId { get; }

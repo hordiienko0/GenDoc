@@ -104,7 +104,7 @@
                                     </Grid.ColumnDefinitions>
 
                                     <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="12.5" VerticalAlignment="Center"
-                                               Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"><TextBlock.ToolTip><TextBlock><Run Text="{Binding Name, Mode=OneWay}"/><Run><Run.Style><Style TargetType="Run"><Setter Property="Text" Value=" (груповий - формується на весь склад у «Генерації»)"/><Style.Triggers><DataTrigger Binding="{Binding IsGroup}" Value="False"><Setter Property="Text" Value=""/></DataTrigger></Style.Triggers></Style></Run.Style></Run></TextBlock></TextBlock.ToolTip></TextBlock>
+                                               Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"><TextBlock.ToolTip><TextBlock><Run Text="{Binding Name, Mode=OneWay}"/><Run><Run.Style><Style TargetType="Run"><Setter Property="Text" Value=" (груповий - один документ на весь застосовний склад; формується у «Генерації» або з матриці «Комплектності»)"/><Style.Triggers><DataTrigger Binding="{Binding IsGroup}" Value="False"><Setter Property="Text" Value=""/></DataTrigger></Style.Triggers></Style></Run.Style></Run></TextBlock></TextBlock.ToolTip></TextBlock>
 
                                     <UniformGrid Grid.Column="1" Columns="3" VerticalAlignment="Center">
                                         <Button Content="Обов'язк."

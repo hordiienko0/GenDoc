@@ -94,7 +94,10 @@
                 <TextBlock Text="✓ є" FontSize="11" Foreground="{StaticResource SuccessBrush}" Margin="0,0,10,0"/>
                 <TextBlock Text="- немає" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,10,0"/>
                 <TextBlock Text="! застарів" FontSize="11" Foreground="{StaticResource WarningBrush}" Margin="0,0,10,0"/>
-                <TextBlock Text="(-) опційний відсутній" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
+                <TextBlock Text="(-) опційний відсутній" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,10,0"/>
+                <TextBlock Text="? склад не записано" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,10,0"
+                           ToolTip="Документ сформовано до оновлення - перегенеруйте, щоб бачити учасників"/>
+                <TextBlock Text="порожня - не потрібен для категорії" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
             </StackPanel>
         </Grid>
 
@@ -151,10 +154,31 @@
                                 Command="{Binding OpenRequirementsCommand}"/>
                     </StackPanel>
 
+                    <TextBlock Text="Пакетів генерації ще немає - створіть пакет на екрані «Генерація», і матриця з'явиться тут" FontSize="13"
+                               Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap" MaxWidth="460" TextAlignment="Center"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Visibility="{Binding HasNoPackages, Converter={StaticResource BoolToVisibility}}"/>
+
                     <TextBlock Text="У наборі ще немає особового складу" FontSize="13"
                                Foreground="{StaticResource TextSecondaryBrush}"
                                HorizontalAlignment="Center" VerticalAlignment="Center"
                                Visibility="{Binding IntakeHasNoPeople, Converter={StaticResource BoolToVisibility}}"/>
+
+                    <TextBlock Text="{Binding SearchEmptyText}" FontSize="13"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Visibility="{Binding SearchIsEmpty, Converter={StaticResource BoolToVisibility}}"/>
+
+                    <Border Background="{StaticResource PanelBrush}" Opacity="0.85"
+                            Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                            <ProgressBar IsIndeterminate="True" Width="220" Height="6"/>
+                            <TextBlock Text="Формуємо документи…" FontSize="12.5" Margin="0,10,0,0" HorizontalAlignment="Center"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Text="{Binding ProgressText}" FontSize="12" Margin="0,4,0,0" HorizontalAlignment="Center"
+                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                        </StackPanel>
+                    </Border>
                 </Grid>
             </Grid>
         </Border>

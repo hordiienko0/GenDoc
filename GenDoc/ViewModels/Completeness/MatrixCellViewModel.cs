@@ -120,8 +120,10 @@ namespace GenDoc.ViewModels.Completeness
 
         public bool CanOpen => (IsPresent || IsRosterUnknown) && HasContent;
         public bool CanSaveAs => IsPresent && HasContent && !IsGroupColumn;
-        public bool CanRegenerate => IsPresent && SourceType == DocumentSourceType.Generated && !IsGroupColumn;
-        public bool CanHistory => IsPresent && !IsGroupColumn;
+        public bool CanRegenerate => IsGroupColumn
+            ? IsPresent || IsRosterUnknown
+            : IsPresent && SourceType == DocumentSourceType.Generated;
+        public bool CanHistory => IsPresent || (IsGroupColumn && IsRosterUnknown);
         public bool CanGenerate => (IsMissingRequired || IsMissingOptional) && !IsGroupColumn;
 
         [RelayCommand(CanExecute = nameof(CanOpen))]

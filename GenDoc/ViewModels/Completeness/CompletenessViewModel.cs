@@ -108,6 +108,7 @@ namespace GenDoc.ViewModels.Completeness
         }
 
         [ObservableProperty] private bool isBusy;
+        [ObservableProperty] private string progressText = string.Empty;
         [ObservableProperty] private string footerText = string.Empty;
 
         [ObservableProperty]
@@ -116,12 +117,31 @@ namespace GenDoc.ViewModels.Completeness
 
         public bool HasRows => RowCount > 0;
 
-        [ObservableProperty] private bool hasNoIntakes;
-        [ObservableProperty] private bool packageIsEmpty;
-        [ObservableProperty] private bool intakeHasNoPeople;
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(ShowMatrix))]
+        private bool hasNoIntakes;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(ShowMatrix))]
+        private bool hasNoPackages;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(ShowMatrix))]
+        private bool packageIsEmpty;
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(ShowMatrix))]
+        private bool intakeHasNoPeople;
+
         [ObservableProperty] private bool isFullyComplete;
 
-        public bool ShowMatrix => !HasNoIntakes && !PackageIsEmpty && !IntakeHasNoPeople;
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(SearchEmptyText))]
+        private bool searchIsEmpty;
+
+        public string SearchEmptyText => $"Нікого не знайдено за «{SearchText?.Trim()}» - змініть запит";
+
+        public bool ShowMatrix => !HasNoIntakes && !HasNoPackages && !PackageIsEmpty && !IntakeHasNoPeople;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(GenerateMissingLabel))]
@@ -257,6 +277,8 @@ namespace GenDoc.ViewModels.Completeness
             {
                 _suppressFilterReload = false;
             }
+
+            HasNoPackages = PackageOptions.Count == 0;
         }
 
         private async Task RebuildAsync()
@@ -329,6 +351,7 @@ namespace GenDoc.ViewModels.Completeness
             Rows.Clear();
             foreach (var row in filtered) Rows.Add(row);
             RowCount = Rows.Count;
+            SearchIsEmpty = query is not null && Rows.Count == 0 && _allRows.Count > 0;
             RefreshCheckedCount();
             RecomputeAggregates();
         }
@@ -460,10 +483,15 @@ namespace GenDoc.ViewModels.Completeness
             var outcome = await GenerateMissingCoreAsync(confirm == MessageBoxResult.Yes);
             if (outcome is not { } result || result.Attempted == 0) return;
 
-            ShowBatchSummary("Генерація завершена", result.Done, result.Attempted - result.Done, result.Errors);
+            ShowBatchSummary("Генерація завершена", result.Done, result.Attempted - result.Done, result.Errors,
+                missing.Groups.Count > 0 ? _lastGroupOutputFolder : null);
             await RebuildAsync();
             WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
         }
+
+        private string? _lastGroupOutputFolder;
+
+        private void ReportProgress(int done, int total) => ProgressText = $"{done} з {total}";
 
         internal async Task<(int Done, int Attempted, List<string> Errors)?> GenerateMissingCoreAsync(bool includeOptional)
         {
@@ -485,16 +513,19 @@ namespace GenDoc.ViewModels.Completeness
 
             IsBusy = true;
             var done = 0;
+            var processed = 0;
             var attempted = targets.Count + missing.Groups.Count;
             var errors = new List<string>();
             try
             {
+                ReportProgress(0, attempted);
                 foreach (var (recipientId, templateId) in targets)
                 {
-                    var result = await _completenessService.GenerateForPairAsync(
-                        recipientId, templateId, input.Values, input.CourseOfficerId);
+                    var result = await Task.Run(() => _completenessService.GenerateForPairAsync(
+                        recipientId, templateId, input.Values, input.CourseOfficerId));
                     if (result.Success) done++;
                     else errors.Add(result.ErrorMessage ?? "невідома помилка");
+                    ReportProgress(++processed, attempted);
                 }
 
                 foreach (var group in missing.Groups)
@@ -503,11 +534,13 @@ namespace GenDoc.ViewModels.Completeness
                         group.Column, group.RecipientIds, input.Values, input.CourseOfficerId);
                     if (ok) done++;
                     else errors.Add($"«{group.Column.Name}»: {error}");
+                    ReportProgress(++processed, attempted);
                 }
             }
             finally
             {
                 IsBusy = false;
+                ProgressText = string.Empty;
             }
 
             return (done, attempted, errors);
@@ -526,7 +559,8 @@ namespace GenDoc.ViewModels.Completeness
             var outcome = await RegenerateStaleCoreAsync();
             if (outcome is not { } result) return;
 
-            ShowBatchSummary("Перегенерація завершена", result.Done, result.Attempted - result.Done, result.Errors);
+            ShowBatchSummary("Перегенерація завершена", result.Done, result.Attempted - result.Done, result.Errors,
+                StaleGroupColumns().Count > 0 ? _lastGroupOutputFolder : null);
             await RebuildAsync();
             WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
         }
@@ -551,14 +585,19 @@ namespace GenDoc.ViewModels.Completeness
 
             IsBusy = true;
             var done = 0;
+            var processed = 0;
+            var attempted = personal.Count + groups.Count;
             var errors = new List<string>();
             try
             {
+                ReportProgress(0, attempted);
                 foreach (var cell in personal)
                 {
-                    var result = await _archiveService.RegenerateAsync(cell.DocumentId!.Value, input.Values, input.CourseOfficerId);
+                    var docId = cell.DocumentId!.Value;
+                    var result = await Task.Run(() => _archiveService.RegenerateAsync(docId, input.Values, input.CourseOfficerId));
                     if (result.Success) done++;
                     else errors.Add(result.ErrorMessage ?? "невідома помилка");
+                    ReportProgress(++processed, attempted);
                 }
 
                 foreach (var group in groups)
@@ -567,14 +606,16 @@ namespace GenDoc.ViewModels.Completeness
                         group.Column, group.RecipientIds, input.Values, input.CourseOfficerId);
                     if (ok) done++;
                     else errors.Add($"«{group.Column.Name}»: {error}");
+                    ReportProgress(++processed, attempted);
                 }
             }
             finally
             {
                 IsBusy = false;
+                ProgressText = string.Empty;
             }
 
-            return (done, personal.Count + groups.Count, errors);
+            return (done, attempted, errors);
         }
 
         internal async Task<(int Done, List<string> Errors)?> RegenerateCellsAsync(IReadOnlyList<MatrixCellViewModel> cells)
@@ -585,23 +626,60 @@ namespace GenDoc.ViewModels.Completeness
 
             IsBusy = true;
             var done = 0;
+            var processed = 0;
             var errors = new List<string>();
             try
             {
+                ReportProgress(0, cells.Count);
                 foreach (var cell in cells)
                 {
                     if (cell.DocumentId is not int docId) continue;
-                    var result = await _archiveService.RegenerateAsync(docId, input.Values, input.CourseOfficerId);
+                    var result = await Task.Run(() => _archiveService.RegenerateAsync(docId, input.Values, input.CourseOfficerId));
                     if (result.Success) done++;
                     else errors.Add(result.ErrorMessage ?? "невідома помилка");
+                    ReportProgress(++processed, cells.Count);
                 }
             }
             finally
             {
                 IsBusy = false;
+                ProgressText = string.Empty;
             }
 
             return (done, errors);
+        }
+
+        private MatrixTemplateInfo? ColumnOf(MatrixCellViewModel cell)
+            => Columns.FirstOrDefault(t => t.TemplateId == cell.TemplateId && t.IsGroup);
+
+        private int ColumnIndexOf(MatrixTemplateInfo column)
+            => _matrixData?.Templates.IndexOf(column) ?? -1;
+
+        internal async Task<(bool Ok, string? Error)?> RegenerateGroupColumnAsync(MatrixCellViewModel cell)
+        {
+            if (ColumnOf(cell) is not { } column) return null;
+            var index = ColumnIndexOf(column);
+            if (index < 0) return null;
+
+            var templateIds = column.IsExport ? Array.Empty<int>() : new[] { column.TemplateId };
+            var exportIds = column.IsExport ? new[] { column.TemplateId } : Array.Empty<int>();
+            var input = await CollectManualInputAsync(templateIds, exportIds);
+            if (input is null) return null;
+
+            IsBusy = true;
+            try
+            {
+                ReportProgress(0, 1);
+                var outcome = await GenerateGroupDocumentAsync(
+                    column, ApplicableRecipientIds(index), input.Values, input.CourseOfficerId);
+                ReportProgress(1, 1);
+                return outcome;
+            }
+            finally
+            {
+                IsBusy = false;
+                ProgressText = string.Empty;
+            }
         }
 
         [RelayCommand(CanExecute = nameof(CanExportSelected))]
@@ -631,10 +709,12 @@ namespace GenDoc.ViewModels.Completeness
             }
         }
 
-        private static void ShowBatchSummary(string title, int done, int failed, List<string> errors)
+        private static void ShowBatchSummary(string title, int done, int failed, List<string> errors, string? groupFolder = null)
         {
             var message = $"Згенеровано: {done}";
             if (failed > 0) message += $"\nПомилок: {failed}\n{string.Join("\n", errors.Take(6))}";
+            if (groupFolder is not null)
+                message += $"\n\nГрупові документи й відомості записано в теку:\n{groupFolder}";
             MessageBox.Show(message, title, MessageBoxButton.OK,
                 failed > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
         }
@@ -648,6 +728,7 @@ namespace GenDoc.ViewModels.Completeness
                 var generation = _serviceProvider.GetRequiredService<Services.Generation.IGenerationService>();
                 var outputFolder = await _serviceProvider
                     .GetRequiredService<Services.Generation.IOutputFolderService>().GetDefaultAsync();
+                _lastGroupOutputFolder = outputFolder;
 
                 var templateIds = column.IsExport ? Array.Empty<int>() : new[] { column.TemplateId };
                 var exportIds = column.IsExport ? new[] { column.TemplateId } : Array.Empty<int>();
@@ -729,6 +810,29 @@ namespace GenDoc.ViewModels.Completeness
         {
             if (cell.DocumentId is not int docId) return;
 
+            if (cell.IsGroupColumn)
+            {
+                var column = ColumnOf(cell);
+                var groupConfirm = MessageBox.Show(
+                    $"Буде сформовано нову версію «{column?.Name}» на весь застосовний склад набору. Попередня залишиться в архіві.",
+                    "Перегенерація групового документа", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+                if (groupConfirm != MessageBoxResult.OK) return;
+
+                var groupOutcome = await RegenerateGroupColumnAsync(cell);
+                if (groupOutcome is not { } group) return;
+                if (!group.Ok)
+                {
+                    MessageBox.Show(group.Error ?? "документ не сформовано", "Перегенерація",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+
+                ShowBatchSummary("Перегенерація завершена", 1, 0, new List<string>(), _lastGroupOutputFolder);
+                await RebuildAsync();
+                WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
+                return;
+            }
+
             var confirm = MessageBox.Show(
                 "Буде створено нову версію. Попередня залишиться в архіві.",
                 "Перегенерація", MessageBoxButton.OKCancel, MessageBoxImage.Question);
@@ -752,6 +856,24 @@ namespace GenDoc.ViewModels.Completeness
             var row = Rows.FirstOrDefault(r => r.RecipientId == cell.RecipientId);
             var template = Columns.FirstOrDefault(t => t.TemplateId == cell.TemplateId);
 
+            if (cell.IsGroupColumn)
+            {
+                if (ColumnOf(cell) is not { } column) return;
+                var groupVm = new GroupVersionHistoryViewModel(
+                    _archiveService,
+                    column.IsExport ? column.TemplateId : null,
+                    column.IsExport ? null : column.TemplateId,
+                    SelectedIntake?.Id,
+                    column.Name);
+                await groupVm.InitializeAsync();
+                _dialogService.ShowDialog(groupVm, Application.Current?.MainWindow);
+
+                if (!groupVm.HasChanges) return;
+                await RebuildAsync();
+                WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
+                return;
+            }
+
             var vm = new VersionHistoryViewModel(
                 _archiveService, cell.RecipientId, cell.TemplateId, docId,
                 row?.FullName ?? "-", template?.Name ?? "-");
@@ -763,15 +885,23 @@ namespace GenDoc.ViewModels.Completeness
             WeakReferenceMessenger.Default.Send(new MatrixChangedMessage());
         }
 
+        internal static string SaveAsFileName(string? fullName, string? templateName, string documentFileName)
+        {
+            var extension = System.IO.Path.GetExtension(documentFileName);
+            if (string.IsNullOrWhiteSpace(extension)) extension = ".docx";
+            return $"{fullName} - {templateName}{extension}";
+        }
+
         public async Task SaveAsAsync(MatrixCellViewModel cell)
         {
             if (cell.DocumentId is not int docId) return;
 
             var row = Rows.FirstOrDefault(r => r.RecipientId == cell.RecipientId);
             var template = Columns.FirstOrDefault(t => t.TemplateId == cell.TemplateId);
+            var current = await _archiveService.GetCurrentRowAsync(cell.RecipientId, cell.TemplateId);
             var dialog = new SaveFileDialog
             {
-                FileName = $"{row?.FullName} - {template?.Name}.docx"
+                FileName = SaveAsFileName(row?.FullName, template?.Name, current?.FileName ?? string.Empty)
             };
             if (dialog.ShowDialog() != true) return;
 

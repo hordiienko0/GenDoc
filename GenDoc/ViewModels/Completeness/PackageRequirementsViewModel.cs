@@ -149,7 +149,7 @@ namespace GenDoc.ViewModels.Completeness
             var available = await _completenessService.GetTemplatesNotInPackageAsync(_packageId);
             AvailableTemplates.Clear();
             foreach (var t in available) AvailableTemplates.Add(new TemplateChoice(t.Id, t.Name));
-            SelectedTemplateToAdd = AvailableTemplates.FirstOrDefault();
+            SelectedTemplateToAdd = null;
         }
 
         private Task ReloadAvailableExportTemplatesAsync()
@@ -157,7 +157,7 @@ namespace GenDoc.ViewModels.Completeness
             var available = _generationService.GetExportTemplatesNotInPackage(_packageId);
             AvailableExportTemplates.Clear();
             foreach (var t in available) AvailableExportTemplates.Add(new TemplateChoice(t.Id, t.Name));
-            SelectedExportTemplateToAdd = AvailableExportTemplates.FirstOrDefault();
+            SelectedExportTemplateToAdd = null;
             return Task.CompletedTask;
         }
 
@@ -173,10 +173,20 @@ namespace GenDoc.ViewModels.Completeness
             SaveCommand.NotifyCanExecuteChanged();
         }
 
+        public Func<string, bool> ConfirmRemoval { get; set; } = message =>
+            System.Windows.MessageBox.Show(
+                message, "Прибрати відомість",
+                System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning)
+            == System.Windows.MessageBoxResult.Yes;
+
         [RelayCommand]
         private void RemoveExportTemplate(ExportTemplateLinkRowViewModel? row)
         {
             if (row is null) return;
+
+            if (!ConfirmRemoval(
+                    $"Відомості «{row.Name}» залишаться в архіві, але зникнуть з матриці й наступних прогонів пакета. Прибрати?"))
+                return;
 
             ExportRows.Remove(row);
             _ = ReloadAvailableExportTemplatesAsync();
@@ -338,19 +348,19 @@ namespace GenDoc.ViewModels.Completeness
 
         private void Validate()
         {
-            if (Rows.Count == 0)
+            if (Rows.Count == 0 && ExportRows.Count == 0)
             {
-                ValidationError = ExportRows.Count == 0
-                    ? "Пакет повинен мати хоча б один шаблон"
-                    : null;
+                ValidationError = "Пакет повинен мати хоча б один шаблон або відомість";
                 return;
             }
 
-            var hasAnyRegular = Rows.Any(r => r.Regular != TemplateRequirement.NotApplicable);
-            var hasAnyLimited = Rows.Any(r => r.Limited != TemplateRequirement.NotApplicable);
+            var hasAnyRegular = Rows.Any(r => r.Regular != TemplateRequirement.NotApplicable)
+                || ExportRows.Any(r => r.Filter is FitnessFilter.All or FitnessFilter.RegularOnly);
+            var hasAnyLimited = Rows.Any(r => r.Limited != TemplateRequirement.NotApplicable)
+                || ExportRows.Any(r => r.Filter is FitnessFilter.All or FitnessFilter.LimitedOnly);
 
             ValidationError = !hasAnyRegular || !hasAnyLimited
-                ? "Пакет повинен мати хоча б один шаблон, застосовний до кожної категорії"
+                ? "Пакет повинен мати хоча б один шаблон або відомість, застосовні до кожної категорії придатності"
                 : null;
         }
 
@@ -362,6 +372,7 @@ namespace GenDoc.ViewModels.Completeness
             Validate();
             if (ValidationError is not null) return;
 
+            RenumberSortOrder();
             var rows = Rows.Select(r => new RequirementRow(
                 r.LinkId, r.TemplateId, r.Regular, r.Limited, r.SortOrder)).ToList();
             await _completenessService.SaveRequirementsAsync(_packageId, rows);

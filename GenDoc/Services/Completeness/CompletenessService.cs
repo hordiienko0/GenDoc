@@ -311,9 +311,9 @@ namespace GenDoc.Services.Completeness
             IReadOnlyList<int> recipientIds, int packageId, string targetFolder)
         {
             using var db = _dbFactory.CreateDbContext();
-            var templateIds = await db.GenerationPackageTemplates
-                .Where(pt => pt.GenerationPackageId == packageId)
-                .Select(pt => pt.TemplateId).ToListAsync();
+            var links = await GetPackageLinksInternalAsync(db, packageId, includeGroup: true, includeSheets: true);
+            var templateIds = links.Where(l => !l.IsGroup).Select(l => l.TemplateId).ToList();
+            var groupColumns = links.Where(l => l.IsGroup).ToList();
 
             var nameTemplate = await db.AppSettings.Select(s => s.ExportFileNameTemplate).FirstOrDefaultAsync();
             if (string.IsNullOrWhiteSpace(nameTemplate)) nameTemplate = "{ПІБ} - {Шаблон}";
@@ -321,11 +321,22 @@ namespace GenDoc.Services.Completeness
             var warnings = new List<string>();
             var peopleExported = 0;
             var filesExported = 0;
+            var matrices = new Dictionary<int, MatrixData>();
 
             foreach (var recipientId in recipientIds)
             {
                 var recipient = await db.Recipients.AsNoTracking().FirstOrDefaultAsync(r => r.Id == recipientId);
                 if (recipient is null) continue;
+
+                MatrixData? matrix = null;
+                if (recipient.IntakeId is int intakeId)
+                {
+                    if (!matrices.TryGetValue(intakeId, out matrix))
+                    {
+                        matrix = await LoadAsync(db, intakeId, packageId);
+                        matrices[intakeId] = matrix;
+                    }
+                }
 
                 var docs = await db.GeneratedDocuments
                     .Where(g => g.RecipientId == recipientId && g.IsCurrent && g.HasContent
@@ -334,8 +345,21 @@ namespace GenDoc.Services.Completeness
                     .AsNoTracking()
                     .ToListAsync();
 
+                var groupDocs = new List<(int Id, string TemplateName, string FileName, bool IsStale)>();
+                if (matrix is not null)
+                {
+                    foreach (var column in groupColumns)
+                    {
+                        if (!matrix.Docs.TryGetValue((recipientId, column.TemplateId, column.IsExport), out var cell)
+                            || cell.RosterUnknown || !cell.HasContent) continue;
+                        var fileName = await db.GeneratedGroupDocuments
+                            .Where(g => g.Id == cell.Id).Select(g => g.FileName).FirstOrDefaultAsync() ?? string.Empty;
+                        groupDocs.Add((cell.Id, column.Name, fileName, cell.IsStale));
+                    }
+                }
+
                 var personDisplay = $"{recipient.LastName} {recipient.FirstName}".Trim();
-                if (docs.Count == 0)
+                if (docs.Count == 0 && groupDocs.Count == 0)
                 {
                     warnings.Add($"{personDisplay}: немає жодного збереженого документа пакета");
                     continue;
@@ -354,6 +378,24 @@ namespace GenDoc.Services.Completeness
                 var usedPaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 var exportedForPerson = 0;
 
+                var person = string.Join(' ', new[] { recipient.LastName, recipient.FirstName, recipient.MiddleName }
+                    .Where(p => !string.IsNullOrWhiteSpace(p)));
+
+                string BuildPath(string templateName, DateTime generatedAt, string sourceFileName)
+                {
+                    var baseName = SecureTempFileService.SanitizeFileName(nameTemplate
+                        .Replace("{ПІБ}", person)
+                        .Replace("{Шаблон}", templateName)
+                        .Replace("{Дата}", generatedAt.ToString("dd.MM.yyyy")));
+                    var extension = Path.GetExtension(sourceFileName);
+                    var path = Path.Combine(personFolder, baseName + extension);
+                    var suffix = 2;
+                    while (usedPaths.Contains(path) || File.Exists(path))
+                        path = Path.Combine(personFolder, $"{baseName}_{suffix++}{extension}");
+                    usedPaths.Add(path);
+                    return path;
+                }
+
                 foreach (var doc in docs)
                 {
                     var content = await db.GeneratedDocumentContents
@@ -366,21 +408,33 @@ namespace GenDoc.Services.Completeness
                         continue;
                     }
 
-                    var person = string.Join(' ', new[] { recipient.LastName, recipient.FirstName, recipient.MiddleName }
-                        .Where(p => !string.IsNullOrWhiteSpace(p)));
-                    var baseName = SecureTempFileService.SanitizeFileName(nameTemplate
-                        .Replace("{ПІБ}", person)
-                        .Replace("{Шаблон}", doc.Template?.Name ?? "документ")
-                        .Replace("{Дата}", doc.GeneratedAt.ToString("dd.MM.yyyy")));
-                    var extension = Path.GetExtension(doc.FileName);
+                    if (matrix is not null
+                        && matrix.Docs.TryGetValue((recipientId, doc.TemplateId, false), out var cell) && cell.IsStale)
+                        warnings.Add($"{personDisplay} / {doc.Template?.Name}: документ застарів - дані змінилися після генерації");
 
-                    var path = Path.Combine(personFolder, baseName + extension);
-                    var suffix = 2;
-                    while (usedPaths.Contains(path) || File.Exists(path))
-                        path = Path.Combine(personFolder, $"{baseName}_{suffix++}{extension}");
-                    usedPaths.Add(path);
-
+                    var path = BuildPath(doc.Template?.Name ?? "документ", doc.GeneratedAt, doc.FileName);
                     await File.WriteAllBytesAsync(path, _watermarkService.Apply(content, doc.FileName));
+                    filesExported++;
+                    exportedForPerson++;
+                }
+
+                foreach (var groupDoc in groupDocs)
+                {
+                    var content = await db.GeneratedGroupDocumentContents
+                        .Where(c => c.GeneratedGroupDocumentId == groupDoc.Id)
+                        .Select(c => c.Content)
+                        .FirstOrDefaultAsync();
+                    if (content is null)
+                    {
+                        warnings.Add($"{personDisplay} / {groupDoc.TemplateName}: файл не збережено");
+                        continue;
+                    }
+
+                    if (groupDoc.IsStale)
+                        warnings.Add($"{personDisplay} / {groupDoc.TemplateName}: груповий документ застарів - склад або дані змінилися після генерації");
+
+                    var path = BuildPath(groupDoc.TemplateName, DateTime.Now, groupDoc.FileName);
+                    await File.WriteAllBytesAsync(path, _watermarkService.Apply(content, groupDoc.FileName));
                     filesExported++;
                     exportedForPerson++;
                 }
