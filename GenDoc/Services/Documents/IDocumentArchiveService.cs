@@ -25,9 +25,12 @@ namespace GenDoc.Services.Documents
         Task<List<DocumentVersionDto>> GetVersionsAsync(int recipientId, int templateId);
         Task<List<AttachmentDto>> GetAttachmentsAsync(int recipientId, int templateId);
         Task DeleteAttachmentAsync(int attachmentId);
+        Task<List<DeletedAttachmentInfo>> GetDeletedAttachmentsAsync();
+        Task RestoreAttachmentAsync(int attachmentId);
         Task<int> MakeCurrentAsync(int versionDocumentId);
 
-        Task DeleteAsync(IReadOnlyList<int> documentIds);
+        Task<int> CountVersionsAsync(IReadOnlyList<int> documentIds);
+        Task DeleteAsync(IReadOnlyList<int> documentIds, bool allVersions = false);
         Task<List<DeletedDocumentInfo>> GetDeletedDocumentsAsync();
         Task RestoreAsync(int documentId);
 

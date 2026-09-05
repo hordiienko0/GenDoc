@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using CommunityToolkit.Mvvm.ComponentModel;
+using GenDoc.Services;
 using GenDoc.Services.Documents;
 
 namespace GenDoc.ViewModels.Archive
@@ -21,10 +22,16 @@ namespace GenDoc.ViewModels.Archive
         public string IntakeChip => Dto.IntakeLabel
             ?? (Dto.IntakeNumber is int n ? $"Набір №{n}" : "Без набору");
         public bool HasIntake => Dto.IntakeNumber is not null;
-        public string PackageText => $"пакет «{Dto.PackageName}»";
+        public string PackageText => Dto.PackageInTrash
+            ? $"пакет «{Dto.PackageName}» (у кошику)"
+            : $"пакет «{Dto.PackageName}»";
         public string BranchText => string.IsNullOrWhiteSpace(Dto.BranchName) ? "" : $"· {Dto.BranchName}";
-        public string DocsText => $"{Dto.GeneratedCount} док.";
-        public string ErrorsText => Dto.ErrorCount == 0 ? "без помилок" : $"{Dto.ErrorCount} помилок";
+        public string DocsText => Dto.SkippedCount > 0
+            ? $"згенеровано {Dto.GeneratedCount} · пропущено {Dto.SkippedCount}"
+            : $"згенеровано {Dto.GeneratedCount}";
+        public string ErrorsText => Dto.ErrorCount == 0
+            ? "без помилок"
+            : $"{Dto.ErrorCount} {PluralHelper.Pluralize(Dto.ErrorCount, "помилка", "помилки", "помилок")}";
         public bool HasErrors => Dto.ErrorCount > 0;
 
         [ObservableProperty]
@@ -49,6 +56,8 @@ namespace GenDoc.ViewModels.Archive
         public string TemplateName => Dto.TemplateName;
         public string Status => Dto.Status;
         public bool IsError => Dto.IsError;
+        public bool IsGroup => Dto.IsGroup;
+        public bool IsDeleted => Dto.Status == "видалено";
         public bool CanOpen => Dto.DocumentId is not null && Dto.HasContent;
         public string SizeText => Dto.SizeBytes > 0 ? $"{Dto.SizeBytes / 1024.0:0.#} КБ" : "-";
     }

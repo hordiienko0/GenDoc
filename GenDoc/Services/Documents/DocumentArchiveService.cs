@@ -115,41 +115,109 @@ namespace GenDoc.Services.Documents
                     .Take(filter.Take);
             }
 
-            return await page
-                .Select(g => new ArchiveRowDto(
-                    g.Id,
-                    g.RecipientId,
-                    g.TemplateId,
-                    db.Recipients.IgnoreQueryFilters()
-                        .Where(r => r.Id == g.RecipientId).Select(r => r.LastName).FirstOrDefault() ?? "-",
-                    db.Recipients.IgnoreQueryFilters()
-                        .Where(r => r.Id == g.RecipientId).Select(r => r.FirstName).FirstOrDefault(),
-                    db.Recipients.IgnoreQueryFilters()
-                        .Where(r => r.Id == g.RecipientId).Select(r => r.MiddleName).FirstOrDefault(),
-                    db.Templates.IgnoreQueryFilters()
-                        .Where(t => t.Id == g.TemplateId).Select(t => t.Name).FirstOrDefault() ?? "-",
-                    db.Templates.IgnoreQueryFilters()
-                        .Any(t => t.Id == g.TemplateId && t.DeletedAt == null),
-                    g.Version,
-                    g.IntakeId,
-                    g.IntakeId != null
-                        ? db.Intakes.Where(i => i.Id == g.IntakeId).Select(i => (int?)i.Number).FirstOrDefault()
-                        : null,
-                    g.OrgPathSnapshot,
-                    g.GeneratedAt,
-                    db.Users.IgnoreQueryFilters()
-                        .Where(u => u.Id == g.GeneratedByUserId).Select(u => u.FullName).FirstOrDefault() ?? "-",
-                    db.DocumentAttachments.Count(a => a.DeletedAt == null
-                        && a.GeneratedDocument!.DeletedAt == null
-                        && a.GeneratedDocument.RecipientId == g.RecipientId
-                        && a.GeneratedDocument.TemplateId == g.TemplateId),
-                    g.HasContent,
-                    g.SourceType,
-                    g.FileName,
-                    g.SizeBytes,
-                    db.Recipients.IgnoreQueryFilters()
-                        .Any(r => r.Id == g.RecipientId && r.DeletedAt == null)))
-                .ToListAsync();
+            var rows = await ProjectRows(db, page).ToListAsync();
+            return await MarkStaleAsync(db, rows);
+        }
+
+        private static IQueryable<ArchiveRowDto> ProjectRows(AppDbContext db, IQueryable<GeneratedDocument> query)
+            => query.Select(g => new ArchiveRowDto(
+                g.Id,
+                g.RecipientId,
+                g.TemplateId,
+                db.Recipients.IgnoreQueryFilters()
+                    .Where(r => r.Id == g.RecipientId).Select(r => r.LastName).FirstOrDefault() ?? "-",
+                db.Recipients.IgnoreQueryFilters()
+                    .Where(r => r.Id == g.RecipientId).Select(r => r.FirstName).FirstOrDefault(),
+                db.Recipients.IgnoreQueryFilters()
+                    .Where(r => r.Id == g.RecipientId).Select(r => r.MiddleName).FirstOrDefault(),
+                db.Templates.IgnoreQueryFilters()
+                    .Where(t => t.Id == g.TemplateId).Select(t => t.Name).FirstOrDefault() ?? "-",
+                db.Templates.IgnoreQueryFilters()
+                    .Any(t => t.Id == g.TemplateId && t.DeletedAt == null),
+                g.Version,
+                g.IntakeId,
+                g.IntakeId != null
+                    ? db.Intakes.IgnoreQueryFilters()
+                        .Where(i => i.Id == g.IntakeId).Select(i => (int?)i.Number).FirstOrDefault()
+                    : null,
+                g.OrgPathSnapshot,
+                g.GeneratedAt,
+                db.Users.IgnoreQueryFilters()
+                    .Where(u => u.Id == g.GeneratedByUserId).Select(u => u.FullName).FirstOrDefault() ?? "-",
+                db.DocumentAttachments.Count(a => a.DeletedAt == null
+                    && a.GeneratedDocument!.DeletedAt == null
+                    && a.GeneratedDocument.RecipientId == g.RecipientId
+                    && a.GeneratedDocument.TemplateId == g.TemplateId),
+                g.HasContent,
+                g.SourceType,
+                g.FileName,
+                g.SizeBytes,
+                db.Recipients.IgnoreQueryFilters()
+                    .Any(r => r.Id == g.RecipientId && r.DeletedAt == null),
+                false));
+
+        private async Task<List<ArchiveRowDto>> MarkStaleAsync(AppDbContext db, List<ArchiveRowDto> rows)
+        {
+            if (rows.Count == 0) return rows;
+            var detectStale = await db.AppSettings.Select(s => s.DetectStaleDocuments).FirstOrDefaultAsync() ?? true;
+            if (!detectStale) return rows;
+
+            var ids = rows.Select(r => r.Id).ToList();
+            var hashes = await db.GeneratedDocuments.IgnoreQueryFilters()
+                .Where(g => ids.Contains(g.Id) && g.SourceHash != null && g.SourceType == DocumentSourceType.Generated)
+                .Select(g => new { g.Id, g.SourceHash })
+                .ToDictionaryAsync(g => g.Id, g => g.SourceHash!);
+            if (hashes.Count == 0) return rows;
+
+            var candidates = rows.Where(r => hashes.ContainsKey(r.Id) && r.RecipientAlive).ToList();
+            if (candidates.Count == 0) return rows;
+
+            var recipientIds = candidates.Select(r => r.RecipientId).Distinct().ToList();
+            var templateIds = candidates.Select(r => r.TemplateId).Distinct().ToList();
+            var people = (await db.Recipients.Where(r => recipientIds.Contains(r.Id))
+                    .WithHashSources().AsNoTracking().ToListAsync())
+                .ToDictionary(r => r.Id);
+            var mappings = (await db.TemplateFieldMappings
+                    .Where(m => templateIds.Contains(m.TemplateId)).AsNoTracking().ToListAsync())
+                .GroupBy(m => m.TemplateId).ToDictionary(g => g.Key, g => g.ToList());
+            var orgSettings = await db.OrganizationSettings.AsNoTracking().FirstOrDefaultAsync();
+
+            var stale = new HashSet<int>();
+            foreach (var row in candidates)
+            {
+                if (!people.TryGetValue(row.RecipientId, out var person)) continue;
+                var templateMappings = mappings.GetValueOrDefault(row.TemplateId) ?? new List<TemplateFieldMapping>();
+                if (_documentHashService.ComputeSourceHash(templateMappings, person, orgSettings)
+                    != DocumentHashService.AutoPart(hashes[row.Id]))
+                    stale.Add(row.Id);
+            }
+
+            return rows.Select(r => stale.Contains(r.Id) ? r with { IsStale = true } : r).ToList();
+        }
+
+        private static async Task<string> DocumentLabelAsync(AppDbContext db, GeneratedDocument doc)
+        {
+            var person = await db.Recipients.IgnoreQueryFilters()
+                .Where(r => r.Id == doc.RecipientId)
+                .Select(r => new { r.LastName, r.FirstName, r.MiddleName })
+                .FirstOrDefaultAsync();
+            var template = await db.Templates.IgnoreQueryFilters()
+                .Where(t => t.Id == doc.TemplateId).Select(t => t.Name).FirstOrDefaultAsync();
+            var name = person is null ? "-" : NameFormatter.FullName(person.LastName, person.FirstName, person.MiddleName);
+            return $"{name} · {template ?? "-"} · в.{doc.Version}";
+        }
+
+        private static string? ContentWarning(GeneratedDocument doc, byte[] content)
+            => ContentWarning(doc.ContentHash, content);
+
+        private static string? ContentWarning(string? expectedHash, byte[] content)
+        {
+            if (string.IsNullOrWhiteSpace(expectedHash)) return null;
+            var actual = Convert.ToHexString(SHA256.HashData(content));
+            return string.Equals(actual, expectedHash, StringComparison.OrdinalIgnoreCase)
+                ? null
+                : "Вміст файлу не збігається з контрольною сумою, збереженою під час генерації - "
+                  + "файл в архіві міг бути пошкоджений або підмінений. Перевірте документ перед використанням.";
         }
 
         public async Task<ArchiveStats> GetStatsAsync(ArchiveFilter filter)
@@ -171,16 +239,24 @@ namespace GenDoc.Services.Documents
         {
             using var db = _dbFactory.CreateDbContext();
 
-            var intakes = (await db.Intakes.AsNoTracking()
+            var documents = db.GeneratedDocuments.IgnoreQueryFilters().Where(g => g.DeletedAt == null);
+
+            var intakeIds = await documents.Where(g => g.IntakeId != null)
+                .Select(g => g.IntakeId!.Value).Distinct().ToListAsync();
+            var intakes = (await db.Intakes.IgnoreQueryFilters().AsNoTracking()
+                    .Where(i => i.DeletedAt == null || intakeIds.Contains(i.Id))
                     .OrderByDescending(i => i.Number)
-                    .Select(i => new { i.Id, i.Number, i.DisplayNumber, i.Status })
+                    .Select(i => new { i.Id, i.Number, i.DisplayNumber, i.Status, i.DeletedAt })
                     .ToListAsync())
-                .Select(i => (i.Id, $"{IntakeLabel.Of(i.Number, i.DisplayNumber)} · {StatusLabel(i.Status)}"))
+                .Select(i => (i.Id, $"{IntakeLabel.Of(i.Number, i.DisplayNumber)} · "
+                                    + (i.DeletedAt == null ? StatusLabel(i.Status) : "у кошику")))
                 .ToList();
 
-            var templates = (await db.Templates
-                    .OrderBy(t => t.Name).Select(t => new { t.Id, t.Name }).ToListAsync())
-                .Select(t => (t.Id, t.Name)).ToList();
+            var templateIds = await documents.Select(g => g.TemplateId).Distinct().ToListAsync();
+            var templates = (await db.Templates.IgnoreQueryFilters()
+                    .Where(t => templateIds.Contains(t.Id))
+                    .OrderBy(t => t.Name).Select(t => new { t.Id, t.Name, t.DeletedAt }).ToListAsync())
+                .Select(t => (t.Id, t.DeletedAt == null ? t.Name : $"{t.Name} (у кошику)")).ToList();
 
             var packages = (await db.GenerationPackages
                     .OrderBy(p => p.Name).Select(p => new { p.Id, p.Name }).ToListAsync())
@@ -191,8 +267,10 @@ namespace GenDoc.Services.Documents
                     .OrderBy(u => u.FullName).Select(u => new { u.Id, u.FullName }).ToListAsync())
                 .Select(u => (u.Id, u.FullName)).ToList();
 
-            var years = await db.GeneratedDocuments
-                .Select(g => g.GeneratedAt.Year).Distinct().OrderByDescending(y => y).ToListAsync();
+            var years = (await db.GeneratedDocuments.Select(g => g.GeneratedAt.Year).Distinct().ToListAsync())
+                .Concat(await db.GeneratedGroupDocuments.Select(g => g.GeneratedAt.Year).Distinct().ToListAsync())
+                .Concat(await db.GenerationPackageRuns.Select(r => r.RunAt.Year).Distinct().ToListAsync())
+                .Distinct().OrderByDescending(y => y).ToList();
 
             return new ArchiveFilterOptions(intakes, templates, packages, authors, years);
         }
@@ -215,9 +293,10 @@ namespace GenDoc.Services.Documents
 
             await _tempFileService.OpenAsync(doc.FileName, content.Content);
 
-            _auditLogService.Log(db, "Відкрито документ", "GeneratedDocument", documentId, null, doc.FileName);
+            _auditLogService.Log(db, "Відкрито документ", "GeneratedDocument", documentId, null, doc.FileName,
+                await DocumentLabelAsync(db, doc));
             await db.SaveChangesAsync();
-            return new ArchiveOpResult(true, null);
+            return new ArchiveOpResult(true, null, ContentWarning(doc, content.Content));
         }
 
         public async Task<ArchiveOpResult> SaveAsAsync(int documentId, string targetPath)
@@ -232,9 +311,10 @@ namespace GenDoc.Services.Documents
             var bytes = _watermarkService.Apply(content.Content, doc.FileName);
             await File.WriteAllBytesAsync(targetPath, bytes);
 
-            _auditLogService.LogExport(db, "GeneratedDocument", 1, $"1 документ → {Path.GetFileName(targetPath)}");
+            _auditLogService.LogExport(db, "GeneratedDocument", 1,
+                $"{await DocumentLabelAsync(db, doc)} → {Path.GetFileName(targetPath)}");
             await db.SaveChangesAsync();
-            return new ArchiveOpResult(true, null);
+            return new ArchiveOpResult(true, null, ContentWarning(doc, content.Content));
         }
 
         public async Task<(int Saved, List<string> Errors)> SaveManyAsync(IReadOnlyList<int> documentIds, string targetFolder)
@@ -394,7 +474,11 @@ namespace GenDoc.Services.Documents
                     _documentHashService.ComputeSourceHash(
                         mappings, doc.Recipient, orgSettings, manualValues, courseOfficerSignature));
 
-                _auditLogService.Log(db, "Перегенеровано", "GeneratedDocument", doc.Id, null, template.Name);
+                var created = await db.GeneratedDocuments
+                    .Where(g => g.RecipientId == doc.RecipientId && g.TemplateId == doc.TemplateId && g.IsCurrent)
+                    .OrderByDescending(g => g.Version).FirstAsync();
+                _auditLogService.Log(db, "Перегенеровано", "GeneratedDocument", created.Id, $"в.{doc.Version}",
+                    $"в.{created.Version}", await DocumentLabelAsync(db, created));
                 await db.SaveChangesAsync();
                 return new ArchiveOpResult(true, null);
             }
@@ -463,11 +547,17 @@ namespace GenDoc.Services.Documents
             var bytes = await File.ReadAllBytesAsync(filePath);
             await AddVersionAsync(db, doc, bytes, Path.GetFileName(filePath), DocumentSourceType.ManualUpload);
 
-            _auditLogService.Log(db, "Завантажено версію", "GeneratedDocument", doc.Id, null,
-                Path.GetFileName(filePath), note);
+            var created = await db.GeneratedDocuments
+                .Where(g => g.RecipientId == doc.RecipientId && g.TemplateId == doc.TemplateId && g.IsCurrent)
+                .OrderByDescending(g => g.Version).FirstAsync();
+            _auditLogService.Log(db, "Завантажено версію", "GeneratedDocument", created.Id, null,
+                Path.GetFileName(filePath), JoinDetails(await DocumentLabelAsync(db, created), note));
             await db.SaveChangesAsync();
             return new ArchiveOpResult(true, null);
         }
+
+        private static string JoinDetails(string label, string? note)
+            => string.IsNullOrWhiteSpace(note) ? label : $"{label} · {note.Trim()}";
 
         private static async Task<string?> FileLimitErrorAsync(AppDbContext db, string filePath)
         {
@@ -506,7 +596,7 @@ namespace GenDoc.Services.Documents
             });
 
             _auditLogService.Log(db, "Додано вкладення", "GeneratedDocument", documentId, null,
-                Path.GetFileName(filePath), note);
+                Path.GetFileName(filePath), JoinDetails(await DocumentLabelAsync(db, doc), note));
             await db.SaveChangesAsync();
             return new ArchiveOpResult(true, null);
         }
@@ -515,38 +605,13 @@ namespace GenDoc.Services.Documents
         {
             using var db = _dbFactory.CreateDbContext();
 
-            return await db.GeneratedDocuments
-                .IgnoreQueryFilters()
-                .Where(g => g.DeletedAt == null
-                    && g.RecipientId == recipientId && g.TemplateId == templateId && g.IsCurrent)
-                .Select(g => new ArchiveRowDto(
-                    g.Id, g.RecipientId, g.TemplateId,
-                    db.Recipients.IgnoreQueryFilters()
-                        .Where(r => r.Id == g.RecipientId).Select(r => r.LastName).FirstOrDefault() ?? "-",
-                    db.Recipients.IgnoreQueryFilters()
-                        .Where(r => r.Id == g.RecipientId).Select(r => r.FirstName).FirstOrDefault(),
-                    db.Recipients.IgnoreQueryFilters()
-                        .Where(r => r.Id == g.RecipientId).Select(r => r.MiddleName).FirstOrDefault(),
-                    db.Templates.IgnoreQueryFilters()
-                        .Where(t => t.Id == g.TemplateId).Select(t => t.Name).FirstOrDefault() ?? "-",
-                    db.Templates.IgnoreQueryFilters()
-                        .Any(t => t.Id == g.TemplateId && t.DeletedAt == null),
-                    g.Version, g.IntakeId,
-                    g.IntakeId != null
-                        ? db.Intakes.IgnoreQueryFilters()
-                            .Where(i => i.Id == g.IntakeId).Select(i => (int?)i.Number).FirstOrDefault()
-                        : null,
-                    g.OrgPathSnapshot, g.GeneratedAt,
-                    db.Users.IgnoreQueryFilters()
-                        .Where(u => u.Id == g.GeneratedByUserId).Select(u => u.FullName).FirstOrDefault() ?? "-",
-                    db.DocumentAttachments.Count(a => a.DeletedAt == null
-                        && a.GeneratedDocument!.DeletedAt == null
-                        && a.GeneratedDocument.RecipientId == g.RecipientId
-                        && a.GeneratedDocument.TemplateId == g.TemplateId),
-                    g.HasContent, g.SourceType, g.FileName, g.SizeBytes,
-                    db.Recipients.IgnoreQueryFilters()
-                        .Any(r => r.Id == g.RecipientId && r.DeletedAt == null)))
-                .FirstOrDefaultAsync();
+            var rows = await ProjectRows(db, db.GeneratedDocuments
+                    .IgnoreQueryFilters()
+                    .Where(g => g.DeletedAt == null
+                        && g.RecipientId == recipientId && g.TemplateId == templateId && g.IsCurrent))
+                .Take(1)
+                .ToListAsync();
+            return (await MarkStaleAsync(db, rows)).FirstOrDefault();
         }
 
         public async Task<ArchiveOpResult> OpenAttachmentAsync(int attachmentId)
@@ -557,8 +622,11 @@ namespace GenDoc.Services.Documents
 
             await _tempFileService.OpenAsync(attachment.FileName, attachment.Content);
 
-            _auditLogService.Log(db, "Відкрито документ", "GeneratedDocument",
-                attachment.GeneratedDocumentId, null, attachment.FileName);
+            var owner = await db.GeneratedDocuments.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(g => g.Id == attachment.GeneratedDocumentId);
+            _auditLogService.Log(db, "Відкрито вкладення", "GeneratedDocument",
+                attachment.GeneratedDocumentId, null, attachment.FileName,
+                owner is null ? null : await DocumentLabelAsync(db, owner));
             await db.SaveChangesAsync();
             return new ArchiveOpResult(true, null);
         }
@@ -586,7 +654,8 @@ namespace GenDoc.Services.Documents
                 .OrderByDescending(g => g.Version)
                 .Select(g => new DocumentVersionDto(
                     g.Id, g.Version, g.GeneratedAt,
-                    g.GeneratedByUser != null ? g.GeneratedByUser.FullName : "-",
+                    db.Users.IgnoreQueryFilters()
+                        .Where(u => u.Id == g.GeneratedByUserId).Select(u => u.FullName).FirstOrDefault() ?? "-",
                     g.SizeBytes, g.SourceType, g.IsCurrent, g.HasContent, g.FileName))
                 .ToListAsync();
         }
@@ -612,8 +681,66 @@ namespace GenDoc.Services.Documents
             attachment.DeletedAt = DateTime.Now;
             attachment.DeletedBy = _currentUserContext.CurrentUserFullName;
 
+            var owner = await db.GeneratedDocuments.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(g => g.Id == attachment.GeneratedDocumentId);
             _auditLogService.Log(db, "Видалено вкладення", "GeneratedDocument",
-                attachment.GeneratedDocumentId, attachment.FileName, null);
+                attachment.GeneratedDocumentId, attachment.FileName, null,
+                owner is null ? null : await DocumentLabelAsync(db, owner));
+            await db.SaveChangesAsync();
+        }
+
+        public async Task<List<DeletedAttachmentInfo>> GetDeletedAttachmentsAsync()
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var rows = await db.DocumentAttachments.IgnoreQueryFilters()
+                .Where(a => a.DeletedAt != null)
+                .OrderByDescending(a => a.DeletedAt)
+                .Select(a => new
+                {
+                    a.Id, a.FileName, a.DeletedAt, a.DeletedBy,
+                    Document = db.GeneratedDocuments.IgnoreQueryFilters()
+                        .Where(g => g.Id == a.GeneratedDocumentId)
+                        .Select(g => new { g.RecipientId, g.TemplateId, g.Version })
+                        .FirstOrDefault()
+                })
+                .ToListAsync();
+
+            var recipientIds = rows.Where(r => r.Document != null).Select(r => r.Document!.RecipientId).Distinct().ToList();
+            var templateIds = rows.Where(r => r.Document != null).Select(r => r.Document!.TemplateId).Distinct().ToList();
+            var people = await db.Recipients.IgnoreQueryFilters()
+                .Where(r => recipientIds.Contains(r.Id))
+                .Select(r => new { r.Id, r.LastName, r.FirstName, r.MiddleName })
+                .ToDictionaryAsync(r => r.Id);
+            var templates = await db.Templates.IgnoreQueryFilters()
+                .Where(t => templateIds.Contains(t.Id))
+                .ToDictionaryAsync(t => t.Id, t => t.Name);
+
+            return rows.Select(r =>
+            {
+                var person = r.Document is not null && people.TryGetValue(r.Document.RecipientId, out var p)
+                    ? NameFormatter.FullName(p.LastName, p.FirstName, p.MiddleName)
+                    : "-";
+                var template = r.Document is not null ? templates.GetValueOrDefault(r.Document.TemplateId) ?? "-" : "-";
+                return new DeletedAttachmentInfo(
+                    r.Id, r.FileName, person, template, r.Document?.Version ?? 0, r.DeletedAt!.Value, r.DeletedBy);
+            }).ToList();
+        }
+
+        public async Task RestoreAttachmentAsync(int attachmentId)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var attachment = await db.DocumentAttachments.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(a => a.Id == attachmentId);
+            if (attachment is null) return;
+
+            attachment.DeletedAt = null;
+            attachment.DeletedBy = null;
+
+            var owner = await db.GeneratedDocuments.IgnoreQueryFilters()
+                .FirstOrDefaultAsync(g => g.Id == attachment.GeneratedDocumentId);
+            _auditLogService.Log(db, "Відновлено вкладення", "GeneratedDocument",
+                attachment.GeneratedDocumentId, null, attachment.FileName,
+                owner is null ? null : await DocumentLabelAsync(db, owner));
             await db.SaveChangesAsync();
         }
 
@@ -632,15 +759,47 @@ namespace GenDoc.Services.Documents
             target.IsCurrent = true;
 
             _auditLogService.Log(db, "Змінено актуальну версію", "GeneratedDocument", target.Id,
-                null, $"в.{target.Version}");
+                null, $"в.{target.Version}", await DocumentLabelAsync(db, target));
             await db.SaveChangesAsync();
             return target.Id;
         }
 
-        public async Task DeleteAsync(IReadOnlyList<int> documentIds)
+        public async Task<int> CountVersionsAsync(IReadOnlyList<int> documentIds)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var pairs = await db.GeneratedDocuments
+                .Where(g => documentIds.Contains(g.Id))
+                .Select(g => new { g.RecipientId, g.TemplateId })
+                .Distinct()
+                .ToListAsync();
+
+            var total = 0;
+            foreach (var pair in pairs)
+            {
+                total += await db.GeneratedDocuments
+                    .CountAsync(g => g.RecipientId == pair.RecipientId && g.TemplateId == pair.TemplateId);
+            }
+            return total;
+        }
+
+        public async Task DeleteAsync(IReadOnlyList<int> documentIds, bool allVersions = false)
         {
             using var db = _dbFactory.CreateDbContext();
             var docs = await db.GeneratedDocuments.Where(g => documentIds.Contains(g.Id)).ToListAsync();
+            if (allVersions)
+            {
+                var pairs = docs.Select(d => (d.RecipientId, d.TemplateId)).Distinct().ToList();
+                var known = docs.Select(d => d.Id).ToHashSet();
+                foreach (var (recipientId, templateId) in pairs)
+                {
+                    var siblings = await db.GeneratedDocuments
+                        .Where(g => g.RecipientId == recipientId && g.TemplateId == templateId && !known.Contains(g.Id))
+                        .ToListAsync();
+                    docs.AddRange(siblings);
+                    foreach (var sibling in siblings) known.Add(sibling.Id);
+                }
+            }
+
             var now = DateTime.Now;
             var user = _currentUserContext.CurrentUserFullName;
 
@@ -661,7 +820,7 @@ namespace GenDoc.Services.Documents
                 }
 
                 _auditLogService.Log(db, "Видалено документ", "GeneratedDocument", doc.Id,
-                    $"{doc.FileName} (в.{doc.Version})", null);
+                    $"{doc.FileName} (в.{doc.Version})", null, await DocumentLabelAsync(db, doc));
             }
 
             await db.SaveChangesAsync();
@@ -675,8 +834,10 @@ namespace GenDoc.Services.Documents
                 .OrderByDescending(g => g.DeletedAt)
                 .Select(g => new DeletedDocumentInfo(
                     g.Id,
-                    g.Recipient != null ? g.Recipient.LastName + " " + g.Recipient.FirstName : "-",
-                    g.Template != null ? g.Template.Name : "-",
+                    db.Recipients.IgnoreQueryFilters()
+                        .Where(r => r.Id == g.RecipientId).Select(r => r.LastName + " " + r.FirstName).FirstOrDefault() ?? "-",
+                    db.Templates.IgnoreQueryFilters()
+                        .Where(t => t.Id == g.TemplateId).Select(t => t.Name).FirstOrDefault() ?? "-",
                     g.Version,
                     g.DeletedAt!.Value,
                     g.DeletedBy))
@@ -706,7 +867,7 @@ namespace GenDoc.Services.Documents
             }
 
             _auditLogService.Log(db, "Відновлено документ", "GeneratedDocument", doc.Id, null,
-                $"{doc.FileName} (в.{doc.Version})");
+                $"{doc.FileName} (в.{doc.Version})", await DocumentLabelAsync(db, doc));
             await db.SaveChangesAsync();
         }
 
@@ -724,7 +885,13 @@ namespace GenDoc.Services.Documents
                 .Select(r => new
                 {
                     r.Id, r.RunAt,
-                    PackageName = r.GenerationPackage != null ? r.GenerationPackage.Name : "Вибірково",
+                    PackageName = r.GenerationPackageId != null
+                        ? db.GenerationPackages.IgnoreQueryFilters()
+                            .Where(p => p.Id == r.GenerationPackageId).Select(p => p.Name).FirstOrDefault()
+                        : null,
+                    PackageInTrash = r.GenerationPackageId != null
+                        && db.GenerationPackages.IgnoreQueryFilters()
+                            .Any(p => p.Id == r.GenerationPackageId && p.DeletedAt != null),
                     r.IntakeId, r.BranchName, r.GeneratedCount, r.SkippedCount, r.ErrorCount
                 })
                 .ToListAsync();
@@ -737,10 +904,11 @@ namespace GenDoc.Services.Documents
             {
                 var intake = r.IntakeId is int iid ? intakeById.GetValueOrDefault(iid) : null;
                 return new RunDto(
-                    r.Id, r.RunAt, r.PackageName,
+                    r.Id, r.RunAt, r.PackageName ?? "Вибірково",
                     intake?.Number,
                     r.BranchName, r.GeneratedCount, r.SkippedCount, r.ErrorCount, r.IntakeId,
-                    intake is null ? null : IntakeLabel.Of(intake.Number, intake.DisplayNumber));
+                    intake is null ? null : IntakeLabel.Of(intake.Number, intake.DisplayNumber),
+                    r.PackageInTrash);
             }).ToList();
         }
 
@@ -748,14 +916,69 @@ namespace GenDoc.Services.Documents
         {
             using var db = _dbFactory.CreateDbContext();
 
-            var items = await db.GeneratedDocuments.IgnoreQueryFilters()
+            var docs = await db.GeneratedDocuments.IgnoreQueryFilters()
                 .Where(g => g.RunId == runId)
-                .OrderBy(g => g.Recipient!.LastName)
-                .Select(g => new RunItemDto(
-                    g.Recipient != null ? g.Recipient.LastName + " " + g.Recipient.FirstName : "-",
-                    g.Template != null ? g.Template.Name : "-",
-                    "згенеровано", false, g.SizeBytes, g.Id, g.HasContent, g.FileName))
+                .Select(g => new
+                {
+                    g.Id, g.RecipientId, g.TemplateId, g.SizeBytes, g.HasContent, g.FileName, g.DeletedAt, g.IsCurrent,
+                    Person = db.Recipients.IgnoreQueryFilters()
+                        .Where(r => r.Id == g.RecipientId).Select(r => r.LastName + " " + r.FirstName).FirstOrDefault() ?? "-",
+                    TemplateName = db.Templates.IgnoreQueryFilters()
+                        .Where(t => t.Id == g.TemplateId).Select(t => t.Name).FirstOrDefault() ?? "-"
+                })
                 .ToListAsync();
+
+            var superseded = docs.Where(d => d.DeletedAt is null && !d.IsCurrent).ToList();
+            var recipientIds = superseded.Select(d => d.RecipientId).Distinct().ToList();
+            var templateIds = superseded.Select(d => d.TemplateId).Distinct().ToList();
+            var currents = superseded.Count == 0
+                ? new List<(int RecipientId, int TemplateId, int Id, int Version, bool HasContent, string FileName, long SizeBytes)>()
+                : (await db.GeneratedDocuments
+                        .Where(c => c.IsCurrent && recipientIds.Contains(c.RecipientId) && templateIds.Contains(c.TemplateId))
+                        .Select(c => new { c.RecipientId, c.TemplateId, c.Id, c.Version, c.HasContent, c.FileName, c.SizeBytes })
+                        .ToListAsync())
+                    .Select(c => (c.RecipientId, c.TemplateId, c.Id, c.Version, c.HasContent, c.FileName, c.SizeBytes))
+                    .ToList();
+
+            var items = docs
+                .OrderBy(d => d.Person, UkrainianCollation.Surname)
+                .Select(d =>
+                {
+                    if (d.DeletedAt is not null)
+                        return new RunItemDto(d.Person, d.TemplateName, "видалено", false, 0, null, false, string.Empty);
+                    if (!d.IsCurrent)
+                    {
+                        var current = currents.FirstOrDefault(c =>
+                            c.RecipientId == d.RecipientId && c.TemplateId == d.TemplateId && c.Id != d.Id);
+                        if (current.Id != 0)
+                            return new RunItemDto(d.Person, d.TemplateName, $"є новіша в.{current.Version}", false,
+                                current.SizeBytes, current.Id, current.HasContent, current.FileName);
+                    }
+                    return new RunItemDto(d.Person, d.TemplateName, "згенеровано", false, d.SizeBytes, d.Id, d.HasContent, d.FileName);
+                })
+                .ToList();
+
+            var groupDocs = await db.GeneratedGroupDocuments.IgnoreQueryFilters()
+                .Where(g => g.RunId == runId)
+                .Select(g => new
+                {
+                    g.Id, g.SizeBytes, g.HasContent, g.FileName, g.DeletedAt, g.IsCurrent, g.RecipientCount,
+                    TemplateName = g.ExportTemplateId != null
+                        ? db.ExportTemplates.IgnoreQueryFilters()
+                            .Where(t => t.Id == g.ExportTemplateId).Select(t => t.Name).FirstOrDefault()
+                        : db.Templates.IgnoreQueryFilters()
+                            .Where(t => t.Id == g.TemplateId).Select(t => t.Name).FirstOrDefault()
+                })
+                .ToListAsync();
+
+            foreach (var g in groupDocs)
+            {
+                var person = $"груповий · {g.RecipientCount} {PluralHelper.Pluralize(g.RecipientCount, "особа", "особи", "осіб")}";
+                items.Add(g.DeletedAt is not null
+                    ? new RunItemDto(person, g.TemplateName ?? "-", "видалено", false, 0, null, false, string.Empty, IsGroup: true)
+                    : new RunItemDto(person, g.TemplateName ?? "-", g.IsCurrent ? "згенеровано" : "є новіша версія",
+                        false, g.SizeBytes, g.Id, g.HasContent, g.FileName, IsGroup: true));
+            }
 
             var summary = await db.GenerationPackageRuns
                 .Where(r => r.Id == runId).Select(r => r.Summary).FirstOrDefaultAsync();
@@ -823,21 +1046,34 @@ namespace GenDoc.Services.Documents
                     g.Id,
                     g.ExportTemplateId ?? 0,
                     g.TemplateId,
-                    g.ExportTemplate != null
-                        ? g.ExportTemplate.Name
-                        : g.Template != null ? g.Template.Name : "-",
-                    g.ExportTemplate != null
-                        ? g.ExportTemplate.DeletedAt == null
-                        : g.Template != null && g.Template.DeletedAt == null,
+                    (g.ExportTemplateId != null
+                        ? db.ExportTemplates.IgnoreQueryFilters()
+                            .Where(t => t.Id == g.ExportTemplateId).Select(t => t.Name).FirstOrDefault()
+                        : db.Templates.IgnoreQueryFilters()
+                            .Where(t => t.Id == g.TemplateId).Select(t => t.Name).FirstOrDefault()) ?? "-",
+                    g.ExportTemplateId != null
+                        ? db.ExportTemplates.IgnoreQueryFilters().Any(t => t.Id == g.ExportTemplateId && t.DeletedAt == null)
+                        : db.Templates.IgnoreQueryFilters().Any(t => t.Id == g.TemplateId && t.DeletedAt == null),
                     g.Version,
                     g.RecipientCount,
                     g.GeneratedAt,
-                    g.GeneratedByUser != null ? g.GeneratedByUser.FullName : "-",
+                    db.Users.IgnoreQueryFilters()
+                        .Where(u => u.Id == g.GeneratedByUserId).Select(u => u.FullName).FirstOrDefault() ?? "-",
                     g.HasContent,
                     g.FileName,
                     g.SizeBytes,
                     g.IntakeId))
                 .ToListAsync();
+        }
+
+        private static async Task<string> GroupLabelAsync(AppDbContext db, GeneratedGroupDocument doc)
+        {
+            var name = doc.ExportTemplateId is int exportId
+                ? await db.ExportTemplates.IgnoreQueryFilters()
+                    .Where(t => t.Id == exportId).Select(t => t.Name).FirstOrDefaultAsync()
+                : await db.Templates.IgnoreQueryFilters()
+                    .Where(t => t.Id == doc.TemplateId).Select(t => t.Name).FirstOrDefaultAsync();
+            return $"{name ?? "-"} · {doc.RecipientCount} {PluralHelper.Pluralize(doc.RecipientCount, "особа", "особи", "осіб")} · в.{doc.Version}";
         }
 
         public async Task<List<GroupTemplateOption>> GetGroupTemplateOptionsAsync()
@@ -879,10 +1115,14 @@ namespace GenDoc.Services.Documents
 
             await _tempFileService.OpenAsync(doc.FileName, content.Content);
 
-            _auditLogService.Log(db, "Відкрито документ", "GeneratedGroupDocument", groupDocumentId, null, doc.FileName);
+            _auditLogService.Log(db, "Відкрито документ", "GeneratedGroupDocument", groupDocumentId, null, doc.FileName,
+                await GroupLabelAsync(db, doc));
             await db.SaveChangesAsync();
-            return new ArchiveOpResult(true, null);
+            return new ArchiveOpResult(true, null, ContentWarning(doc.ContentHash, content.Content));
         }
+
+        private const string PrintNotStartedMessage =
+            "Друк не запущено: система не знайшла програму, яка друкує цей тип файлу.";
 
         public async Task<ArchiveOpResult> PrintAsync(int documentId)
         {
@@ -893,11 +1133,13 @@ namespace GenDoc.Services.Documents
                 .FirstOrDefaultAsync(c => c.GeneratedDocumentId == documentId);
             if (content is null) return new ArchiveOpResult(false, NoContentMessage);
 
-            await _tempFileService.PrintAsync(doc.FileName, content.Content);
+            if (!await _tempFileService.PrintAsync(doc.FileName, content.Content))
+                return new ArchiveOpResult(false, PrintNotStartedMessage);
 
-            _auditLogService.Log(db, "Надруковано документ", "GeneratedDocument", documentId, null, doc.FileName);
+            _auditLogService.Log(db, "Надруковано документ", "GeneratedDocument", documentId, null, doc.FileName,
+                await DocumentLabelAsync(db, doc));
             await db.SaveChangesAsync();
-            return new ArchiveOpResult(true, null);
+            return new ArchiveOpResult(true, null, ContentWarning(doc, content.Content));
         }
 
         public async Task<List<GroupParticipantDto>> GetGroupParticipantsAsync(int groupDocumentId)
@@ -934,12 +1176,15 @@ namespace GenDoc.Services.Documents
                 .FirstOrDefaultAsync(c => c.GeneratedGroupDocumentId == groupDocumentId);
             if (content is null) return new ArchiveOpResult(false, NoContentMessage);
 
-            await _tempFileService.PrintAsync(doc.FileName, content.Content);
+            if (!await _tempFileService.PrintAsync(doc.FileName, content.Content))
+                return new ArchiveOpResult(false, PrintNotStartedMessage);
 
-            _auditLogService.Log(db, "Надруковано документ", "GeneratedGroupDocument", groupDocumentId, null, doc.FileName);
+            _auditLogService.Log(db, "Надруковано документ", "GeneratedGroupDocument", groupDocumentId, null, doc.FileName,
+                await GroupLabelAsync(db, doc));
             await db.SaveChangesAsync();
-            return new ArchiveOpResult(true, null);
+            return new ArchiveOpResult(true, null, ContentWarning(doc.ContentHash, content.Content));
         }
+
         public async Task<ArchiveOpResult> SaveGroupAsAsync(int groupDocumentId, string targetPath)
         {
             using var db = _dbFactory.CreateDbContext();
@@ -956,9 +1201,10 @@ namespace GenDoc.Services.Documents
 
             await File.WriteAllBytesAsync(targetPath, bytes);
 
-            _auditLogService.LogExport(db, "GeneratedGroupDocument", 1, $"1 групова відомість → {Path.GetFileName(targetPath)}");
+            _auditLogService.LogExport(db, "GeneratedGroupDocument", 1,
+                $"{await GroupLabelAsync(db, doc)} → {Path.GetFileName(targetPath)}");
             await db.SaveChangesAsync();
-            return new ArchiveOpResult(true, null);
+            return new ArchiveOpResult(true, null, ContentWarning(doc.ContentHash, content.Content));
         }
 
         public async Task DeleteGroupAsync(IReadOnlyList<int> groupDocumentIds)
@@ -984,7 +1230,7 @@ namespace GenDoc.Services.Documents
                 }
 
                 _auditLogService.Log(db, "Видалено групову відомість", "GeneratedGroupDocument", doc.Id,
-                    $"{doc.FileName} (в.{doc.Version})", null);
+                    $"{doc.FileName} (в.{doc.Version})", null, await GroupLabelAsync(db, doc));
             }
 
             await db.SaveChangesAsync();
@@ -997,7 +1243,8 @@ namespace GenDoc.Services.Documents
                 .OrderByDescending(g => g.Version)
                 .Select(g => new GroupVersionDto(
                     g.Id, g.Version, g.GeneratedAt,
-                    g.GeneratedByUser != null ? g.GeneratedByUser.FullName : "-",
+                    db.Users.IgnoreQueryFilters()
+                        .Where(u => u.Id == g.GeneratedByUserId).Select(u => u.FullName).FirstOrDefault() ?? "-",
                     g.SizeBytes, g.IsCurrent, g.HasContent, g.FileName, g.RecipientCount))
                 .ToListAsync();
         }
@@ -1016,7 +1263,7 @@ namespace GenDoc.Services.Documents
             target.IsCurrent = true;
 
             _auditLogService.Log(db, "Змінено актуальну версію", "GeneratedGroupDocument", target.Id,
-                null, $"в.{target.Version}");
+                null, $"в.{target.Version}", await GroupLabelAsync(db, target));
             await db.SaveChangesAsync();
             return target.Id;
         }
@@ -1029,9 +1276,11 @@ namespace GenDoc.Services.Documents
                 .OrderByDescending(g => g.DeletedAt)
                 .Select(g => new DeletedGroupDocumentInfo(
                     g.Id,
-                    g.ExportTemplate != null
-                        ? g.ExportTemplate.Name
-                        : g.Template != null ? g.Template.Name : "-",
+                    (g.ExportTemplateId != null
+                        ? db.ExportTemplates.IgnoreQueryFilters()
+                            .Where(t => t.Id == g.ExportTemplateId).Select(t => t.Name).FirstOrDefault()
+                        : db.Templates.IgnoreQueryFilters()
+                            .Where(t => t.Id == g.TemplateId).Select(t => t.Name).FirstOrDefault()) ?? "-",
                     g.Version,
                     g.RecipientCount,
                     g.DeletedAt!.Value,
@@ -1061,7 +1310,7 @@ namespace GenDoc.Services.Documents
             }
 
             _auditLogService.Log(db, "Відновлено групову відомість", "GeneratedGroupDocument", doc.Id, null,
-                $"{doc.FileName} (в.{doc.Version})");
+                $"{doc.FileName} (в.{doc.Version})", await GroupLabelAsync(db, doc));
             await db.SaveChangesAsync();
         }
     }

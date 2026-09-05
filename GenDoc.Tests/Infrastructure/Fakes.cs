@@ -7,27 +7,34 @@ namespace GenDoc.Tests.Infrastructure;
 public sealed class FakeAuditLog : IAuditLogService
 {
     public List<string> Entries { get; } = new();
+    public List<string?> Details { get; } = new();
+
+    private void Add(string entry, string? details)
+    {
+        Entries.Add(entry);
+        Details.Add(details);
+    }
 
     public void LogCreate(AppDbContext db, string entityName, int entityId, string? newValue = null, string? details = null)
-        => Entries.Add($"create:{entityName}:{entityId}");
+        => Add($"create:{entityName}:{entityId}", details ?? newValue);
 
     public void LogUpdate(AppDbContext db, string entityName, int entityId, string? oldValue, string? newValue, string? details = null)
-        => Entries.Add($"update:{entityName}:{entityId}");
+        => Add($"update:{entityName}:{entityId}", details ?? newValue ?? oldValue);
 
     public void LogDelete(AppDbContext db, string entityName, int entityId, string? oldValue = null, string? details = null)
-        => Entries.Add($"delete:{entityName}:{entityId}");
+        => Add($"delete:{entityName}:{entityId}", details ?? oldValue);
 
     public void LogExport(AppDbContext db, string entityName, int count, string? details = null)
-        => Entries.Add($"export:{entityName}:{count}");
+        => Add($"export:{entityName}:{count}", details);
 
     public void LogImport(AppDbContext db, string entityName, int count, string? details = null)
-        => Entries.Add($"import:{entityName}:{count}");
+        => Add($"import:{entityName}:{count}", details);
 
     public void LogGenerate(AppDbContext db, string entityName, int entityId, string? details = null)
-        => Entries.Add($"generate:{entityName}:{entityId}");
+        => Add($"generate:{entityName}:{entityId}", details);
 
     public void Log(AppDbContext db, string action, string entityName, int entityId, string? oldValue = null, string? newValue = null, string? details = null)
-        => Entries.Add($"{action}:{entityName}:{entityId}");
+        => Add($"{action}:{entityName}:{entityId}", details ?? newValue ?? oldValue);
 }
 
 public sealed class FakeCurrentUser : ICurrentUserContext
@@ -58,6 +65,7 @@ public sealed class FakeTempFiles : ISecureTempFileService
 {
     public List<(string FileName, byte[] Content)> Opened { get; } = new();
     public List<(string FileName, byte[] Content)> Printed { get; } = new();
+    public bool PrintStarts { get; set; } = true;
 
     public Task OpenAsync(string fileName, byte[] content)
     {
@@ -65,10 +73,10 @@ public sealed class FakeTempFiles : ISecureTempFileService
         return Task.CompletedTask;
     }
 
-    public Task PrintAsync(string fileName, byte[] content)
+    public Task<bool> PrintAsync(string fileName, byte[] content)
     {
-        Printed.Add((fileName, content));
-        return Task.CompletedTask;
+        if (PrintStarts) Printed.Add((fileName, content));
+        return Task.FromResult(PrintStarts);
     }
 
     public Task CleanupAsync() => Task.CompletedTask;

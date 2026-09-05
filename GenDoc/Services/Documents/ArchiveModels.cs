@@ -32,7 +32,8 @@ namespace GenDoc.Services.Documents
         DocumentSourceType SourceType,
         string FileName,
         long SizeBytes,
-        bool RecipientAlive = true);
+        bool RecipientAlive = true,
+        bool IsStale = false);
 
     public record ArchiveStats(int Count, long TotalBytes);
 
@@ -56,6 +57,9 @@ namespace GenDoc.Services.Documents
 
     public record AttachmentDto(int Id, string FileName, DateTime UploadedAt, string? Note, long SizeBytes, int DocumentVersion);
 
+    public record DeletedAttachmentInfo(
+        int Id, string FileName, string Person, string TemplateName, int DocumentVersion, DateTime DeletedAt, string? DeletedBy);
+
     public record RunDto(
         int Id,
         DateTime RunAt,
@@ -66,15 +70,18 @@ namespace GenDoc.Services.Documents
         int SkippedCount,
         int ErrorCount,
         int? IntakeId = null,
-        string? IntakeLabel = null);
+        string? IntakeLabel = null,
+        bool PackageInTrash = false);
 
     public record GroupParticipantDto(int RecipientId, string Rank, string FullName, string UnitName);
 
-    public record RunItemDto(string Person, string TemplateName, string Status, bool IsError, long SizeBytes, int? DocumentId, bool HasContent, string FileName);
+    public record RunItemDto(
+        string Person, string TemplateName, string Status, bool IsError, long SizeBytes, int? DocumentId, bool HasContent, string FileName,
+        bool IsGroup = false);
 
     public record DeletedDocumentInfo(int Id, string Person, string TemplateName, int Version, DateTime DeletedAt, string? DeletedBy);
 
-    public record ArchiveOpResult(bool Success, string? ErrorMessage);
+    public record ArchiveOpResult(bool Success, string? ErrorMessage, string? Warning = null);
 
     public record GroupArchiveFilter(
         int? ExportTemplateId, int? DocxTemplateId, int? Year, int Skip, int Take, int? UserId = null, int? IntakeId = null);

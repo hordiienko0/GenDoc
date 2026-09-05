@@ -22,6 +22,7 @@ namespace GenDoc.ViewModels.Archive
         public bool HasContent => Dto.HasContent;
         public bool TemplateAlive => Dto.TemplateAlive;
         public bool RecipientAlive => Dto.RecipientAlive;
+        public bool IsStale => Dto.IsStale;
         public DocumentSourceType SourceType => Dto.SourceType;
 
         public string ShortName
@@ -39,9 +40,16 @@ namespace GenDoc.ViewModels.Archive
 
         public string TemplateDisplay => Dto.HasContent ? Dto.TemplateName : $"{Dto.TemplateName} · файл не збережено";
         public bool IsDim => !Dto.HasContent;
-        public string VersionText => $"в.{Dto.Version}";
-        public bool VersionIsChip => Dto.Version > 1;
+        public string VersionText => Dto.IsStale ? $"в.{Dto.Version} · застарів" : $"в.{Dto.Version}";
+        public bool VersionIsChip => Dto.Version > 1 || Dto.IsStale;
+        public string? StaleTooltip => Dto.IsStale
+            ? "Дані людини змінилися після генерації - перегенеруйте документ"
+            : null;
+        public int Version => Dto.Version;
         public string IntakeText => Dto.IntakeNumber is int n ? $"№{n}" : "-";
+        public int IntakeSortKey => Dto.IntakeNumber ?? 0;
+        public DateTime CreatedAt => Dto.CreatedAt;
+        public int AttachmentCount => Dto.AttachmentCount;
         public string UnitLast => (Dto.OrgPathSnapshot ?? "-")
             .Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .LastOrDefault() ?? "-";

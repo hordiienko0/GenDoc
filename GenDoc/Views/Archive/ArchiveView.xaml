@@ -2,7 +2,15 @@
              x:Name="ArchiveRoot"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:views="clr-namespace:GenDoc.Views.Archive"
              Loaded="ArchiveView_Loaded">
+
+    <UserControl.CommandBindings>
+        <CommandBinding Command="{x:Static views:ArchiveView.FocusSearchCommand}" Executed="FocusSearch_Executed"/>
+    </UserControl.CommandBindings>
+    <UserControl.InputBindings>
+        <KeyBinding Key="F" Modifiers="Ctrl" Command="{x:Static views:ArchiveView.FocusSearchCommand}"/>
+    </UserControl.InputBindings>
 
     <UserControl.Resources>
         <Style x:Key="ArchiveTabStyle" TargetType="Button">
@@ -167,7 +175,7 @@
                     <ComboBox Style="{StaticResource ArchiveFilterComboStyle}" ItemsSource="{Binding YearOptions}"
                               SelectedItem="{Binding SelectedYear}" DisplayMemberPath="Label"/>
                 </StackPanel>
-                <TextBox Grid.Column="1" Tag="Пошук…" MinWidth="120"
+                <TextBox x:Name="SearchBox" Grid.Column="1" Tag="Пошук… (Ctrl+F)" MinWidth="120"
                          Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
             </Grid>
 
@@ -192,11 +200,38 @@
                               AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
                               HorizontalScrollBarVisibility="Auto"
                               CanUserResizeColumns="True"
-                              CanUserSortColumns="False"
+                              CanUserSortColumns="True"
                               EnableRowVirtualization="True"
                               MouseLeftButtonUp="DocsGrid_MouseLeftButtonUp"
                               MouseDoubleClick="DocsGrid_MouseDoubleClick"
+                              PreviewMouseRightButtonDown="DocsGrid_PreviewMouseRightButtonDown"
+                              PreviewKeyDown="Grid_PreviewKeyDown"
                               Visibility="{Binding HasRows, Converter={StaticResource BoolToVisibility}}">
+                        <DataGrid.ContextMenu>
+                            <ContextMenu Style="{StaticResource AppContextMenuStyle}">
+                                <MenuItem Header="Відкрити" Style="{StaticResource AppContextMenuItemStyle}"
+                                          IsEnabled="{Binding CanOpen}" Command="{Binding OpenCommand}" InputGestureText="Enter"/>
+                                <MenuItem Header="Друк" Style="{StaticResource AppContextMenuItemStyle}"
+                                          IsEnabled="{Binding CanPrint}" Command="{Binding PrintCommand}"/>
+                                <MenuItem Header="Показати в теці" Style="{StaticResource AppContextMenuItemStyle}"
+                                          IsEnabled="{Binding CanShowInFolder}" Command="{Binding ShowInFolderCommand}"/>
+                                <MenuItem Header="Зберегти як…" Style="{StaticResource AppContextMenuItemStyle}"
+                                          IsEnabled="{Binding CanSaveAs}" Command="{Binding SaveAsCommand}"/>
+                                <Separator/>
+                                <MenuItem Header="Перегенерувати" Style="{StaticResource AppContextMenuItemStyle}"
+                                          IsEnabled="{Binding CanRegenerate}" Command="{Binding RegenerateCommand}"/>
+                                <MenuItem Header="Підгрузити версію" Style="{StaticResource AppContextMenuItemStyle}"
+                                          IsEnabled="{Binding CanUpload}" Command="{Binding UploadCommand}"/>
+                                <MenuItem Header="Прикріпити скан" Style="{StaticResource AppContextMenuItemStyle}"
+                                          IsEnabled="{Binding CanAttach}" Command="{Binding AttachCommand}"/>
+                                <MenuItem Header="Історія версій" Style="{StaticResource AppContextMenuItemStyle}"
+                                          IsEnabled="{Binding CanHistory}" Command="{Binding HistoryCommand}"/>
+                                <Separator/>
+                                <MenuItem Header="Видалити" Style="{StaticResource AppContextMenuItemStyle}"
+                                          Foreground="{StaticResource DangerBrush}"
+                                          IsEnabled="{Binding CanDelete}" Command="{Binding DeleteCommand}" InputGestureText="Delete"/>
+                            </ContextMenu>
+                        </DataGrid.ContextMenu>
                         <DataGrid.RowStyle>
                             <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
                                 <Style.Triggers>
@@ -208,7 +243,7 @@
                             </Style>
                         </DataGrid.RowStyle>
                         <DataGrid.Columns>
-                            <DataGridTemplateColumn Width="36" CanUserResize="False"
+                            <DataGridTemplateColumn Width="36" CanUserResize="False" CanUserSort="False"
                                                      CellStyle="{StaticResource CheckboxCellStyle}"
                                                      HeaderStyle="{StaticResource CheckboxHeaderStyle}">
                                 <DataGridTemplateColumn.HeaderTemplate>
@@ -242,16 +277,20 @@
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
-                            <DataGridTemplateColumn Header="ВЕР." Width="72" MinWidth="72">
+                            <DataGridTemplateColumn Header="ВЕР." Width="110" MinWidth="72" SortMemberPath="Version">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
-                                        <Border HorizontalAlignment="Left" VerticalAlignment="Center" Padding="5,1">
+                                        <Border HorizontalAlignment="Left" VerticalAlignment="Center" Padding="5,1"
+                                                ToolTip="{Binding StaleTooltip}">
                                             <Border.Style>
                                                 <Style TargetType="Border">
                                                     <Setter Property="Background" Value="Transparent"/>
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding VersionIsChip}" Value="True">
                                                             <Setter Property="Background" Value="{StaticResource AccentSoftBrush}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsStale}" Value="True">
+                                                            <Setter Property="Background" Value="{StaticResource WarningSoftBrush}"/>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -265,6 +304,10 @@
                                                                 <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
                                                                 <Setter Property="FontWeight" Value="Bold"/>
                                                             </DataTrigger>
+                                                            <DataTrigger Binding="{Binding IsStale}" Value="True">
+                                                                <Setter Property="Foreground" Value="{StaticResource WarningBrush}"/>
+                                                                <Setter Property="FontWeight" Value="Bold"/>
+                                                            </DataTrigger>
                                                         </Style.Triggers>
                                                     </Style>
                                                 </TextBlock.Style>
@@ -274,7 +317,8 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
 
-                            <DataGridTextColumn Header="НАБІР" Binding="{Binding IntakeText}" Width="84" MinWidth="84">
+                            <DataGridTextColumn Header="НАБІР" Binding="{Binding IntakeText}" Width="84" MinWidth="84"
+                                                SortMemberPath="IntakeSortKey">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
@@ -291,10 +335,12 @@
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
-                            <DataGridTextColumn Header="ДАТА" Binding="{Binding DateText}" Width="120" MinWidth="120"/>
+                            <DataGridTextColumn Header="ДАТА" Binding="{Binding DateText}" Width="120" MinWidth="120"
+                                                SortMemberPath="CreatedAt"/>
                             <DataGridTextColumn Header="АВТОР" Binding="{Binding Author}" Width="1*" MinWidth="110"
                                                  ElementStyle="{StaticResource TruncatedCellStyle}"/>
-                            <DataGridTextColumn Header="ВКЛ." Binding="{Binding AttachText}" Width="52" MinWidth="52">
+                            <DataGridTextColumn Header="ВКЛ." Binding="{Binding AttachText}" Width="52" MinWidth="52"
+                                                SortMemberPath="AttachmentCount">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
@@ -413,7 +459,8 @@
                                             </StackPanel>
                                             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                                                 <TextBlock Text="{Binding DocsText}" FontSize="12.5" Margin="0,0,12,0"
-                                                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                           ToolTip="Пропущені позиції та їхні причини - у переліку запуску"/>
                                                 <TextBlock Text="{Binding ErrorsText}" FontSize="12.5" FontWeight="SemiBold">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
@@ -459,6 +506,10 @@
                                                                             <DataTrigger Binding="{Binding IsError}" Value="True">
                                                                                 <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
                                                                             </DataTrigger>
+                                                                            <DataTrigger Binding="{Binding IsDeleted}" Value="True">
+                                                                                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                                                                <Setter Property="FontWeight" Value="Normal"/>
+                                                                            </DataTrigger>
                                                                         </Style.Triggers>
                                                                     </Style>
                                                                 </TextBlock.Style>
@@ -500,6 +551,7 @@
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <Grid Grid.Row="0" Margin="0,0,0,9">
@@ -510,6 +562,8 @@
                               SelectedItem="{Binding SelectedIntake}" DisplayMemberPath="Label"/>
                     <ComboBox Style="{StaticResource ArchiveFilterComboStyle}" ItemsSource="{Binding GroupTemplateOptions}"
                               SelectedItem="{Binding SelectedGroupTemplate}" DisplayMemberPath="Name"/>
+                    <ComboBox Style="{StaticResource ArchiveFilterComboStyle}" ItemsSource="{Binding YearOptions}"
+                              SelectedItem="{Binding SelectedYear}" DisplayMemberPath="Label"/>
                 </StackPanel>
             </Grid>
 
@@ -520,11 +574,33 @@
                               AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
                               HorizontalScrollBarVisibility="Auto"
                               CanUserResizeColumns="True"
-                              CanUserSortColumns="False" EnableRowVirtualization="True"
+                              CanUserSortColumns="True" EnableRowVirtualization="True"
                               MouseLeftButtonUp="GroupGrid_MouseLeftButtonUp"
+                              PreviewMouseRightButtonDown="GroupGrid_PreviewMouseRightButtonDown"
+                              PreviewKeyDown="Grid_PreviewKeyDown"
                               Visibility="{Binding GroupHasRows, Converter={StaticResource BoolToVisibility}}">
+                        <DataGrid.ContextMenu>
+                            <ContextMenu Style="{StaticResource AppContextMenuStyle}">
+                                <MenuItem Header="Відкрити" Style="{StaticResource AppContextMenuItemStyle}"
+                                          IsEnabled="{Binding CanOpenGroup}" Command="{Binding OpenGroupCommand}" InputGestureText="Enter"/>
+                                <MenuItem Header="Друк" Style="{StaticResource AppContextMenuItemStyle}"
+                                          IsEnabled="{Binding CanPrintGroup}" Command="{Binding PrintGroupCommand}"/>
+                                <MenuItem Header="Показати в теці" Style="{StaticResource AppContextMenuItemStyle}"
+                                          IsEnabled="{Binding CanShowGroupInFolder}" Command="{Binding ShowGroupInFolderCommand}"/>
+                                <MenuItem Header="Учасники" Style="{StaticResource AppContextMenuItemStyle}"
+                                          IsEnabled="{Binding CanShowGroupParticipants}" Command="{Binding ShowGroupParticipantsCommand}"/>
+                                <MenuItem Header="Зберегти як…" Style="{StaticResource AppContextMenuItemStyle}"
+                                          IsEnabled="{Binding CanSaveGroupAs}" Command="{Binding SaveGroupAsCommand}"/>
+                                <MenuItem Header="Історія версій" Style="{StaticResource AppContextMenuItemStyle}"
+                                          IsEnabled="{Binding CanHistoryGroup}" Command="{Binding HistoryGroupCommand}"/>
+                                <Separator/>
+                                <MenuItem Header="Видалити" Style="{StaticResource AppContextMenuItemStyle}"
+                                          Foreground="{StaticResource DangerBrush}"
+                                          IsEnabled="{Binding CanDeleteGroup}" Command="{Binding DeleteGroupCommand}" InputGestureText="Delete"/>
+                            </ContextMenu>
+                        </DataGrid.ContextMenu>
                         <DataGrid.Columns>
-                            <DataGridTemplateColumn Width="36" CanUserResize="False"
+                            <DataGridTemplateColumn Width="36" CanUserResize="False" CanUserSort="False"
                                                      CellStyle="{StaticResource CheckboxCellStyle}">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
@@ -539,11 +615,17 @@
                                     <Style TargetType="TextBlock">
                                         <Setter Property="FontWeight" Value="Bold"/>
                                         <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                        <Setter Property="ToolTip" Value="{Binding TemplateTooltip}"/>
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding TemplateAlive}" Value="False">
+                                                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
                                     </Style>
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
-                            <DataGridTemplateColumn Header="ОСІБ" Width="90" MinWidth="90">
+                            <DataGridTemplateColumn Header="ОСІБ" Width="90" MinWidth="90" SortMemberPath="RecipientCount">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Border Background="{StaticResource AccentSoftBrush}" HorizontalAlignment="Left"
@@ -555,7 +637,8 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
 
-                            <DataGridTextColumn Header="ВЕР." Binding="{Binding VersionText}" Width="72" MinWidth="72">
+                            <DataGridTextColumn Header="ВЕР." Binding="{Binding VersionText}" Width="72" MinWidth="72"
+                                                SortMemberPath="Version">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
@@ -563,10 +646,12 @@
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
-                            <DataGridTextColumn Header="ДАТА" Binding="{Binding DateText}" Width="120" MinWidth="120"/>
+                            <DataGridTextColumn Header="ДАТА" Binding="{Binding DateText}" Width="120" MinWidth="120"
+                                                SortMemberPath="GeneratedAt"/>
                             <DataGridTextColumn Header="АВТОР" Binding="{Binding Author}" Width="1*" MinWidth="110"
                                                  ElementStyle="{StaticResource TruncatedCellStyle}"/>
-                            <DataGridTextColumn Header="РОЗМІР" Binding="{Binding SizeText}" Width="96" MinWidth="96">
+                            <DataGridTextColumn Header="РОЗМІР" Binding="{Binding SizeText}" Width="96" MinWidth="96"
+                                                SortMemberPath="SizeBytes">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
@@ -576,13 +661,23 @@
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <TextBlock Text="Групових документів ще немає" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                               Visibility="{Binding GroupIsEmpty, Converter={StaticResource BoolToVisibility}}"/>
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                                Visibility="{Binding GroupIsEmpty, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock Text="Групових документів за цими фільтрами немає" Foreground="{StaticResource TextSecondaryBrush}" FontSize="13"
+                                   HorizontalAlignment="Center"/>
+                        <Button Content="Скинути фільтри" Style="{StaticResource SecondaryButtonStyle}"
+                                Margin="0,10,0,0" HorizontalAlignment="Center"
+                                Command="{Binding ResetFiltersCommand}"/>
+                    </StackPanel>
                 </Grid>
             </Border>
 
-            <WrapPanel Grid.Row="2" Margin="0,8,0,0">
+            <Button Grid.Row="2" Content="Завантажити ще" Style="{StaticResource SecondaryButtonStyle}"
+                    HorizontalAlignment="Center" Margin="0,8,0,0"
+                    Command="{Binding LoadMoreGroupCommand}"
+                    Visibility="{Binding GroupCanLoadMore, Converter={StaticResource BoolToVisibility}}"/>
+
+            <WrapPanel Grid.Row="3" Margin="0,8,0,0">
                 <Button Content="Відкрити" Style="{StaticResource ArchiveActionButtonStyle}"
                         IsEnabled="{Binding CanOpenGroup}" ToolTip="Оберіть одну відомість"
                         Command="{Binding OpenGroupCommand}"/>

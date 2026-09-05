@@ -8,6 +8,8 @@ namespace GenDoc.Views.Archive;
 
 public partial class ArchiveView : UserControl
 {
+    public static readonly RoutedCommand FocusSearchCommand = new(nameof(FocusSearchCommand), typeof(ArchiveView));
+
     public ArchiveView()
     {
         InitializeComponent();
@@ -15,8 +17,23 @@ public partial class ArchiveView : UserControl
 
     private async void ArchiveView_Loaded(object sender, RoutedEventArgs e)
     {
-        if (DataContext is ArchiveViewModel vm)
+        if (DataContext is not ArchiveViewModel vm) return;
+        try
+        {
             await vm.InitializeAsync();
+        }
+        catch (Exception ex)
+        {
+            GenDoc.Services.ErrorLog.Write(ex, null);
+            vm.StatsText = $"Не вдалося завантажити архів: {ex.Message}";
+        }
+    }
+
+    private void FocusSearch_Executed(object sender, ExecutedRoutedEventArgs e)
+    {
+        if (DataContext is ArchiveViewModel { IsDocsTab: false }) return;
+        SearchBox.Focus();
+        SearchBox.SelectAll();
     }
 
     private void DocsGrid_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
@@ -26,6 +43,38 @@ public partial class ArchiveView : UserControl
         var row = FindAncestor<DataGridRow>(e.OriginalSource as DependencyObject);
         if (row?.Item is ArchiveRowViewModel rowVm && DataContext is ArchiveViewModel vm)
             vm.HandleRowClick(rowVm, Keyboard.Modifiers.HasFlag(ModifierKeys.Control));
+    }
+
+    private void DocsGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        var row = FindAncestor<DataGridRow>(e.OriginalSource as DependencyObject);
+        if (row?.Item is ArchiveRowViewModel rowVm && DataContext is ArchiveViewModel vm && !rowVm.IsChecked)
+            vm.HandleRowClick(rowVm, ctrl: false);
+    }
+
+    private void GroupGrid_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        var row = FindAncestor<DataGridRow>(e.OriginalSource as DependencyObject);
+        if (row?.Item is GroupDocumentRowViewModel rowVm && DataContext is ArchiveViewModel vm && !rowVm.IsChecked)
+            vm.HandleGroupRowClick(rowVm, ctrl: false);
+    }
+
+    private void Grid_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (DataContext is not ArchiveViewModel vm) return;
+        if (FindAncestor<TextBox>(e.OriginalSource as DependencyObject) is not null) return;
+
+        switch (e.Key)
+        {
+            case Key.Enter:
+                vm.OpenCheckedCommand.Execute(null);
+                e.Handled = true;
+                break;
+            case Key.Delete:
+                vm.DeleteCheckedCommand.Execute(null);
+                e.Handled = true;
+                break;
+        }
     }
 
     private async void DocsGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)

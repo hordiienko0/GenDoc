@@ -6,12 +6,14 @@ namespace GenDoc.Services.Documents
     public interface ISecureTempFileService
     {
         Task OpenAsync(string fileName, byte[] content);
-        Task PrintAsync(string fileName, byte[] content);
+        Task<bool> PrintAsync(string fileName, byte[] content);
         Task CleanupAsync();
     }
 
     public class SecureTempFileService : ISecureTempFileService
     {
+        private static readonly TimeSpan PrintWait = TimeSpan.FromSeconds(20);
+
         internal static string TempRoot => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "GenDoc", "_temp");
@@ -24,21 +26,42 @@ namespace GenDoc.Services.Documents
             Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
         }
 
-        public async Task PrintAsync(string fileName, byte[] content)
+        public async Task<bool> PrintAsync(string fileName, byte[] content)
         {
             var path = await WriteTempAsync(fileName, content);
-            Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true, Verb = "print" });
+            using var process = Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true, Verb = "print" });
+            if (process is null) return false;
+
+            try
+            {
+                using var timeout = new CancellationTokenSource(PrintWait);
+                await process.WaitForExitAsync(timeout.Token);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (InvalidOperationException)
+            {
+            }
+
+            return true;
         }
 
         private static async Task<string> WriteTempAsync(string fileName, byte[] content)
         {
             var dir = Path.Combine(TempRoot, Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(dir);
-            var path = Path.Combine(dir, SanitizeFileName(fileName));
+            var path = Path.Combine(dir, TempFileName(fileName));
 
             await File.WriteAllBytesAsync(path, content);
             File.SetAttributes(path, File.GetAttributes(path) | FileAttributes.ReadOnly);
             return path;
+        }
+
+        public static string TempFileName(string fileName)
+        {
+            var leaf = fileName.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+            return SanitizeFileName(Path.GetFileName(leaf));
         }
 
         public Task CleanupAsync() => Task.Run(() =>

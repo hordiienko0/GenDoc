@@ -16,7 +16,7 @@ namespace GenDoc.ViewModels.Archive
 
     public partial class ArchiveViewModel : ObservableObject, Services.Navigation.INavigationTarget
     {
-        private const int PageSize = 200;
+        internal const int PageSize = 200;
         private static bool _openWarningShownThisSession;
 
         private readonly IDocumentArchiveService _archiveService;
@@ -298,11 +298,11 @@ namespace GenDoc.ViewModels.Archive
             if (IsSearchActive)
             {
                 var total = await _archiveService.GetStatsAsync(BuildFilter(0, withSearch: false));
-                StatsText = $"показано {stats.Count} з {total.Count} документів · {size}";
+                StatsText = $"показано {stats.Count} з {total.Count} {(total.Count == 1 ? "документа" : "документів")} · {size}";
             }
             else
             {
-                StatsText = $"{stats.Count} документів · {size}";
+                StatsText = $"{stats.Count} {Documents(stats.Count)} · {size}";
             }
 
             ArchiveHasAnyDocuments = stats.Count > 0
@@ -417,10 +417,23 @@ namespace GenDoc.ViewModels.Archive
             RefreshCheckedState();
         }
 
+        private static string Documents(int count) => PluralHelper.Pluralize(count, "документ", "документи", "документів");
+        private static string Sheets(int count) => PluralHelper.Pluralize(count, "відомість", "відомості", "відомостей");
+
+        internal static string DeleteConfirmationText(int count, int version, int? previousVersion)
+        {
+            if (count == 1 && previousVersion is int previous)
+                return $"Буде видалено в.{version}; актуальною стане в.{previous}.";
+            return $"Перемістити {count} {Documents(count)} у кошик?";
+        }
+
+        internal static string DeleteGroupConfirmationText(int count)
+            => $"Перемістити {count} {Sheets(count)} у кошик?";
+
         public bool CanOpen => CheckedCount == 1 && CheckedRows.All(r => r.HasContent);
         public bool CanSaveAs => CheckedCount >= 1 && CheckedRows.All(r => r.HasContent);
         public bool CanRegenerate => CheckedCount >= 1
-            && CheckedRows.All(r => r.SourceType == DocumentSourceType.Generated && r.TemplateAlive && r.RecipientAlive);
+            && CheckedRows.All(r => r.TemplateAlive && r.RecipientAlive);
         public bool CanUpload => CheckedCount == 1;
         public bool CanAttach => CheckedCount == 1;
         public bool CanHistory => CheckedCount == 1;
@@ -447,24 +460,49 @@ namespace GenDoc.ViewModels.Archive
         [RelayCommand]
         private async Task PrintAsync()
         {
-            foreach (var row in CheckedRows.Where(r => r.HasContent))
+            var rows = CheckedRows.Where(r => r.HasContent).ToList();
+            if (rows.Count > 1)
             {
-                try
+                var confirm = MessageBox.Show(
+                    $"Надрукувати {rows.Count} {Documents(rows.Count)}? Документи підуть на друк по черзі.",
+                    "Друк", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+                if (confirm != MessageBoxResult.OK) return;
+            }
+
+            IsBusy = true;
+            try
+            {
+                foreach (var row in rows)
                 {
-                    var result = await _archiveService.PrintAsync(row.Id);
-                    if (!result.Success)
+                    try
                     {
-                        MessageBox.Show(result.ErrorMessage, "Друк", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        var result = await _archiveService.PrintAsync(row.Id);
+                        if (!result.Success)
+                        {
+                            MessageBox.Show(result.ErrorMessage, "Друк", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            return;
+                        }
+                        ShowWarning(result, "Друк", row.ShortName);
+                    }
+                    catch (System.ComponentModel.Win32Exception)
+                    {
+                        MessageBox.Show("Не вдалося надрукувати: немає програми для цього типу файлу.", "Друк",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
                         return;
                     }
                 }
-                catch (System.ComponentModel.Win32Exception)
-                {
-                    MessageBox.Show("Не вдалося надрукувати: немає програми для цього типу файлу.", "Друк",
-                        MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
             }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        private static void ShowWarning(ArchiveOpResult result, string title, string? subject = null)
+        {
+            if (result.Warning is null) return;
+            var text = subject is null ? result.Warning : $"{subject}: {result.Warning}";
+            MessageBox.Show(text, title, MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         [RelayCommand]
@@ -483,36 +521,21 @@ namespace GenDoc.ViewModels.Archive
             : CanSaveAs ? null : "Серед обраних є документи без збереженого файлу";
         public string? RegenerateTooltip => CheckedCount == 0
             ? "Оберіть документи"
-            : CanRegenerate ? null : "Перегенерація можлива лише для згенерованих документів з живим шаблоном";
+            : CanRegenerate ? null : "Перегенерація можлива лише для документів з живим шаблоном і особою не в кошику";
 
         [RelayCommand]
         private async Task OpenAsync()
         {
             var row = CheckedRows.FirstOrDefault();
             if (row is null || !CanOpen) return;
-
-            try
-            {
-                var result = await _archiveService.OpenAsync(row.Id);
-                if (!result.Success)
-                {
-                    MessageBox.Show(result.ErrorMessage, "Відкриття документа",
-                        MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-                if (!_openWarningShownThisSession)
-                {
-                    _openWarningShownThisSession = true;
-                    ShowOpenWarning = true;
-                }
-            }
-            catch (System.ComponentModel.Win32Exception)
-            {
-                MessageBox.Show(
-                    "Не вдалося відкрити: немає програми для .docx. Скористайтесь «Зберегти як…».",
-                    "Відкриття документа", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
+            await OpenByRowAsync(row);
         }
+
+        [RelayCommand]
+        private Task OpenCheckedAsync() => IsGroupTab ? OpenGroupAsync() : IsDocsTab ? OpenAsync() : Task.CompletedTask;
+
+        [RelayCommand]
+        private Task DeleteCheckedAsync() => IsGroupTab ? DeleteGroupAsync() : IsDocsTab ? DeleteAsync() : Task.CompletedTask;
 
         public async Task OpenByRowAsync(ArchiveRowViewModel row)
         {
@@ -526,6 +549,7 @@ namespace GenDoc.ViewModels.Archive
                         MessageBoxButton.OK, MessageBoxImage.Warning);
                     return;
                 }
+                ShowWarning(result, "Відкриття документа");
                 if (!_openWarningShownThisSession)
                 {
                     _openWarningShownThisSession = true;
@@ -561,6 +585,7 @@ namespace GenDoc.ViewModels.Archive
                     if (!result.Success)
                         MessageBox.Show(result.ErrorMessage, "Зберегти як",
                             MessageBoxButton.OK, MessageBoxImage.Warning);
+                    else ShowWarning(result, "Зберегти як");
                 }
                 finally { IsBusy = false; }
                 return;
@@ -575,7 +600,7 @@ namespace GenDoc.ViewModels.Archive
                 var (saved, errors) = await _archiveService.SaveManyAsync(
                     rows.Select(r => r.Id).ToList(), folderDialog.FolderName);
 
-                var message = $"Збережено {saved} документів у {folderDialog.FolderName}";
+                var message = $"Збережено {saved} {Documents(saved)} у {folderDialog.FolderName}";
                 if (errors.Count > 0)
                     message += $"\nПомилок: {errors.Count}\n{string.Join("\n", errors.Take(5))}";
                 MessageBox.Show(message, "Експорт завершено", MessageBoxButton.OK,
@@ -754,12 +779,27 @@ namespace GenDoc.ViewModels.Archive
             var rows = CheckedRows;
             if (rows.Count == 0) return;
 
-            var confirm = MessageBox.Show(
-                $"Перемістити {rows.Count} документ(ів) у кошик?",
-                "Видалення документів", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (confirm != MessageBoxResult.Yes) return;
+            var ids = rows.Select(r => r.Id).ToList();
+            var totalVersions = await _archiveService.CountVersionsAsync(ids);
 
-            await _archiveService.DeleteAsync(rows.Select(r => r.Id).ToList());
+            int? previousVersion = null;
+            if (rows.Count == 1 && totalVersions > 1)
+            {
+                previousVersion = (await _archiveService.GetVersionsAsync(rows[0].RecipientId, rows[0].TemplateId))
+                    .Where(v => v.Id != rows[0].Id)
+                    .OrderByDescending(v => v.Version)
+                    .Select(v => (int?)v.Version)
+                    .FirstOrDefault();
+            }
+
+            var message = DeleteConfirmationText(rows.Count, rows[0].Version, previousVersion);
+            if (rows.Count > 1 && totalVersions > rows.Count)
+                message += $"\nУ {rows.Count} обраних є попередні версії - вони стануть актуальними.";
+
+            var dialog = new DeleteDocumentsDialogViewModel(message, totalVersions, rows.Count);
+            if (_dialogService.ShowDialog(dialog, Application.Current?.MainWindow) != true) return;
+
+            await _archiveService.DeleteAsync(ids, dialog.DeleteAllVersions);
             await ResetAndReloadAsync();
         }
 
@@ -839,15 +879,18 @@ namespace GenDoc.ViewModels.Archive
             if (item?.Dto.DocumentId is not int docId || !item.CanOpen) return;
             try
             {
-                var result = await _archiveService.OpenAsync(docId);
+                var result = item.IsGroup
+                    ? await _archiveService.OpenGroupAsync(docId)
+                    : await _archiveService.OpenAsync(docId);
                 if (!result.Success)
                     MessageBox.Show(result.ErrorMessage, "Відкриття документа",
                         MessageBoxButton.OK, MessageBoxImage.Warning);
+                else ShowWarning(result, "Відкриття документа");
             }
             catch (System.ComponentModel.Win32Exception)
             {
                 MessageBox.Show(
-                    "Не вдалося відкрити: немає програми для .docx. Скористайтесь «Зберегти як…».",
+                    "Не вдалося відкрити: немає програми для цього типу файлу. Скористайтесь «Зберегти як…».",
                     "Відкриття документа", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
@@ -860,10 +903,13 @@ namespace GenDoc.ViewModels.Archive
             var dialog = new SaveFileDialog { FileName = System.IO.Path.GetFileName(item.Dto.FileName) };
             if (dialog.ShowDialog() != true) return;
 
-            var result = await _archiveService.SaveAsAsync(docId, dialog.FileName);
+            var result = item.IsGroup
+                ? await _archiveService.SaveGroupAsAsync(docId, dialog.FileName)
+                : await _archiveService.SaveAsAsync(docId, dialog.FileName);
             if (!result.Success)
                 MessageBox.Show(result.ErrorMessage, "Зберегти як",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
+            else ShowWarning(result, "Зберегти як");
         }
 
         public ObservableCollection<GroupDocumentRowViewModel> GroupRows { get; } = new();
@@ -909,26 +955,36 @@ namespace GenDoc.ViewModels.Archive
             }
         }
 
+        [ObservableProperty] private bool groupCanLoadMore;
+
         private async Task ReloadGroupAsync()
         {
             if (_suppressGroupFilterReload) return;
 
             if (GroupTemplateOptions.Count == 0) await ReloadGroupTemplateOptionsAsync();
 
+            ClearGroupChecked();
+            GroupRows.Clear();
+            GroupRowCount = 0;
+            await LoadGroupPageAsync();
+        }
+
+        private async Task LoadGroupPageAsync()
+        {
             IsBusy = true;
             try
             {
-                ClearGroupChecked();
                 var rows = await _archiveService.QueryGroupAsync(new GroupArchiveFilter(
-                    SelectedGroupTemplate?.ExportTemplateId, SelectedGroupTemplate?.DocxTemplateId, null, 0, PageSize,
+                    SelectedGroupTemplate?.ExportTemplateId, SelectedGroupTemplate?.DocxTemplateId, SelectedYear?.Id,
+                    GroupRows.Count, PageSize,
                     MineOnly ? _currentUser.CurrentUserId : null, SelectedIntake?.Id));
-                GroupRows.Clear();
                 foreach (var dto in rows)
                 {
                     var row = new GroupDocumentRowViewModel(dto);
                     row.PropertyChanged += OnGroupRowPropertyChanged;
                     GroupRows.Add(row);
                 }
+                GroupCanLoadMore = rows.Count == PageSize;
                 GroupRowCount = GroupRows.Count;
             }
             finally
@@ -936,6 +992,9 @@ namespace GenDoc.ViewModels.Archive
                 IsBusy = false;
             }
         }
+
+        [RelayCommand]
+        private Task LoadMoreGroupAsync() => LoadGroupPageAsync();
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(CanOpenGroup))]
@@ -1011,23 +1070,32 @@ namespace GenDoc.ViewModels.Archive
         [RelayCommand]
         private async Task PrintGroupAsync()
         {
-            foreach (var row in CheckedGroupRows.Where(r => r.HasContent))
+            IsBusy = true;
+            try
             {
-                try
+                foreach (var row in CheckedGroupRows.Where(r => r.HasContent))
                 {
-                    var result = await _archiveService.PrintGroupAsync(row.Id);
-                    if (!result.Success)
+                    try
                     {
-                        MessageBox.Show(result.ErrorMessage, "Друк", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        var result = await _archiveService.PrintGroupAsync(row.Id);
+                        if (!result.Success)
+                        {
+                            MessageBox.Show(result.ErrorMessage, "Друк", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            return;
+                        }
+                        ShowWarning(result, "Друк", row.Dto.TemplateName);
+                    }
+                    catch (System.ComponentModel.Win32Exception)
+                    {
+                        MessageBox.Show("Не вдалося надрукувати: немає програми для цього типу файлу.", "Друк",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
                         return;
                     }
                 }
-                catch (System.ComponentModel.Win32Exception)
-                {
-                    MessageBox.Show("Не вдалося надрукувати: немає програми для цього типу файлу.", "Друк",
-                        MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
+            }
+            finally
+            {
+                IsBusy = false;
             }
         }
 
@@ -1063,6 +1131,7 @@ namespace GenDoc.ViewModels.Archive
                 if (!result.Success)
                     MessageBox.Show(result.ErrorMessage, "Відкриття документа",
                         MessageBoxButton.OK, MessageBoxImage.Warning);
+                else ShowWarning(result, "Відкриття документа");
             }
             catch (System.ComponentModel.Win32Exception)
             {
@@ -1111,7 +1180,7 @@ namespace GenDoc.ViewModels.Archive
                     else errors.Add($"{row.Dto.FileName}: {result.ErrorMessage}");
                 }
 
-                var message = $"Збережено {saved} відомостей у {folderDialog.FolderName}";
+                var message = $"Збережено {saved} {Sheets(saved)} у {folderDialog.FolderName}";
                 if (errors.Count > 0)
                     message += $"\nПомилок: {errors.Count}\n{string.Join("\n", errors.Take(5))}";
                 MessageBox.Show(message, "Експорт завершено", MessageBoxButton.OK,
@@ -1148,7 +1217,7 @@ namespace GenDoc.ViewModels.Archive
             if (rows.Count == 0) return;
 
             var confirm = MessageBox.Show(
-                $"Перемістити {rows.Count} відомост(ей) у кошик?",
+                DeleteGroupConfirmationText(rows.Count),
                 "Видалення відомостей", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (confirm != MessageBoxResult.Yes) return;
 

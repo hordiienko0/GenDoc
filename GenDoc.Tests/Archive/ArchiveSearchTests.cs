@@ -90,7 +90,7 @@ public class ArchiveSearchTests
         await vm.InitializeAsync();
 
         Assert.Equal(3, vm.RowCount);
-        Assert.StartsWith("3 документів", vm.StatsText);
+        Assert.StartsWith("3 документи", vm.StatsText);
 
         vm.SearchText = "О’Кон";
         await vm.ApplySearchAsync();
@@ -103,7 +103,7 @@ public class ArchiveSearchTests
         await vm.ApplySearchAsync();
 
         Assert.Equal(3, vm.RowCount);
-        Assert.StartsWith("3 документів", vm.StatsText);
+        Assert.StartsWith("3 документи", vm.StatsText);
     }
 
     private static async Task<ArchiveViewModel> CreateAsync(TestDb db)

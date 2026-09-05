@@ -23,6 +23,7 @@ public class DialogService : IDialogService
         [typeof(NodePickerDialogViewModel)] = typeof(NodePickerDialog),
         [typeof(IntakeWizardViewModel)] = typeof(IntakeWizardWindow),
         [typeof(NoteInputDialogViewModel)] = typeof(NoteInputDialog),
+        [typeof(DeleteDocumentsDialogViewModel)] = typeof(DeleteDocumentsDialog),
         [typeof(ManualValuesDialogViewModel)] = typeof(ManualValuesDialog),
         [typeof(VersionHistoryViewModel)] = typeof(VersionHistoryWindow),
         [typeof(GroupVersionHistoryViewModel)] = typeof(GroupVersionHistoryWindow),
