@@ -27,10 +27,10 @@ namespace GenDoc.Services.Generation
         }
 
         public async Task<ManualTagFormViewModel> BuildAsync(
-            IReadOnlyList<string> tags, string contextKey, bool needsCourseOfficer = false)
+            IReadOnlyList<string> tags, string contextKey, bool needsCourseOfficer = false, int? intakeId = null)
         {
             var hasSigner = ManualTagClassifier.HasSignerPair(tags);
-            var arrival = _intakeAccessor.ActiveIntake?.DateStart ?? DateOnly.FromDateTime(DateTime.Today);
+            var arrival = await GetArrivalDateAsync(intakeId);
 
             var needsLastValues = hasSigner || tags.Any(t => ManualTagClassifier.Classify(t) != ManualTagKind.Date);
             var lastValues = needsLastValues ? await GetLastValuesAsync() : new Dictionary<string, string>();
@@ -63,6 +63,21 @@ namespace GenDoc.Services.Generation
                 rows, signer, courseOfficer,
                 tags.FirstOrDefault(ManualTagClassifier.IsSignerRank),
                 tags.FirstOrDefault(ManualTagClassifier.IsSignerName));
+        }
+
+        private async Task<DateOnly> GetArrivalDateAsync(int? intakeId)
+        {
+            if (intakeId is int id)
+            {
+                using var db = _dbFactory.CreateDbContext();
+                var start = await db.Intakes.IgnoreQueryFilters()
+                    .Where(i => i.Id == id)
+                    .Select(i => (DateOnly?)i.DateStart)
+                    .FirstOrDefaultAsync();
+                if (start is DateOnly documentIntakeStart) return documentIntakeStart;
+            }
+
+            return _intakeAccessor.ActiveIntake?.DateStart ?? DateOnly.FromDateTime(DateTime.Today);
         }
 
         private async Task<SignerPickerViewModel> BuildCourseOfficerAsync(string contextKey)

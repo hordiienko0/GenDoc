@@ -53,6 +53,25 @@ public class ArchiveViewModelPolishTests
         Assert.Equal("в.2 · застарів", row.VersionText);
     }
 
+    private static ArchiveRowViewModel RowOfIntake(int id, int? intakeId) => new(new ArchiveRowDto(
+        id, 1, 1, "ШЕВЧЕНКО", "Тарас", null, "Рапорт", true, 1, intakeId, intakeId, null,
+        DateTime.Now, "Тест", 0, true, GenDoc.Models.Enums.DocumentSourceType.Generated, "r.docx", 3));
+
+    [Fact]
+    public void RegenerationIntake_AllRowsFromOneIntake_IsThatIntake()
+    {
+        var rows = new[] { RowOfIntake(1, 7), RowOfIntake(2, 7) };
+        Assert.Equal(7, ArchiveViewModel.RegenerationIntakeId(rows));
+    }
+
+    [Fact]
+    public void RegenerationIntake_RowsFromDifferentIntakesOrWithoutOne_FallsBackToActive()
+    {
+        Assert.Null(ArchiveViewModel.RegenerationIntakeId(new[] { RowOfIntake(1, 7), RowOfIntake(2, 8) }));
+        Assert.Null(ArchiveViewModel.RegenerationIntakeId(new[] { RowOfIntake(1, null) }));
+        Assert.Null(ArchiveViewModel.RegenerationIntakeId(Array.Empty<ArchiveRowViewModel>()));
+    }
+
     [Fact]
     public void GroupRow_TemplateInTrash_HasHint()
     {
@@ -192,7 +211,7 @@ public class ArchiveViewModelPolishTests
 
     private sealed class NoManualTags : IManualTagFormBuilder
     {
-        public Task<ManualTagFormViewModel> BuildAsync(IReadOnlyList<string> tags, string contextKey, bool needsCourseOfficer = false)
+        public Task<ManualTagFormViewModel> BuildAsync(IReadOnlyList<string> tags, string contextKey, bool needsCourseOfficer = false, int? intakeId = null)
             => throw new NotSupportedException();
 
         public Task SaveAsync(string contextKey, ManualTagFormViewModel form) => Task.CompletedTask;

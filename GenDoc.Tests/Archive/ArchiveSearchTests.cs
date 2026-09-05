@@ -133,7 +133,7 @@ public class ArchiveSearchTests
 
     private sealed class NoManualTags : IManualTagFormBuilder
     {
-        public Task<ManualTagFormViewModel> BuildAsync(IReadOnlyList<string> tags, string contextKey, bool needsCourseOfficer = false)
+        public Task<ManualTagFormViewModel> BuildAsync(IReadOnlyList<string> tags, string contextKey, bool needsCourseOfficer = false, int? intakeId = null)
             => throw new NotSupportedException();
 
         public Task SaveAsync(string contextKey, ManualTagFormViewModel form) => Task.CompletedTask;

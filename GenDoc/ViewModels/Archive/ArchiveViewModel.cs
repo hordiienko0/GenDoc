@@ -612,6 +612,12 @@ namespace GenDoc.ViewModels.Archive
             }
         }
 
+        internal static int? RegenerationIntakeId(IReadOnlyList<ArchiveRowViewModel> rows)
+        {
+            var intakeIds = rows.Select(r => r.Dto.IntakeId).Distinct().ToList();
+            return intakeIds.Count == 1 ? intakeIds[0] : null;
+        }
+
         [RelayCommand]
         private async Task RegenerateAsync()
         {
@@ -628,7 +634,8 @@ namespace GenDoc.ViewModels.Archive
             var manualValues = new Dictionary<string, string>();
             if (manualTags.Count > 0)
             {
-                var form = await _manualTagFormBuilder.BuildAsync(manualTags, ManualTagContextKey);
+                var form = await _manualTagFormBuilder.BuildAsync(
+                    manualTags, ManualTagContextKey, intakeId: RegenerationIntakeId(rows));
                 var dialog = new ManualValuesDialogViewModel(form);
                 if (_dialogService.ShowDialog(dialog, Application.Current.MainWindow) != true) return;
 

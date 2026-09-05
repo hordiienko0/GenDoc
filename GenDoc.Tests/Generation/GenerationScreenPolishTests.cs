@@ -99,7 +99,7 @@ public class GenerationScreenPolishTests : IDisposable
         public int Builds { get; private set; }
         public ManualTagFormViewModel? LastSaved { get; private set; }
 
-        public Task<ManualTagFormViewModel> BuildAsync(IReadOnlyList<string> tags, string contextKey, bool needsCourseOfficer = false)
+        public Task<ManualTagFormViewModel> BuildAsync(IReadOnlyList<string> tags, string contextKey, bool needsCourseOfficer = false, int? intakeId = null)
         {
             Builds++;
             var rows = new ObservableCollection<ManualTagRowViewModel>(tags.Select(t => new ManualTagRowViewModel(t, null)));

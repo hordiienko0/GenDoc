@@ -761,7 +761,7 @@ namespace GenDoc.ViewModels.Completeness
             var needsCourseOfficer = generation.TemplatesNeedCourseOfficer(templateIds, exportTemplateIds);
             if (tags.Count == 0 && !needsCourseOfficer) return new ManualInput(new Dictionary<string, string>(), null);
 
-            var form = await _manualTagFormBuilder.BuildAsync(tags, ManualTagContextKey, needsCourseOfficer);
+            var form = await _manualTagFormBuilder.BuildAsync(tags, ManualTagContextKey, needsCourseOfficer, SelectedIntake?.Id);
             var dialog = new ManualValuesDialogViewModel(form);
             if (_dialogService.ShowDialog(dialog, Application.Current?.MainWindow) != true) return null;
 

@@ -157,7 +157,26 @@ public class MatrixRegenerationManualValuesTests : IDisposable
         return stream.ToArray();
     }
 
-    private static async Task<CompletenessViewModel> CreateViewModelAsync(TestDb db, ScriptedDialog dialog)
+    private sealed class RecordingBuilder : IManualTagFormBuilder
+    {
+        private readonly IManualTagFormBuilder _inner;
+        public List<int?> IntakeIds { get; } = new();
+
+        public RecordingBuilder(IManualTagFormBuilder inner) => _inner = inner;
+
+        public Task<GenDoc.ViewModels.Generation.ManualTagFormViewModel> BuildAsync(
+            IReadOnlyList<string> tags, string contextKey, bool needsCourseOfficer = false, int? intakeId = null)
+        {
+            IntakeIds.Add(intakeId);
+            return _inner.BuildAsync(tags, contextKey, needsCourseOfficer, intakeId);
+        }
+
+        public Task SaveAsync(string contextKey, GenDoc.ViewModels.Generation.ManualTagFormViewModel form)
+            => _inner.SaveAsync(contextKey, form);
+    }
+
+    private static async Task<CompletenessViewModel> CreateViewModelAsync(
+        TestDb db, ScriptedDialog dialog, IManualTagFormBuilder? builder = null)
     {
         var provider = new ServiceCollection()
             .AddSingleton<IGenerationService>(TestServices.Generation(db))
@@ -169,7 +188,7 @@ public class MatrixRegenerationManualValuesTests : IDisposable
             TestServices.Archive(db),
             dialog,
             provider,
-            TestServices.ManualTagForm(db, TestServices.Staff(db, 1), new FakeCurrentUser(), new FakeIntakeAccessor(), 1));
+            builder ?? TestServices.ManualTagForm(db, TestServices.Staff(db, 1), new FakeCurrentUser(), new FakeIntakeAccessor(), 1));
         await vm.InitializeAsync();
         return vm;
     }
@@ -272,5 +291,26 @@ public class MatrixRegenerationManualValuesTests : IDisposable
         Assert.Contains(cells, t => t.Contains("Відомість № 13", StringComparison.Ordinal));
         Assert.Contains(cells, t => t.Contains("Мельник", StringComparison.Ordinal));
         Assert.DoesNotContain(cells, t => t.Contains("Ковальчук", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task RegenerateCell_AsksManualFormForTheSelectedIntake_NotTheActiveOne()
+    {
+        using var db = new TestDb();
+        var s = Seed(db);
+        await TestServices.Completeness(db).GenerateForPairAsync(s.PersonId, s.TemplateId,
+            new Dictionary<string, string> { [OrderTag] = "1" });
+        MakeStale(db, s.PersonId);
+
+        var dialog = new ScriptedDialog { Values = { [OrderTag] = "2" } };
+        var builder = new RecordingBuilder(
+            TestServices.ManualTagForm(db, TestServices.Staff(db, 1), new FakeCurrentUser(), new FakeIntakeAccessor(), 1));
+        var vm = await CreateViewModelAsync(db, dialog, builder);
+        var cell = vm.Rows.Single().Cells.Single(c => c.TemplateId == s.TemplateId);
+
+        var outcome = await vm.RegenerateCellsAsync(new[] { cell });
+
+        Assert.NotNull(outcome);
+        Assert.Equal(s.IntakeId, Assert.Single(builder.IntakeIds));
     }
 }
