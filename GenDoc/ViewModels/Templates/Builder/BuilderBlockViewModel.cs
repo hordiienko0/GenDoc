@@ -15,21 +15,33 @@ public record ColorOption(string? Value, string Label, Brush Swatch);
 
 public partial class SignatureLineViewModel : ObservableObject
 {
+    public static BuilderSignatory NoSignatory { get; } = new(0, "(без підписанта)", string.Empty, string.Empty);
+
     public SignatureLineViewModel(
         string caption, BuilderSignatory? signatory, IReadOnlyList<BuilderSignatory> options)
     {
         this.caption = caption;
         this.signatory = signatory;
         Options = options;
+        SignatoryChoices = new[] { NoSignatory }.Concat(options).ToList();
     }
 
     public IReadOnlyList<BuilderSignatory> Options { get; }
+
+    public IReadOnlyList<BuilderSignatory> SignatoryChoices { get; }
 
     [ObservableProperty]
     private string caption;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(SelectedChoice))]
     private BuilderSignatory? signatory;
+
+    public BuilderSignatory SelectedChoice
+    {
+        get => Signatory ?? NoSignatory;
+        set => Signatory = value is null || ReferenceEquals(value, NoSignatory) ? null : value;
+    }
 }
 
 public partial class TableColumnViewModel : ObservableObject
@@ -88,9 +100,15 @@ public partial class BuilderBlockViewModel : ObservableObject
     public ObservableCollection<TableColumnViewModel> Columns { get; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(RepeatHintText))]
     private bool repeatPerPerson;
 
     public bool IsRepeatToggleVisible => IsTable && Mode == TemplateBuilderMode.Word;
+
+    public string RepeatHintText => RepeatPerPerson
+        ? "Увімкнено: рядок таблиці повторюється на кожну особу списку, тож шаблон стає груповим - "
+          + "один документ на весь список, а не на кожного."
+        : "Вимкнено: таблиця з одним рядком, окремий документ на кожну особу.";
 
     public bool IsRepeatHintVisible => IsTable && Mode == TemplateBuilderMode.Excel;
 
@@ -282,7 +300,7 @@ public partial class BuilderBlockViewModel : ObservableObject
     public static IReadOnlySet<string> NonDocumentProperties { get; } = new HashSet<string>(StringComparer.Ordinal)
     {
         nameof(IsEditing), nameof(HeaderTitle), nameof(LayoutCaption), nameof(IsStyleOpen),
-        nameof(DisplayStyle),
+        nameof(DisplayStyle), nameof(RepeatHintText),
         nameof(IsCollapsed), nameof(IsExpanded), nameof(CollapseIcon),
         nameof(CollapseTooltip), nameof(CollapsedSummary),
         nameof(SelectedFont), nameof(SelectedFontSize), nameof(SelectedColor),
@@ -368,6 +386,7 @@ public partial class BuilderBlockViewModel : ObservableObject
             : null;
 
         return new BuilderBlockViewModel(
-            kind, text, signatures, signatoryOptions, columns, repeatPerPerson: true, mode);
+            kind, text, signatures, signatoryOptions, columns,
+            repeatPerPerson: mode == TemplateBuilderMode.Excel, mode);
     }
 }

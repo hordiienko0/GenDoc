@@ -111,12 +111,14 @@ namespace GenDoc.Services.Templates
                 Style(cell, headerStyle);
                 Border(cell);
 
-                sheet.Column(i + 1).Width = Math.Clamp(
-                    table.Columns[i].Title.Length + 4, MinColumnWidth, MaxColumnWidth);
+                sheet.Column(i + 1).Width = ColumnWidthChars(table.Columns[i].Title);
             }
 
             sheet.Row(row).Height = 30;
         }
+
+        internal static double ColumnWidthChars(string title)
+            => Math.Clamp(title.Length + 4, MinColumnWidth, MaxColumnWidth);
 
         private static void WriteTemplateRow(IXLWorksheet sheet, int row, TableSpec table, ResolvedBlockStyle style)
         {

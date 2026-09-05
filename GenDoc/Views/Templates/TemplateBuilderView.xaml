@@ -287,8 +287,8 @@
                         <DockPanel>
                             <Button DockPanel.Dock="Right" Content="✕ аркуш" Style="{StaticResource TextLinkButtonStyle}"
                                     Foreground="{StaticResource TextSecondaryBrush}" Margin="8,0,0,0"
-                                    ToolTip="Видалити останній аркуш"
-                                    Command="{Binding RemoveLastSheetCommand}"/>
+                                    ToolTip="Видалити поточний аркуш"
+                                    Command="{Binding RemoveCurrentSheetCommand}"/>
                             <Button DockPanel.Dock="Right" Content="+ аркуш" Style="{StaticResource TextLinkButtonStyle}"
                                     Foreground="{StaticResource AccentBrush}"
                                     Command="{Binding AddSheetCommand}"/>
@@ -569,9 +569,9 @@
                                                                              Text="{Binding Caption, UpdateSourceTrigger=PropertyChanged}"
                                                                              GotFocus="BlockText_GotFocus" Margin="0,0,8,0"/>
 
-                                                                    <ComboBox Grid.Column="1" ItemsSource="{Binding Options}"
+                                                                    <ComboBox Grid.Column="1" ItemsSource="{Binding SignatoryChoices}"
                                                                               DisplayMemberPath="Display"
-                                                                              SelectedItem="{Binding Signatory, Mode=TwoWay}"/>
+                                                                              SelectedItem="{Binding SelectedChoice, Mode=TwoWay}"/>
 
                                                                     <Button Grid.Column="2" Content="✕" ToolTip="Прибрати рядок"
                                                                             Style="{StaticResource BlockActionStyle}" Margin="6,0,0,0"
@@ -646,6 +646,11 @@
                                                     <CheckBox Content="Повторювати рядок для кожної особи" Margin="0,8,0,0"
                                                               IsChecked="{Binding RepeatPerPerson, Mode=TwoWay}"
                                                               Visibility="{Binding IsRepeatToggleVisible, Converter={StaticResource BoolToVisibility}}"/>
+
+                                                    <TextBlock Text="{Binding RepeatHintText}" TextWrapping="Wrap"
+                                                               Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"
+                                                               Margin="0,4,0,0"
+                                                               Visibility="{Binding IsRepeatToggleVisible, Converter={StaticResource BoolToVisibility}}"/>
 
                                                     <TextBlock Text="Рядок повторюється для кожної особи списку"
                                                                Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"
@@ -749,7 +754,7 @@
                                         Height="{x:Static builderVm:TemplateBuilderViewModel.SheetRowHeight}">
                                 <Border Width="{x:Static builderVm:TemplateBuilderViewModel.SheetRowHeaderWidth}"
                                         BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,1,1"/>
-                                <ItemsControl ItemsSource="{Binding SheetColumnLetters}">
+                                <ItemsControl ItemsSource="{Binding SheetColumns}">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
                                             <StackPanel Orientation="Horizontal"/>
@@ -758,8 +763,8 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,1,1"
-                                                    Width="{x:Static builderVm:TemplateBuilderViewModel.SheetCellWidth}">
-                                                <TextBlock Text="{Binding}" TextAlignment="Center" VerticalAlignment="Center"
+                                                    Width="{Binding Width}">
+                                                <TextBlock Text="{Binding Letter}" TextAlignment="Center" VerticalAlignment="Center"
                                                            FontSize="11" FontWeight="Bold"
                                                            Foreground="{StaticResource TextSecondaryBrush}"/>
                                             </Border>
@@ -835,9 +840,20 @@
                               Visibility="{Binding IsExcelMode, Converter={StaticResource BoolToVisibility}}"/>
 
                     <TextBlock Text="{Binding StatusMessage}" VerticalAlignment="Center"
-                               Margin="14,0" FontSize="12" Foreground="{StaticResource SuccessBrush}"
+                               Margin="14,0" FontSize="12"
                                MaxWidth="260" TextTrimming="CharacterEllipsis"
-                               ToolTip="{Binding StatusMessage}"/>
+                               ToolTip="{Binding StatusMessage}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsStatusSuccess}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                     <Button Content="{Binding OpenExternallyButtonText}" Style="{StaticResource SecondaryButtonStyle}"
                             Margin="0,0,8,0" Padding="14,8"
                             ToolTip="Відкрити зібраний файл у Word - правки у ньому назад у шаблон не повертаються"

@@ -116,7 +116,7 @@ namespace GenDoc.Services.Templates
         private int SaveWord(int? templateId, string name, TemplateBuilderDocument document)
         {
             var content = BuildDocx(document);
-            var cleanName = TemplateNaming.Clean(name);
+            var cleanName = name.Trim();
             var builderJson = TemplateBuilderJson.Serialize(document);
 
             using var db = _dbFactory.CreateDbContext();
@@ -129,7 +129,7 @@ namespace GenDoc.Services.Templates
             var oldSnapshot = isNew ? null : $"{template.Name} ({template.FieldMappings.Count} міток)";
 
             template.Name = cleanName;
-            template.OriginalFileName = BuildFileName(cleanName);
+            template.OriginalFileName = BuildFileName(TemplateNaming.Clean(cleanName));
             template.Content = content;
             template.UploadedAt = DateTime.Now;
             template.BuilderJson = builderJson;
@@ -177,7 +177,7 @@ namespace GenDoc.Services.Templates
         private int SaveExcel(int? templateId, string name, TemplateBuilderDocument document)
         {
             var built = BuildXlsx(document);
-            var cleanName = TemplateNaming.Clean(name);
+            var cleanName = name.Trim();
             var builderJson = TemplateBuilderJson.Serialize(document);
 
             using var db = _dbFactory.CreateDbContext();
@@ -190,7 +190,7 @@ namespace GenDoc.Services.Templates
             var oldSnapshot = isNew ? null : $"{template.Name} ({template.ColumnMappings.Count} міток)";
 
             template.Name = cleanName;
-            template.OriginalFileName = BuildFileName(cleanName, ".xlsx");
+            template.OriginalFileName = BuildFileName(TemplateNaming.Clean(cleanName), ".xlsx");
             template.Content = built.Content;
             template.UploadedAt = DateTime.Now;
             template.IsBuiltIn = false;

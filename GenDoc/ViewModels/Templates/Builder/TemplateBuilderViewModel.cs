@@ -111,6 +111,18 @@ public class SheetCellViewModel
     public double Width { get; }
 }
 
+public class SheetColumnViewModel
+{
+    public SheetColumnViewModel(string letter, double width)
+    {
+        Letter = letter;
+        Width = width;
+    }
+
+    public string Letter { get; }
+    public double Width { get; }
+}
+
 public class SheetRowViewModel
 {
     private static readonly IReadOnlyList<PreviewRun> NoRuns = Array.Empty<PreviewRun>();
@@ -118,7 +130,7 @@ public class SheetRowViewModel
     private static readonly PreviewStyleViewModel FillerStyle =
         new(BlockStyleDefaults.Resolve(TemplateBlockKind.Paragraph, null));
 
-    public SheetRowViewModel(SheetPreviewRow row, int dataColumnCount, int columnCount, double cellWidth)
+    public SheetRowViewModel(SheetPreviewRow row, int dataColumnCount, IReadOnlyList<double> widths)
     {
         Number = row.Number;
         IsMerged = row.IsMerged;
@@ -126,30 +138,28 @@ public class SheetRowViewModel
         IsTemplateRow = row.IsTemplateRow;
         Style = new PreviewStyleViewModel(row.Style);
 
-        var cells = new List<SheetCellViewModel>(columnCount);
+        var cells = new List<SheetCellViewModel>(widths.Count);
 
         if (row.IsMerged)
         {
-            var span = Math.Max(dataColumnCount, 1);
-            cells.Add(new SheetCellViewModel(row.Cells.Count > 0 ? row.Cells[0] : NoRuns, span * cellWidth));
-            for (var i = span; i < columnCount; i++) cells.Add(new SheetCellViewModel(NoRuns, cellWidth));
+            var span = Math.Clamp(dataColumnCount, 1, widths.Count);
+            cells.Add(new SheetCellViewModel(row.Cells.Count > 0 ? row.Cells[0] : NoRuns, widths.Take(span).Sum()));
+            for (var i = span; i < widths.Count; i++) cells.Add(new SheetCellViewModel(NoRuns, widths[i]));
         }
         else
         {
-            foreach (var cell in row.Cells) cells.Add(new SheetCellViewModel(cell, cellWidth));
-            for (var i = row.Cells.Count; i < columnCount; i++) cells.Add(new SheetCellViewModel(NoRuns, cellWidth));
+            for (var i = 0; i < widths.Count; i++)
+                cells.Add(new SheetCellViewModel(i < row.Cells.Count ? row.Cells[i] : NoRuns, widths[i]));
         }
 
         Cells = cells;
     }
 
-    public SheetRowViewModel(int number, int columnCount, double cellWidth)
+    public SheetRowViewModel(int number, IReadOnlyList<double> widths)
     {
         Number = number;
         Style = FillerStyle;
-        Cells = Enumerable.Range(0, columnCount)
-            .Select(_ => new SheetCellViewModel(NoRuns, cellWidth))
-            .ToList();
+        Cells = widths.Select(width => new SheetCellViewModel(NoRuns, width)).ToList();
     }
 
     public int Number { get; }
@@ -236,13 +246,20 @@ public partial class TemplateBuilderViewModel : ObservableObject
 
     public ObservableCollection<SheetRowViewModel> SheetRows { get; } = new();
 
-    public ObservableCollection<string> SheetColumnLetters { get; } = new();
+    public ObservableCollection<SheetColumnViewModel> SheetColumns { get; } = new();
 
-    public const double SheetCellWidth = 96;
+    public const double SheetCellWidth = 64;
     public const double SheetRowHeight = 26;
     public const double SheetRowHeaderWidth = 32;
+    public const double ScrollBarSize = 17;
+
+    private const double ExcelCharPixels = 7;
+    private const double ExcelCellPadding = 5;
+
+    public static double ExcelColumnWidthPx(double chars) => Math.Round(chars * ExcelCharPixels + ExcelCellPadding);
 
     private SheetPreview? _sheet;
+    private IReadOnlyList<double> _sheetDataWidths = Array.Empty<double>();
     private double _sheetViewportWidth;
     private double _sheetViewportHeight;
 
@@ -258,27 +275,41 @@ public partial class TemplateBuilderViewModel : ObservableObject
     private void RebuildSheetGrid()
     {
         SheetRows.Clear();
-        SheetColumnLetters.Clear();
+        SheetColumns.Clear();
 
         if (_sheet is null) return;
 
         var dataColumnCount = _sheet.ColumnLetters.Count;
-        var visibleColumns = (int)Math.Ceiling(Math.Max(_sheetViewportWidth - SheetRowHeaderWidth, 0) / SheetCellWidth);
-        var columnCount = Math.Max(dataColumnCount, visibleColumns);
+        var widths = new List<double>();
+        for (var i = 0; i < dataColumnCount; i++)
+            widths.Add(i < _sheetDataWidths.Count ? _sheetDataWidths[i] : SheetCellWidth);
 
-        for (var i = 1; i <= columnCount; i++)
-            SheetColumnLetters.Add(TemplateSheetLayout.ColumnLetter(i));
+        var availableWidth = _sheetViewportWidth - SheetRowHeaderWidth - ScrollBarSize;
+        while (widths.Sum() + SheetCellWidth <= availableWidth) widths.Add(SheetCellWidth);
+
+        for (var i = 0; i < widths.Count; i++)
+            SheetColumns.Add(new SheetColumnViewModel(TemplateSheetLayout.ColumnLetter(i + 1), widths[i]));
 
         var lastNumber = 0;
         foreach (var row in _sheet.Rows)
         {
-            SheetRows.Add(new SheetRowViewModel(row, dataColumnCount, columnCount, SheetCellWidth));
+            SheetRows.Add(new SheetRowViewModel(row, dataColumnCount, widths));
             lastNumber = Math.Max(lastNumber, row.Number);
         }
 
-        var visibleRows = (int)Math.Ceiling(Math.Max(_sheetViewportHeight - SheetRowHeight, 0) / SheetRowHeight);
+        var visibleRows = (int)Math.Floor(Math.Max(_sheetViewportHeight - SheetRowHeight - ScrollBarSize, 0) / SheetRowHeight);
         for (var number = lastNumber + 1; number <= visibleRows; number++)
-            SheetRows.Add(new SheetRowViewModel(number, columnCount, SheetCellWidth));
+            SheetRows.Add(new SheetRowViewModel(number, widths));
+    }
+
+    private static IReadOnlyList<double> DataColumnWidths(IReadOnlyList<TemplateBlock> blocks)
+    {
+        var table = blocks.FirstOrDefault(b => b.Kind == TemplateBlockKind.Table && b.Table is not null)?.Table;
+        if (table is null) return Array.Empty<double>();
+
+        return table.Columns
+            .Select(c => ExcelColumnWidthPx(TemplateBlockXlsxWriter.ColumnWidthChars(c.Title)))
+            .ToList();
     }
 
     [ObservableProperty]
@@ -332,6 +363,17 @@ public partial class TemplateBuilderViewModel : ObservableObject
 
     [ObservableProperty]
     private string? statusMessage;
+
+    [ObservableProperty]
+    private bool isStatusSuccess;
+
+    public void ShowStatus(string message, bool success)
+    {
+        IsStatusSuccess = success;
+        StatusMessage = message;
+    }
+
+    public void ShowHint(string message) => ShowStatus(message, false);
 
     public event Action? RequestClose;
 
@@ -399,8 +441,7 @@ public partial class TemplateBuilderViewModel : ObservableObject
         if (!Enum.TryParse<TemplateBuilderMode>(modeName, out var target) || target == Mode) return;
         if (!CanSwitchMode) return;
 
-        var hasContent = Blocks.Any(b => !string.IsNullOrWhiteSpace(b.Text) || b.Signatures.Count > 0 || b.Columns.Count > 0);
-        if (hasContent)
+        if (Blocks.Any(BlockHasContent))
         {
             var confirm = MessageBox.Show(
                 "Набір блоків у документі Word і у відомості Excel різний, тому складання почнеться заново. Продовжити?",
@@ -412,6 +453,15 @@ public partial class TemplateBuilderViewModel : ObservableObject
         var name = TemplateName;
         StartNew(target);
         TemplateName = name;
+        TakeSnapshot();
+    }
+
+    public static bool BlockHasContent(BuilderBlockViewModel block)
+    {
+        if (block.IsTable) return block.Columns.Count > 0;
+        if (block.IsSignatures)
+            return block.Signatures.Any(s => !string.IsNullOrWhiteSpace(s.Caption) || s.Signatory is not null);
+        return !string.IsNullOrWhiteSpace(block.Text);
     }
 
     partial void OnSelectedTestPersonChanged(BuilderTestPerson? value) => RefreshPreview();
@@ -454,25 +504,43 @@ public partial class TemplateBuilderViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void RemoveLastSheet()
+    private void RemoveCurrentSheet()
     {
         if (Sheets.Count < 2) return;
 
-        var index = Sheets.Count - 1;
-        var doomed = Blocks.Where(b => b.SheetIndex == index).ToList();
+        var index = CurrentSheetIndex;
+        var doomed = Blocks.Count(b => b.SheetIndex == index);
 
-        if (doomed.Count > 0)
+        if (doomed > 0)
         {
             var confirm = MessageBox.Show(
-                $"Аркуш «{Sheets[index].Name}» містить {doomed.Count} блок(ів). Видалити разом з ними?",
+                $"Аркуш «{Sheets[index].Name}» містить {doomed} блок(ів). Видалити разом з ними?",
                 "Видалити аркуш", MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
             if (confirm != MessageBoxResult.Yes) return;
         }
 
-        foreach (var block in doomed) Blocks.Remove(block);
-        Sheets.RemoveAt(index);
-        CurrentSheetIndex = Sheets.Count - 1;
+        RemoveCurrentSheetCore();
+    }
+
+    public void RemoveCurrentSheetCore()
+    {
+        if (Sheets.Count < 2) return;
+
+        var index = CurrentSheetIndex;
+
+        foreach (var block in Blocks.Where(b => b.SheetIndex == index).ToList()) Blocks.Remove(block);
+        foreach (var block in Blocks.Where(b => b.SheetIndex > index)) block.SheetIndex--;
+
+        var names = Sheets.Where(s => s.Index != index).Select(s => s.Name).ToList();
+        Sheets.Clear();
+        for (var i = 0; i < names.Count; i++) Sheets.Add(new SheetTabViewModel(i, names[i]));
+
+        CurrentSheetIndex = Math.Min(index, Sheets.Count - 1);
+        foreach (var sheet in Sheets) sheet.IsCurrent = sheet.Index == CurrentSheetIndex;
+        OnPropertyChanged(nameof(CurrentSheetName));
+        RefreshVisibleBlocks();
+        RefreshPreview();
     }
 
     public string CurrentSheetName
@@ -508,15 +576,34 @@ public partial class TemplateBuilderViewModel : ObservableObject
     private void RemoveBlock(BuilderBlockViewModel? block)
     {
         if (block is null) return;
-        Blocks.Remove(block);
+
+        if (BlockHasContent(block))
+        {
+            var confirm = MessageBox.Show(
+                $"Блок «{block.KindTitle}» не порожній. Видалити його? Повернути видалений блок буде неможливо.",
+                "Видалити блок", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+
+            if (confirm != MessageBoxResult.Yes) return;
+        }
+
+        RemoveBlockCore(block);
     }
+
+    public void RemoveBlockCore(BuilderBlockViewModel block) => Blocks.Remove(block);
 
     [RelayCommand]
     private void MoveBlockUp(BuilderBlockViewModel? block)
     {
         if (block is null) return;
         var index = Blocks.IndexOf(block);
-        if (index > 0) Blocks.Move(index, index - 1);
+        if (index < 0) return;
+
+        for (var target = index - 1; target >= 0; target--)
+        {
+            if (Blocks[target].SheetIndex != block.SheetIndex) continue;
+            Blocks.Move(index, target);
+            return;
+        }
     }
 
     [RelayCommand]
@@ -524,7 +611,14 @@ public partial class TemplateBuilderViewModel : ObservableObject
     {
         if (block is null) return;
         var index = Blocks.IndexOf(block);
-        if (index >= 0 && index < Blocks.Count - 1) Blocks.Move(index, index + 1);
+        if (index < 0) return;
+
+        for (var target = index + 1; target < Blocks.Count; target++)
+        {
+            if (Blocks[target].SheetIndex != block.SheetIndex) continue;
+            Blocks.Move(index, target);
+            return;
+        }
     }
 
     [RelayCommand]
@@ -589,9 +683,11 @@ public partial class TemplateBuilderViewModel : ObservableObject
 
         try
         {
-            EditingTemplateId = _builderService.Save(EditingTemplateId, TemplateName.Trim(), ToDocument());
+            var id = _builderService.Save(EditingTemplateId, TemplateName.Trim(), ToDocument());
+            EditingTemplateId = id;
+            TemplateName = _builderService.Load(id, Mode)?.Name ?? TemplateName.Trim();
             TakeSnapshot();
-            StatusMessage = $"Шаблон збережено ({DateTime.Now:HH:mm}).";
+            ShowStatus($"Шаблон збережено ({DateTime.Now:HH:mm}).", success: true);
             Saved?.Invoke();
         }
         catch (Exception ex)
@@ -627,7 +723,7 @@ public partial class TemplateBuilderViewModel : ObservableObject
                 : _builderService.BuildDocx(document);
 
             File.WriteAllBytes(dialog.FileName, bytes);
-            StatusMessage = $"Вивантажено: {Path.GetFileName(dialog.FileName)}";
+            ShowStatus($"Вивантажено: {Path.GetFileName(dialog.FileName)}", success: true);
         }
         catch (Exception ex)
         {
@@ -658,7 +754,7 @@ public partial class TemplateBuilderViewModel : ObservableObject
 
             Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
 
-            StatusMessage = "Відкрито для перегляду; правки у файлі назад у шаблон не повертаються.";
+            ShowHint("Відкрито для перегляду; правки у файлі назад у шаблон не повертаються.");
         }
         catch (Exception ex)
         {
@@ -831,6 +927,7 @@ public partial class TemplateBuilderViewModel : ObservableObject
         _sheet = IsExcelMode
             ? TemplateBlockPreview.BuildSheet(document.Blocks, values, signatories)
             : null;
+        _sheetDataWidths = IsExcelMode ? DataColumnWidths(document.Blocks) : Array.Empty<double>();
         RebuildSheetGrid();
 
         if (IsExcelMode) return;

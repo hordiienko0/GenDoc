@@ -53,10 +53,12 @@ namespace GenDoc.Views.Templates
         {
             if (sender is not FrameworkElement { Tag: string tag }) return;
 
+            if (!CaretTargetIsAlive()) _caretTarget = null;
+
             if (_caretTarget is null)
             {
                 if (DataContext is TemplateBuilderViewModel viewModel)
-                    viewModel.StatusMessage = "Спершу поставте курсор у текст блока - мітка вставиться в цю позицію.";
+                    viewModel.ShowHint("Спершу поставте курсор у текст блока - мітка вставиться в цю позицію.");
                 return;
             }
 
@@ -65,6 +67,15 @@ namespace GenDoc.Views.Templates
             _caretTarget.SelectionStart = position + tag.Length;
             _caretTarget.SelectionLength = 0;
             _caretTarget.Focus();
+        }
+
+        private bool CaretTargetIsAlive()
+        {
+            if (_caretTarget is not { IsLoaded: true }) return false;
+            if (DataContext is not TemplateBuilderViewModel viewModel) return false;
+
+            var block = FindBlock(_caretTarget);
+            return block is not null && viewModel.Blocks.Contains(block);
         }
 
         private static BuilderBlockViewModel? FindBlock(FrameworkElement element)
