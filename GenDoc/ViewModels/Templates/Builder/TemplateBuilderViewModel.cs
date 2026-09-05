@@ -101,14 +101,19 @@ public class PreviewLineViewModel
 
 public class SheetCellViewModel
 {
-    public SheetCellViewModel(IReadOnlyList<PreviewRun> runs, double width)
+    public SheetCellViewModel(
+        IReadOnlyList<PreviewRun> runs, double width, PreviewStyleViewModel style, bool isConflict = false)
     {
         Runs = runs;
         Width = width;
+        Style = style;
+        IsConflict = isConflict;
     }
 
     public IReadOnlyList<PreviewRun> Runs { get; }
     public double Width { get; }
+    public PreviewStyleViewModel Style { get; }
+    public bool IsConflict { get; }
 }
 
 public class SheetColumnViewModel
@@ -130,36 +135,72 @@ public class SheetRowViewModel
     private static readonly PreviewStyleViewModel FillerStyle =
         new(BlockStyleDefaults.Resolve(TemplateBlockKind.Paragraph, null));
 
-    public SheetRowViewModel(SheetPreviewRow row, int dataColumnCount, IReadOnlyList<double> widths)
+    public SheetRowViewModel(int number, IReadOnlyList<SheetPreviewRow> segments, IReadOnlyList<double> widths)
     {
-        Number = row.Number;
-        IsMerged = row.IsMerged;
-        IsTableHeader = row.IsTableHeader;
-        IsTemplateRow = row.IsTemplateRow;
-        Style = new PreviewStyleViewModel(row.Style);
+        Number = number;
+        IsMerged = segments.Any(s => s.IsMerged);
+        IsTableHeader = segments.Any(s => s.IsTableHeader);
+        IsTemplateRow = segments.Any(s => s.IsTemplateRow);
+        Style = segments.Count > 0 ? new PreviewStyleViewModel(segments[0].Style) : FillerStyle;
 
-        var cells = new List<SheetCellViewModel>(widths.Count);
+        var slots = widths.Select(width => new SheetCellViewModel(NoRuns, width, FillerStyle)).ToArray();
 
-        if (row.IsMerged)
+        foreach (var segment in segments)
         {
-            var span = Math.Clamp(dataColumnCount, 1, widths.Count);
-            cells.Add(new SheetCellViewModel(row.Cells.Count > 0 ? row.Cells[0] : NoRuns, widths.Take(span).Sum()));
-            for (var i = span; i < widths.Count; i++) cells.Add(new SheetCellViewModel(NoRuns, widths[i]));
+            var style = new PreviewStyleViewModel(segment.Style);
+            var first = segment.FirstColumn - 1;
+            if (first < 0 || first >= slots.Length) continue;
+
+            if (segment.IsMerged)
+            {
+                var span = Math.Clamp(segment.SpanColumns, 1, slots.Length - first);
+                var merged = new SheetCellViewModel(
+                    segment.Cells.Count > 0 ? segment.Cells[0] : NoRuns,
+                    widths.Skip(first).Take(span).Sum(), style, segment.IsConflicting);
+
+                for (var i = first; i < first + span; i++)
+                {
+                    Release(slots, i, widths);
+                    slots[i] = merged;
+                }
+
+                continue;
+            }
+
+            for (var i = 0; i < segment.Cells.Count && first + i < slots.Length; i++)
+            {
+                Release(slots, first + i, widths);
+                slots[first + i] = new SheetCellViewModel(segment.Cells[i], widths[first + i], style, segment.IsConflicting);
+            }
         }
-        else
+
+        var cells = new List<SheetCellViewModel>(slots.Length);
+        foreach (var slot in slots)
         {
-            for (var i = 0; i < widths.Count; i++)
-                cells.Add(new SheetCellViewModel(i < row.Cells.Count ? row.Cells[i] : NoRuns, widths[i]));
+            if (cells.Count > 0 && ReferenceEquals(cells[^1], slot)) continue;
+            cells.Add(slot);
         }
 
         Cells = cells;
     }
 
     public SheetRowViewModel(int number, IReadOnlyList<double> widths)
+        : this(number, Array.Empty<SheetPreviewRow>(), widths)
     {
-        Number = number;
-        Style = FillerStyle;
-        Cells = widths.Select(width => new SheetCellViewModel(NoRuns, width)).ToList();
+    }
+
+    private static void Release(SheetCellViewModel[] slots, int index, IReadOnlyList<double> widths)
+    {
+        var occupant = slots[index];
+        var owned = Enumerable.Range(0, slots.Length).Where(i => ReferenceEquals(slots[i], occupant)).ToList();
+        if (owned.Count < 2) return;
+
+        var keepRuns = true;
+        foreach (var i in owned)
+        {
+            slots[i] = new SheetCellViewModel(keepRuns ? occupant.Runs : NoRuns, widths[i], occupant.Style, occupant.IsConflict);
+            keepRuns = false;
+        }
     }
 
     public int Number { get; }
@@ -259,7 +300,7 @@ public partial class TemplateBuilderViewModel : ObservableObject
     public static double ExcelColumnWidthPx(double chars) => Math.Round(chars * ExcelCharPixels + ExcelCellPadding);
 
     private SheetPreview? _sheet;
-    private IReadOnlyList<double> _sheetDataWidths = Array.Empty<double>();
+    private IReadOnlyDictionary<int, double> _sheetColumnWidthChars = new Dictionary<int, double>();
     private double _sheetViewportWidth;
     private double _sheetViewportHeight;
 
@@ -279,10 +320,9 @@ public partial class TemplateBuilderViewModel : ObservableObject
 
         if (_sheet is null) return;
 
-        var dataColumnCount = _sheet.ColumnLetters.Count;
         var widths = new List<double>();
-        for (var i = 0; i < dataColumnCount; i++)
-            widths.Add(i < _sheetDataWidths.Count ? _sheetDataWidths[i] : SheetCellWidth);
+        for (var i = 0; i < _sheet.ColumnLetters.Count; i++)
+            widths.Add(_sheetColumnWidthChars.TryGetValue(i + 1, out var chars) ? ExcelColumnWidthPx(chars) : SheetCellWidth);
 
         var availableWidth = _sheetViewportWidth - SheetRowHeaderWidth - ScrollBarSize;
         while (widths.Sum() + SheetCellWidth <= availableWidth) widths.Add(SheetCellWidth);
@@ -290,26 +330,19 @@ public partial class TemplateBuilderViewModel : ObservableObject
         for (var i = 0; i < widths.Count; i++)
             SheetColumns.Add(new SheetColumnViewModel(TemplateSheetLayout.ColumnLetter(i + 1), widths[i]));
 
-        var lastNumber = 0;
-        foreach (var row in _sheet.Rows)
-        {
-            SheetRows.Add(new SheetRowViewModel(row, dataColumnCount, widths));
-            lastNumber = Math.Max(lastNumber, row.Number);
-        }
+        var segments = _sheet.Rows
+            .GroupBy(r => r.Number)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<SheetPreviewRow>)g.ToList());
 
+        var lastNumber = segments.Count == 0 ? 0 : segments.Keys.Max();
         var visibleRows = (int)Math.Floor(Math.Max(_sheetViewportHeight - SheetRowHeight - ScrollBarSize, 0) / SheetRowHeight);
-        for (var number = lastNumber + 1; number <= visibleRows; number++)
-            SheetRows.Add(new SheetRowViewModel(number, widths));
-    }
 
-    private static IReadOnlyList<double> DataColumnWidths(IReadOnlyList<TemplateBlock> blocks)
-    {
-        var table = blocks.FirstOrDefault(b => b.Kind == TemplateBlockKind.Table && b.Table is not null)?.Table;
-        if (table is null) return Array.Empty<double>();
-
-        return table.Columns
-            .Select(c => ExcelColumnWidthPx(TemplateBlockXlsxWriter.ColumnWidthChars(c.Title)))
-            .ToList();
+        for (var number = 1; number <= Math.Max(lastNumber, visibleRows); number++)
+        {
+            SheetRows.Add(segments.TryGetValue(number, out var rows)
+                ? new SheetRowViewModel(number, rows, widths)
+                : new SheetRowViewModel(number, widths));
+        }
     }
 
     [ObservableProperty]
@@ -908,7 +941,7 @@ public partial class TemplateBuilderViewModel : ObservableObject
     private void RefreshPreview()
     {
         PreviewItems.Clear();
-        RefreshSheetLayout();
+        var layout = RefreshSheetLayout();
 
         var document = ToDocument();
 
@@ -927,7 +960,9 @@ public partial class TemplateBuilderViewModel : ObservableObject
         _sheet = IsExcelMode
             ? TemplateBlockPreview.BuildSheet(document.Blocks, values, signatories)
             : null;
-        _sheetDataWidths = IsExcelMode ? DataColumnWidths(document.Blocks) : Array.Empty<double>();
+        _sheetColumnWidthChars = layout is not null
+            ? TemplateBlockXlsxWriter.ColumnWidths(document.Blocks, layout)
+            : new Dictionary<int, double>();
         RebuildSheetGrid();
 
         if (IsExcelMode) return;
@@ -943,13 +978,17 @@ public partial class TemplateBuilderViewModel : ObservableObject
         }
     }
 
-    private void RefreshSheetLayout()
+    private SheetLayout? RefreshSheetLayout()
     {
         if (!IsExcelMode)
         {
             SheetRangeCaption = null;
-            foreach (var block in Blocks) block.LayoutCaption = null;
-            return;
+            foreach (var block in Blocks)
+            {
+                block.LayoutCaption = null;
+                block.IsConflicting = false;
+            }
+            return null;
         }
 
         var blocks = VisibleBlocks.ToList();
@@ -959,18 +998,42 @@ public partial class TemplateBuilderViewModel : ObservableObject
         {
             var block = blocks[placement.BlockIndex];
 
-            block.LayoutCaption = placement.FirstRow == placement.LastRow
-                ? $"рядок {placement.FirstRow}"
-                : $"рядки {placement.FirstRow}–{placement.LastRow}";
+            block.EffectiveRow = placement.FirstRow;
+            block.EffectiveColumn = placement.FirstColumn;
+            block.EffectiveSpan = placement.LastColumn - placement.FirstColumn + 1;
+            block.IsConflicting = false;
 
-            if (!block.IsTable) continue;
+            var columns = placement.FirstColumn == placement.LastColumn
+                ? TemplateSheetLayout.ColumnLetter(placement.FirstColumn)
+                : $"{TemplateSheetLayout.ColumnLetter(placement.FirstColumn)}–{TemplateSheetLayout.ColumnLetter(placement.LastColumn)}";
+
+            if (!block.IsTable)
+            {
+                var rows = placement.FirstRow == placement.LastRow
+                    ? $"рядок {placement.FirstRow}"
+                    : $"рядки {placement.FirstRow}–{placement.LastRow}";
+                block.LayoutCaption = $"{rows} · {columns}";
+                continue;
+            }
 
             for (var i = 0; i < block.Columns.Count; i++)
-                block.Columns[i].Letter = TemplateSheetLayout.ColumnLetter(i + 1);
+                block.Columns[i].Letter = TemplateSheetLayout.ColumnLetter(placement.FirstColumn + i);
 
-            block.LayoutCaption =
-                $"шапка {layout.HeaderRowIndex} · шаблон {layout.TemplateRowIndex} · "
-                + $"{TemplateSheetLayout.ColumnLetter(1)}–{TemplateSheetLayout.ColumnLetter(layout.ColumnCount)}";
+            block.LayoutCaption = $"шапка {placement.FirstRow} · шаблон {placement.FirstRow + 1} · {columns}";
+        }
+
+        foreach (var conflict in layout.Conflicts)
+        {
+            var later = blocks[conflict.BlockIndex];
+            var earlier = blocks[conflict.OtherBlockIndex];
+            var text = $"Блок «{later.KindTitle}» перекриває блок «{earlier.KindTitle}» у {conflict.Cell}";
+
+            foreach (var block in new[] { later, earlier })
+            {
+                if (block.IsConflicting) continue;
+                block.IsConflicting = true;
+                block.LayoutCaption = text;
+            }
         }
 
         var sheetName = CurrentSheetIndex < Sheets.Count ? Sheets[CurrentSheetIndex].Name : string.Empty;
@@ -979,5 +1042,7 @@ public partial class TemplateBuilderViewModel : ObservableObject
         SheetRangeCaption = layout.TemplateRowIndex > 0
             ? $"Аркуш «{sheetName}» · {range} · рядок-шаблон {layout.TemplateRowIndex}"
             : $"Аркуш «{sheetName}» · {range}";
+
+        return layout;
     }
 }

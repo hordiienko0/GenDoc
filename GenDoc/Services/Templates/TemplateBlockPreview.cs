@@ -28,7 +28,10 @@ namespace GenDoc.Services.Templates
         ResolvedBlockStyle Style,
         IReadOnlyList<IReadOnlyList<PreviewRun>> Cells,
         bool IsTableHeader = false,
-        bool IsTemplateRow = false);
+        bool IsTemplateRow = false,
+        int FirstColumn = 1,
+        int SpanColumns = 1,
+        bool IsConflicting = false);
 
     public record SheetPreview(
         IReadOnlyList<string> ColumnLetters,
@@ -67,6 +70,7 @@ namespace GenDoc.Services.Templates
             foreach (var placement in layout.Placements)
             {
                 var block = blocks[placement.BlockIndex];
+                var span = placement.LastColumn - placement.FirstColumn + 1;
 
                 var style = BlockStyleDefaults.Resolve(block.Kind, block.Style);
 
@@ -76,12 +80,16 @@ namespace GenDoc.Services.Templates
                         placement.FirstRow, IsMerged: false,
                         BlockStyleDefaults.ForTableHeader(style, BlockAlignment.Center),
                         table.Columns.Select(c => (IReadOnlyList<PreviewRun>)new[] { new PreviewRun(c.Title, PreviewRunKind.Text) }).ToList(),
-                        IsTableHeader: true));
+                        IsTableHeader: true,
+                        FirstColumn: placement.FirstColumn, SpanColumns: span,
+                        IsConflicting: layout.RowConflicts(placement.BlockIndex, placement.FirstRow)));
 
                     rows.Add(new SheetPreviewRow(
                         placement.FirstRow + 1, IsMerged: false, style,
                         table.Columns.Select(c => Substitute(c.Cell, values)).ToList(),
-                        IsTemplateRow: true));
+                        IsTemplateRow: true,
+                        FirstColumn: placement.FirstColumn, SpanColumns: span,
+                        IsConflicting: layout.RowConflicts(placement.BlockIndex, placement.FirstRow + 1)));
 
                     continue;
                 }
@@ -90,11 +98,14 @@ namespace GenDoc.Services.Templates
                 foreach (var line in BannerLines(block, values, signatories))
                 {
                     rows.Add(new SheetPreviewRow(
-                        row++, IsMerged: true, line.Style, new[] { line.Runs }));
+                        row, IsMerged: true, line.Style, new[] { line.Runs },
+                        FirstColumn: placement.FirstColumn, SpanColumns: span,
+                        IsConflicting: layout.RowConflicts(placement.BlockIndex, row)));
+                    row++;
                 }
             }
 
-            var letters = Enumerable.Range(1, layout.ColumnCount)
+            var letters = Enumerable.Range(1, layout.LastColumn)
                 .Select(TemplateSheetLayout.ColumnLetter)
                 .ToList();
 

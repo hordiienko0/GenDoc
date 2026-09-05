@@ -115,6 +115,24 @@ public partial class BuilderBlockViewModel : ObservableObject
     public int SheetIndex { get; set; }
 
     [ObservableProperty]
+    private int? anchorRow;
+
+    [ObservableProperty]
+    private int? anchorColumn;
+
+    [ObservableProperty]
+    private int? spanColumns;
+
+    public int EffectiveRow { get; set; } = 1;
+
+    public int EffectiveColumn { get; set; } = 1;
+
+    public int EffectiveSpan { get; set; } = 1;
+
+    [ObservableProperty]
+    private bool isConflicting;
+
+    [ObservableProperty]
     private string? layoutCaption;
 
     public IReadOnlyList<BuilderSignatory> SignatoryOptions { get; }
@@ -299,7 +317,7 @@ public partial class BuilderBlockViewModel : ObservableObject
 
     public static IReadOnlySet<string> NonDocumentProperties { get; } = new HashSet<string>(StringComparer.Ordinal)
     {
-        nameof(IsEditing), nameof(HeaderTitle), nameof(LayoutCaption), nameof(IsStyleOpen),
+        nameof(IsEditing), nameof(HeaderTitle), nameof(LayoutCaption), nameof(IsConflicting), nameof(IsStyleOpen),
         nameof(DisplayStyle), nameof(RepeatHintText),
         nameof(IsCollapsed), nameof(IsExpanded), nameof(CollapseIcon),
         nameof(CollapseTooltip), nameof(CollapsedSummary),
@@ -330,6 +348,9 @@ public partial class BuilderBlockViewModel : ObservableObject
         IsTextBlock ? Text : null,
         SheetIndex: SheetIndex,
         Style: style.IsEmpty ? null : style,
+        AnchorRow: AnchorRow,
+        AnchorColumn: AnchorColumn,
+        SpanColumns: IsTable ? null : SpanColumns,
         Table: IsTable
             ? new TableSpec(
                 Columns.Select(c => new TableColumn(c.Title, c.Cell)).ToList(),
@@ -357,6 +378,9 @@ public partial class BuilderBlockViewModel : ObservableObject
             block.Table?.RepeatPerPerson ?? true, mode)
         {
             SheetIndex = block.SheetIndex,
+            AnchorRow = block.AnchorRow,
+            AnchorColumn = block.AnchorColumn,
+            SpanColumns = block.SpanColumns,
             Style = block.Style ?? new BlockStyle()
         };
     }

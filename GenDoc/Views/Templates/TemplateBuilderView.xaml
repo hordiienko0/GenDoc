@@ -796,14 +796,25 @@
                                                         <Border BorderBrush="{StaticResource BorderLineBrush}"
                                                                 BorderThickness="0,0,1,1" Padding="5,4"
                                                                 Width="{Binding Width}"
+                                                                ToolTipService.IsEnabled="{Binding IsConflict}"
+                                                                ToolTip="Тут перекриваються два блоки - перенесіть один із них"
                                                                 MinHeight="{x:Static builderVm:TemplateBuilderViewModel.SheetRowHeight}">
+                                                            <Border.Style>
+                                                                <Style TargetType="Border">
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsConflict}" Value="True">
+                                                                            <Setter Property="Background" Value="{StaticResource WarningSoftBrush}"/>
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Border.Style>
                                                             <TextBlock local:PreviewInlines.Runs="{Binding Runs}" TextWrapping="Wrap"
-                                                                           FontFamily="{Binding DataContext.Style.Family, RelativeSource={RelativeSource AncestorType=DockPanel}}"
-                                                                           FontSize="{Binding DataContext.Style.Size, RelativeSource={RelativeSource AncestorType=DockPanel}}"
-                                                                           Foreground="{Binding DataContext.Style.Foreground, RelativeSource={RelativeSource AncestorType=DockPanel}}"
-                                                                           TextAlignment="{Binding DataContext.Style.Alignment, RelativeSource={RelativeSource AncestorType=DockPanel}}"
-                                                                           FontWeight="{Binding DataContext.Style.Weight, RelativeSource={RelativeSource AncestorType=DockPanel}}"
-                                                                           FontStyle="{Binding DataContext.Style.Slant, RelativeSource={RelativeSource AncestorType=DockPanel}}"/>
+                                                                           FontFamily="{Binding Style.Family}"
+                                                                           FontSize="{Binding Style.Size}"
+                                                                           Foreground="{Binding Style.Foreground}"
+                                                                           TextAlignment="{Binding Style.Alignment}"
+                                                                           FontWeight="{Binding Style.Weight}"
+                                                                           FontStyle="{Binding Style.Slant}"/>
                                                             </Border>
                                                         </DataTemplate>
                                                     </ItemsControl.ItemTemplate>
