@@ -7,7 +7,7 @@ namespace GenDoc.Tests.Services;
 public class ProfileCourseOfficerTests
 {
     private static UserProfileService NewService(TestDb db)
-        => new(db.Factory, new FakeCurrentUser());
+        => new(db.Factory, new FakeCurrentUser(), new FakeAuditLog());
 
     private static Recipient? StaffMember(TestDb db, string lastName)
     {

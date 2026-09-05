@@ -1,4 +1,4 @@
-﻿using GenDoc.Data;
+using GenDoc.Data;
 using GenDoc.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,11 +8,14 @@ public class UserProfileService : IUserProfileService
 {
     private readonly IDbContextFactory<AppDbContext> _dbFactory;
     private readonly ICurrentUserContext _currentUserContext;
+    private readonly IAuditLogService _auditLogService;
 
-    public UserProfileService(IDbContextFactory<AppDbContext> dbFactory, ICurrentUserContext currentUserContext)
+    public UserProfileService(
+        IDbContextFactory<AppDbContext> dbFactory, ICurrentUserContext currentUserContext, IAuditLogService auditLogService)
     {
         _dbFactory = dbFactory;
         _currentUserContext = currentUserContext;
+        _auditLogService = auditLogService;
     }
 
     public List<UserProfileListItem> GetActiveProfiles()
@@ -79,16 +82,21 @@ public class UserProfileService : IUserProfileService
         db.Users.Add(profile);
         db.SaveChanges();
 
-        EnsureCourseOfficerCard(db, profile.FullName);
+        var courseOfficerCard = EnsureCourseOfficerCard(db, profile.FullName);
 
         _currentUserContext.SetCurrentUser(profile.Id, profile.FullName);
+        _auditLogService.Log(db, "Створено профіль", "UserProfile", profile.Id, null, profile.FullName,
+            courseOfficerCard
+                ? $"{profile.FullName} · картку постійного складу створено або позначено як курсовий офіцер"
+                : profile.FullName);
+        db.SaveChanges();
         return true;
     }
 
-    private static void EnsureCourseOfficerCard(AppDbContext db, string fullName)
+    private static bool EnsureCourseOfficerCard(AppDbContext db, string fullName)
     {
         var name = FullNameParser.Split(fullName);
-        if (name.LastName.Length == 0) return;
+        if (name.LastName.Length == 0) return false;
 
         var existing = db.Recipients
             .Where(r => r.IntakeId == null)
@@ -100,10 +108,10 @@ public class UserProfileService : IUserProfileService
 
         if (existing is not null)
         {
-            if (existing.IsCourseOfficer) return;
+            if (existing.IsCourseOfficer) return false;
             existing.IsCourseOfficer = true;
             db.SaveChanges();
-            return;
+            return true;
         }
 
         db.Recipients.Add(new Recipient
@@ -119,5 +127,6 @@ public class UserProfileService : IUserProfileService
             OrgNodeId = null
         });
         db.SaveChanges();
+        return true;
     }
 }

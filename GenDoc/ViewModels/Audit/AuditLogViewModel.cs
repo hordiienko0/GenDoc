@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using GenDoc.Services.Audit;
@@ -10,6 +11,7 @@ public partial class AuditLogViewModel : ObservableObject
     private const int PageSize = 200;
 
     private readonly IAuditLogQueryService _queryService;
+    private readonly DispatcherTimer _searchDebounceTimer;
     private bool _suppressAutoQuery;
     private int _skip;
 
@@ -19,6 +21,13 @@ public partial class AuditLogViewModel : ObservableObject
 
         ProfileOptions = BuildOptions("Усі профілі", queryService.GetProfiles());
         ActionOptions = BuildOptions("Усі дії", queryService.GetActions());
+
+        _searchDebounceTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+        _searchDebounceTimer.Tick += (_, _) =>
+        {
+            _searchDebounceTimer.Stop();
+            RunQuery(reset: true);
+        };
 
         RunQuery(reset: true);
     }
@@ -47,6 +56,9 @@ public partial class AuditLogViewModel : ObservableObject
     [ObservableProperty]
     private string? selectedAction;
 
+    [ObservableProperty]
+    private string? searchText;
+
     public ObservableCollection<AuditFilterOption> ProfileOptions { get; }
     public ObservableCollection<AuditFilterOption> ActionOptions { get; }
 
@@ -54,6 +66,19 @@ public partial class AuditLogViewModel : ObservableObject
     partial void OnSelectedToChanged(DateTime? value) => TriggerQuery();
     partial void OnSelectedProfileChanged(string? value) => TriggerQuery();
     partial void OnSelectedActionChanged(string? value) => TriggerQuery();
+
+    partial void OnSearchTextChanged(string? value)
+    {
+        if (_suppressAutoQuery) return;
+        _searchDebounceTimer.Stop();
+        _searchDebounceTimer.Start();
+    }
+
+    internal void ApplySearchNow()
+    {
+        _searchDebounceTimer.Stop();
+        RunQuery(reset: true);
+    }
 
     private void TriggerQuery()
     {
@@ -69,6 +94,8 @@ public partial class AuditLogViewModel : ObservableObject
         SelectedTo = null;
         SelectedProfile = null;
         SelectedAction = null;
+        SearchText = null;
+        _searchDebounceTimer.Stop();
         _suppressAutoQuery = false;
 
         RunQuery(reset: true);
@@ -88,7 +115,7 @@ public partial class AuditLogViewModel : ObservableObject
         var from = SelectedFrom.HasValue ? DateOnly.FromDateTime(SelectedFrom.Value) : (DateOnly?)null;
         var to = SelectedTo.HasValue ? DateOnly.FromDateTime(SelectedTo.Value) : (DateOnly?)null;
 
-        var filter = new AuditLogFilter(from, to, SelectedProfile, SelectedAction, _skip, PageSize);
+        var filter = new AuditLogFilter(from, to, SelectedProfile, SelectedAction, _skip, PageSize, SearchText);
         var results = _queryService.Query(filter);
 
         foreach (var item in results)

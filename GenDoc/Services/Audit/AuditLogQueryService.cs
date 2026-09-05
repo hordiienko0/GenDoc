@@ -12,7 +12,40 @@ namespace GenDoc.Services.Audit
             ["Unit"] = "Підрозділ",
             ["Room"] = "Кімната",
             ["UserProfile"] = "Профіль",
-            ["ExportTemplate"] = "Шаблон експорту"
+            ["ExportTemplate"] = "Шаблон відомості",
+            ["Template"] = "Шаблон",
+            ["GeneratedDocument"] = "Документ",
+            ["GeneratedGroupDocument"] = "Груповий документ",
+            ["Intake"] = "Набір",
+            ["GenerationPackage"] = "Пакет генерації",
+            ["GenerationPackageRun"] = "Запуск генерації",
+            ["OrgNode"] = "Папка",
+            ["StaffEvent"] = "Постійний склад",
+            ["AppSettings"] = "Налаштування",
+            ["OrganizationSettings"] = "Налаштування частини"
+        };
+
+        private static readonly (string Prefix, string Kind)[] ActionKinds =
+        {
+            ("Видалено", "delete"),
+            ("Вилучено", "delete"),
+            ("Створено", "create"),
+            ("Відновлено", "create"),
+            ("Оновлено", "update"),
+            ("Змінено", "update"),
+            ("Перейменовано", "update"),
+            ("Переміщено", "update"),
+            ("Закрито", "update"),
+            ("Відкрито повторно", "update"),
+            ("Оформлено", "update"),
+            ("Імпортовано", "import"),
+            ("Експортовано", "export"),
+            ("Надруковано", "export"),
+            ("Збережено", "export"),
+            ("Згенеровано", "generate"),
+            ("Перегенеровано", "generate"),
+            ("Завантажено", "generate"),
+            ("Додано", "generate")
         };
 
         private readonly IDbContextFactory<AppDbContext> _dbFactory;
@@ -45,15 +78,34 @@ namespace GenDoc.Services.Audit
             if (!string.IsNullOrWhiteSpace(filter.Action))
                 query = query.Where(e => e.Action == filter.Action);
 
-            var entities = query
+            query = query
                 .OrderByDescending(e => e.OccurredAt)
-                .ThenByDescending(e => e.Id)
+                .ThenByDescending(e => e.Id);
+
+            if (SearchNormalization.PrepareQuery(filter.Search) is { } search)
+            {
+                return query
+                    .AsEnumerable()
+                    .Where(e => Matches(e, search))
+                    .Skip(filter.Skip)
+                    .Take(filter.Take)
+                    .Select(ToListItem)
+                    .ToList();
+            }
+
+            return query
                 .Skip(filter.Skip)
                 .Take(filter.Take)
+                .ToList()
+                .Select(ToListItem)
                 .ToList();
-
-            return entities.Select(ToListItem).ToList();
         }
+
+        private static bool Matches(AuditLogEntry e, string search)
+            => SearchNormalization.Contains(
+                string.Join(' ', new[] { e.Details, e.OldValue, e.NewValue, e.Action, EntityDisplay(e) }
+                    .Where(p => !string.IsNullOrWhiteSpace(p))),
+                search);
 
         public List<string> GetProfiles()
         {
@@ -67,19 +119,42 @@ namespace GenDoc.Services.Audit
             return db.AuditLog.Select(e => e.Action).Distinct().OrderBy(a => a).ToList();
         }
 
-        private static AuditLogListItem ToListItem(AuditLogEntry e)
+        private static string EntityDisplay(AuditLogEntry e)
         {
             var objectDisplay = EntityNameDisplay.GetValueOrDefault(e.EntityName, e.EntityName);
             if (e.EntityId is { } id && id > 0) objectDisplay += $", №{id}";
+            return objectDisplay;
+        }
 
-            string changeDisplay;
-            if (!string.IsNullOrWhiteSpace(e.Details))
+        internal static string ActionKindOf(string action)
+        {
+            foreach (var (prefix, kind) in ActionKinds)
             {
-                changeDisplay = e.Details;
+                if (action.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return kind;
             }
-            else if (!string.IsNullOrWhiteSpace(e.OldValue) && !string.IsNullOrWhiteSpace(e.NewValue))
+            return "other";
+        }
+
+        private static AuditLogListItem ToListItem(AuditLogEntry e)
+        {
+            string changeDisplay;
+            var hasDetails = !string.IsNullOrWhiteSpace(e.Details);
+            var hasOld = !string.IsNullOrWhiteSpace(e.OldValue);
+            var hasNew = !string.IsNullOrWhiteSpace(e.NewValue);
+
+            if (hasDetails && hasNew && !hasOld)
             {
-                changeDisplay = $"{Truncate(e.OldValue)} → {Truncate(e.NewValue)}";
+                changeDisplay = e.Details!.Contains(e.NewValue!, StringComparison.Ordinal)
+                    ? e.Details!
+                    : $"{e.NewValue} · {e.Details}";
+            }
+            else if (hasDetails)
+            {
+                changeDisplay = e.Details!;
+            }
+            else if (hasOld && hasNew)
+            {
+                changeDisplay = $"{Truncate(e.OldValue!)} → {Truncate(e.NewValue!)}";
             }
             else
             {
@@ -90,8 +165,9 @@ namespace GenDoc.Services.Audit
                 e.OccurredAt.ToString("dd.MM.yyyy HH:mm"),
                 e.UserProfileName,
                 e.Action,
-                objectDisplay,
-                changeDisplay);
+                EntityDisplay(e),
+                changeDisplay,
+                ActionKindOf(e.Action));
         }
 
         private static string Truncate(string value)

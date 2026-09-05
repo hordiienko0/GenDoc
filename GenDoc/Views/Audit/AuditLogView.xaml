@@ -18,22 +18,22 @@
         <Style x:Key="ActionChipBackgroundStyle" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource BackgroundBrush}"/>
             <Style.Triggers>
-                <DataTrigger Binding="{Binding Action}" Value="Видалено">
+                <DataTrigger Binding="{Binding ActionKind}" Value="delete">
                     <Setter Property="Background" Value="{StaticResource DangerSoftBrush}"/>
                 </DataTrigger>
-                <DataTrigger Binding="{Binding Action}" Value="Згенеровано">
+                <DataTrigger Binding="{Binding ActionKind}" Value="generate">
                     <Setter Property="Background" Value="{StaticResource AccentSoftBrush}"/>
                 </DataTrigger>
-                <DataTrigger Binding="{Binding Action}" Value="Експортовано">
+                <DataTrigger Binding="{Binding ActionKind}" Value="export">
                     <Setter Property="Background" Value="{StaticResource AccentSoftBrush}"/>
                 </DataTrigger>
-                <DataTrigger Binding="{Binding Action}" Value="Створено">
+                <DataTrigger Binding="{Binding ActionKind}" Value="create">
                     <Setter Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
                 </DataTrigger>
-                <DataTrigger Binding="{Binding Action}" Value="Оновлено">
+                <DataTrigger Binding="{Binding ActionKind}" Value="update">
                     <Setter Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
                 </DataTrigger>
-                <DataTrigger Binding="{Binding Action}" Value="Імпортовано">
+                <DataTrigger Binding="{Binding ActionKind}" Value="import">
                     <Setter Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
                 </DataTrigger>
             </Style.Triggers>
@@ -42,22 +42,22 @@
         <Style x:Key="ActionChipTextStyle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
             <Style.Triggers>
-                <DataTrigger Binding="{Binding Action}" Value="Видалено">
+                <DataTrigger Binding="{Binding ActionKind}" Value="delete">
                     <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
                 </DataTrigger>
-                <DataTrigger Binding="{Binding Action}" Value="Згенеровано">
+                <DataTrigger Binding="{Binding ActionKind}" Value="generate">
                     <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
                 </DataTrigger>
-                <DataTrigger Binding="{Binding Action}" Value="Експортовано">
+                <DataTrigger Binding="{Binding ActionKind}" Value="export">
                     <Setter Property="Foreground" Value="{StaticResource AccentBrush}"/>
                 </DataTrigger>
-                <DataTrigger Binding="{Binding Action}" Value="Створено">
+                <DataTrigger Binding="{Binding ActionKind}" Value="create">
                     <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
                 </DataTrigger>
-                <DataTrigger Binding="{Binding Action}" Value="Оновлено">
+                <DataTrigger Binding="{Binding ActionKind}" Value="update">
                     <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
                 </DataTrigger>
-                <DataTrigger Binding="{Binding Action}" Value="Імпортовано">
+                <DataTrigger Binding="{Binding ActionKind}" Value="import">
                     <Setter Property="Foreground" Value="{StaticResource SuccessBrush}"/>
                 </DataTrigger>
             </Style.Triggers>
@@ -112,6 +112,12 @@
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
+                </StackPanel>
+                <StackPanel Margin="0,0,10,0">
+                    <TextBlock Text="Пошук" Style="{StaticResource FilterLabelStyle}"/>
+                    <TextBox Width="220" Tag="ПІБ, шаблон, файл…"
+                             Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="Шукає в подробицях, старому й новому значенні запису"/>
                 </StackPanel>
                 <Button Content="Скинути" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding ResetCommand}"/>
             </StackPanel>
@@ -171,7 +177,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
 
-                    <TextBlock Text="Записів за вибраними фільтрами немає" Foreground="{StaticResource TextSecondaryBrush}"
+                    <TextBlock Text="Записів за вибраними фільтрами й пошуком немає" Foreground="{StaticResource TextSecondaryBrush}"
                                HorizontalAlignment="Center" Padding="48"
                                Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVisibility}}"/>
                 </StackPanel>

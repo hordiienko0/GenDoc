@@ -51,6 +51,20 @@ namespace GenDoc.ViewModels.Trash
         public string DeletedByDisplay => Info.DeletedBy ?? "-";
     }
 
+    public partial class DeletedAttachmentRowViewModel : ObservableObject
+    {
+        public DeletedAttachmentRowViewModel(DeletedAttachmentInfo info)
+        {
+            Info = info;
+        }
+
+        public DeletedAttachmentInfo Info { get; }
+        public string Title => Info.FileName;
+        public string Subtitle => $"{Info.Person} - {Info.TemplateName} (в.{Info.DocumentVersion})";
+        public string DeletedAtDisplay => Info.DeletedAt.ToString("dd.MM.yyyy HH:mm");
+        public string DeletedByDisplay => Info.DeletedBy ?? "-";
+    }
+
     public partial class DeletedPersonRowViewModel : ObservableObject
     {
         public DeletedPersonRowViewModel(DeletedPersonInfo info)
@@ -93,6 +107,13 @@ namespace GenDoc.ViewModels.Trash
         public ObservableCollection<DeletedPersonRowViewModel> People { get; } = new();
         public ObservableCollection<DeletedDocumentRowViewModel> Documents { get; } = new();
         public ObservableCollection<DeletedGroupDocumentRowViewModel> GroupDocuments { get; } = new();
+        public ObservableCollection<DeletedAttachmentRowViewModel> Attachments { get; } = new();
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasAttachments))]
+        private int attachmentCount;
+
+        public bool HasAttachments => AttachmentCount > 0;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasFolders))]
@@ -151,6 +172,22 @@ namespace GenDoc.ViewModels.Trash
             foreach (var document in groupDocuments)
                 GroupDocuments.Add(new DeletedGroupDocumentRowViewModel(document));
             GroupDocumentCount = GroupDocuments.Count;
+
+            var attachments = await _archiveService.GetDeletedAttachmentsAsync();
+            Attachments.Clear();
+            foreach (var attachment in attachments)
+                Attachments.Add(new DeletedAttachmentRowViewModel(attachment));
+            AttachmentCount = Attachments.Count;
+        }
+
+        [RelayCommand]
+        private async Task RestoreAttachmentAsync(DeletedAttachmentRowViewModel? row)
+        {
+            if (row is null) return;
+            await _archiveService.RestoreAttachmentAsync(row.Info.Id);
+            NoticeIsError = false;
+            Notice = $"Відновлено вкладення: {row.Title}";
+            await LoadAsync();
         }
 
         [RelayCommand]
