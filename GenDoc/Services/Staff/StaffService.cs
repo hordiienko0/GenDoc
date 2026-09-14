@@ -99,6 +99,13 @@ namespace GenDoc.Services.Staff
                 .ToListAsync();
         }
 
+        public static string KindLabel(StaffEventKind kind) => kind switch
+        {
+            StaffEventKind.BusinessTrip => "відрядження",
+            StaffEventKind.Sick => "хворобу",
+            _ => "відпустку"
+        };
+
         public async Task<int> IssueDocumentsAsync(
             StaffEventKind kind, IReadOnlyList<int> recipientIds, IReadOnlyList<int> templateIds,
             DateOnly dateStart, DateOnly dateEnd, string? note, Dictionary<string, string> manualValues)
@@ -134,7 +141,7 @@ namespace GenDoc.Services.Staff
                 });
             }
 
-            var kindLabel = kind == StaffEventKind.BusinessTrip ? "відрядження" : "відпустку";
+            var kindLabel = KindLabel(kind);
             _auditLogService.Log(db, $"Оформлено {kindLabel}", "StaffEvent", 0, null, null,
                 $"{generatedFor.Count} осіб, {generated} документів, {dateStart:dd.MM.yyyy}–{dateEnd:dd.MM.yyyy}");
             await db.SaveChangesAsync();

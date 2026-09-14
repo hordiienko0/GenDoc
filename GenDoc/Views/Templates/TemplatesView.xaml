@@ -277,6 +277,9 @@
                                                         <CheckBox Content="Постійний склад" VerticalAlignment="Center"
                                                                   IsChecked="{Binding IsForPermanentStaff, Mode=TwoWay}"
                                                                   ToolTip="Такий шаблон видно лише в «Постійному складі» - у генерації й пакетах його не буде"/>
+                                                        <CheckBox Content="Для всіх" VerticalAlignment="Center" Margin="12,0,0,0"
+                                                                  IsChecked="{Binding IsForEveryone, Mode=TwoWay}"
+                                                                  ToolTip="Шаблон доступний і в наборах, і в постійному складі - для рапортів про хворобу чи відпустку, які стосуються будь-кого"/>
                                                         <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" FontSize="11.5"
                                                                    Foreground="{StaticResource TextSecondaryBrush}"
                                                                    Text="{Binding AudienceCaption, StringFormat=зараз: {0}}"/>

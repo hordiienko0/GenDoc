@@ -51,9 +51,19 @@ public partial class DocxTemplateListItemViewModel : ObservableObject
         set => Audience = value ? TemplateAudience.PermanentStaff : TemplateAudience.Intake;
     }
 
-    public string AudienceCaption => Audience == TemplateAudience.PermanentStaff
-        ? "Постійний склад"
-        : "Набори";
+    /// <summary>Шаблон стосується будь-кого — і слухача набору, і постійного складу.</summary>
+    public bool IsForEveryone
+    {
+        get => Audience == TemplateAudience.Everyone;
+        set => Audience = value ? TemplateAudience.Everyone : TemplateAudience.Intake;
+    }
+
+    public string AudienceCaption => Audience switch
+    {
+        TemplateAudience.PermanentStaff => "Постійний склад",
+        TemplateAudience.Everyone => "для всіх",
+        _ => "Набори"
+    };
 
     public event Action<DocxTemplateListItemViewModel>? AudienceChanged;
 

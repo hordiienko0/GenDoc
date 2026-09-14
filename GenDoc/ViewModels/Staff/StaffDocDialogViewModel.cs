@@ -85,17 +85,20 @@ namespace GenDoc.ViewModels.Staff
 
         public ObservableCollection<StaffDocResultRowViewModel> Results { get; } = new();
 
+        public static string HeaderFor(StaffEventKind? kind) => kind switch
+        {
+            StaffEventKind.BusinessTrip => "Оформити відрядження",
+            StaffEventKind.Leave => "Оформити відпустку",
+            StaffEventKind.Sick => "Оформити хворобу",
+            _ => "Згенерувати документи"
+        };
+
         public void Initialize(StaffEventKind? kind, IReadOnlyList<(int Id, string FullName)> people)
         {
             Kind = kind;
             _people = people;
             ShowDateRange = kind is not null;
-            HeaderText = kind switch
-            {
-                StaffEventKind.BusinessTrip => "Оформити відрядження",
-                StaffEventKind.Leave => "Оформити відпустку",
-                _ => "Згенерувати документи"
-            };
+            HeaderText = HeaderFor(kind);
             PeopleText = string.Join(", ", people.Select(p => p.FullName));
 
             Templates.Clear();

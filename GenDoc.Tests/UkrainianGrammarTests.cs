@@ -126,4 +126,100 @@ public class UkrainianGrammarTests
     [InlineData("Кравчук", "Кравчука")]
     public void Accusative_ConsonantEndingSurnames_DeclineForMale(string surname, string expected)
         => Assert.Equal(expected, UkrainianGrammar.Accusative(surname, GrammaticalKind.Surname, Gender.Male));
+// ---------------------------------------------------------------------
+    // Давальний відмінок: «надати капітану БУГАЮ Сергію Михайловичу»
+    // ---------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("капітан", "капітану")]
+    [InlineData("майор", "майору")]
+    [InlineData("підполковник", "підполковнику")]
+    [InlineData("старший лейтенант", "старшому лейтенанту")]
+    [InlineData("молодший лейтенант", "молодшому лейтенанту")]
+    public void Dative_Ranks(string nominative, string expected)
+        => Assert.Equal(expected, UkrainianGrammar.Dative(nominative, GrammaticalKind.Rank, Gender.Male));
+
+    [Theory]
+    [InlineData("Бугай", "Бугаю")]
+    [InlineData("Веремеєнко", "Веремеєнку")]
+    [InlineData("Степанов", "Степанову")]
+    [InlineData("Ковальський", "Ковальському")]
+    public void Dative_MaleSurnames(string nominative, string expected)
+        => Assert.Equal(expected, UkrainianGrammar.Dative(nominative, GrammaticalKind.Surname, Gender.Male));
+
+    [Theory]
+    [InlineData("Сергій", "Сергію")]
+    [InlineData("Володимир", "Володимиру")]
+    [InlineData("Ігор", "Ігорю")]
+    public void Dative_MaleGivenNames(string nominative, string expected)
+        => Assert.Equal(expected, UkrainianGrammar.Dative(nominative, GrammaticalKind.GivenName, Gender.Male));
+
+    [Theory]
+    [InlineData("Михайлович", "Михайловичу")]
+    [InlineData("Олександрович", "Олександровичу")]
+    public void Dative_MalePatronymics(string nominative, string expected)
+        => Assert.Equal(expected, UkrainianGrammar.Dative(nominative, GrammaticalKind.Patronymic, Gender.Male));
+
+    [Fact]
+    public void Dative_FemaleSurnameEndingInKo_DoesNotChange()
+        => Assert.Equal("Веремеєнко", UkrainianGrammar.Dative("Веремеєнко", GrammaticalKind.Surname, Gender.Female));
+[Theory]
+    [InlineData("Ковальська", "Ковальській")]
+    [InlineData("Шевченко", "Шевченко")]
+    public void Dative_FemaleSurnames(string nominative, string expected)
+        => Assert.Equal(expected, UkrainianGrammar.Dative(nominative, GrammaticalKind.Surname, Gender.Female));
+
+    [Theory]
+    [InlineData("Олена", "Олені")]
+    [InlineData("Ольга", "Ользі")]
+    [InlineData("Марія", "Марії")]
+    public void Dative_FemaleGivenNames(string nominative, string expected)
+        => Assert.Equal(expected, UkrainianGrammar.Dative(nominative, GrammaticalKind.GivenName, Gender.Female));
+
+    [Fact]
+    public void Dative_FemalePatronymic()
+        => Assert.Equal("Іванівні", UkrainianGrammar.Dative("Іванівна", GrammaticalKind.Patronymic, Gender.Female));
+
+    [Fact]
+    public void Dative_MaleSurnameEndingInA()
+        => Assert.Equal("Лиштві", UkrainianGrammar.Dative("Лиштва", GrammaticalKind.Surname, Gender.Male));
+
+    // ---------------------------------------------------------------------
+    // Посада: відмінюється головне слово, залежні слова лишаються
+    // ---------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("курсовий офіцер курсів перепідготовки та підвищення кваліфікації",
+                "курсового офіцера курсів перепідготовки та підвищення кваліфікації")]
+    [InlineData("начальник служби радіаційного, хімічного, біологічного захисту військової частини А4457",
+                "начальника служби радіаційного, хімічного, біологічного захисту військової частини А4457")]
+    [InlineData("заступник командира 6 зенітної кулеметної роти",
+                "заступника командира 6 зенітної кулеметної роти")]
+    [InlineData("начальник медичної служби - начальник медичного пункту",
+                "начальника медичної служби - начальника медичного пункту")]
+    public void PositionAccusative_DeclinesOnlyTheHead(string nominative, string expected)
+        => Assert.Equal(expected, UkrainianGrammar.PositionAccusative(nominative, Gender.Male));
+
+    [Theory]
+    [InlineData("курсовий офіцер курсів перепідготовки та підвищення кваліфікації",
+                "курсовому офіцеру курсів перепідготовки та підвищення кваліфікації")]
+    [InlineData("начальник курсів перепідготовки та підвищення кваліфікації",
+                "начальнику курсів перепідготовки та підвищення кваліфікації")]
+    [InlineData("командир взводу перехоплювачів безпілотних літальних апаратів",
+                "командиру взводу перехоплювачів безпілотних літальних апаратів")]
+    public void PositionDative_DeclinesOnlyTheHead(string nominative, string expected)
+        => Assert.Equal(expected, UkrainianGrammar.PositionDative(nominative, Gender.Male));
+
+    [Fact]
+    public void PositionDeclension_EmptyStaysEmpty()
+    {
+        Assert.Equal(string.Empty, UkrainianGrammar.PositionAccusative(string.Empty, Gender.Male));
+        Assert.Equal(string.Empty, UkrainianGrammar.PositionDative(string.Empty, Gender.Male));
+    }
+
+    [Theory]
+    [InlineData(Gender.Male, "приступив")]
+    [InlineData(Gender.Female, "приступила")]
+    public void ResumedDutyVerb_AgreesWithGender(Gender gender, string expected)
+        => Assert.Equal(expected, UkrainianGrammar.ResumedDutyVerb(gender));
 }

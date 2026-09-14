@@ -81,6 +81,8 @@
                         Foreground="{StaticResource AccentBrush}" Command="{Binding OpenTripCommand}" Margin="0,0,16,0"/>
                 <Button Content="Оформити відпустку" Style="{StaticResource TextLinkButtonStyle}"
                         Foreground="{StaticResource AccentBrush}" Command="{Binding OpenLeaveCommand}" Margin="0,0,16,0"/>
+                <Button Content="Оформити хворобу" Style="{StaticResource TextLinkButtonStyle}"
+                        Foreground="{StaticResource AccentBrush}" Command="{Binding OpenSickCommand}" Margin="0,0,16,0"/>
                 <Button Content="Згенерувати документ" Style="{StaticResource TextLinkButtonStyle}"
                         Foreground="{StaticResource AccentBrush}" Command="{Binding GenerateDocumentCommand}" Margin="0,0,16,0"/>
                 <Button Content="Видалити" Background="{StaticResource DangerBrush}" Foreground="White"
@@ -114,11 +116,13 @@
                                 <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=DataGrid}}"/>
                                 <Setter Property="ContextMenu">
                                     <Setter.Value>
-                                        <ContextMenu>
+                                        <ContextMenu Style="{StaticResource AppContextMenuStyle}">
                                             <MenuItem Header="Відкрити картку"
+                                                      Style="{StaticResource AppContextMenuItemStyle}"
                                                       Command="{Binding PlacementTarget.Tag.OpenCardCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                             <MenuItem Header="Згенерувати документ…"
+                                                      Style="{StaticResource AppContextMenuItemStyle}"
                                                       Command="{Binding PlacementTarget.Tag.GenerateDocumentForRowCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                         </ContextMenu>

@@ -13,7 +13,7 @@ namespace GenDoc.ViewModels.Templates
 
         public static ListCollectionView PermanentStaff(IList source) => new(source)
         {
-            Filter = o => AudienceOf(o) == TemplateAudience.PermanentStaff
+            Filter = o => AudienceOf(o) != TemplateAudience.Intake
         };
 
         private static TemplateAudience AudienceOf(object? item) =>

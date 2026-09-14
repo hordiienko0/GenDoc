@@ -33,6 +33,7 @@ namespace GenDoc.ViewModels.Staff
         {
             StaffEventKind.BusinessTrip => "У відрядженні",
             StaffEventKind.Leave => "У відпустці",
+            StaffEventKind.Sick => "На лікуванні",
             _ => "На місці"
         };
 

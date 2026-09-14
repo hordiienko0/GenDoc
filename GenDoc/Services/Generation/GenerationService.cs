@@ -50,7 +50,7 @@ namespace GenDoc.Services.Generation
         {
             using var db = _dbFactory.CreateDbContext();
             return db.Templates
-                .Where(t => t.Audience == audience)
+                .Where(t => t.Audience == audience || t.Audience == Models.Enums.TemplateAudience.Everyone)
                 .OrderBy(t => t.Name)
                 .Select(t => new { t.Id, t.Name })
                 .AsEnumerable()
@@ -63,7 +63,8 @@ namespace GenDoc.Services.Generation
         {
             using var db = _dbFactory.CreateDbContext();
             return db.Templates
-                .Where(t => t.Kind == Models.Enums.TemplateKind.PerRecipient && t.Audience == audience)
+                .Where(t => t.Kind == Models.Enums.TemplateKind.PerRecipient
+                            && (t.Audience == audience || t.Audience == Models.Enums.TemplateAudience.Everyone))
                 .OrderBy(t => t.Name)
                 .Select(t => new { t.Id, t.Name })
                 .AsEnumerable()
@@ -1181,8 +1182,15 @@ namespace GenDoc.Services.Generation
             "FullNameAccusative" => r.FullNameAccusative is { Length: > 0 }
                 ? r.FullNameAccusative
                 : FormatFullNameAccusative(r),
+            "PositionAccusative" => Services.UkrainianGrammar.PositionAccusative(r.Position, Services.UkrainianGrammar.Detect(r)),
+            "RankDative" => Services.UkrainianGrammar.Dative(r.Rank, Models.Enums.GrammaticalKind.Rank, Services.UkrainianGrammar.Detect(r)),
+            "FullNameDative" => FormatFullNameDative(r),
+            "PositionDative" => Services.UkrainianGrammar.PositionDative(r.Position, Services.UkrainianGrammar.Detect(r)),
             "ArrivedVerb" => Services.UkrainianGrammar.ArrivedVerb(Services.UkrainianGrammar.Detect(r)),
             "SuchPronoun" => Services.UkrainianGrammar.SuchPronoun(Services.UkrainianGrammar.Detect(r)),
+            "ResumedDutyVerb" => Services.UkrainianGrammar.ResumedDutyVerb(Services.UkrainianGrammar.Detect(r)),
+            "AcquaintedAdjective" => Services.UkrainianGrammar.AcquaintedAdjective(Services.UkrainianGrammar.Detect(r)),
+            "SignatureFullName" => Services.NameFormatter.SignatureName(r.LastName, r.FirstName),
             _ => string.Empty
         };
 
@@ -1197,6 +1205,18 @@ namespace GenDoc.Services.Generation
             var middleName = string.IsNullOrWhiteSpace(r.MiddleName)
                 ? null
                 : Services.UkrainianGrammar.Accusative(r.MiddleName, Models.Enums.GrammaticalKind.Patronymic, gender);
+            return string.Join(' ', new[] { lastName, firstName, middleName }.Where(p => !string.IsNullOrWhiteSpace(p)));
+        }
+
+        private static string FormatFullNameDative(Recipient r)
+        {
+            var gender = Services.UkrainianGrammar.Detect(r);
+            var lastName = Services.UkrainianGrammar.Dative(r.LastName, Models.Enums.GrammaticalKind.Surname, gender)
+                .ToUpper(new CultureInfo("uk-UA"));
+            var firstName = Services.UkrainianGrammar.Dative(r.FirstName, Models.Enums.GrammaticalKind.GivenName, gender);
+            var middleName = string.IsNullOrWhiteSpace(r.MiddleName)
+                ? null
+                : Services.UkrainianGrammar.Dative(r.MiddleName, Models.Enums.GrammaticalKind.Patronymic, gender);
             return string.Join(' ', new[] { lastName, firstName, middleName }.Where(p => !string.IsNullOrWhiteSpace(p)));
         }
 

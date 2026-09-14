@@ -10,7 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace GenDoc.ViewModels.Staff
 {
-    public enum StaffStateFilter { All, OnSite, BusinessTrip, Leave }
+    public enum StaffStateFilter { All, OnSite, BusinessTrip, Leave, Sick }
 
     public record StaffStateFilterOption(StaffStateFilter Filter, string Label);
     public record StaffUnitFilterOption(string? Unit, string Label);
@@ -31,15 +31,18 @@ namespace GenDoc.ViewModels.Staff
             _dialogService = dialogService;
             _serviceProvider = serviceProvider;
 
-            StateOptions = new ObservableCollection<StaffStateFilterOption>
-            {
-                new(StaffStateFilter.All, "Усі стани"),
-                new(StaffStateFilter.OnSite, "На місці"),
-                new(StaffStateFilter.BusinessTrip, "У відрядженні"),
-                new(StaffStateFilter.Leave, "У відпустці")
-            };
+            StateOptions = new ObservableCollection<StaffStateFilterOption>(StateFilterOptions);
             selectedState = StateOptions[0];
         }
+
+        public static readonly IReadOnlyList<StaffStateFilterOption> StateFilterOptions = new[]
+        {
+            new StaffStateFilterOption(StaffStateFilter.All, "Усі стани"),
+            new StaffStateFilterOption(StaffStateFilter.OnSite, "На місці"),
+            new StaffStateFilterOption(StaffStateFilter.BusinessTrip, "У відрядженні"),
+            new StaffStateFilterOption(StaffStateFilter.Leave, "У відпустці"),
+            new StaffStateFilterOption(StaffStateFilter.Sick, "На лікуванні")
+        };
 
         public ObservableCollection<StaffRowViewModel> Rows { get; } = new();
         public ObservableCollection<StaffStateFilterOption> StateOptions { get; }
@@ -138,6 +141,7 @@ namespace GenDoc.ViewModels.Staff
                 StaffStateFilter.OnSite => filtered.Where(o => o.CurrentState is null),
                 StaffStateFilter.BusinessTrip => filtered.Where(o => o.CurrentState == StaffEventKind.BusinessTrip),
                 StaffStateFilter.Leave => filtered.Where(o => o.CurrentState == StaffEventKind.Leave),
+                StaffStateFilter.Sick => filtered.Where(o => o.CurrentState == StaffEventKind.Sick),
                 _ => filtered
             };
 
@@ -307,6 +311,9 @@ namespace GenDoc.ViewModels.Staff
 
         [RelayCommand(CanExecute = nameof(HasSelection))]
         private async Task OpenLeaveAsync() => await OpenDocDialogAsync(StaffEventKind.Leave);
+
+        [RelayCommand]
+        private async Task OpenSickAsync() => await OpenDocDialogAsync(StaffEventKind.Sick);
 
         [RelayCommand(CanExecute = nameof(HasSelection))]
         private async Task GenerateDocumentAsync() => await OpenDocDialogAsync(null);
