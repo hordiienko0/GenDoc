@@ -136,10 +136,23 @@ namespace GenDoc.Services
         private static readonly HashSet<string> SoftStemGivenNames =
             new(StringComparer.OrdinalIgnoreCase) { "Ігор", "Лазар" };
 
+        private static readonly System.Globalization.CultureInfo Ukrainian =
+            System.Globalization.CultureInfo.GetCultureInfo("uk-UA");
+
         private static string DeclineWord(string word, GrammaticalKind kind, Gender gender, Case grammaticalCase)
-            => grammaticalCase == Case.Dative
-                ? DeclineWordDative(word, kind, gender)
-                : DeclineWordAccusative(word, kind, gender);
+        {
+            // Прізвища в картках часто великими літерами («КОВАЛЬСЬКА»): закінчення нижче
+            // перевіряються за малими буквами, тож таке слово відмінюємо в нижньому регістрі
+            // і повертаємо великими.
+            var allCaps = word.Any(char.IsLetter) && word == word.ToUpper(Ukrainian);
+            var source = allCaps ? word.ToLower(Ukrainian) : word;
+
+            var declined = grammaticalCase == Case.Dative
+                ? DeclineWordDative(source, kind, gender)
+                : DeclineWordAccusative(source, kind, gender);
+
+            return allCaps ? declined.ToUpper(Ukrainian) : declined;
+        }
 
         private static string DeclineWordAccusative(string word, GrammaticalKind kind, Gender gender)
         {

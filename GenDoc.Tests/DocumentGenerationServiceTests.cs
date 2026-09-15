@@ -26,6 +26,20 @@ public class DocumentGenerationServiceTests
     }
 
     [Fact]
+    public void ReplaceInParagraph_MultilineValue_BecomesLineBreaksInsideTheRun()
+    {
+        var paragraph = new Paragraph(new Run(new Text("{{перелік}}")));
+        var values = new Dictionary<string, string> { ["{{перелік}}"] = "ноутбук – 2 шт.\r\nпроектор – 1 шт.\nекран – 1 шт." };
+
+        DocumentGenerationService.ReplaceInParagraph(paragraph, values, new List<string>());
+
+        var run = Assert.Single(paragraph.Elements<Run>());
+        Assert.Equal(2, run.Elements<Break>().Count());
+        Assert.Equal(new[] { "ноутбук – 2 шт.", "проектор – 1 шт.", "екран – 1 шт." }, run.Elements<Text>().Select(t => t.Text));
+        Assert.DoesNotContain(run.Elements<Text>(), t => t.Text.Contains('\n'));
+    }
+
+    [Fact]
     public void ReplaceInParagraph_PlaceholderAdjacentToTab_KeepsTabInPlace()
     {
         var paragraph = new Paragraph(

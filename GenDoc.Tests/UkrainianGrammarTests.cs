@@ -222,4 +222,24 @@ public class UkrainianGrammarTests
     [InlineData(Gender.Female, "приступила")]
     public void ResumedDutyVerb_AgreesWithGender(Gender gender, string expected)
         => Assert.Equal(expected, UkrainianGrammar.ResumedDutyVerb(gender));
+
+    // ---------------------------------------------------------------------
+    // Прізвища великими літерами, як їх зберігає картка: «КОВАЛЬСЬКА», «ЗАЯЦЬ»
+    // ---------------------------------------------------------------------
+
+    [Theory]
+    [InlineData("КОВАЛЬСЬКА", Gender.Female, "КОВАЛЬСЬКУ")]
+    [InlineData("ЛИШТВА", Gender.Male, "ЛИШТВУ")]
+    [InlineData("ЗАЯЦЬ", Gender.Male, "ЗАЯЦЯ")]
+    [InlineData("СТЕПАНОВ", Gender.Male, "СТЕПАНОВА")]
+    [InlineData("ШЕВЧЕНКО", Gender.Female, "ШЕВЧЕНКО")]
+    public void Accusative_UppercaseSurnames_DeclineLikeMixedCase(string nominative, Gender gender, string expected)
+        => Assert.Equal(expected, UkrainianGrammar.Accusative(nominative, GrammaticalKind.Surname, gender));
+
+    [Theory]
+    [InlineData("ЛИШТВА", Gender.Male, "ЛИШТВІ")]
+    [InlineData("КОВАЛЬСЬКА", Gender.Female, "КОВАЛЬСЬКІЙ")]
+    [InlineData("ЗАЯЦЬ", Gender.Male, "ЗАЯЦЮ")]
+    public void Dative_UppercaseSurnames_DeclineLikeMixedCase(string nominative, Gender gender, string expected)
+        => Assert.Equal(expected, UkrainianGrammar.Dative(nominative, GrammaticalKind.Surname, gender));
 }

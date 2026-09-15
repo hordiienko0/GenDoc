@@ -442,6 +442,30 @@ namespace GenDoc.Services.Generation
 
                 node.Text = sb.ToString();
                 node.Space = SpaceProcessingModeValues.Preserve;
+
+                if (node.Text.Contains('\n'))
+                    SplitLineBreaks(node);
+            }
+        }
+
+        /// <summary>
+        /// Багаторядкове значення («перелік через Enter») в одному w:t Word показує пробілами,
+        /// тож кожен перенос стає w:br у тому ж прогоні.
+        /// </summary>
+        private static void SplitLineBreaks(Text node)
+        {
+            var lines = node.Text.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+            node.Text = lines[0];
+
+            OpenXmlElement anchor = node;
+            for (var i = 1; i < lines.Length; i++)
+            {
+                var lineBreak = new Break();
+                anchor.InsertAfterSelf(lineBreak);
+
+                var text = new Text(lines[i]) { Space = SpaceProcessingModeValues.Preserve };
+                lineBreak.InsertAfterSelf(text);
+                anchor = text;
             }
         }
     }
