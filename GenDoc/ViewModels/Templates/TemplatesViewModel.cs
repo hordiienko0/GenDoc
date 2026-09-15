@@ -117,7 +117,7 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
         PermanentStaffTemplatesView?.Refresh();
 
         HasPermanentStaffTemplates =
-            DocxTemplates.Any(t => t.Audience == TemplateAudience.PermanentStaff);
+            DocxTemplates.Any(t => t.Audience != TemplateAudience.Intake);
     }
 
     [ObservableProperty]

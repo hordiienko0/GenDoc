@@ -19,5 +19,5 @@ public static class NameFormatter
     }
 
     public static string SignatureName(string lastName, string firstName)
-        => $"{firstName} {lastName.ToUpper(new System.Globalization.CultureInfo("uk-UA"))}";
+        => $"{firstName} {lastName.ToUpper(System.Globalization.CultureInfo.GetCultureInfo("uk-UA"))}";
 }

@@ -80,6 +80,7 @@ namespace GenDoc.ViewModels.Staff
         [NotifyPropertyChangedFor(nameof(SelectionText))]
         [NotifyCanExecuteChangedFor(nameof(OpenTripCommand))]
         [NotifyCanExecuteChangedFor(nameof(OpenLeaveCommand))]
+        [NotifyCanExecuteChangedFor(nameof(OpenSickCommand))]
         [NotifyCanExecuteChangedFor(nameof(GenerateDocumentCommand))]
         [NotifyCanExecuteChangedFor(nameof(DeleteSelectedCommand))]
         private int selectedCount;
@@ -312,7 +313,7 @@ namespace GenDoc.ViewModels.Staff
         [RelayCommand(CanExecute = nameof(HasSelection))]
         private async Task OpenLeaveAsync() => await OpenDocDialogAsync(StaffEventKind.Leave);
 
-        [RelayCommand]
+        [RelayCommand(CanExecute = nameof(HasSelection))]
         private async Task OpenSickAsync() => await OpenDocDialogAsync(StaffEventKind.Sick);
 
         [RelayCommand(CanExecute = nameof(HasSelection))]

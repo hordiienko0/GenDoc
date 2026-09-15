@@ -1196,27 +1196,23 @@ namespace GenDoc.Services.Generation
 
         private static Weapon? FirstWeapon(Recipient r) => r.Weapons.OrderBy(w => w.Id).FirstOrDefault();
 
+        private static readonly CultureInfo Ukrainian = CultureInfo.GetCultureInfo("uk-UA");
+
         private static string FormatFullNameAccusative(Recipient r)
-        {
-            var gender = Services.UkrainianGrammar.Detect(r);
-            var lastName = Services.UkrainianGrammar.Accusative(r.LastName, Models.Enums.GrammaticalKind.Surname, gender)
-                .ToUpper(new CultureInfo("uk-UA"));
-            var firstName = Services.UkrainianGrammar.Accusative(r.FirstName, Models.Enums.GrammaticalKind.GivenName, gender);
-            var middleName = string.IsNullOrWhiteSpace(r.MiddleName)
-                ? null
-                : Services.UkrainianGrammar.Accusative(r.MiddleName, Models.Enums.GrammaticalKind.Patronymic, gender);
-            return string.Join(' ', new[] { lastName, firstName, middleName }.Where(p => !string.IsNullOrWhiteSpace(p)));
-        }
+            => FormatFullNameDeclined(r, Services.UkrainianGrammar.Accusative);
 
         private static string FormatFullNameDative(Recipient r)
+            => FormatFullNameDeclined(r, Services.UkrainianGrammar.Dative);
+
+        private static string FormatFullNameDeclined(
+            Recipient r, Func<string, Models.Enums.GrammaticalKind, Models.Enums.Gender, string> decline)
         {
             var gender = Services.UkrainianGrammar.Detect(r);
-            var lastName = Services.UkrainianGrammar.Dative(r.LastName, Models.Enums.GrammaticalKind.Surname, gender)
-                .ToUpper(new CultureInfo("uk-UA"));
-            var firstName = Services.UkrainianGrammar.Dative(r.FirstName, Models.Enums.GrammaticalKind.GivenName, gender);
+            var lastName = decline(r.LastName, Models.Enums.GrammaticalKind.Surname, gender).ToUpper(Ukrainian);
+            var firstName = decline(r.FirstName, Models.Enums.GrammaticalKind.GivenName, gender);
             var middleName = string.IsNullOrWhiteSpace(r.MiddleName)
                 ? null
-                : Services.UkrainianGrammar.Dative(r.MiddleName, Models.Enums.GrammaticalKind.Patronymic, gender);
+                : decline(r.MiddleName, Models.Enums.GrammaticalKind.Patronymic, gender);
             return string.Join(' ', new[] { lastName, firstName, middleName }.Where(p => !string.IsNullOrWhiteSpace(p)));
         }
 
@@ -1239,7 +1235,7 @@ namespace GenDoc.Services.Generation
 
         private static string FormatFullName(Recipient r)
         {
-            var lastName = (r.LastName ?? string.Empty).ToUpper(new CultureInfo("uk-UA"));
+            var lastName = (r.LastName ?? string.Empty).ToUpper(Ukrainian);
             return string.Join(' ', new[] { lastName, r.FirstName, r.MiddleName }.Where(p => !string.IsNullOrWhiteSpace(p)));
         }
 

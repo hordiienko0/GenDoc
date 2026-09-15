@@ -42,6 +42,7 @@ public partial class DocxTemplateListItemViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsForPermanentStaff))]
+    [NotifyPropertyChangedFor(nameof(IsForEveryone))]
     [NotifyPropertyChangedFor(nameof(AudienceCaption))]
     private TemplateAudience audience;
 
