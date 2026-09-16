@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:GenDoc.ViewModels.Completeness"
         Style="{StaticResource {x:Type Window}}"
-        Title="Вимоги пакета" Width="860" Height="720" MinWidth="760" MinHeight="480"
+        Title="Вимоги пакета" Width="1040" Height="720" MinWidth="760" MinHeight="480"
         Background="{StaticResource PanelBrush}"
         WindowStartupLocation="CenterOwner" ResizeMode="CanResize">
 
@@ -104,7 +104,7 @@
                                     </Grid.ColumnDefinitions>
 
                                     <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="12.5" VerticalAlignment="Center"
-                                               Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"><TextBlock.ToolTip><TextBlock><Run Text="{Binding Name, Mode=OneWay}"/><Run><Run.Style><Style TargetType="Run"><Setter Property="Text" Value=" (груповий - один документ на весь застосовний склад; формується у «Генерації» або з матриці «Комплектності»)"/><Style.Triggers><DataTrigger Binding="{Binding IsGroup}" Value="False"><Setter Property="Text" Value=""/></DataTrigger></Style.Triggers></Style></Run.Style></Run></TextBlock></TextBlock.ToolTip></TextBlock>
+                                               Foreground="{StaticResource TextPrimaryBrush}" TextWrapping="Wrap" Margin="0,0,12,0"><TextBlock.ToolTip><TextBlock><Run Text="{Binding Name, Mode=OneWay}"/><Run><Run.Style><Style TargetType="Run"><Setter Property="Text" Value=" (груповий - один документ на весь застосовний склад; формується у «Генерації» або з матриці «Комплектності»)"/><Style.Triggers><DataTrigger Binding="{Binding IsGroup}" Value="False"><Setter Property="Text" Value=""/></DataTrigger></Style.Triggers></Style></Run.Style></Run></TextBlock></TextBlock.ToolTip></TextBlock>
 
                                     <UniformGrid Grid.Column="1" Columns="3" VerticalAlignment="Center">
                                         <Button Content="Обов'язк."
@@ -216,7 +216,7 @@
             </ItemsControl>
 
             <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,12,0,0">
-                <ComboBox Width="300" Tag="Оберіть шаблон…" ItemsSource="{Binding AvailableTemplates}" SelectedItem="{Binding SelectedTemplateToAdd}"
+                <ComboBox Width="460" Tag="Оберіть шаблон…" ItemsSource="{Binding AvailableTemplates}" SelectedItem="{Binding SelectedTemplateToAdd}"
                           DisplayMemberPath="Name"/>
                 <Button Content="+ Додати шаблон" Style="{StaticResource SecondaryButtonStyle}"
                         Margin="10,0,0,0" Command="{Binding AddTemplateCommand}" IsEnabled="{Binding CanAddTemplate}"/>
@@ -237,7 +237,7 @@
                                 </Grid.ColumnDefinitions>
 
                                 <TextBlock Grid.Column="0" Text="{Binding Name}" FontSize="12.5" VerticalAlignment="Center"
-                                           Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                           Foreground="{StaticResource TextPrimaryBrush}" TextWrapping="Wrap" Margin="0,0,12,0"/>
 
                                 <UniformGrid Grid.Column="1" Columns="3" VerticalAlignment="Center">
                                     <Button Content="Усі"
@@ -295,7 +295,7 @@
             </ItemsControl>
 
             <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,12,0,0">
-                <ComboBox Width="300" Tag="Оберіть відомість…" ItemsSource="{Binding AvailableExportTemplates}" SelectedItem="{Binding SelectedExportTemplateToAdd}"
+                <ComboBox Width="460" Tag="Оберіть відомість…" ItemsSource="{Binding AvailableExportTemplates}" SelectedItem="{Binding SelectedExportTemplateToAdd}"
                           DisplayMemberPath="Name"/>
                 <Button Content="+ Додати відомість" Style="{StaticResource SecondaryButtonStyle}"
                         Margin="10,0,0,0" Command="{Binding AddExportTemplateCommand}" IsEnabled="{Binding CanAddExportTemplate}"/>

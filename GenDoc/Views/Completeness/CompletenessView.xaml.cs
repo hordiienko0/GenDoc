@@ -149,7 +149,13 @@ public partial class CompletenessView : UserControl
             {
                 Text = columnLabels[i],
                 ToolTip = template.Name,
+                // Назва переноситься до трьох рядків замість «Рапорт п...»; решту видно в підказці
+                // або після розширення колонки мишею за межу заголовка.
+                TextWrapping = TextWrapping.Wrap,
                 TextTrimming = TextTrimming.CharacterEllipsis,
+                LineHeight = 14,
+                LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
+                MaxHeight = 3 * 14,
                 FontSize = 11,
                 FontWeight = FontWeights.Bold
             };
@@ -160,7 +166,7 @@ public partial class CompletenessView : UserControl
             var column = new DataGridTemplateColumn
             {
                 Header = headerText,
-                Width = new DataGridLength(96),
+                Width = new DataGridLength(140),
                 MinWidth = 96,
                 CellTemplate = cellTemplate
             };
