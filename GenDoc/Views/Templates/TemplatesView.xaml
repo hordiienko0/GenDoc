@@ -158,29 +158,27 @@
                                                     <Grid Margin="0,0,0,8">
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="1*"/>
-                                                            <ColumnDefinition Width="1.1*"/>
-                                                            <ColumnDefinition Width="1.4*"/>
+                                                            <ColumnDefinition Width="1.6*"/>
                                                         </Grid.ColumnDefinitions>
-                                                        <TextBlock Grid.Column="0" Text="Тег / колонка шаблону"
-                                                                   Style="{StaticResource TemplatesHeaderTextStyle}"/>
-                                                        <TextBlock Grid.Column="1" Text="Джерело"
-                                                                   Style="{StaticResource TemplatesHeaderTextStyle}"/>
-                                                        <TextBlock Grid.Column="2" Text="Поле"
-                                                                   Style="{StaticResource TemplatesHeaderTextStyle}"/>
+                                                        <TextBlock Grid.Column="0" Grid.ColumnSpan="2" Text="Тег / колонка шаблону, під ним - джерело й поле"
+                                                                   TextWrapping="Wrap" Style="{StaticResource TemplatesHeaderTextStyle}"/>
                                                     </Grid>
 
                                                     <ItemsControl ItemsSource="{Binding Mappings}">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate>
-                                                                <Grid Margin="0,0,0,8">
+                                                                <Grid Margin="0,0,0,12">
+                                                                    <Grid.RowDefinitions>
+                                                                        <RowDefinition Height="Auto"/>
+                                                                        <RowDefinition Height="Auto"/>
+                                                                    </Grid.RowDefinitions>
                                                                     <Grid.ColumnDefinitions>
                                                                         <ColumnDefinition Width="1*"/>
-                                                                        <ColumnDefinition Width="1.1*"/>
-                                                                        <ColumnDefinition Width="1.4*"/>
+                                                                        <ColumnDefinition Width="1.6*"/>
                                                                     </Grid.ColumnDefinitions>
 
-                                                                    <TextBlock Grid.Column="0" Text="{Binding DisplayLabel}"
-                                                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                                                                    <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="{Binding DisplayLabel}"
+                                                                               TextWrapping="Wrap" Margin="0,0,0,4">
                                                                         <TextBlock.Style>
                                                                             <Style TargetType="TextBlock">
                                                                                 <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
@@ -194,11 +192,11 @@
                                                                         </TextBlock.Style>
                                                                     </TextBlock>
 
-                                                                    <ComboBox Grid.Column="1" ItemsSource="{Binding SourceOptions}"
+                                                                    <ComboBox Grid.Row="1" Grid.Column="0" ItemsSource="{Binding SourceOptions}"
                                                                               SelectedValuePath="Value"
                                                                               SelectedValue="{Binding SourceType, Mode=TwoWay}"
                                                                               Visibility="{Binding UsesPlaceholders, Converter={StaticResource BoolToVisibility}}"
-                                                                              MaxWidth="180" HorizontalAlignment="Stretch" Margin="0,0,10,0">
+                                                                              HorizontalAlignment="Stretch" Margin="0,0,8,0">
                                                                         <ComboBox.ItemTemplate>
                                                                             <DataTemplate>
                                                                                 <TextBlock Text="{Binding Display}"/>
@@ -206,11 +204,11 @@
                                                                         </ComboBox.ItemTemplate>
                                                                     </ComboBox>
 
-                                                                    <ComboBox Grid.Column="2" ItemsSource="{Binding FieldOptions}"
+                                                                    <ComboBox Grid.Row="1" Grid.ColumnSpan="2" ItemsSource="{Binding FieldOptions}"
                                                                               SelectedValuePath="Field"
                                                                               SelectedValue="{Binding SelectedField, Mode=TwoWay}"
                                                                               Visibility="{Binding IsHeaderMode, Converter={StaticResource BoolToVisibility}}"
-                                                                              MaxWidth="260" HorizontalAlignment="Stretch">
+                                                                              HorizontalAlignment="Stretch">
                                                                         <ComboBox.ItemTemplate>
                                                                             <DataTemplate>
                                                                                 <TextBlock Text="{Binding DisplayName}"/>
@@ -218,12 +216,12 @@
                                                                         </ComboBox.ItemTemplate>
                                                                     </ComboBox>
 
-                                                                    <ComboBox Grid.Column="2" ItemsSource="{Binding RecipientOrOrgFieldOptions}"
+                                                                    <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding RecipientOrOrgFieldOptions}"
                                                                               SelectedValuePath="FieldName"
                                                                               SelectedValue="{Binding SelectedFieldName, Mode=TwoWay}"
                                                                               IsEnabled="{Binding IsFieldEnabled}"
                                                                               Visibility="{Binding UsesPlaceholders, Converter={StaticResource BoolToVisibility}}"
-                                                                              MaxWidth="260" HorizontalAlignment="Stretch">
+                                                                              HorizontalAlignment="Stretch">
                                                                         <ComboBox.ItemTemplate>
                                                                             <DataTemplate>
                                                                                 <TextBlock Text="{Binding DisplayName}"/>
@@ -296,38 +294,42 @@
                                                                   ToolTip="Шаблони події збираються під дію «Оформити відрядження/відпустку/хворобу» в «Постійному складі». Без події шаблон видається окремо."/>
                                                     </StackPanel>
 
+                                                    <!-- Мітка стоїть окремим рядком над своїми списками: у вузькій панелі
+                                                         колонка «Мітка» обрізала теги до «{{зван…», і однакові початки
+                                                         (звання, звання_давальний…) неможливо було розрізнити. -->
                                                     <Grid Margin="0,0,0,8">
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="1*"/>
-                                                            <ColumnDefinition Width="1.1*"/>
-                                                            <ColumnDefinition Width="1.4*"/>
-                                                            <ColumnDefinition Width="150"/>
+                                                            <ColumnDefinition Width="1.6*"/>
+                                                            <ColumnDefinition Width="140"/>
                                                         </Grid.ColumnDefinitions>
-                                                        <TextBlock Grid.Column="0" Text="Мітка" Style="{StaticResource TemplatesHeaderTextStyle}"/>
-                                                        <TextBlock Grid.Column="1" Text="Джерело" Style="{StaticResource TemplatesHeaderTextStyle}"/>
-                                                        <TextBlock Grid.Column="2" Text="Поле" Style="{StaticResource TemplatesHeaderTextStyle}"/>
-                                                        <TextBlock Grid.Column="3" Text="Формат дати" Style="{StaticResource TemplatesHeaderTextStyle}"/>
+                                                        <TextBlock Grid.Column="0" Text="Джерело" Style="{StaticResource TemplatesHeaderTextStyle}"/>
+                                                        <TextBlock Grid.Column="1" Text="Поле" Style="{StaticResource TemplatesHeaderTextStyle}"/>
+                                                        <TextBlock Grid.Column="2" Text="Формат дати" Style="{StaticResource TemplatesHeaderTextStyle}"/>
                                                     </Grid>
 
                                                     <ItemsControl ItemsSource="{Binding Mappings}">
                                                         <ItemsControl.ItemTemplate>
                                                             <DataTemplate>
-                                                                <Grid Margin="0,0,0,8">
+                                                                <Grid Margin="0,0,0,12">
+                                                                    <Grid.RowDefinitions>
+                                                                        <RowDefinition Height="Auto"/>
+                                                                        <RowDefinition Height="Auto"/>
+                                                                    </Grid.RowDefinitions>
                                                                     <Grid.ColumnDefinitions>
                                                                         <ColumnDefinition Width="1*"/>
-                                                                        <ColumnDefinition Width="1.1*"/>
-                                                                        <ColumnDefinition Width="1.4*"/>
-                                                                        <ColumnDefinition Width="150"/>
+                                                                        <ColumnDefinition Width="1.6*"/>
+                                                                        <ColumnDefinition Width="140"/>
                                                                     </Grid.ColumnDefinitions>
 
-                                                                    <TextBlock Grid.Column="0" Text="{Binding PlaceholderTag}"
+                                                                    <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Text="{Binding PlaceholderTag}"
                                                                                FontFamily="Consolas" Foreground="{StaticResource AccentBrush}"
-                                                                               VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                                               TextWrapping="Wrap" Margin="0,0,0,4"/>
 
-                                                                    <ComboBox Grid.Column="1" ItemsSource="{Binding SourceOptions}"
+                                                                    <ComboBox Grid.Row="1" Grid.Column="0" ItemsSource="{Binding SourceOptions}"
                                                                               SelectedValuePath="Value"
                                                                               SelectedValue="{Binding SourceType, Mode=TwoWay}"
-                                                                              MaxWidth="180" HorizontalAlignment="Stretch" Margin="0,0,10,0">
+                                                                              HorizontalAlignment="Stretch" Margin="0,0,8,0">
                                                                         <ComboBox.ItemTemplate>
                                                                             <DataTemplate>
                                                                                 <TextBlock Text="{Binding Display}"/>
@@ -335,11 +337,11 @@
                                                                         </ComboBox.ItemTemplate>
                                                                     </ComboBox>
 
-                                                                    <ComboBox Grid.Column="2" ItemsSource="{Binding FieldOptions}"
+                                                                    <ComboBox Grid.Row="1" Grid.Column="1" ItemsSource="{Binding FieldOptions}"
                                                                               SelectedValuePath="FieldName"
                                                                               SelectedValue="{Binding SelectedFieldName, Mode=TwoWay}"
                                                                               IsEnabled="{Binding IsFieldEnabled}"
-                                                                              MaxWidth="260" HorizontalAlignment="Stretch">
+                                                                              HorizontalAlignment="Stretch">
                                                                         <ComboBox.ItemTemplate>
                                                                             <DataTemplate>
                                                                                 <TextBlock Text="{Binding DisplayName}"/>
@@ -347,11 +349,11 @@
                                                                         </ComboBox.ItemTemplate>
                                                                     </ComboBox>
 
-                                                                    <ComboBox Grid.Column="3" ItemsSource="{Binding DateFormatOptions}"
+                                                                    <ComboBox Grid.Row="1" Grid.Column="2" ItemsSource="{Binding DateFormatOptions}"
                                                                               SelectedValuePath="Key"
                                                                               SelectedValue="{Binding SelectedDateFormat, Mode=TwoWay}"
                                                                               Visibility="{Binding IsDateField, Converter={StaticResource BoolToVisibility}}"
-                                                                              MaxWidth="140" HorizontalAlignment="Stretch">
+                                                                              HorizontalAlignment="Stretch" Margin="8,0,0,0">
                                                                         <ComboBox.ItemTemplate>
                                                                             <DataTemplate>
                                                                                 <TextBlock Text="{Binding Display}"/>
@@ -507,13 +509,29 @@
                     Visibility="{Binding HasSelectedTemplate, Converter={StaticResource BoolToVisibility}}">
                 <DockPanel>
 
-                    <Thumb DockPanel.Dock="Left" Width="6" Cursor="SizeWE"
+                    <!-- Ручка ширини панелі: помітна смужка з «крапками», на наведенні підсвічується. -->
+                    <Thumb DockPanel.Dock="Left" Width="10" Cursor="SizeWE"
+                           ToolTip="Потягніть, щоб розширити панель мапінгу"
                            DragDelta="MappingResizeThumb_DragDelta">
                         <Thumb.Template>
                             <ControlTemplate TargetType="Thumb">
-                                <Border Background="{StaticResource BackgroundBrush}"
+                                <Border x:Name="Bar" Background="{StaticResource BackgroundBrush}"
                                         BorderBrush="{StaticResource BorderLineBrush}"
-                                        BorderThickness="0,0,1,0"/>
+                                        BorderThickness="1,0,1,0">
+                                    <TextBlock x:Name="Grip" Text="&#x22EE;" FontSize="16"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </Border>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="Bar" Property="Background" Value="{StaticResource AccentSoftBrush}"/>
+                                        <Setter TargetName="Grip" Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                    </Trigger>
+                                    <Trigger Property="IsDragging" Value="True">
+                                        <Setter TargetName="Bar" Property="Background" Value="{StaticResource AccentSoftBrush}"/>
+                                        <Setter TargetName="Grip" Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
                             </ControlTemplate>
                         </Thumb.Template>
                     </Thumb>

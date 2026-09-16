@@ -681,6 +681,33 @@
         <Setter Property="FontSize" Value="12.5"/>
     </Style>
 
+    <!-- Межа колонки, яку тягнуть мишею: тонка риска видна лише на наведенні, курсор - двостороння стрілка. -->
+    <Style x:Key="ColumnHeaderGripperStyle" TargetType="Thumb">
+        <Setter Property="Width" Value="8"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Cursor" Value="SizeWE"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border Background="Transparent">
+                        <Rectangle x:Name="Line" Width="1" Margin="0,6" HorizontalAlignment="Center"
+                                   Fill="{StaticResource BorderLineBrush}" Opacity="0"/>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Line" Property="Opacity" Value="1"/>
+                            <Setter TargetName="Line" Property="Fill" Value="{StaticResource AccentBrush}"/>
+                        </Trigger>
+                        <Trigger Property="IsDragging" Value="True">
+                            <Setter TargetName="Line" Property="Opacity" Value="1"/>
+                            <Setter TargetName="Line" Property="Fill" Value="{StaticResource AccentBrush}"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style TargetType="DataGridColumnHeader">
         <Setter Property="Background" Value="{StaticResource SkySoftBrush}"/>
         <Setter Property="Foreground" Value="{StaticResource NavyBrush}"/>
@@ -691,14 +718,23 @@
         <Setter Property="HorizontalContentAlignment" Value="Left"/>
         <Setter Property="Template">
             <Setter.Value>
+                <!-- PART_LeftHeaderGripper/PART_RightHeaderGripper обов'язкові: без них DataGrid не дає
+                     тягнути межу колонки (CanUserResizeColumns мовчки не працює), а подвійний клік
+                     по межі не підганяє ширину під вміст. -->
                 <ControlTemplate TargetType="DataGridColumnHeader">
-                    <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
-                        <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
-                                          VerticalAlignment="Center"
-                                          TextBlock.FontSize="{TemplateBinding FontSize}"
-                                          TextBlock.FontWeight="{TemplateBinding FontWeight}"
-                                          TextBlock.Foreground="{TemplateBinding Foreground}"/>
-                    </Border>
+                    <Grid>
+                        <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"
+                                              VerticalAlignment="Center"
+                                              TextBlock.FontSize="{TemplateBinding FontSize}"
+                                              TextBlock.FontWeight="{TemplateBinding FontWeight}"
+                                              TextBlock.Foreground="{TemplateBinding Foreground}"/>
+                        </Border>
+                        <Thumb x:Name="PART_LeftHeaderGripper" HorizontalAlignment="Left"
+                               Style="{StaticResource ColumnHeaderGripperStyle}"/>
+                        <Thumb x:Name="PART_RightHeaderGripper" HorizontalAlignment="Right"
+                               Style="{StaticResource ColumnHeaderGripperStyle}"/>
+                    </Grid>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
