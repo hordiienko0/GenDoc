@@ -407,7 +407,7 @@
                                                        Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"
                                                        Margin="0,4,0,0" FontSize="11"
                                                        Visibility="{Binding HasSignaturePreview, Converter={StaticResource BoolToVisibility}}"/>
-                                            <TextBlock Text="Немає жодного курсового офіцера - відомості з підписом не сформуються"
+                                            <TextBlock Text="Немає ні курсового офіцера, ні начальника курсів у налаштуваннях - відомості з підписом не сформуються"
                                                        Foreground="{StaticResource WarnTextBrush}" TextWrapping="Wrap"
                                                        Margin="0,4,0,0" FontSize="11">
                                                 <TextBlock.Style>

@@ -5,15 +5,21 @@ namespace GenDoc.Services
 {
     public static class CourseOfficerSignature
     {
+        /// <summary>Перший курсовий офіцер, а якщо жодного не позначено - начальник курсів з налаштувань.</summary>
         public static string? Build(AppDbContext db)
         {
             var courseOfficer = FindCourseOfficer(db);
 
-            return courseOfficer is null ? null : Compose(courseOfficer);
+            return courseOfficer is null
+                ? HeadOfCourses.Signature(db.OrganizationSettings.AsNoTracking().FirstOrDefault())
+                : Compose(courseOfficer);
         }
 
         public static string? BuildFor(AppDbContext db, int recipientId)
         {
+            if (recipientId == HeadOfCourses.PickerId)
+                return HeadOfCourses.Signature(db.OrganizationSettings.AsNoTracking().FirstOrDefault());
+
             var courseOfficer = db.Recipients
                 .Include(r => r.Unit)
                 .FirstOrDefault(r => r.Id == recipientId && r.IsCourseOfficer && r.IntakeId == null);

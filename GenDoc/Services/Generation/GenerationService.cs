@@ -849,7 +849,7 @@ namespace GenDoc.Services.Generation
                     {
                         errors++;
                         issues.Add(new RunIssue(RunIssue.PhaseXlsx, string.Empty, template.Name,
-                            "немає курсового офіцера серед постійного складу - відомість не сформовано"));
+                            "немає ні курсового офіцера, ні начальника курсів у налаштуваннях - відомість не сформовано"));
                         continue;
                     }
 

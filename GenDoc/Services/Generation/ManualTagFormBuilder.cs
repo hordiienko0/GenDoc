@@ -82,31 +82,47 @@ namespace GenDoc.Services.Generation
 
         private async Task<SignerPickerViewModel> BuildCourseOfficerAsync(string contextKey)
         {
-            var officers = await _staffService.GetCourseOfficersForPickerAsync();
-            var options = officers
+            var officers = (await _staffService.GetCourseOfficersForPickerAsync())
                 .Select(s => new StaffPickerOption(
                     s.Id, s.Rank, Services.NameFormatter.SignatureName(s.LastName, s.FirstName),
                     $"{s.Rank} {Services.NameFormatter.SignatureName(s.LastName, s.FirstName)}",
                     CourseOfficerSignature.Compose(s.UnitName, s.Rank, s.LastName, s.FirstName, s.MiddleName)))
                 .ToList();
 
+            var head = await GetHeadOfCoursesOptionAsync();
+            var options = head is null ? officers : officers.Prepend(head).ToList();
+
             var lastId = await GetLastSignerIdAsync(CourseOfficerContextKey(contextKey));
             var initial = lastId is int id ? options.FirstOrDefault(o => o.RecipientId == id) : null;
 
-            return new SignerPickerViewModel(options, initial ?? options.FirstOrDefault());
+            return new SignerPickerViewModel(options, initial ?? officers.FirstOrDefault() ?? head);
         }
 
         private static string CourseOfficerContextKey(string contextKey) => $"{contextKey}#курсовий";
 
+        /// <summary>
+        /// Підписати документ може начальник курсів (з налаштувань) або курсовий офіцер; начальник -
+        /// за замовчуванням. Лише коли немає ні начальника, ні курсових, список - увесь постійний склад,
+        /// щоб пікер не лишився порожнім.
+        /// </summary>
         private async Task<SignerPickerViewModel> BuildSignerAsync(string contextKey)
         {
-            var staff = await _staffService.GetPermanentStaffForPickerAsync();
-            var options = staff
+            var head = await GetHeadOfCoursesOptionAsync();
+
+            var staff = await _staffService.GetCourseOfficersForPickerAsync();
+            if (head is null && staff.Count == 0)
+                staff = await _staffService.GetPermanentStaffForPickerAsync();
+
+            var people = staff
                 .Select(s => new StaffPickerOption(
                     s.Id, s.Rank, Services.NameFormatter.SignatureName(s.LastName, s.FirstName),
                     $"{s.Rank} {Services.NameFormatter.SignatureName(s.LastName, s.FirstName)}"))
                 .ToList();
 
+            if (head is not null)
+                return new SignerPickerViewModel(people.Prepend(head), head);
+
+            var options = people;
             StaffPickerOption? initial = null;
 
             var currentName = _currentUserContext.CurrentUserFullName;
@@ -126,6 +142,17 @@ namespace GenDoc.Services.Generation
             }
 
             return new SignerPickerViewModel(options, initial ?? options.FirstOrDefault());
+        }
+
+        private async Task<StaffPickerOption?> GetHeadOfCoursesOptionAsync()
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var org = await db.OrganizationSettings.AsNoTracking().FirstOrDefaultAsync();
+            if (!HeadOfCourses.IsConfigured(org)) return null;
+
+            return new StaffPickerOption(
+                HeadOfCourses.PickerId, org!.CommanderRank.Trim(), org.CommanderFullName.Trim(),
+                HeadOfCourses.DisplayLabel(org), HeadOfCourses.Signature(org));
         }
 
         public async Task SaveAsync(string contextKey, ManualTagFormViewModel form)

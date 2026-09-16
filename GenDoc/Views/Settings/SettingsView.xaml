@@ -31,16 +31,21 @@
                         <TextBlock Text="Місто" Style="{StaticResource SettingsFieldLabelStyle}"/>
                         <TextBox Text="{Binding City, UpdateSourceTrigger=PropertyChanged}"/>
                     </StackPanel>
+                    <TextBlock Text="НАЧАЛЬНИК КУРСІВ - ГОЛОВНИЙ ПІДПИСАНТ" FontSize="11" FontWeight="Bold"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,4"/>
+                    <TextBlock TextWrapping="Wrap" FontSize="11.5" Margin="0,0,0,12"
+                               Foreground="{StaticResource TextSecondaryBrush}"
+                               Text="Підписує документи за замовчуванням. У виборі підписанта стоїть першим, поруч із курсовими офіцерами, - за потреби можна обрати курсового. Ці ж дані підставляються в теги «командира» наказів."/>
                     <StackPanel Margin="0,0,0,14">
-                        <TextBlock Text="Звання командира" Style="{StaticResource SettingsFieldLabelStyle}"/>
-                        <TextBox Text="{Binding CommanderRank, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Text="Звання начальника курсів" Style="{StaticResource SettingsFieldLabelStyle}"/>
+                        <TextBox Text="{Binding CommanderRank, UpdateSourceTrigger=PropertyChanged}" Tag="напр. полковник"/>
                     </StackPanel>
                     <StackPanel Margin="0,0,0,14">
-                        <TextBlock Text="ПІБ командира" Style="{StaticResource SettingsFieldLabelStyle}"/>
-                        <TextBox Text="{Binding CommanderFullName, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Text="Ім'я та ПРІЗВИЩЕ начальника курсів (як у підписі)" Style="{StaticResource SettingsFieldLabelStyle}"/>
+                        <TextBox Text="{Binding CommanderFullName, UpdateSourceTrigger=PropertyChanged}" Tag="напр. Іван ПЕТРЕНКО"/>
                     </StackPanel>
                     <StackPanel Margin="0,0,0,14">
-                        <TextBlock Text="Посада командира" Style="{StaticResource SettingsFieldLabelStyle}"/>
+                        <TextBlock Text="Посада начальника курсів" Style="{StaticResource SettingsFieldLabelStyle}"/>
                         <TextBox Text="{Binding CommanderPosition, UpdateSourceTrigger=PropertyChanged}" Tag="напр. Начальник курсів підвищення кваліфікації"/>
                     </StackPanel>
                     <StackPanel Margin="0,0,0,14">
