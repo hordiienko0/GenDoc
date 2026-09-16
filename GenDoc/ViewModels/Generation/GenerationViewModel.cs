@@ -129,6 +129,15 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     [ObservableProperty]
     private DateTime? documentDate = DateTime.Today;
 
+    /// <summary>Дата документа вписується руками; календаря немає.</summary>
+    public string DateMask => ViewModels.Common.DateText.Mask;
+
+    [ObservableProperty]
+    private string documentDateText = ViewModels.Common.DateText.Format(DateTime.Today);
+
+    partial void OnDocumentDateTextChanged(string value) =>
+        DocumentDate = ViewModels.Common.DateText.Parse(value);
+
     partial void OnDocumentDateChanged(DateTime? value) => ManualTagForm?.SetDocumentDate(value);
 
     partial void OnManualTagFormChanged(ManualTagFormViewModel? value) => value?.SetDocumentDate(DocumentDate);
@@ -599,7 +608,9 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         NewPackageName = string.Empty;
         NewPackageDescription = string.Empty;
         var checkItems = new List<GenerationTemplateCheckItemViewModel>();
-        checkItems.AddRange(_generationService.GetAllTemplates()
+        // Пакет складають лише групові шаблони: документ на кожного окремо видається
+        // вибраній людині за потреби, а не прогоном пакета по всьому набору.
+        checkItems.AddRange(_generationService.GetGroupTemplates()
             .Select(t => new GenerationTemplateCheckItemViewModel(t.Id, t.Name, TemplateKind.Docx)));
         checkItems.AddRange(_generationService.GetAllExportTemplates()
             .Select(t => new GenerationTemplateCheckItemViewModel(t.Id, t.Name, TemplateKind.Xlsx)));

@@ -174,6 +174,11 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         ("DefaultOutputFolder", "TEXT")
     };
 
+    internal static readonly (string Name, string Type)[] TemplateColumnsV27 =
+    {
+        ("StaffEvent", "INTEGER")
+    };
+
     private static readonly (string Name, string Type)[] AppSettingsColumnsV15 =
     {
         ("LastSignerByTemplateJson", "TEXT")
@@ -537,6 +542,19 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                 });
                 currentVersion = 26;
             }
+
+            if (currentVersion < 27)
+            {
+                AddMissingColumns(db, "Templates", TemplateColumnsV27);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 27,
+                    AppliedAt = DateTime.Now,
+                    Description = "Шаблон під подію постійного складу: Template.StaffEvent (відрядження/відпустка/хвороба)"
+                });
+                currentVersion = 27;
+            }
         }
 
         EnsureOrgTables(db);
@@ -594,6 +612,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         AddMissingColumns(db, "Templates", TemplateColumnsV21);
         AddMissingColumns(db, "ExportTemplates", ExportTemplateColumnsV22);
         AddMissingColumns(db, "Templates", TemplateColumnsV23);
+        AddMissingColumns(db, "Templates", TemplateColumnsV27);
         AddMissingColumns(db, "AppSettings", AppSettingsColumnsV24);
         MigrateGenerationPackageRunsForAdHocRuns(db);
 

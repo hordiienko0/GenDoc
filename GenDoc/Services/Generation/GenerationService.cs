@@ -58,17 +58,48 @@ namespace GenDoc.Services.Generation
                 .ToList();
         }
 
-        public List<(int Id, string Name)> GetPerRecipientTemplates(
+        public List<(int Id, string Name)> GetGroupTemplates(
             Models.Enums.TemplateAudience audience = Models.Enums.TemplateAudience.Intake)
         {
             using var db = _dbFactory.CreateDbContext();
             return db.Templates
-                .Where(t => t.Kind == Models.Enums.TemplateKind.PerRecipient
+                .Where(t => t.Kind == Models.Enums.TemplateKind.Group
                             && (t.Audience == audience || t.Audience == Models.Enums.TemplateAudience.Everyone))
                 .OrderBy(t => t.Name)
                 .Select(t => new { t.Id, t.Name })
                 .AsEnumerable()
                 .Select(t => (t.Id, t.Name))
+                .ToList();
+        }
+
+        public List<(int Id, string Name, Models.Enums.TemplateAudience Audience)> GetPerRecipientTemplates(
+            Models.Enums.TemplateAudience audience = Models.Enums.TemplateAudience.Intake,
+            Models.Enums.StaffEventKind? staffEvent = null)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            return db.Templates
+                .Where(t => t.Kind == Models.Enums.TemplateKind.PerRecipient
+                            && (t.Audience == audience || t.Audience == Models.Enums.TemplateAudience.Everyone)
+                            && t.StaffEvent == staffEvent)
+                .OrderBy(t => t.Name)
+                .Select(t => new { t.Id, t.Name, t.Audience })
+                .AsEnumerable()
+                .Select(t => (t.Id, t.Name, t.Audience))
+                .ToList();
+        }
+
+        public List<Models.Enums.StaffEventKind> GetStaffEventsWithTemplates()
+        {
+            using var db = _dbFactory.CreateDbContext();
+            return db.Templates
+                .Where(t => t.StaffEvent != null
+                            && t.Kind == Models.Enums.TemplateKind.PerRecipient
+                            && (t.Audience == Models.Enums.TemplateAudience.PermanentStaff
+                                || t.Audience == Models.Enums.TemplateAudience.Everyone))
+                .Select(t => t.StaffEvent)
+                .AsEnumerable()
+                .Select(e => e!.Value)
+                .Distinct()
                 .ToList();
         }
 

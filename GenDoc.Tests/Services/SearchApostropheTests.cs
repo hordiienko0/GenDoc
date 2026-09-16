@@ -141,7 +141,8 @@ public class SearchApostropheTests
             ctx.SaveChanges();
         }
 
-        var vm = new StaffViewModel(TestServices.Staff(db, 1), new NoDialogs(), new ServiceCollection().BuildServiceProvider());
+        var vm = new StaffViewModel(TestServices.Staff(db, 1), new NoDialogs(), new ServiceCollection().BuildServiceProvider(),
+                                    TestServices.Generation(db));
         await vm.RefreshCommand.ExecuteAsync(null);
         Assert.Equal(2, vm.RowCount);
 

@@ -17,6 +17,12 @@ namespace GenDoc.Models
 
         public TemplateAudience Audience { get; set; } = TemplateAudience.Intake;
 
+        /// <summary>
+        /// Подія постійного складу, документи якої формує цей шаблон (відрядження, відпустка,
+        /// хвороба). Порожньо — шаблон не прив'язаний до події й береться окремо.
+        /// </summary>
+        public StaffEventKind? StaffEvent { get; set; }
+
         public string? BuilderJson { get; set; }
 
         public DateTime? DeletedAt { get; set; }

@@ -94,7 +94,9 @@ namespace GenDoc.ViewModels.Personnel
 
         public async Task InitializeAsync()
         {
-            var all = _generationService.GetPerRecipientTemplates(Models.Enums.TemplateAudience.Intake);
+            var all = _generationService.GetPerRecipientTemplates(Models.Enums.TemplateAudience.Intake)
+                .Select(t => (t.Id, t.Name))
+                .ToList();
             var packageId = await _completenessService.GetDefaultPackageIdAsync();
             var packageLinks = packageId is int pid
                 ? (await _completenessService.GetPackageLinksAsync(pid)).Where(l => !l.IsGroup).ToList()

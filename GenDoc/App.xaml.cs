@@ -75,6 +75,7 @@ namespace GenDoc
             services.AddTransient<IAuditLogQueryService, AuditLogQueryService>();
             services.AddTransient<ITemplateService, TemplateService>();
             services.AddTransient<Services.Templates.ITemplateBuilderService, Services.Templates.TemplateBuilderService>();
+            services.AddTransient<Services.Templates.ITemplateFolderImportService, Services.Templates.TemplateFolderImportService>();
             services.AddTransient<IDocumentGenerationService, DocumentGenerationService>();
             services.AddTransient<IGenerationService, GenerationService>();
             services.AddTransient<IOutputFolderService, OutputFolderService>();

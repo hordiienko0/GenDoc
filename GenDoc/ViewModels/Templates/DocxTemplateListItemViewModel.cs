@@ -10,7 +10,8 @@ public partial class DocxTemplateListItemViewModel : ObservableObject
         int id, string name, string? shortName, string originalFileName, DateTime uploadedAt, int tagCount,
         bool isFromBuilder = false,
         TemplateAudience audience = TemplateAudience.Intake,
-        TemplateKind kind = TemplateKind.PerRecipient)
+        TemplateKind kind = TemplateKind.PerRecipient,
+        StaffEventKind? staffEvent = null)
     {
         Id = id;
         Name = name;
@@ -21,7 +22,31 @@ public partial class DocxTemplateListItemViewModel : ObservableObject
         IsFromBuilder = isFromBuilder;
         this.audience = audience;
         Kind = kind;
+        selectedStaffEvent = StaffEventOptions.FirstOrDefault(o => o.Kind == staffEvent) ?? StaffEventOptions[0];
     }
+
+    /// <summary>Подія постійного складу, документи якої формує шаблон; перший пункт - «без події».</summary>
+    public static readonly IReadOnlyList<StaffEventOption> StaffEventOptions = new[]
+    {
+        new StaffEventOption(null, "Без події"),
+        new StaffEventOption(StaffEventKind.BusinessTrip, Staff.StaffEventNaming.For(StaffEventKind.BusinessTrip)),
+        new StaffEventOption(StaffEventKind.Leave, Staff.StaffEventNaming.For(StaffEventKind.Leave)),
+        new StaffEventOption(StaffEventKind.Sick, Staff.StaffEventNaming.For(StaffEventKind.Sick))
+    };
+
+    public ObservableCollection<StaffEventOption> StaffEventChoices { get; } = new(StaffEventOptions);
+
+    [ObservableProperty]
+    private StaffEventOption selectedStaffEvent;
+
+    public StaffEventKind? StaffEvent => SelectedStaffEvent.Kind;
+
+    public event Action<DocxTemplateListItemViewModel>? StaffEventChanged;
+
+    partial void OnSelectedStaffEventChanged(StaffEventOption value) => StaffEventChanged?.Invoke(this);
+
+    /// <summary>Подія доречна лише для шаблонів постійного складу - наборівські її не мають.</summary>
+    public bool ShowsStaffEvent => Audience != TemplateAudience.Intake && Kind == TemplateKind.PerRecipient;
 
     public int Id { get; }
     public string Name { get; }
@@ -43,6 +68,7 @@ public partial class DocxTemplateListItemViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsForPermanentStaff))]
     [NotifyPropertyChangedFor(nameof(IsForEveryone))]
+    [NotifyPropertyChangedFor(nameof(ShowsStaffEvent))]
     [NotifyPropertyChangedFor(nameof(AudienceCaption))]
     private TemplateAudience audience;
 
@@ -59,12 +85,7 @@ public partial class DocxTemplateListItemViewModel : ObservableObject
         set => Audience = value ? TemplateAudience.Everyone : TemplateAudience.Intake;
     }
 
-    public string AudienceCaption => Audience switch
-    {
-        TemplateAudience.PermanentStaff => "Постійний склад",
-        TemplateAudience.Everyone => "для всіх",
-        _ => "Набори"
-    };
+    public string AudienceCaption => TemplateAudienceCaption.For(Audience);
 
     public event Action<DocxTemplateListItemViewModel>? AudienceChanged;
 
@@ -78,3 +99,6 @@ public partial class DocxTemplateListItemViewModel : ObservableObject
 
     public bool MappingsLoaded { get; set; }
 }
+
+/// <summary>Пункт вибору події в списку шаблонів (WPF не біндиться до кортежів).</summary>
+public record StaffEventOption(StaffEventKind? Kind, string Label);

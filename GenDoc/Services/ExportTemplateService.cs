@@ -282,7 +282,7 @@ namespace GenDoc.Services
                 $"Завантажено файл {template.OriginalFileName}" + (template.UsesPlaceholders ? $", рядок-шаблон {template.TemplateRowIndex}" : string.Empty));
             db.SaveChanges();
 
-            return new UploadResult(true, null);
+            return new UploadResult(true, null, template.Id);
         }
 
         private static void ScanWorkbook(ExportTemplate template, XLWorkbook workbook)

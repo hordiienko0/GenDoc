@@ -26,29 +26,8 @@
                                            TextWrapping="Wrap"
                                            Foreground="{StaticResource AccentBrush}" Margin="0,0,0,4"/>
 
-                                <DatePicker SelectedDate="{Binding DateValue}">
-                                    <DatePicker.Style>
-                                        <Style TargetType="DatePicker">
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Kind}" Value="Text">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </DatePicker.Style>
-                                </DatePicker>
-
-                                <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}">
-                                    <TextBox.Style>
-                                        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Kind}" Value="Date">
-                                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBox.Style>
-                                </TextBox>
+                                <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Дата - дд.мм.рррр; період - дд.мм.рррр-дд.мм.рррр"/>
                             </StackPanel>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>

@@ -49,7 +49,6 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
@@ -71,28 +70,7 @@
             <Button Content="+ Додати" Command="{Binding AddPersonCommand}" Margin="8,0,0,0"/>
         </StackPanel>
 
-        <Border Grid.Row="2" Background="{StaticResource AccentSoftBrush}" BorderBrush="{StaticResource SkyBrush}"
-                BorderThickness="1" Padding="12,7" Margin="0,0,0,10"
-                Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
-            <StackPanel Orientation="Horizontal">
-                <TextBlock Text="{Binding SelectionText}" FontWeight="Bold" FontSize="12.5"
-                           VerticalAlignment="Center" Margin="0,0,16,0"/>
-                <Button Content="Оформити відрядження" Style="{StaticResource TextLinkButtonStyle}"
-                        Foreground="{StaticResource AccentBrush}" Command="{Binding OpenTripCommand}" Margin="0,0,16,0"/>
-                <Button Content="Оформити відпустку" Style="{StaticResource TextLinkButtonStyle}"
-                        Foreground="{StaticResource AccentBrush}" Command="{Binding OpenLeaveCommand}" Margin="0,0,16,0"/>
-                <Button Content="Оформити хворобу" Style="{StaticResource TextLinkButtonStyle}"
-                        Foreground="{StaticResource AccentBrush}" Command="{Binding OpenSickCommand}" Margin="0,0,16,0"/>
-                <Button Content="Згенерувати документ" Style="{StaticResource TextLinkButtonStyle}"
-                        Foreground="{StaticResource AccentBrush}" Command="{Binding GenerateDocumentCommand}" Margin="0,0,16,0"/>
-                <Button Content="Видалити" Background="{StaticResource DangerBrush}" Foreground="White"
-                        Command="{Binding DeleteSelectedCommand}" Margin="0,0,16,0"/>
-                <Button Content="Зняти вибір" Style="{StaticResource TextLinkButtonStyle}"
-                        Foreground="{StaticResource TextSecondaryBrush}" Command="{Binding ClearSelectionCommand}"/>
-            </StackPanel>
-        </Border>
-
-        <Grid Grid.Row="3">
+        <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
@@ -188,25 +166,17 @@
                     BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,1,1" Margin="-1,0,0,0"
                     Visibility="{Binding HasSelection, Converter={StaticResource BoolToVisibility}}">
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Text="ШВИДКЕ ОФОРМЛЕННЯ" FontSize="11" FontWeight="Bold"
-                               Foreground="{StaticResource TextSecondaryBrush}" Padding="13,9"
-                               Background="{StaticResource BackgroundBrush}"/>
+                    <Grid DockPanel.Dock="Top" Background="{StaticResource BackgroundBrush}">
+                        <TextBlock Text="ШВИДКЕ ОФОРМЛЕННЯ" FontSize="11" FontWeight="Bold"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Padding="13,9"/>
+                        <TextBlock Text="{Binding SelectionText}" FontSize="11" FontWeight="Bold"
+                                   Foreground="{StaticResource AccentBrush}" Padding="13,9"
+                                   HorizontalAlignment="Right" TextTrimming="CharacterEllipsis"/>
+                    </Grid>
 
-                    <StackPanel DockPanel.Dock="Bottom" Margin="13">
-                        <Border Padding="9" Background="{StaticResource AccentBrush}" Cursor="Hand">
-                            <Border.InputBindings>
-                                <MouseBinding MouseAction="LeftClick" Command="{Binding OpenTripCommand}"/>
-                            </Border.InputBindings>
-                            <TextBlock Text="{Binding IssueTripLabel}"
-                                       Foreground="White" FontWeight="Bold" FontSize="12.5" HorizontalAlignment="Center"/>
-                        </Border>
-                        <TextBlock Text="Документи потраплять в архів → «Постійний склад»" FontSize="11"
-                                   Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"
-                                   HorizontalAlignment="Center" TextAlignment="Center" Margin="0,6,0,0"/>
-                    </StackPanel>
-
-                    <StackPanel Margin="13">
-                        <Border Style="{StaticResource QuickActionCardStyle}" Margin="0,0,0,8" Cursor="Hand">
+                    <StackPanel DockPanel.Dock="Top" Margin="13,13,13,0">
+                        <Border Style="{StaticResource QuickActionCardStyle}" Margin="0,0,0,6"
+                                Visibility="{Binding HasTripTemplates, Converter={StaticResource BoolToVisibility}}">
                             <Border.InputBindings>
                                 <MouseBinding MouseAction="LeftClick" Command="{Binding OpenTripCommand}"/>
                             </Border.InputBindings>
@@ -216,16 +186,13 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <Border Grid.Column="0" Background="{StaticResource AccentBrush}" Margin="-12,-10,0,-10"/>
-                                <StackPanel Grid.Column="1" Margin="9,0,0,0">
-                                    <TextBlock Text="Оформити відрядження" FontSize="12.5" FontWeight="Bold"
-                                               Foreground="{StaticResource TextPrimaryBrush}"/>
-                                    <TextBlock Text="Посвідчення, завдання, звіт" FontSize="11.5"
-                                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0"/>
-                                </StackPanel>
+                                <TextBlock Grid.Column="1" Margin="9,0,0,0" Text="Оформити відрядження"
+                                           FontSize="12.5" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
                             </Grid>
                         </Border>
 
-                        <Border Style="{StaticResource QuickActionCardStyle}" Margin="0,0,0,8" Cursor="Hand">
+                        <Border Style="{StaticResource QuickActionCardStyle}" Margin="0,0,0,6"
+                                Visibility="{Binding HasLeaveTemplates, Converter={StaticResource BoolToVisibility}}">
                             <Border.InputBindings>
                                 <MouseBinding MouseAction="LeftClick" Command="{Binding OpenLeaveCommand}"/>
                             </Border.InputBindings>
@@ -235,34 +202,76 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <Border Grid.Column="0" Background="{StaticResource WarningBrush}" Margin="-12,-10,0,-10"/>
-                                <StackPanel Grid.Column="1" Margin="9,0,0,0">
-                                    <TextBlock Text="Оформити відпустку" FontSize="12.5" FontWeight="Bold"
-                                               Foreground="{StaticResource TextPrimaryBrush}"/>
-                                    <TextBlock Text="Рапорт, довідка про використані дні" FontSize="11.5"
-                                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0"/>
-                                </StackPanel>
+                                <TextBlock Grid.Column="1" Margin="9,0,0,0" Text="Оформити відпустку"
+                                           FontSize="12.5" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
                             </Grid>
                         </Border>
 
-                        <Border Style="{StaticResource QuickActionCardStyle}" Cursor="Hand">
+                        <Border Style="{StaticResource QuickActionCardStyle}"
+                                Visibility="{Binding HasSickTemplates, Converter={StaticResource BoolToVisibility}}">
                             <Border.InputBindings>
-                                <MouseBinding MouseAction="LeftClick" Command="{Binding GenerateDocumentCommand}"/>
+                                <MouseBinding MouseAction="LeftClick" Command="{Binding OpenSickCommand}"/>
                             </Border.InputBindings>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="3"/>
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
-                                <Border Grid.Column="0" Background="{StaticResource AccentBrush}" Margin="-12,-10,0,-10"/>
-                                <StackPanel Grid.Column="1" Margin="9,0,0,0">
-                                    <TextBlock Text="Згенерувати документ" FontSize="12.5" FontWeight="Bold"
-                                               Foreground="{StaticResource TextPrimaryBrush}"/>
-                                    <TextBlock Text="В догонку, без оформлення періоду" FontSize="11.5"
-                                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0"/>
-                                </StackPanel>
+                                <Border Grid.Column="0" Background="{StaticResource DangerBrush}" Margin="-12,-10,0,-10"/>
+                                <TextBlock Grid.Column="1" Margin="9,0,0,0" Text="Оформити хворобу"
+                                           FontSize="12.5" FontWeight="Bold" Foreground="{StaticResource TextPrimaryBrush}"/>
                             </Grid>
                         </Border>
+
+                        <TextBlock Text="ШАБЛОНИ ПОСТІЙНОГО СКЛАДУ" FontSize="10.5" FontWeight="Bold"
+                                   Foreground="{StaticResource TextSecondaryBrush}" Margin="0,14,0,0"/>
                     </StackPanel>
+
+                    <StackPanel DockPanel.Dock="Bottom" Margin="13">
+                        <TextBlock Text="Документи потраплять в архів → «Постійний склад»" FontSize="11"
+                                   Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"
+                                   HorizontalAlignment="Center" TextAlignment="Center" Margin="0,0,0,8"/>
+                        <Button Content="{Binding DeleteSelectedLabel}" Background="{StaticResource DangerBrush}"
+                                Foreground="White" Padding="9" Command="{Binding DeleteSelectedCommand}"/>
+                        <Button Content="Зняти вибір" Style="{StaticResource TextLinkButtonStyle}"
+                                Foreground="{StaticResource TextSecondaryBrush}" Margin="0,8,0,0"
+                                HorizontalAlignment="Center" Command="{Binding ClearSelectionCommand}"/>
+                    </StackPanel>
+
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel Margin="13">
+                            <TextBlock Text="{Binding NoQuickTemplatesHint}" FontSize="11.5" TextWrapping="Wrap"
+                                       Foreground="{StaticResource TextSecondaryBrush}"
+                                       Visibility="{Binding HasNoQuickTemplates, Converter={StaticResource BoolToVisibility}}"/>
+
+                            <ItemsControl ItemsSource="{Binding QuickTemplates}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Style="{StaticResource QuickActionCardStyle}" Margin="0,0,0,8"
+                                                Cursor="Hand" ToolTip="{Binding Name}">
+                                            <Border.InputBindings>
+                                                <MouseBinding MouseAction="LeftClick" CommandParameter="{Binding}"
+                                                              Command="{Binding DataContext.OpenQuickTemplateCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+                                            </Border.InputBindings>
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="3"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <Border Grid.Column="0" Background="{StaticResource AccentBrush}" Margin="-12,-10,0,-10"/>
+                                                <StackPanel Grid.Column="1" Margin="9,0,0,0">
+                                                    <TextBlock Text="{Binding Name}" FontSize="12.5" FontWeight="Bold"
+                                                               TextWrapping="Wrap" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                    <TextBlock Text="{Binding AudienceCaption}" FontSize="11.5"
+                                                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,3,0,0"/>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </ScrollViewer>
                 </DockPanel>
             </Border>
 

@@ -40,8 +40,23 @@ namespace GenDoc.Services.Generation
         List<(int Id, string Name)> GetAllTemplates(
             Models.Enums.TemplateAudience audience = Models.Enums.TemplateAudience.Intake);
 
-        List<(int Id, string Name)> GetPerRecipientTemplates(
+        /// <summary>
+        /// Групові шаблони - тільки вони складають пакет генерації. Документ на кожного окремо
+        /// видається людині вибірково, а не прогоном пакета.
+        /// </summary>
+        List<(int Id, string Name)> GetGroupTemplates(
             Models.Enums.TemplateAudience audience = Models.Enums.TemplateAudience.Intake);
+
+        /// <summary>
+        /// Персональні шаблони під призначення. <paramref name="staffEvent"/> порожній - лише шаблони
+        /// без прив'язки до події; заданий - лише шаблони цієї події.
+        /// </summary>
+        List<(int Id, string Name, Models.Enums.TemplateAudience Audience)> GetPerRecipientTemplates(
+            Models.Enums.TemplateAudience audience = Models.Enums.TemplateAudience.Intake,
+            Models.Enums.StaffEventKind? staffEvent = null);
+
+        /// <summary>Події постійного складу, для яких є хоч один шаблон - лише вони показуються як дії.</summary>
+        List<Models.Enums.StaffEventKind> GetStaffEventsWithTemplates();
         List<(int Id, string Name)> GetAllExportTemplates();
 
         int CreatePackage(

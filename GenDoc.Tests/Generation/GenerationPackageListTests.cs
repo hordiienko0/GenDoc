@@ -25,7 +25,7 @@ public class GenerationPackageListTests
         var other = new Template
         {
             Name = "Довідка", OriginalFileName = "b.docx", Content = new byte[] { 1 },
-            UploadedAt = DateTime.Now, Kind = GenDoc.Models.Enums.TemplateKind.PerRecipient
+            UploadedAt = DateTime.Now, Kind = GenDoc.Models.Enums.TemplateKind.Group
         };
         ctx.Templates.AddRange(template, other);
         ctx.SaveChanges();
@@ -78,6 +78,22 @@ public class GenerationPackageListTests
         Assert.True(alpha.IsSelected);
         Assert.Equal("2 шабл.", alpha.TemplateCountDisplay);
         Assert.False(vm.Packages.Single(p => p.Id == s.BetaId).IsSelected);
+    }
+
+    [Fact]
+    public async Task CreatePackage_OffersGroupTemplatesOnly()
+    {
+        using var db = new TestDb();
+        var s = Seed(db);
+        var vm = await CreateViewModelAsync(db);
+
+        vm.ShowCreatePackageCommand.Execute(null);
+
+        // Персональний шаблон видається вибраній людині за потреби, а не прогоном пакета.
+        Assert.DoesNotContain(vm.TemplateCheckItems, t =>
+            t.Id == s.TemplateId && t.Kind == GenDoc.ViewModels.Generation.TemplateKind.Docx);
+        Assert.Contains(vm.TemplateCheckItems, t =>
+            t.Id == s.OtherTemplateId && t.Kind == GenDoc.ViewModels.Generation.TemplateKind.Docx);
     }
 
     [Fact]

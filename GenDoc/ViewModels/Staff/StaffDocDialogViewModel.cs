@@ -54,9 +54,19 @@ namespace GenDoc.ViewModels.Staff
             "Шаблонів для постійного складу ще немає. Завантажте шаблон у розділі «Шаблони» " +
             "і вкажіть призначення «Постійний склад» - він з'явиться тут.";
 
+        public static string HintFor(StaffEventKind? kind) => kind switch
+        {
+            null => NoTemplatesHint,
+            _ => $"Шаблонів під подію «{StaffEventNaming.For(kind.Value)}» немає. У розділі «Шаблони» "
+                 + $"вкажіть шаблону призначення «Постійний склад» і подію «{StaffEventNaming.For(kind.Value)}»."
+        };
+
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasNoTemplates))]
         private bool hasTemplates;
+
+        /// <summary>Підказка «шаблонів немає» - своя для кожної події.</summary>
+        [ObservableProperty] private string noTemplatesText = NoTemplatesHint;
 
         public bool HasNoTemplates => !HasTemplates;
 
@@ -70,6 +80,16 @@ namespace GenDoc.ViewModels.Staff
         [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(ConfirmCommand))]
         private DateTime? dateEnd;
+
+        /// <summary>Дати вписуються руками; календаря немає.</summary>
+        public string DateMask => Common.DateText.Mask;
+
+        [ObservableProperty] private string dateStartText = string.Empty;
+        [ObservableProperty] private string dateEndText = string.Empty;
+
+        partial void OnDateStartTextChanged(string value) => DateStart = Common.DateText.Parse(value);
+
+        partial void OnDateEndTextChanged(string value) => DateEnd = Common.DateText.Parse(value);
 
         [ObservableProperty] private string? note;
         [ObservableProperty] private string? errorText;
@@ -85,15 +105,11 @@ namespace GenDoc.ViewModels.Staff
 
         public ObservableCollection<StaffDocResultRowViewModel> Results { get; } = new();
 
-        public static string HeaderFor(StaffEventKind? kind) => kind switch
-        {
-            StaffEventKind.BusinessTrip => "Оформити відрядження",
-            StaffEventKind.Leave => "Оформити відпустку",
-            StaffEventKind.Sick => "Оформити хворобу",
-            _ => "Згенерувати документи"
-        };
+        public static string HeaderFor(StaffEventKind? kind) =>
+            kind is null ? "Згенерувати документи" : StaffEventNaming.ActionFor(kind.Value);
 
-        public void Initialize(StaffEventKind? kind, IReadOnlyList<(int Id, string FullName)> people)
+        public void Initialize(
+            StaffEventKind? kind, IReadOnlyList<(int Id, string FullName)> people, int? preselectTemplateId = null)
         {
             Kind = kind;
             _people = people;
@@ -104,7 +120,7 @@ namespace GenDoc.ViewModels.Staff
             Templates.Clear();
             const Models.Enums.TemplateAudience audience = Models.Enums.TemplateAudience.PermanentStaff;
 
-            foreach (var (id, name) in _generationService.GetPerRecipientTemplates(audience))
+            foreach (var (id, name, _) in _generationService.GetPerRecipientTemplates(audience, kind))
             {
                 var item = new TemplateCheckOptionViewModel(id, name);
                 item.PropertyChanged += async (_, e) =>
@@ -118,14 +134,28 @@ namespace GenDoc.ViewModels.Staff
                 Templates.Add(item);
             }
             HasTemplates = Templates.Count > 0;
+            NoTemplatesText = HintFor(kind);
 
-            DateStart = DateTime.Today;
-            DateEnd = DateTime.Today;
+            DateStartText = Common.DateText.Format(DateTime.Today);
+            DateEndText = Common.DateText.Format(DateTime.Today);
             Note = null;
             ErrorText = null;
             ManualTagForm = null;
             ShowResults = false;
             Results.Clear();
+
+            // Позначаємо після скидання: галка сама підтягне форму ручних тегів,
+            // а скидання вище її б затерло.
+            if (kind is not null)
+            {
+                // Шаблони події вже відібрані - усі вони й потрібні, вибирати нема з чого.
+                foreach (var template in Templates) template.IsChecked = true;
+            }
+            else if (preselectTemplateId is int preselectId)
+            {
+                var chosen = Templates.FirstOrDefault(t => t.Id == preselectId);
+                if (chosen is not null) chosen.IsChecked = true;
+            }
         }
 
         private async Task RefreshManualTagFormAsync()

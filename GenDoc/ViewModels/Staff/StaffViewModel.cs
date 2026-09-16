@@ -20,16 +20,20 @@ namespace GenDoc.ViewModels.Staff
         private readonly IStaffService _staffService;
         private readonly IDialogService _dialogService;
         private readonly IServiceProvider _serviceProvider;
+        private readonly Services.Generation.IGenerationService _generationService;
 
         private List<StaffRowOverview> _all = new();
         private readonly HashSet<int> _checkedIds = new();
         private bool _suppressCheckTracking;
 
-        public StaffViewModel(IStaffService staffService, IDialogService dialogService, IServiceProvider serviceProvider)
+        public StaffViewModel(
+            IStaffService staffService, IDialogService dialogService, IServiceProvider serviceProvider,
+            Services.Generation.IGenerationService generationService)
         {
             _staffService = staffService;
             _dialogService = dialogService;
             _serviceProvider = serviceProvider;
+            _generationService = generationService;
 
             StateOptions = new ObservableCollection<StaffStateFilterOption>(StateFilterOptions);
             selectedState = StateOptions[0];
@@ -76,17 +80,33 @@ namespace GenDoc.ViewModels.Staff
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasSelection))]
-        [NotifyPropertyChangedFor(nameof(IssueTripLabel))]
+        [NotifyPropertyChangedFor(nameof(DeleteSelectedLabel))]
         [NotifyPropertyChangedFor(nameof(SelectionText))]
         [NotifyCanExecuteChangedFor(nameof(OpenTripCommand))]
         [NotifyCanExecuteChangedFor(nameof(OpenLeaveCommand))]
         [NotifyCanExecuteChangedFor(nameof(OpenSickCommand))]
-        [NotifyCanExecuteChangedFor(nameof(GenerateDocumentCommand))]
+        [NotifyCanExecuteChangedFor(nameof(OpenQuickTemplateCommand))]
         [NotifyCanExecuteChangedFor(nameof(DeleteSelectedCommand))]
         private int selectedCount;
 
         public bool HasSelection => SelectedCount > 0;
-        public string IssueTripLabel => $"Оформити відрядження для обраних ({SelectedCount})";
+
+        /// <summary>Шаблони з позначкою «Постійний склад» (і «для всіх») — зміст панелі «Швидке оформлення».</summary>
+        public ObservableCollection<StaffQuickTemplateViewModel> QuickTemplates { get; } = new();
+
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasNoQuickTemplates))]
+        private bool hasQuickTemplates;
+
+        public bool HasNoQuickTemplates => !HasQuickTemplates;
+
+        public string NoQuickTemplatesHint => StaffDocDialogViewModel.NoTemplatesHint;
+
+        /// <summary>Дія видима тільки тоді, коли для її події є хоч один шаблон.</summary>
+        [ObservableProperty] private bool hasTripTemplates;
+        [ObservableProperty] private bool hasLeaveTemplates;
+        [ObservableProperty] private bool hasSickTemplates;
+        public string DeleteSelectedLabel => $"Видалити обраних ({SelectedCount})";
 
         public string SelectionText
         {
@@ -122,12 +142,29 @@ namespace GenDoc.ViewModels.Staff
                 foreach (var u in units) UnitOptions.Add(new StaffUnitFilterOption(u, u));
                 SelectedUnit = UnitOptions.FirstOrDefault(o => o.Unit == keepUnit) ?? UnitOptions[0];
 
+                LoadQuickTemplates();
                 ApplyFilter();
             }
             finally
             {
                 IsBusy = false;
             }
+        }
+
+        private void LoadQuickTemplates()
+        {
+            QuickTemplates.Clear();
+            foreach (var (id, name, audience) in
+                     _generationService.GetPerRecipientTemplates(TemplateAudience.PermanentStaff))
+            {
+                QuickTemplates.Add(new StaffQuickTemplateViewModel(id, name, audience));
+            }
+            HasQuickTemplates = QuickTemplates.Count > 0;
+
+            var events = _generationService.GetStaffEventsWithTemplates();
+            HasTripTemplates = events.Contains(StaffEventKind.BusinessTrip);
+            HasLeaveTemplates = events.Contains(StaffEventKind.Leave);
+            HasSickTemplates = events.Contains(StaffEventKind.Sick);
         }
 
         private void ApplyFilter()
@@ -307,18 +344,6 @@ namespace GenDoc.ViewModels.Staff
 
         Task<bool> Shell.IGuardedSection.TryLeaveAsync() => TryLeaveCardAsync();
 
-        [RelayCommand(CanExecute = nameof(HasSelection))]
-        private async Task OpenTripAsync() => await OpenDocDialogAsync(StaffEventKind.BusinessTrip);
-
-        [RelayCommand(CanExecute = nameof(HasSelection))]
-        private async Task OpenLeaveAsync() => await OpenDocDialogAsync(StaffEventKind.Leave);
-
-        [RelayCommand(CanExecute = nameof(HasSelection))]
-        private async Task OpenSickAsync() => await OpenDocDialogAsync(StaffEventKind.Sick);
-
-        [RelayCommand(CanExecute = nameof(HasSelection))]
-        private async Task GenerateDocumentAsync() => await OpenDocDialogAsync(null);
-
         [RelayCommand]
         private async Task GenerateDocumentForRowAsync(StaffRowViewModel? row)
         {
@@ -326,13 +351,22 @@ namespace GenDoc.ViewModels.Staff
             await OpenDocDialogAsync(null, new List<(int Id, string FullName)> { (row.Id, row.FullName) });
         }
 
-        private async Task OpenDocDialogAsync(StaffEventKind? kind, IReadOnlyList<(int Id, string FullName)>? people = null)
+        [RelayCommand(CanExecute = nameof(HasSelection))]
+        private async Task OpenQuickTemplateAsync(StaffQuickTemplateViewModel? template)
+        {
+            if (template is null) return;
+            await OpenDocDialogAsync(null, preselectTemplateId: template.Id);
+        }
+
+        private async Task OpenDocDialogAsync(
+            StaffEventKind? kind, IReadOnlyList<(int Id, string FullName)>? people = null,
+            int? preselectTemplateId = null)
         {
             var selected = people ?? CheckedPeople();
             if (selected.Count == 0) return;
 
             var vm = _serviceProvider.GetRequiredService<StaffDocDialogViewModel>();
-            vm.Initialize(kind, selected);
+            vm.Initialize(kind, selected, preselectTemplateId);
             _dialogService.ShowDialog(vm, Application.Current.MainWindow);
 
             await RefreshAsync();

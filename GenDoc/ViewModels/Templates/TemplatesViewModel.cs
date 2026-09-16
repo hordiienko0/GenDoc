@@ -19,15 +19,18 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
 {
     private readonly IExportTemplateService _exportTemplateService;
     private readonly ITemplateService _templateService;
+    private readonly ITemplateFolderImportService _folderImportService;
     private readonly IServiceProvider _serviceProvider;
 
     public TemplatesViewModel(
         IExportTemplateService exportTemplateService,
         ITemplateService templateService,
+        ITemplateFolderImportService folderImportService,
         IServiceProvider serviceProvider)
     {
         _exportTemplateService = exportTemplateService;
         _templateService = templateService;
+        _folderImportService = folderImportService;
         _serviceProvider = serviceProvider;
         Refresh();
         RefreshDocxTemplates();
@@ -74,10 +77,14 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
     {
         var items = _templateService.GetTemplateListItems()
             .Select(t => new DocxTemplateListItemViewModel(
-                t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, t.TagCount, t.IsFromBuilder, t.Audience, t.Kind))
+                t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, t.TagCount, t.IsFromBuilder, t.Audience, t.Kind, t.StaffEvent))
             .ToList();
 
-        foreach (var item in items) item.AudienceChanged += OnTemplateAudienceChanged;
+        foreach (var item in items)
+        {
+            item.AudienceChanged += OnTemplateAudienceChanged;
+            item.StaffEventChanged += OnTemplateStaffEventChanged;
+        }
 
         DocxTemplates = new ObservableCollection<DocxTemplateListItemViewModel>(items);
 
@@ -198,6 +205,71 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
 
     [RelayCommand]
     private void UploadDocxTemplate() => UploadAnyTemplate();
+
+    [RelayCommand]
+    private void UploadFolder()
+    {
+        var dialog = new OpenFolderDialog { Title = "Оберіть теку з шаблонами" };
+        if (dialog.ShowDialog() != true) return;
+
+        var result = _folderImportService.ImportFolder(dialog.FolderName);
+
+        RefreshDocxTemplates();
+        Refresh();
+
+        if (!result.Success)
+        {
+            MessageBox.Show(BuildFolderImportSummary(result), "Не вдалося завантажити теку",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        MessageBox.Show(BuildFolderImportSummary(result), "Теку завантажено", MessageBoxButton.OK,
+            result.Failures.Count > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
+    }
+
+    /// <summary>Звіт про завантаження теки: що стало пакетом, що вже було, що не піддалось.</summary>
+    public static string BuildFolderImportSummary(FolderImportResult result)
+    {
+        var lines = new List<string>();
+
+        if (result.ErrorMessage is { Length: > 0 } error) lines.Add(error);
+
+        var created = result.Packages.Where(p => p.TemplateCount > 0 || p.ExportTemplateCount > 0).ToList();
+        if (result.Packages.Count > 0)
+        {
+            lines.Add(created.Count switch
+            {
+                0 => "Пакет генерації не збирався - групових шаблонів у теці немає:",
+                1 => "Зібрано пакет генерації:",
+                _ => $"Зібрано пакетів генерації: {created.Count}"
+            });
+
+            foreach (var package in result.Packages)
+            {
+                var parts = new List<string>();
+                if (package.TemplateCount > 0) parts.Add($"групових шаблонів: {package.TemplateCount}");
+                if (package.ExportTemplateCount > 0) parts.Add($"відомостей: {package.ExportTemplateCount}");
+                if (package.PerRecipientCount > 0)
+                    parts.Add($"персональних поза пакетом: {package.PerRecipientCount}");
+                if (package.ReusedCount > 0) parts.Add($"вже були завантажені: {package.ReusedCount}");
+                lines.Add($"  • {package.Name} - {string.Join(", ", parts)}");
+            }
+
+            lines.Add(string.Empty);
+            lines.Add("Персональні шаблони завантажені, але в пакет не входять - їх видають "
+                      + "вибраній людині за потреби.");
+        }
+
+        if (result.Failures.Count > 0)
+        {
+            lines.Add(string.Empty);
+            lines.Add("Не вдалося завантажити:");
+            foreach (var failure in result.Failures) lines.Add($"  • {failure}");
+        }
+
+        return string.Join(Environment.NewLine, lines);
+    }
 
     private void UploadAnyTemplate()
     {
@@ -345,6 +417,14 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
         _templateService.SaveAudience(item.Id, item.Audience);
         RefreshAudienceGroups();
         ListStatusMessage = $"«{item.Name}»: тепер для «{item.AudienceCaption}» ({DateTime.Now:HH:mm}).";
+    }
+
+    private void OnTemplateStaffEventChanged(DocxTemplateListItemViewModel item)
+    {
+        _templateService.SaveStaffEvent(item.Id, item.StaffEvent);
+        ListStatusMessage = item.StaffEvent is null
+            ? $"«{item.Name}»: більше не прив'язаний до події ({DateTime.Now:HH:mm})."
+            : $"«{item.Name}»: подія «{item.SelectedStaffEvent.Label}» ({DateTime.Now:HH:mm}).";
     }
 
     [RelayCommand]

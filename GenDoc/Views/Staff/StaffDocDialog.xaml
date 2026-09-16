@@ -100,11 +100,13 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
                     <TextBlock Text="Дата початку" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
-                    <DatePicker SelectedDate="{Binding DateStart}"/>
+                    <TextBox Text="{Binding DateStartText, UpdateSourceTrigger=PropertyChanged}"
+                             Tag="{Binding DateMask}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="2">
                     <TextBlock Text="Дата закінчення" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
-                    <DatePicker SelectedDate="{Binding DateEnd}"/>
+                    <TextBox Text="{Binding DateEndText, UpdateSourceTrigger=PropertyChanged}"
+                             Tag="{Binding DateMask}"/>
                 </StackPanel>
             </Grid>
 
@@ -120,7 +122,7 @@
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
                     </ScrollViewer>
-                    <TextBlock Text="{x:Static vm:StaffDocDialogViewModel.NoTemplatesHint}" FontSize="11.5" TextWrapping="Wrap"
+                    <TextBlock Text="{Binding NoTemplatesText}" FontSize="11.5" TextWrapping="Wrap"
                                Margin="10,8" Foreground="{StaticResource TextSecondaryBrush}"
                                Visibility="{Binding HasNoTemplates, Converter={StaticResource BoolToVisibility}}"/>
                 </Grid>
@@ -147,28 +149,8 @@
                                             <TextBlock Text="{Binding Label}" ToolTip="{Binding Tag}" FontSize="11.5"
                                                        TextWrapping="Wrap"
                                                        Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
-                                            <DatePicker SelectedDate="{Binding DateValue}">
-                                                <DatePicker.Style>
-                                                    <Style TargetType="DatePicker">
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding Kind}" Value="Text">
-                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </DatePicker.Style>
-                                            </DatePicker>
-                                            <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}">
-                                                <TextBox.Style>
-                                                    <Style TargetType="TextBox">
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding Kind}" Value="Date">
-                                                                <Setter Property="Visibility" Value="Collapsed"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBox.Style>
-                                            </TextBox>
+                                            <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
+                                                     ToolTip="Дата - дд.мм.рррр; період - дд.мм.рррр-дд.мм.рррр"/>
                                         </StackPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

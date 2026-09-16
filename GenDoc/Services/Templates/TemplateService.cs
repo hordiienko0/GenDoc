@@ -102,10 +102,10 @@ namespace GenDoc.Services.Templates
                 $"Завантажено файл {template.OriginalFileName}, міток: {scan.Tags.Count}, тип: {template.Kind}");
             db.SaveChanges();
 
-            return new UploadResult(true, null);
+            return new UploadResult(true, null, template.Id);
         }
 
-        public List<(int Id, string Name, string? ShortName, string OriginalFileName, DateTime UploadedAt, int TagCount, bool IsFromBuilder, TemplateAudience Audience, TemplateKind Kind)> GetTemplateListItems()
+        public List<(int Id, string Name, string? ShortName, string OriginalFileName, DateTime UploadedAt, int TagCount, bool IsFromBuilder, TemplateAudience Audience, TemplateKind Kind, StaffEventKind? StaffEvent)> GetTemplateListItems()
         {
             using var db = _dbFactory.CreateDbContext();
             return db.Templates
@@ -115,10 +115,10 @@ namespace GenDoc.Services.Templates
                     t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt,
                     TagCount = t.FieldMappings.Count,
                     IsFromBuilder = t.BuilderJson != null,
-                    t.Audience, t.Kind
+                    t.Audience, t.Kind, t.StaffEvent
                 })
                 .AsEnumerable()
-                .Select(t => (t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, t.TagCount, t.IsFromBuilder, t.Audience, t.Kind))
+                .Select(t => (t.Id, t.Name, t.ShortName, t.OriginalFileName, t.UploadedAt, t.TagCount, t.IsFromBuilder, t.Audience, t.Kind, t.StaffEvent))
                 .ToList();
         }
 
@@ -131,6 +131,18 @@ namespace GenDoc.Services.Templates
 
             _auditLogService.LogUpdate(db, "Template", template.Id, old.ToString(), audience.ToString(),
                 $"{template.Name}: змінено призначення шаблону");
+            db.SaveChanges();
+        }
+
+        public void SaveStaffEvent(int templateId, StaffEventKind? staffEvent)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var template = db.Templates.First(t => t.Id == templateId);
+            var old = template.StaffEvent;
+            template.StaffEvent = staffEvent;
+
+            _auditLogService.LogUpdate(db, "Template", template.Id, old?.ToString() ?? "-", staffEvent?.ToString() ?? "-",
+                $"{template.Name}: змінено подію постійного складу");
             db.SaveChanges();
         }
 

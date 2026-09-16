@@ -55,16 +55,16 @@ public class TemplatesListPolishTests : IDisposable
         => new(db.Factory, audit ?? new FakeAuditLog(), new FakeCurrentUser());
 
     private static TemplatesViewModel ViewModel(TestDb db, FakeAuditLog? audit = null)
-        => new(ExportService(db, audit), DocxService(db, audit), null!);
+        => new(ExportService(db, audit), DocxService(db, audit), null!, null!);
 
     private static int SeedDocx(TestDb db, string name, TemplateKind kind = TemplateKind.PerRecipient,
-        TemplateAudience audience = TemplateAudience.Intake)
+        TemplateAudience audience = TemplateAudience.Intake, StaffEventKind? staffEvent = null)
     {
         using var ctx = db.Factory.CreateDbContext();
         var template = new Template
         {
             Name = name, OriginalFileName = $"{name}.docx", Content = new byte[] { 1 },
-            UploadedAt = DateTime.Now, Kind = kind, Audience = audience
+            UploadedAt = DateTime.Now, Kind = kind, Audience = audience, StaffEvent = staffEvent
         };
         template.FieldMappings.Add(new TemplateFieldMapping
         {
@@ -253,8 +253,10 @@ public class TemplatesListPolishTests : IDisposable
     public void StaffDocDialog_OffersOnlyPerRecipientTemplatesForTripsAndLeave()
     {
         using var db = new TestDb();
-        SeedDocx(db, "Рапорт груповий", TemplateKind.Group, TemplateAudience.PermanentStaff);
-        SeedDocx(db, "Рапорт відрядження", TemplateKind.PerRecipient, TemplateAudience.PermanentStaff);
+        SeedDocx(db, "Рапорт груповий", TemplateKind.Group, TemplateAudience.PermanentStaff,
+            StaffEventKind.BusinessTrip);
+        SeedDocx(db, "Рапорт відрядження", TemplateKind.PerRecipient, TemplateAudience.PermanentStaff,
+            StaffEventKind.BusinessTrip);
         var vm = new StaffDocDialogViewModel(
             TestServices.Generation(db), TestServices.Archive(db), new NoManualTags(), TestServices.Staff(db));
 
