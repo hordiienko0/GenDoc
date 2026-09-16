@@ -696,8 +696,15 @@ namespace GenDoc.Services.Completeness
                     (e.TemplateId, e.RequirementRegular, e.RequirementLimited)));
 
                 var keptLinkIds = rows.Where(r => r.LinkId is not null).Select(r => r.LinkId!.Value).ToHashSet();
-                foreach (var link in existing.Where(l => !keptLinkIds.Contains(l.Id)))
+                var removed = existing.Where(l => !keptLinkIds.Contains(l.Id)).ToList();
+                foreach (var link in removed)
                     db.GenerationPackageTemplates.Remove(link);
+
+                if (removed.Count > 0 || rows.Any(r => r.LinkId is null))
+                {
+                    var package = await db.GenerationPackages.FirstOrDefaultAsync(p => p.Id == packageId);
+                    if (package is not null) PackageFolderOrigin.Detach(package);
+                }
 
                 foreach (var row in rows)
                 {

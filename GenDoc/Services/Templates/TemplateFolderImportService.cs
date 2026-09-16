@@ -103,7 +103,7 @@ namespace GenDoc.Services.Templates
                 var name = UniquePackageName(group.Name);
                 _generationService.CreatePackage(
                     name,
-                    $"Зібрано з теки «{group.FolderPath}»",
+                    PackageFolderOrigin.Describe(group.FolderPath),
                     groupIds,
                     exportTemplateIds.Select(id => (id, FitnessFilter.All)).ToList());
 

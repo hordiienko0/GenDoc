@@ -63,6 +63,12 @@ namespace GenDoc.Services.Generation
             string name, string? description, List<int> templateIds,
             List<(int ExportTemplateId, FitnessFilter Filter)> exportTemplates);
 
+        /// <summary>
+        /// Перейменовує пакет і відв'язує його від теки, з якої його зібрано. Повертає текст помилки
+        /// (порожня назва, назва іншого пакета) або null, якщо все гаразд.
+        /// </summary>
+        string? RenamePackage(int packageId, string newName);
+
         void DeletePackage(int packageId);
         List<(int TemplateId, string TemplateName, TemplateKind Kind)> GetPackageTemplates(int packageId);
 

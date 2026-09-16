@@ -154,6 +154,31 @@ namespace GenDoc.Services.Generation
             return package.Id;
         }
 
+        public string? RenamePackage(int packageId, string newName)
+        {
+            var name = newName?.Trim() ?? string.Empty;
+            if (name.Length == 0) return "Вкажіть назву пакета.";
+
+            using var db = _dbFactory.CreateDbContext();
+            var package = db.GenerationPackages.First(p => p.Id == packageId);
+            if (string.Equals(package.Name, name, StringComparison.Ordinal)) return null;
+
+            var clash = db.GenerationPackages
+                .Where(p => p.Id != packageId)
+                .Select(p => p.Name)
+                .AsEnumerable()
+                .FirstOrDefault(n => string.Equals(n.Trim(), name, StringComparison.OrdinalIgnoreCase));
+            if (clash is not null) return $"Пакет «{clash}» уже є - оберіть іншу назву.";
+
+            var oldName = package.Name;
+            package.Name = name;
+            PackageFolderOrigin.Detach(package);
+
+            _auditLogService.LogUpdate(db, "GenerationPackage", package.Id, oldName, name, "Перейменовано пакет");
+            db.SaveChanges();
+            return null;
+        }
+
         public void DeletePackage(int packageId)
         {
             using var db = _dbFactory.CreateDbContext();
@@ -238,8 +263,12 @@ namespace GenDoc.Services.Generation
                 }
             }
 
-            foreach (var stale in existing.Where(e => !keptIds.Contains(e.Id)))
-                db.GenerationPackageExportTemplates.Remove(stale);
+            var stale = existing.Where(e => !keptIds.Contains(e.Id)).ToList();
+            foreach (var link in stale)
+                db.GenerationPackageExportTemplates.Remove(link);
+
+            if (stale.Count > 0 || rows.Any(r => r.LinkId is null))
+                PackageFolderOrigin.Detach(db.GenerationPackages.First(p => p.Id == packageId));
 
             db.SaveChanges();
 

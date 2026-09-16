@@ -78,16 +78,51 @@
                                             <ColumnDefinition Width="Auto"/>
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0">
-                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
-                                                       Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextWrapping="Wrap"
+                                                       Foreground="{StaticResource TextPrimaryBrush}"
+                                                       Visibility="{Binding IsRenaming, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}"/>
+
+                                            <StackPanel Visibility="{Binding IsRenaming, Converter={StaticResource BoolToVisibility}}">
+                                                <TextBox Text="{Binding EditName, UpdateSourceTrigger=PropertyChanged}" Tag="Назва пакета"
+                                                         IsVisibleChanged="RenameBox_IsVisibleChanged">
+                                                    <TextBox.InputBindings>
+                                                        <KeyBinding Key="Enter"
+                                                                    Command="{Binding DataContext.ConfirmRenamePackageCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                    CommandParameter="{Binding}"/>
+                                                        <KeyBinding Key="Escape"
+                                                                    Command="{Binding DataContext.CancelRenamePackageCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                    CommandParameter="{Binding}"/>
+                                                    </TextBox.InputBindings>
+                                                </TextBox>
+                                                <TextBlock Text="Після перейменування пакет відв'яжеться від теки, з якої його зібрано"
+                                                           Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5"
+                                                           TextWrapping="Wrap" Margin="0,4,0,0"
+                                                           Visibility="{Binding IsFromFolder, Converter={StaticResource BoolToVisibility}}"/>
+                                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                                    <Button Content="Зберегти"
+                                                            Command="{Binding DataContext.ConfirmRenamePackageCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"/>
+                                                    <Button Content="Скасувати" Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0"
+                                                            Command="{Binding DataContext.CancelRenamePackageCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                            CommandParameter="{Binding}"/>
+                                                </StackPanel>
+                                            </StackPanel>
+
                                             <TextBlock Text="{Binding Description}" Foreground="{StaticResource TextSecondaryBrush}"
-                                                       FontSize="12.5" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                                                       FontSize="12.5" Margin="0,4,0,0" TextWrapping="Wrap"
+                                                       Visibility="{Binding HasDescription, Converter={StaticResource BoolToVisibility}}"/>
                                             <TextBlock Text="{Binding TemplateCountDisplay}" Foreground="{StaticResource TextSecondaryBrush}"
                                                        FontSize="12" Margin="0,6,0,0"/>
                                         </StackPanel>
-                                        <Button Grid.Column="1" Content="&#xE74D;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Видалити"
-                                                Command="{Binding DataContext.DeletePackageCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                CommandParameter="{Binding}"/>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="6,0,0,0"
+                                                    Visibility="{Binding IsRenaming, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
+                                            <Button Content="&#xE70F;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Перейменувати"
+                                                    Command="{Binding DataContext.StartRenamePackageCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}"/>
+                                            <Button Content="&#xE74D;" Style="{StaticResource RowIconButtonStyle}" ToolTip="Видалити" Margin="2,0,0,0"
+                                                    Command="{Binding DataContext.DeletePackageCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}"/>
+                                        </StackPanel>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

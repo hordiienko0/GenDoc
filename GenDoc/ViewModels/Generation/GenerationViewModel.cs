@@ -650,6 +650,38 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     }
 
     [RelayCommand(CanExecute = nameof(NotBusy))]
+    private void StartRenamePackage(GenerationPackageListItemViewModel? item)
+    {
+        if (item is null || IsBusy) return;
+
+        foreach (var p in Packages) p.IsRenaming = false;
+        item.EditName = item.Name;
+        item.IsRenaming = true;
+    }
+
+    [RelayCommand]
+    private void ConfirmRenamePackage(GenerationPackageListItemViewModel? item)
+    {
+        if (item is null || !item.IsRenaming) return;
+
+        var error = _generationService.RenamePackage(item.Id, item.EditName);
+        if (error is not null)
+        {
+            MessageBox.Show(error, "Перейменування пакета", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        item.IsRenaming = false;
+        RefreshPackages();
+    }
+
+    [RelayCommand]
+    private void CancelRenamePackage(GenerationPackageListItemViewModel? item)
+    {
+        if (item is not null) item.IsRenaming = false;
+    }
+
+    [RelayCommand(CanExecute = nameof(NotBusy))]
     private void DeletePackage(GenerationPackageListItemViewModel? item)
     {
         if (item is null || IsBusy) return;
