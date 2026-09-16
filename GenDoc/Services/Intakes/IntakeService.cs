@@ -11,7 +11,6 @@ namespace GenDoc.Services.Intakes
         public const string All = "Всі";
         public const string Fit = "Придатні";
         public const string LimitedFit = "Обмежено придатні";
-        public const string Unfit = "Непридатні";
 
         public const string NoCategory = "Без категорії";
     }

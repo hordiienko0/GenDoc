@@ -631,6 +631,32 @@ public class DatabaseSchemaInitializerTests
         Assert.False(DatabaseSchemaInitializer.ColumnIsNotNull((DbConnection)connection, "GenerationPackageRuns", "GenerationPackageId"));
     }
 
+    [Fact]
+    public void RemoveEmptyUnfitFolders_DropsOnlyEmptyIntakeFoldersUnderAll()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+
+        Exec(connection, """
+            CREATE TABLE "OrgNodes" ("Id" INTEGER PRIMARY KEY, "Name" TEXT NOT NULL, "ParentId" INTEGER NULL, "IntakeId" INTEGER NULL);
+            CREATE TABLE "Recipients" ("Id" INTEGER PRIMARY KEY, "OrgNodeId" INTEGER NULL);
+            INSERT INTO "OrgNodes" VALUES (1, 'Набір №1', NULL, 1), (2, 'Всі', 1, 1), (3, 'Непридатні', 2, 1), (4, 'Придатні', 2, 1);
+            INSERT INTO "OrgNodes" VALUES (11, 'Набір №2', NULL, 2), (12, 'Всі', 11, 2), (13, 'Непридатні', 12, 2);
+            INSERT INTO "OrgNodes" VALUES (21, 'Набір №3', NULL, 3), (22, 'Всі', 21, 3), (23, 'Непридатні', 22, 3), (24, 'Взвод', 23, 3);
+            INSERT INTO "OrgNodes" VALUES (31, 'Непридатні', NULL, NULL);
+            INSERT INTO "Recipients" VALUES (100, 13);
+            """);
+
+        DatabaseSchemaInitializer.RemoveEmptyUnfitFolders((DbConnection)connection);
+        DatabaseSchemaInitializer.RemoveEmptyUnfitFolders((DbConnection)connection);
+
+        Assert.Equal(0L, Scalar(connection, """SELECT COUNT(*) FROM "OrgNodes" WHERE "Id" = 3"""));
+        Assert.Equal(1L, Scalar(connection, """SELECT COUNT(*) FROM "OrgNodes" WHERE "Id" = 13"""));
+        Assert.Equal(1L, Scalar(connection, """SELECT COUNT(*) FROM "OrgNodes" WHERE "Id" = 23"""));
+        Assert.Equal(1L, Scalar(connection, """SELECT COUNT(*) FROM "OrgNodes" WHERE "Id" = 31"""));
+        Assert.Equal(11L, Scalar(connection, """SELECT COUNT(*) FROM "OrgNodes";"""));
+    }
+
     private static void Exec(SqliteConnection connection, string sql)
     {
         using var cmd = connection.CreateCommand();

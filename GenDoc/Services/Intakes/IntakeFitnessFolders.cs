@@ -16,9 +16,6 @@ namespace GenDoc.Services.Intakes
                 return IntakeFolderNames.Fit;
             if (UkrainianCollation.IgnoreCase.Equals(value, FitnessCategoryHelper.Limited))
                 return IntakeFolderNames.LimitedFit;
-            if (UkrainianCollation.IgnoreCase.Equals(value, FitnessCategoryHelper.Unfit))
-                return IntakeFolderNames.Unfit;
-
             return IntakeFolderNames.NoCategory;
         }
 
@@ -26,7 +23,6 @@ namespace GenDoc.Services.Intakes
         {
             IntakeFolderNames.Fit,
             IntakeFolderNames.LimitedFit,
-            IntakeFolderNames.Unfit,
             IntakeFolderNames.NoCategory
         };
 

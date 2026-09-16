@@ -6,7 +6,6 @@ namespace GenDoc.Services
     {
         public const string Regular = "придатний";
         public const string Limited = "обмежено придатний";
-        public const string Unfit = "непридатний";
 
         public static bool IsRegular(string? fitnessCategory)
             => string.IsNullOrWhiteSpace(fitnessCategory)

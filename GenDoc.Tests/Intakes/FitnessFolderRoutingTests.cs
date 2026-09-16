@@ -9,7 +9,7 @@ public class FitnessFolderRoutingTests
     [Theory]
     [InlineData("придатний", IntakeFolderNames.Fit)]
     [InlineData("обмежено придатний", IntakeFolderNames.LimitedFit)]
-    [InlineData("непридатний", IntakeFolderNames.Unfit)]
+    [InlineData("непридатний", IntakeFolderNames.NoCategory)]
     [InlineData(null, IntakeFolderNames.NoCategory)]
     [InlineData("", IntakeFolderNames.NoCategory)]
     [InlineData("   ", IntakeFolderNames.NoCategory)]
@@ -21,6 +21,24 @@ public class FitnessFolderRoutingTests
     [InlineData("ОБМЕЖЕНО ПРИДАТНИЙ", IntakeFolderNames.LimitedFit)]
     public void CategoryMatchingIgnoresCase(string category, string expected)
         => Assert.Equal(expected, IntakeFitnessFolders.FolderNameFor(category));
+
+    [Fact]
+    public void ThereIsNoUnfitFolder()
+        => Assert.DoesNotContain(IntakeFitnessFolders.AllFolderNames,
+            n => n.Contains("непридат", StringComparison.OrdinalIgnoreCase));
+
+    [Fact]
+    public void AnUnfitPersonDoesNotCreateAnUnfitFolder()
+    {
+        using var db = new TestDb();
+        var (intakeId, _) = SeedIntakeWithAllFolderOnly(db);
+
+        using var ctx = db.Factory.CreateDbContext();
+        var folderId = IntakeFitnessFolders.Resolve(ctx, intakeId, "непридатний");
+
+        Assert.Equal(IntakeFolderNames.NoCategory, ctx.OrgNodes.Single(n => n.Id == folderId).Name);
+        Assert.DoesNotContain(ctx.OrgNodes.ToList(), n => n.Name == "Непридатні");
+    }
 
     [Fact]
     public void AnUnknownCategoryBehavesLikeAnEmptyOne()
@@ -66,11 +84,11 @@ public class FitnessFolderRoutingTests
         var (intakeId, allNodeId) = SeedIntakeWithAllFolderOnly(db);
 
         using var ctx = db.Factory.CreateDbContext();
-        var folderId = IntakeFitnessFolders.Resolve(ctx, intakeId, "непридатний");
+        var folderId = IntakeFitnessFolders.Resolve(ctx, intakeId, "обмежено придатний");
 
         Assert.NotNull(folderId);
         var created = ctx.OrgNodes.Single(n => n.Id == folderId);
-        Assert.Equal(IntakeFolderNames.Unfit, created.Name);
+        Assert.Equal(IntakeFolderNames.LimitedFit, created.Name);
         Assert.Equal(allNodeId, created.ParentId);
         Assert.Equal(intakeId, created.IntakeId);
     }
@@ -97,11 +115,11 @@ public class FitnessFolderRoutingTests
         var (intakeId, _) = SeedIntakeWithAllFolderOnly(db);
 
         using var ctx = db.Factory.CreateDbContext();
-        var first = IntakeFitnessFolders.Resolve(ctx, intakeId, "непридатний");
-        var second = IntakeFitnessFolders.Resolve(ctx, intakeId, "непридатний");
+        var first = IntakeFitnessFolders.Resolve(ctx, intakeId, "обмежено придатний");
+        var second = IntakeFitnessFolders.Resolve(ctx, intakeId, "обмежено придатний");
 
         Assert.Equal(first, second);
-        Assert.Single(ctx.OrgNodes.Where(n => n.Name == IntakeFolderNames.Unfit).ToList());
+        Assert.Single(ctx.OrgNodes.Where(n => n.Name == IntakeFolderNames.LimitedFit).ToList());
     }
 
     [Fact]

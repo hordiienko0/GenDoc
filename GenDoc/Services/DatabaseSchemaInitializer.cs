@@ -6,7 +6,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 26;
+    private const int CurrentSchemaVersion = 28;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -554,6 +554,19 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                     Description = "Шаблон під подію постійного складу: Template.StaffEvent (відрядження/відпустка/хвороба)"
                 });
                 currentVersion = 27;
+            }
+
+            if (currentVersion < 28)
+            {
+                RemoveEmptyUnfitFolders(db);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 28,
+                    AppliedAt = DateTime.Now,
+                    Description = "Прибрано порожні папки «Непридатні» в наборах: непридатних у наборі не буває"
+                });
+                currentVersion = 28;
             }
         }
 
@@ -1126,6 +1139,42 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         {
             if (wasClosed) connection.Close();
         }
+    }
+
+    private static void RemoveEmptyUnfitFolders(AppDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        var wasClosed = connection.State != System.Data.ConnectionState.Open;
+        if (wasClosed) connection.Open();
+
+        try
+        {
+            RemoveEmptyUnfitFolders(connection);
+        }
+        finally
+        {
+            if (wasClosed) connection.Close();
+        }
+    }
+
+    /// <summary>
+    /// Набори створювали папку «Непридатні» під «Всі», але непридатних у наборі не буває. Видаляються лише
+    /// ПОРОЖНІ такі папки (без осіб і вкладених папок) - якщо хтось уже лежить усередині, папку не чіпаємо.
+    /// </summary>
+    internal static void RemoveEmptyUnfitFolders(System.Data.Common.DbConnection connection)
+    {
+        if (!TableExists(connection, "OrgNodes") || !TableExists(connection, "Recipients")) return;
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = """
+            DELETE FROM "OrgNodes"
+            WHERE "Name" = 'Непридатні'
+              AND "IntakeId" IS NOT NULL
+              AND "ParentId" IN (SELECT "Id" FROM "OrgNodes" WHERE "Name" = 'Всі')
+              AND "Id" NOT IN (SELECT "OrgNodeId" FROM "Recipients" WHERE "OrgNodeId" IS NOT NULL)
+              AND "Id" NOT IN (SELECT "ParentId" FROM "OrgNodes" WHERE "ParentId" IS NOT NULL);
+            """;
+        cmd.ExecuteNonQuery();
     }
 
     private static void MigrateGeneratedGroupDocumentsForDocxSupport(AppDbContext db)

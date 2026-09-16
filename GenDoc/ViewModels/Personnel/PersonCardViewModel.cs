@@ -17,7 +17,7 @@ namespace GenDoc.ViewModels.Personnel
     public partial class PersonCardViewModel : ObservableObject
     {
         public static readonly string[] FitnessOptions =
-            { FitnessCategoryHelper.Regular, FitnessCategoryHelper.Limited, FitnessCategoryHelper.Unfit };
+            { FitnessCategoryHelper.Regular, FitnessCategoryHelper.Limited };
 
         public const string NoFitnessOption = "— без категорії —";
 

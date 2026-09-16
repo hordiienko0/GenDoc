@@ -96,6 +96,15 @@ public class PersonnelIntakesPolishTests
     }
 
     [Fact]
+    public void Fitness_UnfitIsNotOffered()
+    {
+        var card = Card(new PersonEditModel { Id = 8, FitnessCategory = "придатний" });
+
+        Assert.DoesNotContain("непридатний", card.FitnessList);
+        Assert.Equal(new[] { PersonCardViewModel.NoFitnessOption, "придатний", "обмежено придатний" }, card.FitnessList);
+    }
+
+    [Fact]
     public void NewCard_DocumentsTabAsksToSaveFirst_AndCancelCloses()
     {
         var card = Card(new PersonEditModel());

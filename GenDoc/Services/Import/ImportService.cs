@@ -651,7 +651,9 @@ public class ImportService : IImportService
         var normalized = raw.Trim().ToLower(CultureInfo.GetCultureInfo("uk-UA"));
 
         if (normalized.Contains("обмежено")) return "обмежено придатний";
-        if (normalized.Contains("неприда")) return "непридатний";
+        // «непридатний» містить «придатн» - перевірка потрібна, щоб не записати таку особу придатною;
+        // непридатних у наборі не буває, тож категорію не ставимо (особа потрапить у «Без категорії»).
+        if (normalized.Contains("неприда")) return null;
         if (normalized.Contains("придатн")) return "придатний";
         return null;
     }

@@ -194,7 +194,7 @@ public class IntakeCreationDefaultsTests
     }
 
     [Fact]
-    public async Task AnUnfitPersonGetsTheirOwnFolder()
+    public async Task AnUnfitPersonGoesToNoCategoryBecauseThereIsNoUnfitFolder()
     {
         using var db = new TestDb();
         var (intake, _) = await CreateIntakeAsync(db);
@@ -205,7 +205,9 @@ public class IntakeCreationDefaultsTests
         model!.FitnessCategory = "непридатний";
         await personnel.SaveAsync(model);
 
-        Assert.Equal(IntakeFolderNames.Unfit, FolderOf(db, id));
+        Assert.Equal(IntakeFolderNames.NoCategory, FolderOf(db, id));
+        using var ctx = db.Factory.CreateDbContext();
+        Assert.DoesNotContain(ctx.OrgNodes.ToList(), n => n.Name == "Непридатні");
     }
 
     [Fact]
