@@ -344,6 +344,15 @@ namespace GenDoc.ViewModels.Staff
 
         Task<bool> Shell.IGuardedSection.TryLeaveAsync() => TryLeaveCardAsync();
 
+        [RelayCommand(CanExecute = nameof(HasSelection))]
+        private async Task OpenTripAsync() => await OpenDocDialogAsync(StaffEventKind.BusinessTrip);
+
+        [RelayCommand(CanExecute = nameof(HasSelection))]
+        private async Task OpenLeaveAsync() => await OpenDocDialogAsync(StaffEventKind.Leave);
+
+        [RelayCommand(CanExecute = nameof(HasSelection))]
+        private async Task OpenSickAsync() => await OpenDocDialogAsync(StaffEventKind.Sick);
+
         [RelayCommand]
         private async Task GenerateDocumentForRowAsync(StaffRowViewModel? row)
         {
