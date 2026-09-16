@@ -681,7 +681,8 @@
         <Setter Property="FontSize" Value="12.5"/>
     </Style>
 
-    <!-- Межа колонки, яку тягнуть мишею: тонка риска видна лише на наведенні, курсор - двостороння стрілка. -->
+    <!-- Межа колонки, яку тягнуть мишею: тонка риска-роздільник видна завжди (щоб було зрозуміло, де межа),
+         на наведенні й під час перетягування - акцентна й товстіша; курсор - двостороння стрілка. -->
     <Style x:Key="ColumnHeaderGripperStyle" TargetType="Thumb">
         <Setter Property="Width" Value="8"/>
         <Setter Property="Background" Value="Transparent"/>
@@ -690,16 +691,16 @@
             <Setter.Value>
                 <ControlTemplate TargetType="Thumb">
                     <Border Background="Transparent">
-                        <Rectangle x:Name="Line" Width="1" Margin="0,6" HorizontalAlignment="Center"
-                                   Fill="{StaticResource BorderLineBrush}" Opacity="0"/>
+                        <Rectangle x:Name="Line" Width="1" Margin="0,8" HorizontalAlignment="Center"
+                                   Fill="{StaticResource BorderLineBrush}"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Line" Property="Opacity" Value="1"/>
+                            <Setter TargetName="Line" Property="Width" Value="2"/>
                             <Setter TargetName="Line" Property="Fill" Value="{StaticResource AccentBrush}"/>
                         </Trigger>
                         <Trigger Property="IsDragging" Value="True">
-                            <Setter TargetName="Line" Property="Opacity" Value="1"/>
+                            <Setter TargetName="Line" Property="Width" Value="2"/>
                             <Setter TargetName="Line" Property="Fill" Value="{StaticResource AccentBrush}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
@@ -730,7 +731,8 @@
                                               TextBlock.FontWeight="{TemplateBinding FontWeight}"
                                               TextBlock.Foreground="{TemplateBinding Foreground}"/>
                         </Border>
-                        <Thumb x:Name="PART_LeftHeaderGripper" HorizontalAlignment="Left"
+                        <!-- Ліва ручка лише ловить мишу: рису малює права ручка сусідньої колонки, інакше на межі дві риски. -->
+                        <Thumb x:Name="PART_LeftHeaderGripper" HorizontalAlignment="Left" Opacity="0"
                                Style="{StaticResource ColumnHeaderGripperStyle}"/>
                         <Thumb x:Name="PART_RightHeaderGripper" HorizontalAlignment="Right"
                                Style="{StaticResource ColumnHeaderGripperStyle}"/>

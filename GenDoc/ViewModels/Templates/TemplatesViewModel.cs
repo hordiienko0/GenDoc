@@ -312,6 +312,7 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedTemplate))]
+    [NotifyPropertyChangedFor(nameof(MappingPanelColumnWidth))]
     private object? selectedTemplate;
 
     [ObservableProperty]
@@ -328,19 +329,45 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
 
     public bool HasSelectedExportTemplate => SelectedExportTemplate is not null;
 
+    // Панель мапінгу має явну ширину, а не Auto: Auto-колонку Grid міряє нескінченною шириною, і довгий
+    // тег розтягував би панель за край вікна. Ширину змінює ручка на лівому краю панелі.
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(MappingPanelColumnWidth))]
-    private double mappingPanelWidth = 430;
+    private double mappingPanelWidth = 460;
 
-    [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(MappingPanelColumnWidth))]
-    private bool isMappingPanelAutoSized = true;
-
-    public GridLength MappingPanelColumnWidth
-        => IsMappingPanelAutoSized ? GridLength.Auto : new GridLength(MappingPanelWidth);
+    /// <summary>Поки жоден шаблон не вибрано, панель згорнута й колонка під неї не забирає місця.</summary>
+    public GridLength MappingPanelColumnWidth => HasSelectedTemplate ? new(MappingPanelWidth) : new(0);
 
     public const double MappingPanelMinWidth = 320;
     public const double MappingPanelMaxWidth = 900;
+
+    public const double ListColumnMinStar = 0.3;
+
+    /// <summary>
+    /// Частки ширини колонок «Назва» і «Файл» у списках шаблонів - спільні для заголовка й усіх рядків
+    /// трьох розділів. Колонки пропорційні (зірки), а решта - фіксованої ширини, тож межа між назвою
+    /// й файлом лише перерозподіляє місце між ними і не витісняє дату, мітки й кнопки за край.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(NameColumnLength))]
+    private double nameColumnStar = 1.8;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(FileColumnLength))]
+    private double fileColumnStar = 1.2;
+
+    public GridLength NameColumnLength => new(NameColumnStar, GridUnitType.Star);
+
+    public GridLength FileColumnLength => new(FileColumnStar, GridUnitType.Star);
+
+    /// <param name="deltaStars">Зсув межі в частках-зірках: додатний розширює назву за рахунок файлу.</param>
+    public void ResizeNameColumn(double deltaStars)
+    {
+        var total = NameColumnStar + FileColumnStar;
+        var name = Math.Clamp(NameColumnStar + deltaStars, ListColumnMinStar, total - ListColumnMinStar);
+        NameColumnStar = name;
+        FileColumnStar = total - name;
+    }
 
     [RelayCommand]
     private void SelectTemplate(object? item)

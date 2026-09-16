@@ -2,7 +2,6 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using System.Windows.Media;
 using GenDoc.ViewModels.Templates;
 
 namespace GenDoc.Views.Templates;
@@ -18,17 +17,25 @@ public partial class TemplatesView : UserControl
     {
         if (DataContext is not TemplatesViewModel vm) return;
 
-        if (vm.IsMappingPanelAutoSized)
-        {
-            if (sender is Thumb { } thumb && VisualTreeHelper.GetParent(thumb) is FrameworkElement panel)
-                vm.MappingPanelWidth = panel.ActualWidth;
-
-            vm.IsMappingPanelAutoSized = false;
-        }
-
         vm.MappingPanelWidth = Math.Clamp(
             vm.MappingPanelWidth - e.HorizontalChange,
             TemplatesViewModel.MappingPanelMinWidth,
             TemplatesViewModel.MappingPanelMaxWidth);
+    }
+
+    /// <summary>
+    /// Межа між «Назвою» і «Файлом»: зсув у пікселях переводиться в частки-зірки за поточною сумарною
+    /// шириною двох колонок у заголовку, де стоїть ручка.
+    /// </summary>
+    private void NameColumnThumb_DragDelta(object sender, DragDeltaEventArgs e)
+    {
+        if (DataContext is not TemplatesViewModel vm || sender is not FrameworkElement { Parent: Grid header }) return;
+        if (header.ColumnDefinitions.Count < 2) return;
+
+        var pixels = header.ColumnDefinitions[0].ActualWidth + header.ColumnDefinitions[1].ActualWidth;
+        var stars = vm.NameColumnLength.Value + vm.FileColumnLength.Value;
+        if (pixels <= 0) return;
+
+        vm.ResizeNameColumn(e.HorizontalChange * stars / pixels);
     }
 }
