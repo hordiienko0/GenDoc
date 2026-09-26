@@ -33,7 +33,8 @@ namespace GenDoc.Services.Documents
         string FileName,
         long SizeBytes,
         bool RecipientAlive = true,
-        bool IsStale = false);
+        bool IsStale = false,
+        string? IntakeDisplayNumber = null);
 
     public record ArchiveStats(int Count, long TotalBytes);
 

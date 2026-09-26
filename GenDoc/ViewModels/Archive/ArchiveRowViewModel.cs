@@ -46,7 +46,15 @@ namespace GenDoc.ViewModels.Archive
             ? "Дані людини змінилися після генерації - перегенеруйте документ"
             : null;
         public int Version => Dto.Version;
-        public string IntakeText => Dto.IntakeNumber is int n ? $"№{n}" : "-";
+        // Показуємо ту саму назву набору, що всюди («Набір №30»), а не внутрішній порядковий номер (7);
+        // слово «Набір» знято, бо колонка вузька.
+        public string IntakeText => Dto.IntakeNumber is int n ? ShortIntakeLabel(n, Dto.IntakeDisplayNumber) : "-";
+
+        internal static string ShortIntakeLabel(int number, string? displayNumber)
+        {
+            var label = Services.Intakes.IntakeLabel.Of(number, displayNumber);
+            return label.StartsWith("Набір ", StringComparison.CurrentCultureIgnoreCase) ? label[6..].Trim() : label;
+        }
         public int IntakeSortKey => Dto.IntakeNumber ?? 0;
         public DateTime CreatedAt => Dto.CreatedAt;
         public int AttachmentCount => Dto.AttachmentCount;

@@ -154,7 +154,11 @@ namespace GenDoc.Services.Documents
                 g.SizeBytes,
                 db.Recipients.IgnoreQueryFilters()
                     .Any(r => r.Id == g.RecipientId && r.DeletedAt == null),
-                false));
+                false,
+                g.IntakeId != null
+                    ? db.Intakes.IgnoreQueryFilters()
+                        .Where(i => i.Id == g.IntakeId).Select(i => i.DisplayNumber).FirstOrDefault()
+                    : null));
 
         private async Task<List<ArchiveRowDto>> MarkStaleAsync(AppDbContext db, List<ArchiveRowDto> rows)
         {
