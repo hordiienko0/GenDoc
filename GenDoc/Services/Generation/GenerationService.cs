@@ -127,9 +127,20 @@ namespace GenDoc.Services.Generation
                 Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim()
             };
 
+            var templateNames = db.Templates.Where(t => templateIds.Contains(t.Id))
+                .Select(t => new { t.Id, t.Name }).ToDictionary(t => t.Id, t => t.Name);
+
             for (var i = 0; i < templateIds.Count; i++)
             {
-                package.Templates.Add(new GenerationPackageTemplate { TemplateId = templateIds[i], SortOrder = i });
+                // «… (придатні)» / «… (обмежено придатні)»: іншій категорії шаблон не потрібен. Змінюється у «Вимогах».
+                var filter = FitnessCategoryHelper.FilterFromTemplateName(templateNames.GetValueOrDefault(templateIds[i]));
+                package.Templates.Add(new GenerationPackageTemplate
+                {
+                    TemplateId = templateIds[i],
+                    SortOrder = i,
+                    RequirementRegular = filter == FitnessFilter.LimitedOnly ? TemplateRequirement.NotApplicable : TemplateRequirement.Required,
+                    RequirementLimited = filter == FitnessFilter.RegularOnly ? TemplateRequirement.NotApplicable : TemplateRequirement.Required
+                });
             }
 
             for (var i = 0; i < exportTemplates.Count; i++)
@@ -497,7 +508,8 @@ namespace GenDoc.Services.Generation
             {
                 docx = RunDocxPhase(db, templates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress, courseOfficerId);
                 xlsx = RunXlsxPhase(db, exportLinks, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress, courseOfficerId);
-                docxGroup = RunDocxGroupPhase(db, groupDocxTemplates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress);
+                docxGroup = RunDocxGroupPhase(db, groupDocxTemplates, recipients, orgSettings, run, manualValues, outputFolder, usedFileNames, runStamp, regenerateExisting, progress,
+                    LoadGroupRequirements(db, packageId));
             }
             catch
             {
@@ -963,6 +975,10 @@ namespace GenDoc.Services.Generation
 
             foreach (var mapping in mappings.Where(DocumentHashService.IsManualDriven))
             {
+                // Аркуш на кожен день бере {{дата_аркуша}} з дня аркуша, а не з «Дати документа», тож
+                // зміна лише дати документа вміст не змінює і нової версії не потребує.
+                if (repeatSheetPerDate && mapping.PlaceholderTag == XlsxGenerationService.DateSheetTag) continue;
+
                 entries[mapping.PlaceholderTag] = mapping.FieldKey == nameof(ExportFieldKey.CourseOfficerSignature)
                     ? courseOfficerSignature ?? string.Empty
                     : manualValues.GetValueOrDefault(mapping.PlaceholderTag, string.Empty);
@@ -993,6 +1009,15 @@ namespace GenDoc.Services.Generation
 
         private sealed record DocxGroupPhaseResult(int Generated, int Skipped, int Errors, List<RunIssue> Issues, string? FirstGeneratedPath);
 
+        private static Dictionary<int, (TemplateRequirement Regular, TemplateRequirement Limited)> LoadGroupRequirements(
+            AppDbContext db, int packageId) =>
+            db.GenerationPackageTemplates
+                .Where(pt => pt.GenerationPackageId == packageId)
+                .Select(pt => new { pt.TemplateId, pt.RequirementRegular, pt.RequirementLimited })
+                .ToList()
+                .GroupBy(pt => pt.TemplateId)
+                .ToDictionary(g => g.Key, g => (g.First().RequirementRegular, g.First().RequirementLimited));
+
         private DocxGroupPhaseResult RunDocxGroupPhase(
             AppDbContext db,
             List<Template> groupTemplates,
@@ -1004,7 +1029,8 @@ namespace GenDoc.Services.Generation
             HashSet<string> usedFileNames,
             string runStamp,
             bool regenerateExisting,
-            IProgress<string> progress)
+            IProgress<string> progress,
+            IReadOnlyDictionary<int, (TemplateRequirement Regular, TemplateRequirement Limited)>? requirements = null)
         {
             var generated = 0;
             string? firstGeneratedPath = null;
@@ -1012,13 +1038,20 @@ namespace GenDoc.Services.Generation
             var errors = 0;
             var issues = new List<RunIssue>();
 
-            var roster = RosterOrdering.Apply(allRecipients).ToList();
+            var fullRoster = RosterOrdering.Apply(allRecipients).ToList();
 
             var intakeNames = LoadIntakeNames(db);
 
             foreach (var template in groupTemplates)
             {
                 progress.Report($"Груповий DOCX «{template.Name}»…");
+
+                // Шаблон «(придатні)» не потрібен обмежено придатним і навпаки: у документ ідуть лише ті,
+                // чиїй категорії він потрібен (те саме правило, за яким рахує «Комплектність»).
+                var roster = requirements is not null && requirements.TryGetValue(template.Id, out var need)
+                    ? fullRoster.Where(r => (FitnessCategoryHelper.IsRegular(r.FitnessCategory) ? need.Regular : need.Limited)
+                        != TemplateRequirement.NotApplicable).ToList()
+                    : fullRoster;
 
                 if (roster.Count == 0)
                 {

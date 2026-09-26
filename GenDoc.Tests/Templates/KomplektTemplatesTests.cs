@@ -498,11 +498,12 @@ public class KomplektTemplatesTests : IDisposable
         });
 
         var zayavka = Assert.Single(docxFiles, f => f.Contains("Заявка на боєприпаси (придатні)", StringComparison.Ordinal));
-        Assert.Contains("Кількість осіб, що стріляють: 3.", DocxText(zayavka));
+        // Варіант «(придатні)» - лише придатні: із трьох людей третя обмежено придатна.
+        Assert.Contains("Кількість осіб, що стріляють: 2.", DocxText(zayavka));
 
         var order = Assert.Single(docxFiles, f => f.Contains("Витяг з наказу на стрільби (придатні)", StringComparison.Ordinal));
         var orderText = DocxText(order);
-        Assert.Contains("на 3 учасників стрільби", orderText);
+        Assert.Contains("на 2 учасників стрільби", orderText);
         Assert.Contains("бригадний генерал", orderText);
         Assert.Contains("Іван КОМАНДИР", orderText);
 

@@ -101,11 +101,17 @@ namespace GenDoc.Services.Templates
                 }
 
                 var name = UniquePackageName(group.Name);
+                Dictionary<int, string> exportNames;
+                using (var db = _dbFactory.CreateDbContext())
+                    exportNames = db.ExportTemplates.Where(t => exportTemplateIds.Contains(t.Id)).ToDictionary(t => t.Id, t => t.Name);
+
                 _generationService.CreatePackage(
                     name,
                     PackageFolderOrigin.Describe(group.FolderPath),
                     groupIds,
-                    exportTemplateIds.Select(id => (id, FitnessFilter.All)).ToList());
+                    exportTemplateIds
+                        .Select(id => (id, FitnessCategoryHelper.FilterFromTemplateName(exportNames.GetValueOrDefault(id))))
+                        .ToList());
 
                 packages.Add(new FolderImportPackage(
                     name, groupIds.Count, exportTemplateIds.Count, reused, perRecipientCount));

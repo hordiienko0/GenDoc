@@ -183,6 +183,9 @@ namespace GenDoc.Services
             if (gender == Gender.Female && kind != GrammaticalKind.Rank)
                 return word;
 
+            if (DroppedEtsStem(word, kind, gender) is { } etsStem)
+                return etsStem + "я";
+
             if (word.EndsWith('й'))
                 return word[..^1] + "я";
 
@@ -198,6 +201,31 @@ namespace GenDoc.Services
         {
             ("ська", "ській"), ("цька", "цькій"), ("зька", "зькій")
         };
+
+        /// <summary>Жіночі прізвища-присвійні: Петрова → Петровій, Кузьміна → Кузьміній (не «Петрові»).</summary>
+        private static readonly string[] PossessiveFeminineSurnameEndings = { "ова", "ева", "єва", "іна", "їна" };
+
+        /// <summary>
+        /// Основа чоловічого прізвища на «-ець» без випадного «е»: Кравець → Кравц-, Стрілець → Стрільц-,
+        /// Гаєць → Гайц-, Швець → Шевц-. Null - не прізвище на «-ець».
+        /// </summary>
+        private static string? DroppedEtsStem(string word, GrammaticalKind kind, Gender gender)
+        {
+            if (kind != GrammaticalKind.Surname || gender != Gender.Male
+                || word.Length < 5 || !word.EndsWith("ець", StringComparison.OrdinalIgnoreCase))
+                return null;
+
+            var stem = word[..^3];
+            var last = char.ToLowerInvariant(stem[^1]);
+
+            if (!stem.Any(c => Vowels.Contains(char.ToLowerInvariant(c))))
+                return stem[..1] + "е" + stem[1..] + "ц";
+            if (last == 'л')
+                return stem + "ьц";
+            if (Vowels.Contains(last))
+                return stem + "йц";
+            return stem + "ц";
+        }
 
         private static string DeclineWordDative(string word, GrammaticalKind kind, Gender gender)
         {
@@ -222,6 +250,10 @@ namespace GenDoc.Services
                     return word[..^ending.Length] + replacement;
             }
 
+            if (kind == GrammaticalKind.Surname && gender == Gender.Female
+                && PossessiveFeminineSurnameEndings.Any(e => word.EndsWith(e, StringComparison.OrdinalIgnoreCase)))
+                return word[..^1] + "ій";
+
             if (word.EndsWith('а'))
                 return SoftenStem(word[..^1]) + "і";
 
@@ -238,6 +270,9 @@ namespace GenDoc.Services
 
             if (gender == Gender.Female && kind != GrammaticalKind.Rank)
                 return word;
+
+            if (DroppedEtsStem(word, kind, gender) is { } etsStem)
+                return etsStem + "ю";
 
             if (word.EndsWith('й'))
                 return word[..^1] + "ю";

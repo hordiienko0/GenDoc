@@ -140,6 +140,9 @@ namespace GenDoc.Services.Generation
 
         internal static List<DateOnly> ParsePeriodDates(string raw)
         {
+            // Підпис поля пише «з – по» через тире, тож тире й довге тире - теж розділювач діапазону.
+            raw = raw.Replace('–', '-').Replace('—', '-').Replace('−', '-');
+
             var segments = raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             if (segments.Length == 0)
             {
@@ -297,6 +300,16 @@ namespace GenDoc.Services.Generation
 
                 excludeFrom = t;
                 excludeTo = t + n - 1;
+            }
+            else if (n == 0)
+            {
+                // Порожній список: рядок-шаблон лишається порожнім рядком таблиці, а не з «{{піб}}» і т. ін.
+                foreach (var column in rowMappings.Select(m => m.ColumnIndex).Distinct())
+                {
+                    var cell = sheet.Cell(t, column);
+                    if (rowMappings.Any(m => m.ColumnIndex == column && cell.GetString().Contains(m.PlaceholderTag, StringComparison.Ordinal)))
+                        cell.Value = string.Empty;
+                }
             }
 
             SubstituteOutsideTags(sheet, outsideMappings, org, courseOfficerSignature, manualValues, unfilledTags, excludeFrom, excludeTo);
