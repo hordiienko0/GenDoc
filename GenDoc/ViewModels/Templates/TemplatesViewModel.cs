@@ -313,6 +313,9 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasSelectedTemplate))]
     [NotifyPropertyChangedFor(nameof(MappingPanelColumnWidth))]
+    [NotifyPropertyChangedFor(nameof(FileColumnLength))]
+    [NotifyPropertyChangedFor(nameof(DateColumnLength))]
+    [NotifyPropertyChangedFor(nameof(TagCountColumnLength))]
     private object? selectedTemplate;
 
     [ObservableProperty]
@@ -338,7 +341,8 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
     /// <summary>Поки жоден шаблон не вибрано, панель згорнута й колонка під неї не забирає місця.</summary>
     public GridLength MappingPanelColumnWidth => HasSelectedTemplate ? new(MappingPanelWidth) : new(0);
 
-    public const double MappingPanelMinWidth = 320;
+    // Нижче ~420 у панелі злипались заголовки «Джерело/Поле» і комбобокс «Джерело» лишався самою стрілкою.
+    public const double MappingPanelMinWidth = 420;
     public const double MappingPanelMaxWidth = 900;
 
     public const double ListColumnMinStar = 0.3;
@@ -358,7 +362,14 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
 
     public GridLength NameColumnLength => new(NameColumnStar, GridUnitType.Star);
 
-    public GridLength FileColumnLength => new(FileColumnStar, GridUnitType.Star);
+    // Поки відкрита панель мапінгу, список вужчий: фіксовані «Завантажено» (130) і «Міток» (90) забирали
+    // все місце, і «Назва» з «Файлом» стискались до нуля - не було видно, який шаблон вибрано. Тоді
+    // лишаються назва й кнопки дій.
+    public GridLength FileColumnLength => HasSelectedTemplate ? new(0) : new(FileColumnStar, GridUnitType.Star);
+
+    public GridLength DateColumnLength => HasSelectedTemplate ? new(0) : new(130);
+
+    public GridLength TagCountColumnLength => HasSelectedTemplate ? new(0) : new(90);
 
     /// <param name="deltaStars">Зсув межі в частках-зірках: додатний розширює назву за рахунок файлу.</param>
     public void ResizeNameColumn(double deltaStars)

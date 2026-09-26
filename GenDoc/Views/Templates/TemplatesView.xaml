@@ -24,8 +24,8 @@
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="{Binding DataContext.NameColumnLength, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                                                 <ColumnDefinition Width="{Binding DataContext.FileColumnLength, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
-                                                <ColumnDefinition Width="130"/>
-                                                <ColumnDefinition Width="90"/>
+                                                <ColumnDefinition Width="{Binding DataContext.DateColumnLength, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                                                <ColumnDefinition Width="{Binding DataContext.TagCountColumnLength, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                                                 <ColumnDefinition Width="150"/>
                                             </Grid.ColumnDefinitions>
 
@@ -98,8 +98,8 @@
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="{Binding DataContext.NameColumnLength, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                                                 <ColumnDefinition Width="{Binding DataContext.FileColumnLength, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
-                                                <ColumnDefinition Width="130"/>
-                                                <ColumnDefinition Width="90"/>
+                                                <ColumnDefinition Width="{Binding DataContext.DateColumnLength, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
+                                                <ColumnDefinition Width="{Binding DataContext.TagCountColumnLength, RelativeSource={RelativeSource AncestorType=UserControl}}"/>
                                                 <ColumnDefinition Width="150"/>
                                             </Grid.ColumnDefinitions>
 
@@ -403,8 +403,8 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="{Binding NameColumnLength}"/>
                             <ColumnDefinition Width="{Binding FileColumnLength}"/>
-                            <ColumnDefinition Width="130"/>
-                            <ColumnDefinition Width="90"/>
+                            <ColumnDefinition Width="{Binding DateColumnLength}"/>
+                            <ColumnDefinition Width="{Binding TagCountColumnLength}"/>
                             <ColumnDefinition Width="150"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="НАЗВА" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
@@ -457,8 +457,8 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="{Binding NameColumnLength}"/>
                                 <ColumnDefinition Width="{Binding FileColumnLength}"/>
-                                <ColumnDefinition Width="130"/>
-                                <ColumnDefinition Width="90"/>
+                                <ColumnDefinition Width="{Binding DateColumnLength}"/>
+                                <ColumnDefinition Width="{Binding TagCountColumnLength}"/>
                                 <ColumnDefinition Width="150"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="НАЗВА" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>
@@ -487,8 +487,8 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="{Binding NameColumnLength}"/>
                             <ColumnDefinition Width="{Binding FileColumnLength}"/>
-                            <ColumnDefinition Width="130"/>
-                            <ColumnDefinition Width="90"/>
+                            <ColumnDefinition Width="{Binding DateColumnLength}"/>
+                            <ColumnDefinition Width="{Binding TagCountColumnLength}"/>
                             <ColumnDefinition Width="150"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="НАЗВА" Style="{StaticResource TemplatesHeaderTextStyle}" Margin="20,13"/>

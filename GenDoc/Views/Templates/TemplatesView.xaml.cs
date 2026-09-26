@@ -17,10 +17,14 @@ public partial class TemplatesView : UserControl
     {
         if (DataContext is not TemplatesViewModel vm) return;
 
+        // Списку лишаємо щонайменше ~400 px, інакше в ньому не видно навіть назви вибраного шаблона.
+        var max = Math.Max(TemplatesViewModel.MappingPanelMinWidth,
+            Math.Min(TemplatesViewModel.MappingPanelMaxWidth, ActualWidth - 400));
+
         vm.MappingPanelWidth = Math.Clamp(
             vm.MappingPanelWidth - e.HorizontalChange,
             TemplatesViewModel.MappingPanelMinWidth,
-            TemplatesViewModel.MappingPanelMaxWidth);
+            max);
     }
 
     /// <summary>

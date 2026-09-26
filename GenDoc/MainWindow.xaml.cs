@@ -13,6 +13,7 @@ namespace GenDoc
         {
             InitializeComponent();
             DwmHelper.EnableDarkTitleBar(this);
+            MaximizeToWorkArea.Attach(this);
             DataContext = viewModel;
         }
 
