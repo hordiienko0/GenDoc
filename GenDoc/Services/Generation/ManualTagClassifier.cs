@@ -53,6 +53,8 @@ namespace GenDoc.Services.Generation
 
         public static bool IsSignerName(string tag) => Normalize(tag) == ManualTagFormViewModel.SignerNameTag;
 
+        public static bool IsSignerPosition(string tag) => Normalize(tag) == ManualTagFormViewModel.SignerPositionTag;
+
         public static bool HasSignerPair(IReadOnlyList<string> tags) =>
             tags.Any(IsSignerRank) && tags.Any(IsSignerName);
 

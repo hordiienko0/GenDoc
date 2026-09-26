@@ -45,6 +45,16 @@ namespace GenDoc.Services
         }
 
         public static string ArrivedVerb(Gender gender) => gender == Gender.Male ? "прибув" : "прибула";
+
+        /// <summary>«вибув/вибула» - у рапортах про зняття з котлового забезпечення.</summary>
+        public static string LeftVerb(Gender gender) => gender == Gender.Male ? "вибув" : "вибула";
+        /// <summary>
+        /// «на N учасників» у знахідному відмінку після числа: 1, 21, 31… - «учасника», решта - «учасників»
+        /// (так пишуть у наказах: «на 1 учасника стрільби», «на 3 учасників стрільби»).
+        /// </summary>
+        public static string ParticipantsWord(int count) =>
+            count % 10 == 1 && count % 100 != 11 ? "учасника" : "учасників";
+
         public static string SuchPronoun(Gender gender) => gender == Gender.Male ? "таким" : "такою";
 
         /// <summary>«приступив/приступила до виконання службових обов'язків».</summary>

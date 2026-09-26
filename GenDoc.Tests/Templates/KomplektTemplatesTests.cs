@@ -30,6 +30,7 @@ public class KomplektTemplatesTests : IDisposable
 
     private const string Signer = "звання_підписанта";
     private const string SignerName = "піб_підписанта";
+    private const string SignerPosition = "посада_підписанта";
 
     // ---------------------------------------------------------------------
     // Каталог: файл → тип, автоматичні теги (людина/організація), ручні теги
@@ -83,7 +84,8 @@ public class KomplektTemplatesTests : IDisposable
         return tags.ToArray();
     }
 
-    private static readonly string[] Commander = { "звання_командира", "піб_командира" };
+    // Наказ підписує начальник університету - не начальник курсів із «командирських» полів налаштувань.
+    private static readonly string[] UniversityHead = { "звання_начальника_університету", "піб_начальника_університету" };
 
     private static readonly string[] Person = { "звання", "піб" };
 
@@ -94,23 +96,23 @@ public class KomplektTemplatesTests : IDisposable
             new[]
             {
                 "дати_стрільб", "дата_розпорядження_гш", "кількість_набоїв_1", "кількість_набоїв_2", "кількість_ург",
-                Signer, SignerName, "начальник_служби_засобів_ураження", "комірник_складу"
+                Signer, SignerName, SignerPosition, "начальник_служби_засобів_ураження", "комірник_складу"
             }),
         new("Стрільби", "Шаблон_Заявка на боєприпаси (обмежено придатні).docx", TemplateKind.Group,
             Array.Empty<string>(),
             new[]
             {
                 "дати_стрільб", "кількість_набоїв_1",
-                Signer, SignerName, "начальник_служби_засобів_ураження", "комірник_складу"
+                Signer, SignerName, SignerPosition, "начальник_служби_засобів_ураження", "комірник_складу"
             }),
         new("Стрільби", "Шаблон_Витяг з наказу на стрільби (придатні).docx", TemplateKind.Group,
-            Commander, OrderManual(limited: false, extract: true)),
+            Array.Empty<string>(), OrderManual(limited: false, extract: true).Concat(UniversityHead).ToArray()),
         new("Стрільби", "Шаблон_Витяг з наказу на стрільби (обмежено придатні).docx", TemplateKind.Group,
-            Commander, OrderManual(limited: true, extract: true)),
+            Array.Empty<string>(), OrderManual(limited: true, extract: true).Concat(UniversityHead).ToArray()),
         new("Стрільби", "Шаблон_Проєкт наказу на стрільби (придатні).docx", TemplateKind.Group,
-            Commander, OrderManual(limited: false, extract: false)),
+            Array.Empty<string>(), OrderManual(limited: false, extract: false).Concat(UniversityHead).ToArray()),
         new("Стрільби", "Шаблон_Проєкт наказу на стрільби (обмежено придатні).docx", TemplateKind.Group,
-            Commander, OrderManual(limited: true, extract: false)),
+            Array.Empty<string>(), OrderManual(limited: true, extract: false).Concat(UniversityHead).ToArray()),
         new("Стрільби", "Шаблон_Роздавально-здавальна відомість (форма 9а).docx", TemplateKind.Group,
             new[] { "піб_ініціали", "номер_вч" },
             new[] { "номер_відомості", "дата", "дата_аркуша", "калібр", "кількість_патронів", "начальник_пбп", Signer, SignerName, "керівник_стрільб" }),
@@ -118,35 +120,35 @@ public class KomplektTemplatesTests : IDisposable
             Array.Empty<string>(), new[] { "дата" }),
         new("Стрільби", "Шаблон_Заявка на використання автомобільної техніки.docx", TemplateKind.Group,
             Array.Empty<string>(),
-            new[] { "дата_перевезення", "номер_наказу", "дата_наказу", "старший_машини", Signer, SignerName, "дата" }),
+            new[] { "дата_перевезення", "номер_наказу", "дата_наказу", "старший_машини", Signer, SignerName, SignerPosition, "дата" }),
 
         new("Котлове забезпечення", "Шаблон_Рапорт про зарахування на котлове забезпечення (груповий).docx", TemplateKind.Group,
-            Person, new[] { "дата_прибуття", "дата_зарахування", Signer, SignerName, "дата_рапорту" }),
+            Person, new[] { "дата_прибуття", "дата_зарахування", Signer, SignerName, SignerPosition, "дата_рапорту" }),
         new("Котлове забезпечення", "Шаблон_Рапорт про зарахування на котлове забезпечення (індивідуальний).docx", TemplateKind.PerRecipient,
             new[] { "звання_зв", "піб_зв", "посада_зв", "таким", "прибув", "дата_посвідчення", "номер_посвідчення", "прод_атестат" },
-            new[] { "дата_прибуття", "дата_зарахування", Signer, SignerName, "дата_рапорту" }),
+            new[] { "дата_прибуття", "дата_зарахування", Signer, SignerName, SignerPosition, "дата_рапорту" }),
         new("Котлове забезпечення", "Шаблон_Рапорт про зняття з котлового забезпечення (індивідуальний).docx", TemplateKind.PerRecipient,
-            new[] { "звання_зв", "піб_зв", "посада_зв", "таким", "дата_посвідчення", "номер_посвідчення" },
-            new[] { "дата_вибуття", "дата_зняття", Signer, SignerName, "дата_рапорту" }),
+            new[] { "звання_зв", "піб_зв", "посада_зв", "таким", "вибув", "дата_посвідчення", "номер_посвідчення" },
+            new[] { "дата_вибуття", "дата_зняття", Signer, SignerName, SignerPosition, "дата_рапорту" }),
         new("Котлове забезпечення", "Шаблон_Рапорт про зняття з котлового забезпечення (груповий).docx", TemplateKind.Group,
-            Person, new[] { "дата_вибуття", "дата_зняття", Signer, SignerName, "дата_рапорту" }),
+            Person, new[] { "дата_вибуття", "дата_зняття", Signer, SignerName, SignerPosition, "дата_рапорту" }),
 
         new("Відпустки та лікування", "Шаблон_Рапорт про приступлення до обов'язків після стаціонарного лікування.docx", TemplateKind.PerRecipient,
             new[] { "звання_зв", "піб_зв", "посада_зв", "таким", "приступив" },
-            new[] { "дата_початку_лікування", "місце_лікування", "дата_приступлення", "підстава", Signer, SignerName, "дата_рапорту" }),
+            new[] { "дата_початку_лікування", "місце_лікування", "дата_приступлення", "підстава", Signer, SignerName, SignerPosition, "дата_рапорту" }),
         new("Відпустки та лікування", "Шаблон_Рапорт про приступлення до обов'язків після відпустки для лікування.docx", TemplateKind.PerRecipient,
             new[] { "звання_зв", "піб_зв", "посада_зв", "таким", "приступив" },
-            new[] { "дата_початку_відпустки", "дата_приступлення", "підстава", Signer, SignerName, "дата_рапорту" }),
+            new[] { "дата_початку_відпустки", "дата_приступлення", "підстава", Signer, SignerName, SignerPosition, "дата_рапорту" }),
         new("Відпустки та лікування", "Шаблон_Рапорт на відпустку для лікування у зв'язку з хворобою.docx", TemplateKind.PerRecipient,
             new[] { "звання", "звання_дв", "піб_дв", "посада", "посада_дв", "піб_підпис", "ознайомлений" },
             new[]
             {
                 "кількість_днів_відпустки", "дата_початку_відпустки", "довідка_влк",
-                "адреса_відпустки", "телефон_відпустки", Signer, SignerName, "дата_рапорту"
+                "адреса_відпустки", "телефон_відпустки", Signer, SignerName, SignerPosition, "дата_рапорту"
             }),
 
         new("Відрядження", "Шаблон_Рапорт про направлення у відрядження (груповий).docx", TemplateKind.Group,
-            Person, new[] { "вос_курсу", "місце_відрядження", "дата_вибуття", "підстава", Signer, SignerName, "дата_рапорту" }),
+            Person, new[] { "вос_курсу", "місце_відрядження", "дата_вибуття", "підстава", Signer, SignerName, SignerPosition, "дата_рапорту" }),
 
         new("Стройовий облік", "Шаблон_Стройова записка курсів.docx", TemplateKind.Group,
             Array.Empty<string>(),
@@ -157,29 +159,29 @@ public class KomplektTemplatesTests : IDisposable
                 "у_строю_кппк", "у_строю_бзвп", "у_строю_загалом",
                 "шпиталь_кппк", "шпиталь_бзвп", "шпиталь_загалом",
                 "відрядження_кппк", "відрядження_бзвп", "відрядження_загалом",
-                Signer, SignerName, "відрядження", "шпиталь", "звільнення"
+                Signer, SignerName, SignerPosition, "відрядження", "шпиталь", "звільнення"
             }),
         new("Стройовий облік", "Шаблон_Титульний аркуш іменного списку вечірньої перевірки.docx", TemplateKind.Group,
             Array.Empty<string>(), new[] { "населений_пункт", "рік" }),
 
         new("Інше", "Шаблон_Звернення на отримання благодійної допомоги.docx", TemplateKind.Group,
-            Array.Empty<string>(), new[] { "адресат", "піб_адресата", "перелік_матеріалів", Signer, SignerName }),
+            Array.Empty<string>(), new[] { "адресат", "піб_адресата", "перелік_матеріалів", Signer, SignerName, SignerPosition, "дата" }),
         new("Інше", "Шаблон_Пояснювальна записка про незібрані гільзи.docx", TemplateKind.Group,
             Array.Empty<string>(),
-            new[] { "дати_стрільб", "номер_наказу", "дата_наказу", "кількість_набоїв", "причина", Signer, SignerName, "дата" })
+            new[] { "дати_стрільб", "номер_наказу", "дата_наказу", "кількість_набоїв", "причина", Signer, SignerName, SignerPosition, "дата" })
     };
 
     public static readonly XlsxSpec[] XlsxCatalog =
     {
         new("Стрільби", "Шаблон_Відомість допуску до стрільб (Додаток 5).xlsx", 7,
             new[] { "№", "звання", "піб", "оцінка_1", "оцінка_2", "оцінка_3", "оцінка_4", "оцінка_загальна", "номер_вч" },
-            new[] { "номери_вправ", Signer, SignerName, "дата_аркуша" }),
+            new[] { "номери_вправ", Signer, SignerName, SignerPosition, "дата_аркуша" }),
         new("Стрільби", "Шаблон_Відомість складання заліку з вимог безпеки (Додаток 8).xlsx", 10,
             new[] { "№", "звання", "піб", "курсовий_офіцер", "номер_вч" },
-            new[] { "опис_підрозділу", "дата_аркуша", "причина_інструктажу", Signer, SignerName }),
+            new[] { "опис_підрозділу", "дата_аркуша", "причина_інструктажу", Signer, SignerName, SignerPosition }),
         new("Стрільби", "Шаблон_Роздавально-здавальна відомість.xlsx", 9,
             new[] { "піб_ініціали", "курсовий_офіцер", "номер_вч" },
-            new[] { "номер_відомості", "дата_аркуша", "калібр", "кількість_патронів", Signer, SignerName, "керівник_стрільб" }),
+            new[] { "номер_відомості", "дата_аркуша", "калібр", "кількість_патронів", Signer, SignerName, "керівник_стрільб", "дата" }),
         new("Стройовий облік", "Шаблон_Список вечірньої перевірки.xlsx", 4,
             new[] { "№", "звання", "піб" },
             new[] { Signer, SignerName })
@@ -504,8 +506,9 @@ public class KomplektTemplatesTests : IDisposable
         var order = Assert.Single(docxFiles, f => f.Contains("Витяг з наказу на стрільби (придатні)", StringComparison.Ordinal));
         var orderText = DocxText(order);
         Assert.Contains("на 2 учасників стрільби", orderText);
-        Assert.Contains("бригадний генерал", orderText);
-        Assert.Contains("Іван КОМАНДИР", orderText);
+        // Наказ підписує начальник університету (ручні поля), а не начальник курсів із налаштувань.
+        Assert.Contains("[піб_начальника_університету]", orderText);
+        Assert.DoesNotContain("Іван КОМАНДИР", orderText);
 
         var forma9a = Assert.Single(docxFiles, f => f.Contains("форма 9а", StringComparison.Ordinal));
         var forma9aText = DocxText(forma9a);

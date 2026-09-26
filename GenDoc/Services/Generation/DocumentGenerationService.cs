@@ -15,6 +15,9 @@ namespace GenDoc.Services.Generation
         private static readonly Regex PlaceholderRegex = new(@"\{\{[^{}]+\}\}", RegexOptions.Compiled);
 
         private const string CountTag = "{{кількість_осіб}}";
+
+        /// <summary>«на {{кількість_осіб}} {{учасників}} стрільби» - «на 1 учасника», «на 3 учасників».</summary>
+        private const string ParticipantsTag = "{{учасників}}";
         private const string IndexTag = "{{номер}}";
         private const string SeparatorTag = "{{роздільник}}";
 
@@ -121,7 +124,8 @@ namespace GenDoc.Services.Generation
 
             var sharedWithCount = new Dictionary<string, string>(sharedValues, StringComparer.Ordinal)
             {
-                [CountTag] = perRecipientValues.Count.ToString(CultureInfo.InvariantCulture)
+                [CountTag] = perRecipientValues.Count.ToString(CultureInfo.InvariantCulture),
+                [ParticipantsTag] = Services.UkrainianGrammar.ParticipantsWord(perRecipientValues.Count)
             };
 
             ProcessSiblings(

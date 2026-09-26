@@ -158,7 +158,8 @@ namespace GenDoc.ViewModels.Generation
     }
 
     public record StaffPickerOption(
-        int RecipientId, string Rank, string SignatureName, string DisplayLabel, string? SignaturePreview = null);
+        int RecipientId, string Rank, string SignatureName, string DisplayLabel, string? SignaturePreview = null,
+        string? Position = null);
 
     public partial class SignerPickerViewModel : ObservableObject
     {
@@ -184,13 +185,15 @@ namespace GenDoc.ViewModels.Generation
     {
         public const string SignerRankTag = "звання_підписанта";
         public const string SignerNameTag = "піб_підписанта";
+        public const string SignerPositionTag = "посада_підписанта";
 
         public ManualTagFormViewModel(
             ObservableCollection<ManualTagRowViewModel> rows,
             SignerPickerViewModel? signer,
             SignerPickerViewModel? courseOfficer = null,
             string? signerRankTag = null,
-            string? signerNameTag = null)
+            string? signerNameTag = null,
+            string? signerPositionTag = null)
         {
             Rows = rows;
             Signer = signer;
@@ -198,10 +201,12 @@ namespace GenDoc.ViewModels.Generation
 
             _signerRankTag = signerRankTag ?? SignerRankTag;
             _signerNameTag = signerNameTag ?? SignerNameTag;
+            _signerPositionTag = signerPositionTag;
         }
 
         private readonly string _signerRankTag;
         private readonly string _signerNameTag;
+        private readonly string? _signerPositionTag;
 
         public ObservableCollection<ManualTagRowViewModel> Rows { get; }
         public SignerPickerViewModel? Signer { get; }
@@ -238,6 +243,7 @@ namespace GenDoc.ViewModels.Generation
             {
                 values[_signerRankTag] = signer.Rank;
                 values[_signerNameTag] = signer.SignatureName;
+                if (_signerPositionTag is not null) values[_signerPositionTag] = signer.Position ?? string.Empty;
             }
 
             return values;

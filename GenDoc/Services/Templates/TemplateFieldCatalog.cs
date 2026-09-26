@@ -50,6 +50,7 @@ public static class TemplateFieldCatalog
         new("FullNameDative", "ПІБ (давальний відмінок)"),
         new("PositionDative", "Посада (давальний відмінок)"),
         new("ArrivedVerb", "«прибув/прибула» (узгодження за родом)"),
+        new("LeftVerb", "«вибув/вибула» (узгодження за родом)"),
         new("SuchPronoun", "«таким/такою» (узгодження за родом)"),
         new("ResumedDutyVerb", "«приступив/приступила» (узгодження за родом)"),
         new("AcquaintedAdjective", "«ознайомлений/ознайомлена» (узгодження за родом)"),

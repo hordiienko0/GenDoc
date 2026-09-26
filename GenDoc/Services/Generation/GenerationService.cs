@@ -1254,7 +1254,8 @@ namespace GenDoc.Services.Generation
             "ServedBefore" => r.ServedBefore ?? string.Empty,
             "ExtraNote" => r.ExtraNote ?? string.Empty,
             "CommanderContact" => r.CommanderContact ?? string.Empty,
-            "TravelCertificateNumber" => r.TravelCertificateNumber ?? string.Empty,
+            // Знак «№» стоїть у шаблоні («… від {{дата_посвідчення}} № {{номер_посвідчення}}»), тож з даних його знімаємо.
+            "TravelCertificateNumber" => (r.TravelCertificateNumber ?? string.Empty).Trim().TrimStart('№').Trim(),
             "TravelCertificateDate" => r.TravelCertificateDate is { } tcd ? DateFormatCatalog.Format(tcd, dateFormat, DateFormatCatalog.Long) : string.Empty,
             "FoodCertificate" => r.FoodCertificate ?? string.Empty,
             "IdDocumentNumber" => r.IdDocumentNumber ?? string.Empty,
@@ -1280,6 +1281,7 @@ namespace GenDoc.Services.Generation
             "FullNameDative" => FormatFullNameDative(r),
             "PositionDative" => Services.UkrainianGrammar.PositionDative(r.Position, Services.UkrainianGrammar.Detect(r)),
             "ArrivedVerb" => Services.UkrainianGrammar.ArrivedVerb(Services.UkrainianGrammar.Detect(r)),
+            "LeftVerb" => Services.UkrainianGrammar.LeftVerb(Services.UkrainianGrammar.Detect(r)),
             "SuchPronoun" => Services.UkrainianGrammar.SuchPronoun(Services.UkrainianGrammar.Detect(r)),
             "ResumedDutyVerb" => Services.UkrainianGrammar.ResumedDutyVerb(Services.UkrainianGrammar.Detect(r)),
             "AcquaintedAdjective" => Services.UkrainianGrammar.AcquaintedAdjective(Services.UkrainianGrammar.Detect(r)),

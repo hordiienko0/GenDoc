@@ -55,7 +55,8 @@ namespace GenDoc.Services.Generation
 
             foreach (var tag in tags)
             {
-                if (hasSigner && (ManualTagClassifier.IsSignerRank(tag) || ManualTagClassifier.IsSignerName(tag)))
+                if (hasSigner && (ManualTagClassifier.IsSignerRank(tag) || ManualTagClassifier.IsSignerName(tag)
+                                  || ManualTagClassifier.IsSignerPosition(tag)))
                     continue;
                 if (ManualTagClassifier.IsDocumentDate(tag)) continue;
                 if (shootingDays && periodTags.Contains(tag)) continue;
@@ -75,7 +76,8 @@ namespace GenDoc.Services.Generation
             return new ManualTagFormViewModel(
                 rows, signer, courseOfficer,
                 tags.FirstOrDefault(ManualTagClassifier.IsSignerRank),
-                tags.FirstOrDefault(ManualTagClassifier.IsSignerName));
+                tags.FirstOrDefault(ManualTagClassifier.IsSignerName),
+                tags.FirstOrDefault(ManualTagClassifier.IsSignerPosition));
         }
 
         private async Task<DateOnly> GetArrivalDateAsync(int? intakeId)
@@ -122,14 +124,22 @@ namespace GenDoc.Services.Generation
         {
             var head = await GetHeadOfCoursesOptionAsync();
 
+            // Посада над підписом іде за підписантом: курсовим офіцерам - «Курсовий офіцер курсів …».
+            // Запасний список (увесь постійний склад) посади не має - тег лишиться незаповненим і це буде видно.
+            var officerPosition = HeadOfCourses.CourseOfficerPosition(await GetOrganizationAsync());
             var staff = await _staffService.GetCourseOfficersForPickerAsync();
+            var onlyOfficers = true;
             if (head is null && staff.Count == 0)
+            {
                 staff = await _staffService.GetPermanentStaffForPickerAsync();
+                onlyOfficers = false;
+            }
 
             var people = staff
                 .Select(s => new StaffPickerOption(
                     s.Id, s.Rank, Services.NameFormatter.SignatureName(s.LastName, s.FirstName),
-                    $"{s.Rank} {Services.NameFormatter.SignatureName(s.LastName, s.FirstName)}"))
+                    $"{s.Rank} {Services.NameFormatter.SignatureName(s.LastName, s.FirstName)}",
+                    Position: onlyOfficers ? officerPosition : null))
                 .ToList();
 
             if (head is not null)
@@ -165,7 +175,13 @@ namespace GenDoc.Services.Generation
 
             return new StaffPickerOption(
                 HeadOfCourses.PickerId, org!.CommanderRank.Trim(), org.CommanderFullName.Trim(),
-                HeadOfCourses.DisplayLabel(org), HeadOfCourses.Signature(org));
+                HeadOfCourses.DisplayLabel(org), HeadOfCourses.Signature(org), HeadOfCourses.FormalPosition(org));
+        }
+
+        private async Task<Models.OrganizationSettings?> GetOrganizationAsync()
+        {
+            using var db = _dbFactory.CreateDbContext();
+            return await db.OrganizationSettings.AsNoTracking().FirstOrDefaultAsync();
         }
 
         public async Task SaveAsync(string contextKey, ManualTagFormViewModel form)

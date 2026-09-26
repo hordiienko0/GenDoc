@@ -27,6 +27,30 @@ namespace GenDoc.Services
             return string.Join(' ', parts.Where(p => !string.IsNullOrWhiteSpace(p)));
         }
 
+        /// <summary>Повна посада над підписом, коли в налаштуваннях її не вписано.</summary>
+        public const string DefaultFormalPosition =
+            "Начальник курсів перепідготовки та підвищення кваліфікації Харківського національного університету Повітряних Сил";
+
+        private const string HeadPrefix = "Начальник курсів";
+        private const string OfficerPrefix = "Курсовий офіцер курсів";
+
+        /// <summary>{{посада_підписанта}} для начальника курсів: посада з налаштувань або <see cref="DefaultFormalPosition"/>.</summary>
+        public static string FormalPosition(OrganizationSettings? org) =>
+            string.IsNullOrWhiteSpace(org?.CommanderPosition) ? DefaultFormalPosition : org!.CommanderPosition.Trim();
+
+        /// <summary>
+        /// {{посада_підписанта}} для курсового офіцера - з тієї самої посади начальника: «Начальник курсів
+        /// перепідготовки…» → «Курсовий офіцер курсів перепідготовки…». Так посада над підписом завжди
+        /// відповідає вибраному підписантові, а не зашита в шаблоні.
+        /// </summary>
+        public static string CourseOfficerPosition(OrganizationSettings? org)
+        {
+            var head = FormalPosition(org);
+            if (!head.StartsWith(HeadPrefix, StringComparison.OrdinalIgnoreCase))
+                head = DefaultFormalPosition;
+            return OfficerPrefix + head[HeadPrefix.Length..];
+        }
+
         /// <summary>Підпис «звання» + «Ім'я ПРІЗВИЩЕ» у тому вигляді, як його вписано в налаштуваннях.</summary>
         public static string DisplayLabel(OrganizationSettings org) =>
             $"{JoinRankAndName(org)} - начальник курсів";

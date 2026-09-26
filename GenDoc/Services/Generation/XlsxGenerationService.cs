@@ -410,6 +410,9 @@ namespace GenDoc.Services.Generation
             else if (DateTime.TryParseExact(raw, "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
             {
                 cell.Value = date;
+                // Формат беремо не з шаблону: у «Заліку (дод. 8)» клітинка мала американський m/d/yyyy,
+                // і 04.08.2026 друкувалось як «8.4.2026».
+                cell.Style.DateFormat.Format = "dd.mm.yyyy";
             }
             else if (!HasLeadingZero(raw)
                      && int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var intValue))

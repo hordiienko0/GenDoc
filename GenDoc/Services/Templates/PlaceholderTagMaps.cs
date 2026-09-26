@@ -35,6 +35,7 @@ namespace GenDoc.Services.Templates
             ["піб_дв"] = "FullNameDative",
             ["посада_дв"] = "PositionDative",
             ["прибув"] = "ArrivedVerb",
+            ["вибув"] = "LeftVerb",
             ["таким"] = "SuchPronoun",
             ["приступив"] = "ResumedDutyVerb",
             ["ознайомлений"] = "AcquaintedAdjective",
