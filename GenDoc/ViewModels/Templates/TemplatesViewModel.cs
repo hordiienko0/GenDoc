@@ -350,11 +350,11 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NameColumnLength))]
-    private double nameColumnStar = 1.8;
+    private double nameColumnStar = 2.2;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(FileColumnLength))]
-    private double fileColumnStar = 1.2;
+    private double fileColumnStar = 0.8;
 
     public GridLength NameColumnLength => new(NameColumnStar, GridUnitType.Star);
 

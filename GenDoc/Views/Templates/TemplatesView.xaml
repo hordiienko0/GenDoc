@@ -37,6 +37,7 @@
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
                                                            VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"
+                                                           TextWrapping="Wrap" MaxHeight="40"
                                                            TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}"/>
                                                 <Border Grid.Column="1" Background="{StaticResource SkySoftBrush}" Padding="6,2"
                                                         Margin="8,0,0,0" VerticalAlignment="Center"
@@ -109,6 +110,7 @@
                                                 </Grid.ColumnDefinitions>
                                                 <TextBlock Text="{Binding Name}" FontWeight="SemiBold"
                                                            Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"
+                                                           TextWrapping="Wrap" MaxHeight="40"
                                                            VerticalAlignment="Center" ToolTip="{Binding Name}"/>
                                                 <Border Grid.Column="1" Background="{StaticResource AccentSoftBrush}" Padding="6,2"
                                                         Margin="8,0,0,0" VerticalAlignment="Center"

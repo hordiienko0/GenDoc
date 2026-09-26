@@ -29,11 +29,22 @@ namespace GenDoc.Services.Completeness
                 foreach (var (name, index) in members)
                 {
                     var rest = name.Length > prefix ? name[prefix..].Trim() : name;
-                    labels[index] = rest.Length == 0 ? name : rest;
+                    labels[index] = rest.Length == 0 ? name : WithLeadingWord(name, prefix, rest);
                 }
             }
 
             return labels;
+        }
+
+        // Сам хвіст («стаціонарного лікування», «майна») не каже, що це за документ, тож перше слово
+        // спільної частини лишається, а пропущене позначає «…»: «Рапорт … стаціонарного лікування».
+        private static string WithLeadingWord(string name, int prefix, string rest)
+        {
+            var firstSpace = name.IndexOf(' ');
+            if (firstSpace <= 0 || firstSpace >= prefix) return rest;
+
+            var firstWord = name[..firstSpace];
+            return firstSpace + 1 == prefix ? $"{firstWord} {rest}" : $"{firstWord} … {rest}";
         }
 
         private static string VisiblePart(string name) =>

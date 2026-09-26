@@ -129,8 +129,8 @@ public partial class CompletenessView : UserControl
         var personColumn = new DataGridTemplateColumn
         {
             Header = "ОСОБА",
-            Width = new DataGridLength(180),
-            MinWidth = 160,
+            Width = new DataGridLength(250),
+            MinWidth = 200,
             CellTemplate = (DataTemplate)Resources["PersonCellTemplate"]
         };
         MatrixGrid.Columns.Add(personColumn);

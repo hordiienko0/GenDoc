@@ -364,7 +364,7 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
 
-                                <DataGridTextColumn Header="ПІБ" Binding="{Binding ShortName}" Width="1.75*">
+                                <DataGridTextColumn Header="ПІБ" Binding="{Binding ShortName}" Width="1.95*">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock" BasedOn="{StaticResource TruncatedCellStyle}">
                                             <Setter Property="FontWeight" Value="Bold"/>
@@ -372,7 +372,7 @@
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
-                                <DataGridTextColumn Header="ЗВАННЯ" Binding="{Binding RankShort}" Width="1.15*">
+                                <DataGridTextColumn Header="ЗВАННЯ" Binding="{Binding RankShort}" Width="1.6*">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock" BasedOn="{StaticResource TruncatedCellStyle}">
                                             <Setter Property="ToolTip" Value="{Binding Rank}"/>
@@ -380,7 +380,7 @@
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
-                                <DataGridTextColumn Header="ПОСАДА" Binding="{Binding Position}" Width="1.9*"
+                                <DataGridTextColumn Header="ПОСАДА" Binding="{Binding Position}" Width="1.55*"
                                                      ElementStyle="{StaticResource TruncatedCellStyle}"/>
 
                                 <DataGridTemplateColumn Header="ПРИДАТНІСТЬ" Width="Auto">

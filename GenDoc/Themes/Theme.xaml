@@ -556,6 +556,32 @@
         <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Padding" Value="7,4"/>
+        <!-- Стандартний шаблон бере підказку «Select a date» з англійських ресурсів WPF (української
+             локалізації в WPF нема), тож PART_Watermark не оголошено, а підказку малюємо самі. -->
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="DatePickerTextBox">
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+                        <Grid>
+                            <TextBlock x:Name="Hint" Text="дд.мм.рррр" Foreground="{StaticResource TextSecondaryBrush}"
+                                       VerticalAlignment="Center" Margin="2,0,0,0" IsHitTestVisible="False"
+                                       Visibility="Collapsed"/>
+                            <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center"
+                                          HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Hidden"/>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Text" Value="">
+                            <Setter TargetName="Hint" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                        <Trigger Property="Text" Value="{x:Null}">
+                            <Setter TargetName="Hint" Property="Visibility" Value="Visible"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
     <Style TargetType="DatePicker">
         <Setter Property="Background" Value="{StaticResource PanelBrush}"/>

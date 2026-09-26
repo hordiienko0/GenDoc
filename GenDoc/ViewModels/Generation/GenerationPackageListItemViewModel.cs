@@ -17,6 +17,9 @@ public partial class GenerationPackageListItemViewModel : ObservableObject
     public string? Description { get; }
     public bool HasDescription => !string.IsNullOrWhiteSpace(Description);
     public bool IsFromFolder => Services.Generation.PackageFolderOrigin.IsFromFolder(Description);
+
+    /// <summary>На картці - лише назва теки; повний шлях видно в підказці.</summary>
+    public string? DescriptionDisplay => Services.Generation.PackageFolderOrigin.ShortDisplay(Description);
     public int TemplateCount { get; }
     public string TemplateCountDisplay => $"{TemplateCount} шабл.";
 

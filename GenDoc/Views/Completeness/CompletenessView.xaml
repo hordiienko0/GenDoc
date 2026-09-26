@@ -90,15 +90,6 @@
                 <TextBox Width="220" Tag="Пошук за ПІБ…"
                          Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
             </StackPanel>
-            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                <TextBlock Text="✓ є" FontSize="11" Foreground="{StaticResource SuccessBrush}" Margin="0,0,10,0"/>
-                <TextBlock Text="- немає" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,10,0"/>
-                <TextBlock Text="! застарів" FontSize="11" Foreground="{StaticResource WarningBrush}" Margin="0,0,10,0"/>
-                <TextBlock Text="(-) опційний відсутній" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,10,0"/>
-                <TextBlock Text="? склад не записано" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,10,0"
-                           ToolTip="Документ сформовано до оновлення - перегенеруйте, щоб бачити учасників"/>
-                <TextBlock Text="порожня - не потрібен для категорії" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"/>
-            </StackPanel>
         </Grid>
 
         <Grid Grid.Row="2" Margin="0,0,0,10">
@@ -183,7 +174,23 @@
             </Grid>
         </Border>
 
-        <TextBlock Grid.Row="4" Text="{Binding FooterText}" FontSize="11.5" Margin="0,8,0,0"
-                   Foreground="{StaticResource TextSecondaryBrush}"/>
+        <!-- Легенда живе в нижньому рядку: у смузі фільтрів їй бракувало місця, і вона обрізалась за краєм вікна. -->
+        <Grid Grid.Row="4" Margin="0,8,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="{Binding FooterText}" FontSize="11.5" VerticalAlignment="Top" Margin="0,0,24,0"
+                       Foreground="{StaticResource TextSecondaryBrush}"/>
+            <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
+                <TextBlock Text="✓ є" FontSize="11" Foreground="{StaticResource SuccessBrush}" Margin="10,0,0,0"/>
+                <TextBlock Text="- немає" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="10,0,0,0"/>
+                <TextBlock Text="! застарів" FontSize="11" Foreground="{StaticResource WarningBrush}" Margin="10,0,0,0"/>
+                <TextBlock Text="(-) опційний відсутній" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="10,0,0,0"/>
+                <TextBlock Text="? склад не записано" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="10,0,0,0"
+                           ToolTip="Документ сформовано до оновлення - перегенеруйте, щоб бачити учасників"/>
+                <TextBlock Text="порожня - не потрібен для категорії" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="10,0,0,0"/>
+            </WrapPanel>
+        </Grid>
     </Grid>
 </UserControl>

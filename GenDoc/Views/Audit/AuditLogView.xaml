@@ -82,16 +82,16 @@
             <TextBlock Text="Історія змін у базі даних"
                        Foreground="{StaticResource TextSecondaryBrush}" FontSize="12" Margin="0,4,0,22"/>
 
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,20" VerticalAlignment="Bottom">
-                <StackPanel Margin="0,0,10,0">
+            <WrapPanel Orientation="Horizontal" Margin="0,0,0,10" VerticalAlignment="Bottom">
+                <StackPanel Margin="0,0,10,10">
                     <TextBlock Text="Від" Style="{StaticResource FilterLabelStyle}"/>
                     <DatePicker SelectedDate="{Binding SelectedFrom}" Width="150"/>
                 </StackPanel>
-                <StackPanel Margin="0,0,10,0">
+                <StackPanel Margin="0,0,10,10">
                     <TextBlock Text="До" Style="{StaticResource FilterLabelStyle}"/>
                     <DatePicker SelectedDate="{Binding SelectedTo}" Width="150"/>
                 </StackPanel>
-                <StackPanel Margin="0,0,10,0">
+                <StackPanel Margin="0,0,10,10">
                     <TextBlock Text="Профіль" Style="{StaticResource FilterLabelStyle}"/>
                     <ComboBox ItemsSource="{Binding ProfileOptions}" SelectedValuePath="Value"
                               SelectedValue="{Binding SelectedProfile}" Width="200">
@@ -102,7 +102,7 @@
                         </ComboBox.ItemTemplate>
                     </ComboBox>
                 </StackPanel>
-                <StackPanel Margin="0,0,10,0">
+                <StackPanel Margin="0,0,10,10">
                     <TextBlock Text="Дія" Style="{StaticResource FilterLabelStyle}"/>
                     <ComboBox ItemsSource="{Binding ActionOptions}" SelectedValuePath="Value"
                               SelectedValue="{Binding SelectedAction}" Width="180">
@@ -113,14 +113,14 @@
                         </ComboBox.ItemTemplate>
                     </ComboBox>
                 </StackPanel>
-                <StackPanel Margin="0,0,10,0">
+                <StackPanel Margin="0,0,10,10">
                     <TextBlock Text="Пошук" Style="{StaticResource FilterLabelStyle}"/>
                     <TextBox Width="220" Tag="ПІБ, шаблон, файл…"
                              Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
                              ToolTip="Шукає в подробицях, старому й новому значенні запису"/>
                 </StackPanel>
-                <Button Content="Скинути" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding ResetCommand}"/>
-            </StackPanel>
+                <Button Content="Скинути" Style="{StaticResource SecondaryButtonStyle}" Command="{Binding ResetCommand}" VerticalAlignment="Bottom" Margin="0,0,0,10"/>
+            </WrapPanel>
 
             <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
                     BorderThickness="1" CornerRadius="0">
@@ -128,11 +128,11 @@
                     <Grid Background="{StaticResource SkySoftBrush}"
                           Visibility="{Binding HasEntries, Converter={StaticResource BoolToVisibility}}">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="1.2*"/>
-                            <ColumnDefinition Width="1*"/>
-                            <ColumnDefinition Width="1*"/>
-                            <ColumnDefinition Width="1.8*"/>
-                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width="1.25*"/>
+                            <ColumnDefinition Width="0.7*"/>
+                            <ColumnDefinition Width="1.45*"/>
+                            <ColumnDefinition Width="1.5*"/>
+                            <ColumnDefinition Width="2.1*"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="ЧАС" Style="{StaticResource AuditHeaderTextStyle}" Margin="20,11"/>
                         <TextBlock Grid.Column="1" Text="ПРОФІЛЬ" Style="{StaticResource AuditHeaderTextStyle}" Margin="20,11"/>
@@ -147,11 +147,11 @@
                                 <Border Style="{StaticResource AuditRowBorderStyle}">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="1.2*"/>
-                                            <ColumnDefinition Width="1*"/>
-                                            <ColumnDefinition Width="1*"/>
-                                            <ColumnDefinition Width="1.8*"/>
-                                            <ColumnDefinition Width="2*"/>
+                                            <ColumnDefinition Width="1.25*"/>
+                                            <ColumnDefinition Width="0.7*"/>
+                                            <ColumnDefinition Width="1.45*"/>
+                                            <ColumnDefinition Width="1.5*"/>
+                                            <ColumnDefinition Width="2.1*"/>
                                         </Grid.ColumnDefinitions>
 
                                         <TextBlock Grid.Column="0" Text="{Binding TimeDisplay}" Margin="20,11" VerticalAlignment="Center"
@@ -161,7 +161,7 @@
 
                                         <Border Grid.Column="2" Margin="20,11" Padding="2,6" HorizontalAlignment="Left"
                                                 VerticalAlignment="Center" Style="{StaticResource ActionChipBackgroundStyle}">
-                                            <TextBlock Text="{Binding Action}" FontSize="10.5" FontWeight="Bold"
+                                            <TextBlock Text="{Binding Action}" FontSize="10.5" FontWeight="Bold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Action}"
                                                        Style="{StaticResource ActionChipTextStyle}"/>
                                         </Border>
 

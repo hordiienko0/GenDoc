@@ -14,8 +14,8 @@ public class MatrixColumnLabelsTests
         });
 
         Assert.NotEqual(labels[0], labels[1]);
-        Assert.StartsWith("ІНДИВІДУАЛЬН", labels[0], StringComparison.Ordinal);
-        Assert.StartsWith("ГРУПОВИЙ", labels[1], StringComparison.Ordinal);
+        Assert.StartsWith("Рапорт … ІНДИВІДУАЛЬН", labels[0], StringComparison.Ordinal);
+        Assert.StartsWith("Рапорт … ГРУПОВИЙ", labels[1], StringComparison.Ordinal);
     }
 
     [Fact]
@@ -63,8 +63,8 @@ public class MatrixColumnLabelsTests
             "Відомість видачі пального"
         });
 
-        Assert.Equal("майна", labels[0]);
-        Assert.Equal("пального", labels[1]);
+        Assert.Equal("Відомість … майна", labels[0]);
+        Assert.Equal("Відомість … пального", labels[1]);
     }
 
     [Fact]
