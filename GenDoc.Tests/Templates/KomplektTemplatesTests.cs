@@ -367,12 +367,15 @@ public class KomplektTemplatesTests : IDisposable
             };
         }
 
+        // Відомості з {{дата_аркуша}} ідуть «по аркушу на день»: застосунок питає період, як і наживо.
+        values[XlsxGenerationService.PeriodTag] = ShootingPeriod;
+
         return values;
     }
 
     private sealed record Seeded(int PackageId, int IntakeId, int CourseOfficerId);
 
-    private Seeded SeedEverything(TestDb db)
+    private Seeded SeedEverything(TestDb db, bool xlsxOnly = false)
     {
         using (var ctx = db.Factory.CreateDbContext())
         {
@@ -423,7 +426,7 @@ public class KomplektTemplatesTests : IDisposable
         }
 
         var templates = Templates(db);
-        foreach (var spec in DocxCatalog)
+        foreach (var spec in (xlsxOnly ? Array.Empty<DocxSpec>() : DocxCatalog))
         {
             var upload = templates.Upload(PathOf(spec.Set, spec.File));
             Assert.True(upload.Success, $"{spec.File}: {upload.ErrorMessage}");
@@ -523,5 +526,78 @@ public class KomplektTemplatesTests : IDisposable
             .ToList();
         Assert.Equal(perRecipient * 3, individual.Count);
         Assert.Contains(individual, f => DocxText(f).Contains("майора ПРІЗВИЩЕ01"));
+    }
+
+    // ---------------------------------------------------------------------
+    // 3. Відомості «по аркушу на кожен день стрільб»
+    // ---------------------------------------------------------------------
+
+    /// <summary>Дні стрільб з перервою: 04-06 і 10 серпня.</summary>
+    private const string ShootingPeriod = "04.08.2026-06.08.2026, 10.08.2026";
+
+    private static readonly DateTime[] ShootingDays =
+    {
+        new(2026, 8, 4), new(2026, 8, 5), new(2026, 8, 6), new(2026, 8, 10)
+    };
+
+    [Fact]
+    public void Xlsx_WithSheetDateTag_ComesInAsSheetPerDate_AndGeneratesASheetForEveryChosenDay()
+    {
+        using var db = new TestDb();
+        var seeded = SeedEverything(db, xlsxOnly: true);
+
+        using (var ctx = db.NewContext())
+        {
+            // Завантаження теки не вимагає від офіцера шукати галочку: {{дата_аркуша}} сама вмикає режим.
+            var perDate = ctx.ExportTemplates.Where(t => t.RepeatSheetPerDate).Select(t => t.OriginalFileName).ToList();
+            var expected = XlsxCatalog.Where(s => s.Manual.Contains("дата_аркуша")).Select(s => s.File).ToList();
+            Assert.Equal(expected.OrderBy(n => n), perDate.OrderBy(n => n));
+        }
+
+        var generation = TestServices.Generation(db);
+        Assert.Contains(XlsxGenerationService.PeriodTag, generation.GetManualTags(seeded.PackageId));
+
+        var selection = new RosterSelection(
+            true, Array.Empty<int>(), FitnessFilter.All, false,
+            Array.Empty<RankCategory>(), Array.Empty<string>(), IntakeId: seeded.IntakeId);
+
+        var result = generation.RunPackage(
+            seeded.PackageId, _folder, ManualValuesForEverything(), regenerateExisting: true,
+            selection, NoProgress, courseOfficerId: seeded.CourseOfficerId);
+
+        Assert.Equal(0, result.Errors + result.GroupErrors + result.DocxGroupErrors);
+        Assert.Equal(XlsxCatalog.Length, result.GroupGenerated);
+
+        var expectedSheets = ShootingDays.Select(d => d.ToString("dd.MM.yyyy")).ToList();
+        foreach (var spec in XlsxCatalog)
+        {
+            var name = TemplateNaming.Clean(Path.GetFileNameWithoutExtension(spec.File));
+            var file = Assert.Single(Directory.GetFiles(_folder, "*.xlsx", SearchOption.AllDirectories),
+                f => f.Contains(name, StringComparison.Ordinal));
+
+            using var workbook = new XLWorkbook(file);
+            var sheetNames = workbook.Worksheets.Select(w => w.Name).ToList();
+
+            if (!spec.Manual.Contains("дата_аркуша"))
+            {
+                Assert.Single(sheetNames);
+                continue;
+            }
+
+            Assert.Equal(expectedSheets, sheetNames);
+            for (var i = 0; i < ShootingDays.Length; i++)
+            {
+                var sheet = workbook.Worksheet(expectedSheets[i]);
+                var cells = sheet.RangeUsed()!.CellsUsed().ToList();
+
+                Assert.DoesNotContain(cells, c => c.GetString().Contains("{{", StringComparison.Ordinal));
+                Assert.True(
+                    cells.Any(c => (c.DataType == XLDataType.DateTime && c.GetDateTime().Date == ShootingDays[i])
+                                   || c.GetString().Contains(expectedSheets[i], StringComparison.Ordinal)),
+                    $"{spec.File}: на аркуші {expectedSheets[i]} немає його дати");
+                foreach (var lastName in new[] { "ПРІЗВИЩЕ01", "ПРІЗВИЩЕ02", "ПРІЗВИЩЕ03" })
+                    Assert.Contains(cells, c => c.GetString().Contains(lastName, StringComparison.Ordinal));
+            }
+        }
     }
 }

@@ -266,6 +266,10 @@ namespace GenDoc.Services
                 using var stream = new MemoryStream(content);
                 using var workbook = new XLWorkbook(stream);
                 ScanWorkbook(template, workbook);
+                // {{дата_аркуша}} означає відомість «по аркушу на кожен день» (допуск, залік, роздавальна):
+                // вмикаємо режим одразу, інакше генерація дає один аркуш на «Дату документа» замість дат періоду.
+                template.RepeatSheetPerDate = template.UsesPlaceholders && template.ColumnMappings
+                    .Any(m => m.PlaceholderTag == Generation.XlsxGenerationService.DateSheetTag);
             }
             catch (Exception ex)
             {
