@@ -583,6 +583,16 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <!-- Пара «з – по» під полем періоду в значеннях для генерації: видно лише рядкам-періодам. -->
+    <Style x:Key="PeriodPickersStyle" TargetType="Grid">
+        <Setter Property="Visibility" Value="Collapsed"/>
+        <Setter Property="Margin" Value="0,6,0,0"/>
+        <Style.Triggers>
+            <DataTrigger Binding="{Binding Kind}" Value="Period">
+                <Setter Property="Visibility" Value="Visible"/>
+            </DataTrigger>
+        </Style.Triggers>
+    </Style>
     <Style TargetType="DatePicker">
         <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
         <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>

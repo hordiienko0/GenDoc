@@ -41,11 +41,24 @@ namespace GenDoc.Services.Generation
             if (documentDateTags.Count > 0)
                 rows.Add(ManualTagRowViewModel.DocumentDate(documentDateTags, DateOnly.FromDateTime(DateTime.Today)));
 
+            // {{дати_стрільб}} і {{період}} - ті самі дні: один рядок «Дні стрільб» замість двох полів.
+            var periodTags = tags.Where(t => ManualTagClassifier.Classify(t) == ManualTagKind.Period).ToList();
+            var shootingDays = periodTags.Any(ManualTagClassifier.IsShootingDates);
+            if (shootingDays)
+            {
+                var stored = periodTags
+                    .OrderBy(t => ManualTagClassifier.IsShootingDates(t) ? 1 : 0)
+                    .Select(t => lastValues.GetValueOrDefault(t))
+                    .FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
+                rows.Add(ManualTagRowViewModel.ShootingDays(periodTags, stored));
+            }
+
             foreach (var tag in tags)
             {
                 if (hasSigner && (ManualTagClassifier.IsSignerRank(tag) || ManualTagClassifier.IsSignerName(tag)))
                     continue;
                 if (ManualTagClassifier.IsDocumentDate(tag)) continue;
+                if (shootingDays && periodTags.Contains(tag)) continue;
 
                 rows.Add(ManualTagClassifier.Classify(tag) switch
                 {
@@ -168,8 +181,13 @@ namespace GenDoc.Services.Generation
                     var mergedValues = Parse<string>(settings.LastManualValuesJson);
                     foreach (var row in textRows)
                     {
-                        if (string.IsNullOrWhiteSpace(row.Value)) mergedValues.Remove(row.Tag);
-                        else mergedValues[row.Tag] = row.Value;
+                        // Рядок «Дні стрільб» пам'ятає введений перелік під кожним своїм тегом - тоді
+                        // наступного разу його підхопить і пакет, де є лише {{дати_стрільб}} або лише {{період}}.
+                        foreach (var tag in row.PeriodTags.Count > 0 ? row.PeriodTags : new[] { row.Tag })
+                        {
+                            if (string.IsNullOrWhiteSpace(row.Value)) mergedValues.Remove(tag);
+                            else mergedValues[tag] = row.Value;
+                        }
                     }
                     settings.LastManualValuesJson = JsonSerializer.Serialize(mergedValues);
                 }

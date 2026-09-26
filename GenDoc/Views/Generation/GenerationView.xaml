@@ -390,6 +390,7 @@
                                                         <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
                                                                  ToolTip="Дата - дд.мм.рррр; період - дд.мм.рррр-дд.мм.рррр або перелік дат через кому">
                                                         </TextBox>
+<Grid Style="{StaticResource PeriodPickersStyle}"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions><DatePicker SelectedDate="{Binding PeriodFrom}" ToolTip="З"/><TextBlock Grid.Column="1" Text="–" Margin="6,0" VerticalAlignment="Center"/><DatePicker Grid.Column="2" SelectedDate="{Binding PeriodTo}" ToolTip="По"/></Grid>
                                                     </StackPanel>
                                                 </Grid>
                                             </DataTemplate>

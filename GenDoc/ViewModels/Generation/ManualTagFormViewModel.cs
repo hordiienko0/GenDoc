@@ -46,6 +46,25 @@ namespace GenDoc.ViewModels.Generation
             return row;
         }
 
+        /// <summary>
+        /// Один рядок «Дні стрільб» на {{період}} і {{дати_стрільб}}: офіцер вибирає дні один раз, відомості
+        /// беруть з них аркуші, а накази й заявки - той самий перелік словами.
+        /// </summary>
+        public static ManualTagRowViewModel ShootingDays(IReadOnlyList<string> periodTags, string? storedValue)
+        {
+            var row = new ManualTagRowViewModel(periodTags[0], ManualTagKind.Period, storedValue, ShootingDaysLabel)
+            {
+                PeriodTags = periodTags
+            };
+            row.SyncPeriodPickersFromValue();
+            return row;
+        }
+
+        private const string ShootingDaysLabel = "Дні стрільб (з – по або перелік через кому)";
+
+        /// <summary>Теги, які заповнює цей рядок періоду; порожньо - лише власний <see cref="Tag"/>.</summary>
+        public IReadOnlyList<string> PeriodTags { get; private init; } = Array.Empty<string>();
+
         public static ManualTagRowViewModel DocumentDate(IReadOnlyList<string> drivenTags, DateOnly initialDate)
         {
             var row = new ManualTagRowViewModel(DocumentDateTag, ManualTagKind.Date, null, DocumentDateLabel)
@@ -85,6 +104,16 @@ namespace GenDoc.ViewModels.Generation
         partial void OnValueChanged(string value)
         {
             if (Kind == ManualTagKind.Period) SyncPeriodPickersFromValue();
+
+            // У діалогах (перегенерація, постійний склад) «Дата документа» - звичайне текстове поле, а
+            // GetValues бере дату з DateValue: без цього введена вручну дата мовчки ігнорувалась.
+            if (IsDocumentDate
+                && DateTime.TryParseExact(value?.Trim(), "dd.MM.yyyy", System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.None, out var typed)
+                && DateValue != typed)
+            {
+                DateValue = typed;
+            }
         }
 
         private void WritePeriodValue()
@@ -191,6 +220,12 @@ namespace GenDoc.ViewModels.Generation
         public Dictionary<string, string> GetValues()
         {
             var values = Rows.ToDictionary(r => r.Tag, r => r.Value);
+
+            foreach (var row in Rows.Where(r => r.PeriodTags.Count > 0))
+            {
+                foreach (var tag in row.PeriodTags)
+                    values[tag] = Services.Generation.ManualTagClassifier.FormatPeriodValue(tag, row.Value);
+            }
 
             if (DocumentDateRow is { DateValue: DateTime documentDate } dateRow)
             {
