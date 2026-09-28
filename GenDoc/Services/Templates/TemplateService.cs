@@ -14,10 +14,11 @@ namespace GenDoc.Services.Templates
     {
         private static readonly Regex PlaceholderRegex = new(@"\{\{[^{}]+\}\}", RegexOptions.Compiled);
 
-        private static readonly HashSet<string> ReservedBlockTags = new(StringComparer.Ordinal)
-        {
-            "{{роздільник}}", "{{номер}}", "{{кількість_осіб}}", "{{учасників}}", "{{назва_набору}}"
-        };
+        // Теги, які генерація заповнює сама: у скані вони не стають ручними полями.
+        private static readonly HashSet<string> ReservedBlockTags = new(
+            new[] { "{{роздільник}}", "{{номер}}", "{{кількість_осіб}}", "{{учасників}}", "{{назва_набору}}" }
+                .Concat(Generation.StrengthReport.Tags),
+            StringComparer.Ordinal);
 
         private readonly IDbContextFactory<AppDbContext> _dbFactory;
         private readonly IAuditLogService _auditLogService;

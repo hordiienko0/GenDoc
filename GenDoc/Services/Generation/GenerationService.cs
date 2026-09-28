@@ -1073,6 +1073,9 @@ namespace GenDoc.Services.Generation
                     var sharedValues = BuildValues(sharedMappings, roster[0], orgSettings, manualValues);
                     // «… з особовим складом набору {{назва_набору}}» - набір, до якого належать люди документа.
                     sharedValues[IntakeTitleTag] = IntakeTitle(IntakeNamesOf(roster, intakeNames));
+                    // Стройова записка: особовий склад КППК/БЗВП і відсутні - на «Дату документа».
+                    foreach (var (tag, value) in StrengthReport.Build(db, roster, DocumentDate(manualValues)))
+                        sharedValues[tag] = value;
 
                     var rosterEntries = roster
                         .Select(r => (r.Id, SourceHash: _documentHashService.ComputeSourceHash(perRecipientMappings, r, orgSettings)))
@@ -1366,6 +1369,18 @@ namespace GenDoc.Services.Generation
                 .ToDictionary(i => i.Id, i => i.DisplayNumber);
 
         internal const string IntakeTitleTag = "{{назва_набору}}";
+
+        /// <summary>«Дата документа» з ручних значень ({{дата}}/{{дата_рапорту}}); без неї - сьогодні.</summary>
+        internal static DateOnly DocumentDate(IReadOnlyDictionary<string, string> manualValues)
+        {
+            foreach (var tag in new[] { "{{дата}}", "{{дата_рапорту}}", "{{дата_аркуша}}" })
+            {
+                if (manualValues.TryGetValue(tag, out var raw)
+                    && DateOnly.TryParseExact(raw?.Trim(), "dd.MM.yyyy", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+                    return date;
+            }
+            return DateOnly.FromDateTime(DateTime.Today);
+        }
 
         /// <summary>«Набір №30» → «№30» (у тексті вже стоїть «набору …»); кілька наборів - через кому.</summary>
         internal static string IntakeTitle(IEnumerable<string?> names) => string.Join(", ", names
