@@ -80,6 +80,33 @@ public class DocumentWordingTests
         Assert.Equal(expected, UkrainianGrammar.ParticipantsWord(count));
     }
 
+    [Theory]
+    [InlineData("полковник", "Іван ПЕТРЕНКО", "полковнику Івану ПЕТРЕНКУ")]
+    [InlineData("підполковник", "Веремєєнко Денис Петрович", "підполковнику Веремєєнку Денису Петровичу")]
+    [InlineData("полковник", "Коваленко Олена Іванівна", "полковнику Коваленко Олені Іванівні")]
+    public void HeadOfCoursesDative_DeclinesRankAndNameInBothFormats(string rank, string name, string expected)
+    {
+        var org = new OrganizationSettings { CommanderRank = rank, CommanderFullName = name };
+
+        Assert.Equal(expected, HeadOfCourses.DativeSignature(org));
+    }
+
+    [Theory]
+    [InlineData(new[] { "Набір №30", "Набір №30" }, "№30")]
+    [InlineData(new[] { "Обмежено придатні" }, "Обмежено придатні")]
+    [InlineData(new[] { "Набір №29", "Набір №30" }, "№29, №30")]
+    public void IntakeTitle_IsTheSetNameWithoutTheWordSet(string[] names, string expected)
+    {
+        Assert.Equal(expected, GenerationService.IntakeTitle(names));
+    }
+
+    [Fact]
+    public void YearTag_FollowsTheDocumentDate()
+    {
+        Assert.True(ManualTagClassifier.IsDocumentDate("{{рік}}"));
+        Assert.Equal("2026", ManualTagClassifier.FormatDate("{{рік}}", new DateOnly(2026, 8, 3)));
+    }
+
     [Fact]
     public void LeftVerb_AgreesWithGender()
     {

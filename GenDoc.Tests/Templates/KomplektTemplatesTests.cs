@@ -54,7 +54,8 @@ public class KomplektTemplatesTests : IDisposable
         var tags = new List<string>();
         if (extract) tags.AddRange(new[] { "дата_наказу", "номер_наказу" });
 
-        tags.AddRange(new[] { "керівник_стрільби_дв", "резерв_керівника", "дати_стрільб", "назва_набору" });
+        tags.AddRange(new[] { "керівник_стрільби_дв", "резерв_керівника", "дати_стрільб" });
+        // {{назва_набору}} і {{начальник_курсів_дв}} застосунок заповнює сам (набір людей документа, начальник курсів із налаштувань).
 
         var shootings = limited ? 6 : 7;
         tags.AddRange(Range("вправи_стрільби_", 1, shootings));
@@ -77,7 +78,7 @@ public class KomplektTemplatesTests : IDisposable
         {
             "начальник_варти_зв", "зброя_начальника_варти", "вартовий_зв", "зброя_вартового",
             "кількість_акм_вксс", "отримувач_боєприпасів_дв", "кількість_акм_61",
-            "начальник_курсів_дв", "кількість_рдг", "старший_машини_зв"
+            "кількість_рдг", "старший_машини_зв"
         });
 
         if (extract) tags.AddRange(new[] { "звання_засвідчувача", "піб_засвідчувача" });
@@ -86,6 +87,8 @@ public class KomplektTemplatesTests : IDisposable
 
     // Наказ підписує начальник університету - не начальник курсів із «командирських» полів налаштувань.
     private static readonly string[] UniversityHead = { "звання_начальника_університету", "піб_начальника_університету" };
+
+    private static readonly string[] HeadOfCoursesDative = { "начальник_курсів_дв" };
 
     private static readonly string[] Person = { "звання", "піб" };
 
@@ -106,13 +109,13 @@ public class KomplektTemplatesTests : IDisposable
                 Signer, SignerName, SignerPosition, "начальник_служби_засобів_ураження", "комірник_складу"
             }),
         new("Стрільби", "Шаблон_Витяг з наказу на стрільби (придатні).docx", TemplateKind.Group,
-            Array.Empty<string>(), OrderManual(limited: false, extract: true).Concat(UniversityHead).ToArray()),
+            HeadOfCoursesDative, OrderManual(limited: false, extract: true).Concat(UniversityHead).ToArray()),
         new("Стрільби", "Шаблон_Витяг з наказу на стрільби (обмежено придатні).docx", TemplateKind.Group,
-            Array.Empty<string>(), OrderManual(limited: true, extract: true).Concat(UniversityHead).ToArray()),
+            HeadOfCoursesDative, OrderManual(limited: true, extract: true).Concat(UniversityHead).ToArray()),
         new("Стрільби", "Шаблон_Проєкт наказу на стрільби (придатні).docx", TemplateKind.Group,
-            Array.Empty<string>(), OrderManual(limited: false, extract: false).Concat(UniversityHead).ToArray()),
+            HeadOfCoursesDative, OrderManual(limited: false, extract: false).Concat(UniversityHead).ToArray()),
         new("Стрільби", "Шаблон_Проєкт наказу на стрільби (обмежено придатні).docx", TemplateKind.Group,
-            Array.Empty<string>(), OrderManual(limited: true, extract: false).Concat(UniversityHead).ToArray()),
+            HeadOfCoursesDative, OrderManual(limited: true, extract: false).Concat(UniversityHead).ToArray()),
         new("Стрільби", "Шаблон_Роздавально-здавальна відомість (форма 9а).docx", TemplateKind.Group,
             new[] { "піб_ініціали", "номер_вч" },
             new[] { "номер_відомості", "дата", "дата_аркуша", "калібр", "кількість_патронів", "начальник_пбп", Signer, SignerName, "керівник_стрільб" }),
@@ -162,7 +165,7 @@ public class KomplektTemplatesTests : IDisposable
                 Signer, SignerName, SignerPosition, "відрядження", "шпиталь", "звільнення"
             }),
         new("Стройовий облік", "Шаблон_Титульний аркуш іменного списку вечірньої перевірки.docx", TemplateKind.Group,
-            Array.Empty<string>(), new[] { "населений_пункт", "рік" }),
+            new[] { "населений_пункт" }, new[] { "рік" }),
 
         new("Інше", "Шаблон_Звернення на отримання благодійної допомоги.docx", TemplateKind.Group,
             Array.Empty<string>(), new[] { "адресат", "піб_адресата", "перелік_матеріалів", Signer, SignerName, SignerPosition, "дата" }),

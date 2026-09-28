@@ -64,10 +64,12 @@ namespace GenDoc.Services.Templates
             ["номер_вч"] = "UnitNumber",
             ["назва_вч"] = "UnitFullName",
             ["місто"] = "City",
+            ["населений_пункт"] = "City",
             ["звання_командира"] = "CommanderRank",
             ["піб_командира"] = "CommanderFullName",
             ["посада_командира"] = "CommanderPosition",
-            ["піб_кадровика"] = "HrOfficerFullName"
+            ["піб_кадровика"] = "HrOfficerFullName",
+            ["начальник_курсів_дв"] = "HeadOfCoursesDative"
         };
 
         public static (MappingSourceType SourceType, string? FieldName) Classify(string tagWithBraces)

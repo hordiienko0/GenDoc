@@ -51,6 +51,45 @@ namespace GenDoc.Services
             return OfficerPrefix + head[HeadPrefix.Length..];
         }
 
+        /// <summary>
+        /// {{начальник_курсів_дв}} - «полковнику Івану ПЕТРЕНКУ». Ім'я в налаштуваннях буває і «Іван ПЕТРЕНКО»
+        /// (прізвище великими), і «Петренко Іван Іванович»: слово великими - прізвище, інакше перше слово -
+        /// прізвище, друге - ім'я, третє - по батькові. Рід - за по батькові (-івна/-ївна - жіночий).
+        /// </summary>
+        public static string DativeSignature(OrganizationSettings? org)
+        {
+            if (!IsConfigured(org)) return string.Empty;
+
+            var words = org!.CommanderFullName.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var gender = words.Any(w => w.EndsWith("івна", StringComparison.OrdinalIgnoreCase) || w.EndsWith("ївна", StringComparison.OrdinalIgnoreCase))
+                ? Models.Enums.Gender.Female
+                : Models.Enums.Gender.Male;
+            var hasCapsSurname = words.Any(IsAllCaps);
+
+            var declined = words.Select((word, i) => UkrainianGrammar.Dative(word, KindOf(word, i, hasCapsSurname), gender));
+            var rank = string.IsNullOrWhiteSpace(org.CommanderRank)
+                ? null
+                : UkrainianGrammar.Dative(org.CommanderRank.Trim(), Models.Enums.GrammaticalKind.Rank, gender);
+
+            return string.Join(' ', new[] { rank }.Concat(declined).Where(p => !string.IsNullOrWhiteSpace(p)));
+        }
+
+        private static Models.Enums.GrammaticalKind KindOf(string word, int index, bool hasCapsSurname)
+        {
+            if (hasCapsSurname)
+                return IsAllCaps(word) ? Models.Enums.GrammaticalKind.Surname : Models.Enums.GrammaticalKind.GivenName;
+
+            return index switch
+            {
+                0 => Models.Enums.GrammaticalKind.Surname,
+                1 => Models.Enums.GrammaticalKind.GivenName,
+                _ => Models.Enums.GrammaticalKind.Patronymic
+            };
+        }
+
+        private static bool IsAllCaps(string word) =>
+            word.Length > 1 && word.Any(char.IsLetter) && word == word.ToUpperInvariant();
+
         /// <summary>Підпис «звання» + «Ім'я ПРІЗВИЩЕ» у тому вигляді, як його вписано в налаштуваннях.</summary>
         public static string DisplayLabel(OrganizationSettings org) =>
             $"{JoinRankAndName(org)} - начальник курсів";

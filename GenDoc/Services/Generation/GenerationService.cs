@@ -1071,6 +1071,8 @@ namespace GenDoc.Services.Generation
                         .Select(r => (IDictionary<string, string>)BuildValues(perRecipientMappings, r, orgSettings, manualValues))
                         .ToList();
                     var sharedValues = BuildValues(sharedMappings, roster[0], orgSettings, manualValues);
+                    // «… з особовим складом набору {{назва_набору}}» - набір, до якого належать люди документа.
+                    sharedValues[IntakeTitleTag] = IntakeTitle(IntakeNamesOf(roster, intakeNames));
 
                     var rosterEntries = roster
                         .Select(r => (r.Id, SourceHash: _documentHashService.ComputeSourceHash(perRecipientMappings, r, orgSettings)))
@@ -1324,6 +1326,7 @@ namespace GenDoc.Services.Generation
                 "HrOfficerFullName" => org.HrOfficerFullName,
                 "CommanderPosition" => org.CommanderPosition,
                 "UnitFullName" => org.UnitFullName,
+                "HeadOfCoursesDative" => Services.HeadOfCourses.DativeSignature(org),
                 _ => string.Empty
             };
         }
@@ -1361,6 +1364,15 @@ namespace GenDoc.Services.Generation
                 .Select(i => new { i.Id, i.DisplayNumber })
                 .AsEnumerable()
                 .ToDictionary(i => i.Id, i => i.DisplayNumber);
+
+        internal const string IntakeTitleTag = "{{назва_набору}}";
+
+        /// <summary>«Набір №30» → «№30» (у тексті вже стоїть «набору …»); кілька наборів - через кому.</summary>
+        internal static string IntakeTitle(IEnumerable<string?> names) => string.Join(", ", names
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Select(n => n!.Trim())
+            .Distinct()
+            .Select(n => n.StartsWith("Набір ", StringComparison.CurrentCultureIgnoreCase) ? n[6..].Trim() : n));
 
         private static IEnumerable<string?> IntakeNamesOf(
             IEnumerable<Recipient> roster, Dictionary<int, string> intakeNames)

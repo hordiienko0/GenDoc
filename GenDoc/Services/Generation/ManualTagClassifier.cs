@@ -10,6 +10,7 @@ namespace GenDoc.Services.Generation
         private const string PlainDateTag = "дата";
         private const string SheetDateTag = "дата_аркуша";
         private const string ShootingDatesTag = "дати_стрільб";
+        private const string YearTag = "рік";
         private const string DayMonthYear = "dd.MM.yyyy";
 
         public static string Normalize(string tag) => tag.Trim().Trim('{', '}').Trim();
@@ -18,7 +19,7 @@ namespace GenDoc.Services.Generation
 
         public static ManualTagKind Classify(string tag) => Normalize(tag) switch
         {
-            ArrivalDateTag or EnrollmentDateTag or ReportDateTag or PlainDateTag or SheetDateTag => ManualTagKind.Date,
+            ArrivalDateTag or EnrollmentDateTag or ReportDateTag or PlainDateTag or SheetDateTag or YearTag => ManualTagKind.Date,
             var t when t == PeriodTag => ManualTagKind.Period,
             ShootingDatesTag => ManualTagKind.Period,
             _ => ManualTagKind.Text
@@ -47,7 +48,7 @@ namespace GenDoc.Services.Generation
         }
 
         public static bool IsDocumentDate(string tag) =>
-            Normalize(tag) is PlainDateTag or ReportDateTag or SheetDateTag;
+            Normalize(tag) is PlainDateTag or ReportDateTag or SheetDateTag or YearTag;
 
         public static bool IsSignerRank(string tag) => Normalize(tag) == ManualTagFormViewModel.SignerRankTag;
 
@@ -62,11 +63,14 @@ namespace GenDoc.Services.Generation
         {
             ArrivalDateTag => intakeArrivalDate,
             EnrollmentDateTag => intakeArrivalDate.AddDays(1),
-            ReportDateTag or PlainDateTag or SheetDateTag => DateOnly.FromDateTime(DateTime.Today),
+            ReportDateTag or PlainDateTag or SheetDateTag or YearTag => DateOnly.FromDateTime(DateTime.Today),
             _ => throw new ArgumentException($"Тег «{tag}» не є датою.", nameof(tag))
         };
 
+        // {{рік}} (титульний аркуш списку вечірньої перевірки) - рік дати документа.
         public static string FormatDate(string tag, DateOnly date) =>
-            IsDocumentDate(tag) ? date.ToString(DayMonthYear) : UkrainianDate.Long(date);
+            Normalize(tag) == YearTag ? date.Year.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            : IsDocumentDate(tag) ? date.ToString(DayMonthYear)
+            : UkrainianDate.Long(date);
     }
 }

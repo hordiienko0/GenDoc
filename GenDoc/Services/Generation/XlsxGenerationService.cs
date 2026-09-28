@@ -540,6 +540,7 @@ namespace GenDoc.Services.Generation
                 "HrOfficerFullName" => org.HrOfficerFullName,
                 "CommanderPosition" => org.CommanderPosition,
                 "UnitFullName" => org.UnitFullName,
+                "HeadOfCoursesDative" => Services.HeadOfCourses.DativeSignature(org),
                 _ => string.Empty
             };
         }

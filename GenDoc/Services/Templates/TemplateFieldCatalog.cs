@@ -69,6 +69,7 @@ public static class TemplateFieldCatalog
         new("CommanderFullName", "ПІБ командира"),
         new("CommanderPosition", "Посада командира"),
         new("HrOfficerFullName", "ПІБ начальника служби персоналу"),
-        new("UnitFullName", "Повна назва частини/закладу")
+        new("UnitFullName", "Повна назва частини/закладу"),
+        new("HeadOfCoursesDative", "Начальник курсів, давальний («полковнику Івану ПЕТРЕНКУ»)")
     };
 }

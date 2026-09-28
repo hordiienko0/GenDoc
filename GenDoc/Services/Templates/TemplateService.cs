@@ -16,7 +16,7 @@ namespace GenDoc.Services.Templates
 
         private static readonly HashSet<string> ReservedBlockTags = new(StringComparer.Ordinal)
         {
-            "{{роздільник}}", "{{номер}}", "{{кількість_осіб}}", "{{учасників}}"
+            "{{роздільник}}", "{{номер}}", "{{кількість_осіб}}", "{{учасників}}", "{{назва_набору}}"
         };
 
         private readonly IDbContextFactory<AppDbContext> _dbFactory;
