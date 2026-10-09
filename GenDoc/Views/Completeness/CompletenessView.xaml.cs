@@ -159,6 +159,7 @@ public partial class CompletenessView : UserControl
                 FontSize = 11,
                 FontWeight = FontWeights.Bold
             };
+            ShowFullNameWhenItFits(headerText, BuildColumnHeader(template), columnLabels[i]);
 
             var xaml = string.Format(CellTemplateXaml, i);
             var cellTemplate = (DataTemplate)XamlReader.Parse(xaml);
@@ -185,6 +186,36 @@ public partial class CompletenessView : UserControl
         MatrixGrid.FrozenColumnCount = 2;
 
         MatrixGrid.ItemsSource = vm.Rows;
+    }
+
+    // Скорочена мітка («Витяг … (придатні)») - лише для вузької колонки. Щойно колонку розтягли
+    // настільки, що повна назва вміщується в три рядки без розриву слова, показуємо її цілком.
+    private static void ShowFullNameWhenItFits(TextBlock header, string fullName, string shortLabel)
+    {
+        fullName = (fullName ?? string.Empty).Trim();
+        if (string.Equals(fullName, shortLabel, StringComparison.Ordinal)) return;
+
+        header.SizeChanged += (_, e) =>
+        {
+            if (!e.WidthChanged || header.ActualWidth <= 0) return;
+
+            var formatted = new FormattedText(
+                fullName,
+                System.Globalization.CultureInfo.CurrentUICulture,
+                header.FlowDirection,
+                new Typeface(header.FontFamily, header.FontStyle, header.FontWeight, header.FontStretch),
+                header.FontSize,
+                Brushes.Black,
+                VisualTreeHelper.GetDpi(header).PixelsPerDip)
+            {
+                MaxTextWidth = header.ActualWidth,
+                LineHeight = header.LineHeight
+            };
+
+            var fits = formatted.MinWidth <= header.ActualWidth
+                       && formatted.Height <= header.MaxHeight + 0.5;
+            header.Text = fits ? fullName : shortLabel;
+        };
     }
 
     private static string BuildColumnHeader(Services.Completeness.MatrixTemplateInfo template) =>
