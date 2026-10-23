@@ -175,8 +175,8 @@
                                                                         <RowDefinition Height="Auto"/>
                                                                     </Grid.RowDefinitions>
                                                                     <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="1.25*"/>
                                                                         <ColumnDefinition Width="1*"/>
-                                                                        <ColumnDefinition Width="1.6*"/>
                                                                     </Grid.ColumnDefinitions>
 
                                                                     <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="{Binding DisplayLabel}"
@@ -301,13 +301,11 @@
                                                          (звання, звання_давальний…) неможливо було розрізнити. -->
                                                     <Grid Margin="0,0,0,8">
                                                         <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="1.25*"/>
                                                             <ColumnDefinition Width="1*"/>
-                                                            <ColumnDefinition Width="1.6*"/>
-                                                            <ColumnDefinition Width="140"/>
                                                         </Grid.ColumnDefinitions>
                                                         <TextBlock Grid.Column="0" Text="Джерело" Style="{StaticResource TemplatesHeaderTextStyle}"/>
                                                         <TextBlock Grid.Column="1" Text="Поле" Style="{StaticResource TemplatesHeaderTextStyle}"/>
-                                                        <TextBlock Grid.Column="2" Text="Формат дати" Style="{StaticResource TemplatesHeaderTextStyle}"/>
                                                     </Grid>
 
                                                     <ItemsControl ItemsSource="{Binding Mappings}">
@@ -317,14 +315,14 @@
                                                                     <Grid.RowDefinitions>
                                                                         <RowDefinition Height="Auto"/>
                                                                         <RowDefinition Height="Auto"/>
+                                                                        <RowDefinition Height="Auto"/>
                                                                     </Grid.RowDefinitions>
                                                                     <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="1.25*"/>
                                                                         <ColumnDefinition Width="1*"/>
-                                                                        <ColumnDefinition Width="1.6*"/>
-                                                                        <ColumnDefinition Width="140"/>
                                                                     </Grid.ColumnDefinitions>
 
-                                                                    <TextBlock Grid.Row="0" Grid.ColumnSpan="3" Text="{Binding PlaceholderTag}"
+                                                                    <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="{Binding PlaceholderTag}"
                                                                                FontFamily="Consolas" Foreground="{StaticResource AccentBrush}"
                                                                                TextWrapping="Wrap" Margin="0,0,0,4"/>
 
@@ -351,11 +349,14 @@
                                                                         </ComboBox.ItemTemplate>
                                                                     </ComboBox>
 
-                                                                    <ComboBox Grid.Row="1" Grid.Column="2" ItemsSource="{Binding DateFormatOptions}"
+                                                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="Формат дати" Margin="0,6,8,0" VerticalAlignment="Center"
+                                                                           Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"
+                                                                           Visibility="{Binding IsDateField, Converter={StaticResource BoolToVisibility}}"/>
+                                                                    <ComboBox Grid.Row="2" Grid.Column="1" ItemsSource="{Binding DateFormatOptions}"
                                                                               SelectedValuePath="Key"
                                                                               SelectedValue="{Binding SelectedDateFormat, Mode=TwoWay}"
                                                                               Visibility="{Binding IsDateField, Converter={StaticResource BoolToVisibility}}"
-                                                                              HorizontalAlignment="Stretch" Margin="8,0,0,0">
+                                                                              HorizontalAlignment="Stretch" Margin="0,6,0,0">
                                                                         <ComboBox.ItemTemplate>
                                                                             <DataTemplate>
                                                                                 <TextBlock Text="{Binding Display}"/>

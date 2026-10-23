@@ -58,17 +58,25 @@
                        Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
         </StackPanel>
 
-        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,10">
+        <Grid Grid.Row="1" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*" MinWidth="120" MaxWidth="260"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
             <ComboBox Width="160" Margin="0,0,8,0" ItemsSource="{Binding UnitOptions}"
                       SelectedItem="{Binding SelectedUnit}" DisplayMemberPath="Label"/>
-            <ComboBox Width="140" Margin="0,0,8,0" ItemsSource="{Binding StateOptions}"
+            <ComboBox Grid.Column="1" Width="140" Margin="0,0,8,0" ItemsSource="{Binding StateOptions}"
                       SelectedItem="{Binding SelectedState}" DisplayMemberPath="Label"/>
-            <CheckBox Content="Тільки курсові офіцери" IsChecked="{Binding ShowOnlyCourseOfficers}"
+            <CheckBox Grid.Column="2" Content="Тільки курсові офіцери" IsChecked="{Binding ShowOnlyCourseOfficers}"
                       VerticalAlignment="Center" Margin="0,0,8,0"/>
-            <TextBox Width="220" Tag="Пошук за ПІБ або посадою…"
+            <TextBox Grid.Column="3" Tag="Пошук за ПІБ або посадою…" ToolTip="Пошук за ПІБ або посадою"
                      Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
-            <Button Content="+ Додати" Command="{Binding AddPersonCommand}" Margin="8,0,0,0"/>
-        </StackPanel>
+            <Button Grid.Column="4" Content="+ Додати" Command="{Binding AddPersonCommand}" Margin="8,0,0,0"/>
+        </Grid>
 
         <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
@@ -121,7 +129,7 @@
 
                             <DataGridTextColumn Header="ПІБ" Binding="{Binding FullName}" Width="2.5*" MinWidth="210"
                                                  ElementStyle="{StaticResource TruncatedCellStyle}"/>
-                            <DataGridTextColumn Header="Звання" Binding="{Binding RankShort}" Width="132">
+                            <DataGridTextColumn Header="Звання" Binding="{Binding RankShort}" Width="132" MinWidth="132">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock" BasedOn="{StaticResource TruncatedCellStyle}">
                                         <Setter Property="ToolTip" Value="{Binding Rank}"/>
@@ -131,7 +139,7 @@
                             <DataGridTextColumn Header="Посада" Binding="{Binding Position}" Width="1.4*" MinWidth="150"
                                                  ElementStyle="{StaticResource TruncatedCellStyle}"/>
 
-                            <DataGridTemplateColumn Header="Курсовий офіцер" Width="120">
+                            <DataGridTemplateColumn Header="Курсовий офіцер" Width="120" MinWidth="120">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="✓" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"
@@ -141,7 +149,7 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
 
-                            <DataGridTemplateColumn Header="Стан" Width="116">
+                            <DataGridTemplateColumn Header="Стан" Width="116" MinWidth="116">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Border Style="{StaticResource StateChipBorderStyle}" HorizontalAlignment="Left">
@@ -151,7 +159,7 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
 
-                            <DataGridTextColumn Header="Документів" Binding="{Binding DocsCount}" Width="96"
+                            <DataGridTextColumn Header="Документів" Binding="{Binding DocsCount}" Width="96" MinWidth="96"
                                                  HeaderStyle="{StaticResource DocsCountHeaderStyle}">
                                 <DataGridTextColumn.ElementStyle>
                                     <Style TargetType="TextBlock" BasedOn="{StaticResource DocsCountCellStyle}"/>

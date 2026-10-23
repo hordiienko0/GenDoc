@@ -149,7 +149,7 @@
                                                        TextTrimming="CharacterEllipsis" ToolTip="{Binding PositionUnitDisplay}"/>
                                         </StackPanel>
 
-                                        <TextBlock Grid.Column="2" Text="{Binding Rank}" Padding="14,11" VerticalAlignment="Center"
+                                        <TextBlock Grid.Column="2" Text="{Binding Rank}" ToolTip="{Binding Rank}" Padding="14,11" VerticalAlignment="Center"
                                                    FontSize="12.5" Foreground="{StaticResource TextSecondaryBrush}"
                                                    TextTrimming="CharacterEllipsis">
                                             <TextBlock.Style>

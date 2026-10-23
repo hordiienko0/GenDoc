@@ -5,7 +5,10 @@ namespace GenDoc.Services
 {
     public static class ErrorLog
     {
-        public static string DefaultDirectory => Path.Combine(
+        /// <summary>Тести перенаправляють журнал у тимчасову теку, щоб навмисні помилки не потрапляли в журнал користувача.</summary>
+        internal static string? DirectoryOverride { get; set; }
+
+        public static string DefaultDirectory => DirectoryOverride ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GenDoc", "logs");
 
         public static string FilePathFor(string directory, DateTime at)

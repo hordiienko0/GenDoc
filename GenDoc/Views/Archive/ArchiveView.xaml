@@ -625,7 +625,7 @@
                                 </DataGridTextColumn.ElementStyle>
                             </DataGridTextColumn>
 
-                            <DataGridTemplateColumn Header="ОСІБ" Width="90" MinWidth="90" SortMemberPath="RecipientCount">
+                            <DataGridTemplateColumn Header="ОСІБ" Width="100" MinWidth="100" SortMemberPath="RecipientCount">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Border Background="{StaticResource AccentSoftBrush}" HorizontalAlignment="Left"

@@ -31,9 +31,9 @@
         <DataTemplate x:Key="PersonCellTemplate">
             <Border Background="{Binding FirstColumnBackground}" Padding="8,4">
                 <StackPanel>
-                    <TextBlock Text="{Binding FullName}" FontWeight="Bold" FontSize="12.5"
+                    <TextBlock Text="{Binding FullName}" ToolTip="{Binding FullName}" FontWeight="Bold" FontSize="12.5"
                                Foreground="{StaticResource TextPrimaryBrush}" TextTrimming="CharacterEllipsis"/>
-                    <TextBlock Text="{Binding SubText}" FontSize="10.5" Margin="0,1,0,0"
+                    <TextBlock Text="{Binding SubText}" ToolTip="{Binding SubText}" FontSize="10.5" Margin="0,1,0,0"
                                Foreground="{StaticResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
                 </StackPanel>
             </Border>

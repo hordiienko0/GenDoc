@@ -79,7 +79,7 @@ public class GenerationViewModelRosterScopeTests
         Assert.True(vm.HasActiveIntake);
         Assert.False(vm.IncludePermanentStaff);
         Assert.Equal("Згенерувати всім (Набір №5: 2)", vm.GenerateButtonText);
-        Assert.Equal("У списку — Набір №5, без постійного складу.", vm.RosterScopeHint);
+        Assert.Equal("У списку - Набір №5, без постійного складу.", vm.RosterScopeHint);
     }
 
     [Fact]
@@ -95,7 +95,7 @@ public class GenerationViewModelRosterScopeTests
         Assert.DoesNotContain(seeded.OtherIntakeMemberId, vm.RecipientOptions.Select(r => r.Id));
         Assert.Equal(3, vm.RecipientCount);
         Assert.Equal("Згенерувати всім (Набір №5: 3)", vm.GenerateButtonText);
-        Assert.Equal("У списку — Набір №5 і постійний склад.", vm.RosterScopeHint);
+        Assert.Equal("У списку - Набір №5 і постійний склад.", vm.RosterScopeHint);
     }
 
     [Fact]
@@ -110,7 +110,7 @@ public class GenerationViewModelRosterScopeTests
         Assert.Equal(4, vm.RecipientCount);
         Assert.False(vm.HasActiveIntake);
         Assert.Equal("Згенерувати всім (4)", vm.GenerateButtonText);
-        Assert.Equal("Активного набору немає — у списку всі люди бази, включно з постійним складом.", vm.RosterScopeHint);
+        Assert.Equal("Активного набору немає - у списку всі люди бази, включно з постійним складом.", vm.RosterScopeHint);
     }
 
     [Fact]

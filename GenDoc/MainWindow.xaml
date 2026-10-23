@@ -235,9 +235,9 @@
 
                             <StackPanel Margin="10,0,0,0" VerticalAlignment="Center"
                                         Visibility="{Binding IsSidebarExpanded, Converter={StaticResource BoolToVisibility}}">
-                                <TextBlock Text="{Binding SidebarUnitShortName}" FontSize="12.5"
+                                <TextBlock Text="{Binding SidebarUnitShortName}" ToolTip="{Binding SidebarUnitShortName}" FontSize="12.5"
                                            FontWeight="Bold" Foreground="White" TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Text="{Binding SidebarUnitFullName}" FontSize="10.5"
+                                <TextBlock Text="{Binding SidebarUnitFullName}" ToolTip="{Binding SidebarUnitFullName}" FontSize="10.5"
                                            Foreground="{StaticResource MenuTextBrush}" TextTrimming="CharacterEllipsis"
                                            Visibility="{Binding HasSidebarUnitFullName, Converter={StaticResource BoolToVisibility}}"/>
                             </StackPanel>

@@ -219,10 +219,10 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
 
     internal static string BuildRosterScopeHint(string? intakeLabel, bool includePermanentStaff)
     {
-        if (intakeLabel is null) return "Активного набору немає — у списку всі люди бази, включно з постійним складом.";
+        if (intakeLabel is null) return "Активного набору немає - у списку всі люди бази, включно з постійним складом.";
         return includePermanentStaff
-            ? $"У списку — {intakeLabel} і постійний склад."
-            : $"У списку — {intakeLabel}, без постійного складу.";
+            ? $"У списку - {intakeLabel} і постійний склад."
+            : $"У списку - {intakeLabel}, без постійного складу.";
     }
 
     private void OnActiveIntakeChanged()

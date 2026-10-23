@@ -19,7 +19,7 @@ namespace GenDoc.ViewModels.Personnel
         public static readonly string[] FitnessOptions =
             { FitnessCategoryHelper.Regular, FitnessCategoryHelper.Limited };
 
-        public const string NoFitnessOption = "— без категорії —";
+        public const string NoFitnessOption = "(без категорії)";
 
         public const string SaveFirstNote = "Спершу збережіть особу - документи з'являться після збереження";
 

@@ -28,7 +28,7 @@ namespace GenDoc.ViewModels.Archive
             Dto.HasContent ? null : "файл не збережено"
         }.Where(p => p is not null));
         public string? TemplateTooltip => Dto.TemplateAlive
-            ? null
+            ? TemplateDisplay
             : "Шаблон переміщено в кошик - відновіть його в «Шаблонах», щоб формувати нові версії";
         public string VersionText => $"в.{Dto.Version}";
         public int Version => Dto.Version;

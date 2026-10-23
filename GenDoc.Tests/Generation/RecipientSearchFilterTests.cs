@@ -38,13 +38,13 @@ public class RecipientSearchFilterTests
     public void RosterScopeHint_ExplainsWhoIsInTheList()
     {
         Assert.Equal(
-            "Активного набору немає — у списку всі люди бази, включно з постійним складом.",
+            "Активного набору немає - у списку всі люди бази, включно з постійним складом.",
             GenerationViewModel.BuildRosterScopeHint(null, false));
         Assert.Equal(
-            "У списку — Набір №5, без постійного складу.",
+            "У списку - Набір №5, без постійного складу.",
             GenerationViewModel.BuildRosterScopeHint("Набір №5", false));
         Assert.Equal(
-            "У списку — Набір №5 і постійний склад.",
+            "У списку - Набір №5 і постійний склад.",
             GenerationViewModel.BuildRosterScopeHint("Набір №5", true));
     }
 }
