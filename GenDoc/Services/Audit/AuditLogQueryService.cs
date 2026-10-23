@@ -22,7 +22,8 @@ namespace GenDoc.Services.Audit
             ["OrgNode"] = "Папка",
             ["StaffEvent"] = "Постійний склад",
             ["AppSettings"] = "Налаштування",
-            ["OrganizationSettings"] = "Налаштування частини"
+            ["OrganizationSettings"] = "Налаштування частини",
+            ["DutyRoster"] = "Графік чергувань"
         };
 
         private static readonly (string Prefix, string Kind)[] ActionKinds =

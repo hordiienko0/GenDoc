@@ -10,5 +10,8 @@ namespace GenDoc.Models
         public bool ArchiveMineOnly { get; set; }
         public string? LastManualValuesJson { get; set; }
         public string? LastSignerByTemplateJson { get; set; }
+
+        /// <summary>Налаштування графіка чергувань цього курсового (галочки, шапка, підвал) - JSON.</summary>
+        public string? DutyRosterPrefsJson { get; set; }
     }
 }

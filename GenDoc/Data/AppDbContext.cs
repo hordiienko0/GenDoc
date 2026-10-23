@@ -44,6 +44,9 @@ namespace GenDoc.Data
         public DbSet<GeneratedGroupDocumentContent> GeneratedGroupDocumentContents => Set<GeneratedGroupDocumentContent>();
         public DbSet<GeneratedGroupDocumentRecipient> GeneratedGroupDocumentRecipients => Set<GeneratedGroupDocumentRecipient>();
         public DbSet<Models.UserSettings> UserSettings => Set<Models.UserSettings>();
+        public DbSet<DutyRoster> DutyRosters => Set<DutyRoster>();
+        public DbSet<DutyRosterMember> DutyRosterMembers => Set<DutyRosterMember>();
+        public DbSet<DutyRosterCell> DutyRosterCells => Set<DutyRosterCell>();
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
@@ -132,6 +135,23 @@ namespace GenDoc.Data
                 e.HasOne(s => s.UserProfile).WithMany().HasForeignKey(s => s.UserProfileId)
                     .OnDelete(DeleteBehavior.Cascade);
             });
+
+            modelBuilder.Entity<DutyRoster>(e =>
+            {
+                e.HasIndex(r => r.IntakeId);
+                e.HasMany(r => r.Members).WithOne(m => m.Roster).HasForeignKey(m => m.RosterId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<DutyRosterMember>(e =>
+            {
+                e.HasIndex(m => m.RosterId);
+                e.HasMany(m => m.Cells).WithOne(c => c.Member).HasForeignKey(c => c.MemberId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            modelBuilder.Entity<DutyRosterCell>()
+                .HasKey(c => new { c.MemberId, c.Date, c.Kind });
 
             modelBuilder.Entity<GenerationPackageExportTemplate>()
                 .HasOne(t => t.GenerationPackage)

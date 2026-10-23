@@ -102,6 +102,8 @@ public partial class MainViewModel : ObservableObject
             new(new[]
             {
                 new NavigationItem("Кімнати", "\uE80F", () => _serviceProvider.GetRequiredService<RoomsViewModel>()),
+                new NavigationItem("Графік чергувань", "\uE8BF",
+                    () => _serviceProvider.GetRequiredService<GenDoc.ViewModels.Duty.DutyRosterViewModel>()),
                 new NavigationItem("Журнал дій", "\uE81C", () => _serviceProvider.GetRequiredService<AuditLogViewModel>()),
             }, showDividerAfter: true),
             new(new[]

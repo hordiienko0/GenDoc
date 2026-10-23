@@ -6,7 +6,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 28;
+    private const int CurrentSchemaVersion = 29;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -132,6 +132,30 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         ("ActiveIntakeId", "INTEGER"), ("LastPackageId", "INTEGER"),
         ("ArchiveMineOnly", "INTEGER NOT NULL DEFAULT 0"),
         ("LastManualValuesJson", "TEXT"), ("LastSignerByTemplateJson", "TEXT")
+    };
+
+    private static readonly (string Name, string Type)[] UserSettingsColumnsV29 =
+    {
+        ("DutyRosterPrefsJson", "TEXT")
+    };
+
+    private static readonly (string Name, string Type)[] DutyRosterColumnsV29 =
+    {
+        ("DateFrom", "TEXT NOT NULL DEFAULT ''"), ("DateTo", "TEXT NOT NULL DEFAULT ''"),
+        ("IntakeId", "INTEGER"), ("OrgNodeId", "INTEGER"),
+        ("PeoplePerDay", "INTEGER NOT NULL DEFAULT 3"), ("Seed", "INTEGER NOT NULL DEFAULT 0"),
+        ("Heading", "TEXT NOT NULL DEFAULT ''"), ("FooterJson", "TEXT"), ("ExemptDays", "TEXT"),
+        ("ExcludedRecipients", "TEXT"),
+        ("UseEventExemptions", "INTEGER NOT NULL DEFAULT 1"), ("CarryOverBalance", "INTEGER NOT NULL DEFAULT 1"),
+        ("DutyMarkOnly", "INTEGER NOT NULL DEFAULT 0"), ("WeekendsExempt", "INTEGER NOT NULL DEFAULT 1"),
+        ("CreatedAt", "TEXT NOT NULL DEFAULT ''"), ("CreatedBy", "TEXT"), ("UpdatedAt", "TEXT"),
+        ("DeletedAt", "TEXT"), ("DeletedBy", "TEXT")
+    };
+
+    private static readonly (string Name, string Type)[] DutyRosterMemberColumnsV29 =
+    {
+        ("RecipientId", "INTEGER"), ("DisplayName", "TEXT NOT NULL DEFAULT ''"),
+        ("SortOrder", "INTEGER NOT NULL DEFAULT 0"), ("ExemptWholePeriod", "INTEGER NOT NULL DEFAULT 0")
     };
 
     private static readonly (string Name, string Type)[] WeaponColumnsV18 =
@@ -568,6 +592,19 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                 });
                 currentVersion = 28;
             }
+
+            if (currentVersion < 29)
+            {
+                EnsureDutyRosterTables(db);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 29,
+                    AppliedAt = DateTime.Now,
+                    Description = "Графік чергувань: графіки, люди в графіку, наряди й звільнення по днях"
+                });
+                currentVersion = 29;
+            }
         }
 
         EnsureOrgTables(db);
@@ -602,6 +639,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         EnsureGroupDocumentTables(db);
         EnsureGroupDocumentRecipientsTable(db);
         EnsureUserSettingsTable(db);
+        EnsureDutyRosterTables(db);
 
         AddMissingColumns(db, "Templates", TemplateColumnsV12);
         AddMissingColumns(db, "TemplateFieldMappings", TemplateFieldMappingColumnsV12);
@@ -1042,10 +1080,98 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         }
 
         AddMissingColumns(connection, "UserSettings", UserSettingsColumnsV26);
+        AddMissingColumns(connection, "UserSettings", UserSettingsColumnsV29);
 
         using var index = connection.CreateCommand();
         index.CommandText =
             """CREATE UNIQUE INDEX IF NOT EXISTS "IX_UserSettings_UserProfileId" ON "UserSettings" ("UserProfileId");""";
+        index.ExecuteNonQuery();
+    }
+
+    private static void EnsureDutyRosterTables(AppDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        var wasClosed = connection.State != System.Data.ConnectionState.Open;
+        if (wasClosed) connection.Open();
+        try { EnsureDutyRosterTables(connection); }
+        finally { if (wasClosed) connection.Close(); }
+    }
+
+    internal static void EnsureDutyRosterTables(System.Data.Common.DbConnection connection)
+    {
+        if (!TableExists(connection, "DutyRosters"))
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                CREATE TABLE "DutyRosters" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_DutyRosters" PRIMARY KEY AUTOINCREMENT,
+                    "DateFrom" TEXT NOT NULL,
+                    "DateTo" TEXT NOT NULL,
+                    "IntakeId" INTEGER NULL,
+                    "OrgNodeId" INTEGER NULL,
+                    "PeoplePerDay" INTEGER NOT NULL DEFAULT 3,
+                    "Seed" INTEGER NOT NULL DEFAULT 0,
+                    "Heading" TEXT NOT NULL DEFAULT '',
+                    "FooterJson" TEXT NULL,
+                    "ExemptDays" TEXT NULL,
+                    "ExcludedRecipients" TEXT NULL,
+                    "UseEventExemptions" INTEGER NOT NULL DEFAULT 1,
+                    "CarryOverBalance" INTEGER NOT NULL DEFAULT 1,
+                    "DutyMarkOnly" INTEGER NOT NULL DEFAULT 0,
+                    "WeekendsExempt" INTEGER NOT NULL DEFAULT 1,
+                    "CreatedAt" TEXT NOT NULL,
+                    "CreatedBy" TEXT NULL,
+                    "UpdatedAt" TEXT NULL,
+                    "DeletedAt" TEXT NULL,
+                    "DeletedBy" TEXT NULL
+                );
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        if (!TableExists(connection, "DutyRosterMembers"))
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                CREATE TABLE "DutyRosterMembers" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_DutyRosterMembers" PRIMARY KEY AUTOINCREMENT,
+                    "RosterId" INTEGER NOT NULL,
+                    "RecipientId" INTEGER NULL,
+                    "DisplayName" TEXT NOT NULL DEFAULT '',
+                    "SortOrder" INTEGER NOT NULL DEFAULT 0,
+                    "ExemptWholePeriod" INTEGER NOT NULL DEFAULT 0,
+                    CONSTRAINT "FK_DutyRosterMembers_DutyRosters_RosterId"
+                        FOREIGN KEY ("RosterId") REFERENCES "DutyRosters" ("Id") ON DELETE CASCADE
+                );
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        if (!TableExists(connection, "DutyRosterCells"))
+        {
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                CREATE TABLE "DutyRosterCells" (
+                    "MemberId" INTEGER NOT NULL,
+                    "Date" TEXT NOT NULL,
+                    "Kind" INTEGER NOT NULL,
+                    "Source" INTEGER NOT NULL DEFAULT 0,
+                    CONSTRAINT "PK_DutyRosterCells" PRIMARY KEY ("MemberId", "Date", "Kind"),
+                    CONSTRAINT "FK_DutyRosterCells_DutyRosterMembers_MemberId"
+                        FOREIGN KEY ("MemberId") REFERENCES "DutyRosterMembers" ("Id") ON DELETE CASCADE
+                );
+                """;
+            command.ExecuteNonQuery();
+        }
+
+        AddMissingColumns(connection, "DutyRosters", DutyRosterColumnsV29);
+        AddMissingColumns(connection, "DutyRosterMembers", DutyRosterMemberColumnsV29);
+
+        using var index = connection.CreateCommand();
+        index.CommandText = """
+            CREATE INDEX IF NOT EXISTS "IX_DutyRosters_IntakeId" ON "DutyRosters" ("IntakeId");
+            CREATE INDEX IF NOT EXISTS "IX_DutyRosterMembers_RosterId" ON "DutyRosterMembers" ("RosterId");
+            """;
         index.ExecuteNonQuery();
     }
 

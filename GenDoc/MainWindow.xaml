@@ -28,6 +28,8 @@
         xmlns:intakesView="clr-namespace:GenDoc.Views.Intakes"
         xmlns:staffVm="clr-namespace:GenDoc.ViewModels.Staff"
         xmlns:staffView="clr-namespace:GenDoc.Views.Staff"
+        xmlns:dutyVm="clr-namespace:GenDoc.ViewModels.Duty"
+        xmlns:dutyView="clr-namespace:GenDoc.Views.Duty"
         Style="{StaticResource {x:Type Window}}"
         Title="{Binding WindowTitleText}" Height="720" Width="1180"
         MinWidth="960" MinHeight="600"
@@ -84,6 +86,9 @@
         </DataTemplate>
         <DataTemplate DataType="{x:Type staffVm:StaffViewModel}">
             <staffView:StaffView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type dutyVm:DutyRosterViewModel}">
+            <dutyView:DutyRosterView/>
         </DataTemplate>
 
         <Style x:Key="WindowButtonStyle" TargetType="Button">

@@ -100,6 +100,8 @@ namespace GenDoc
             services.AddTransient<ViewModels.Staff.StaffViewModel>();
             services.AddTransient<ViewModels.Staff.StaffDocDialogViewModel>();
             services.AddTransient<ViewModels.Staff.StaffCardViewModel>();
+            services.AddTransient<Services.Duty.IDutyRosterService, Services.Duty.DutyRosterService>();
+            services.AddTransient<ViewModels.Duty.DutyRosterViewModel>();
 
             services.AddTransient<LoginViewModel>();
             services.AddTransient<LoginWindow>();

@@ -1,0 +1,495 @@
+<UserControl x:Class="GenDoc.Views.Duty.DutyRosterView"
+             x:Name="DutyRoot"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Loaded="DutyRosterView_Loaded">
+
+    <UserControl.Resources>
+        <Style x:Key="BrushSegmentStyle" TargetType="RadioButton">
+            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="12,5"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="FontWeight" Value="Bold"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+        </Style>
+
+        <Style x:Key="BlockTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <Style x:Key="ErrorTextStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Style.Triggers>
+                <Trigger Property="Text" Value="">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </Trigger>
+                <Trigger Property="Text" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="HeaderCellStyle" TargetType="Border">
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
+            <Setter Property="BorderThickness" Value="0,1,1,1"/>
+            <Setter Property="Background" Value="{StaticResource RowAltBrush}"/>
+        </Style>
+
+        <Style x:Key="LegendSwatchStyle" TargetType="Border">
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="18"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+        </Style>
+
+        <Style x:Key="LegendTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,18,0"/>
+        </Style>
+
+        <ItemsPanelTemplate x:Key="HorizontalPanel">
+            <StackPanel Orientation="Horizontal"/>
+        </ItemsPanelTemplate>
+    </UserControl.Resources>
+
+    <Grid Background="{StaticResource BackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,14">
+            <TextBlock Text="Графік чергувань" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock Text="Наряди «н» по днях, звільнені - зеленим; решту програма розставляє по черзі й порівну"
+                       FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
+        </StackPanel>
+
+        <Grid Grid.Row="1" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <ComboBox Width="320" ItemsSource="{Binding Rosters}" SelectedItem="{Binding SelectedRoster}"
+                      DisplayMemberPath="Label" ToolTip="Збережені графіки"/>
+            <Button Grid.Column="1" Content="+ Новий графік" Command="{Binding StartCreateCommand}" Margin="8,0,0,0"/>
+            <Button Grid.Column="2" Content="Видалити" Style="{StaticResource GhostButtonStyle}" Margin="4,0,0,0"
+                    Command="{Binding DeleteRosterCommand}"
+                    Visibility="{Binding HasRoster, Converter={StaticResource BoolToVisibility}}"/>
+            <TextBlock Grid.Column="4" Text="{Binding SaveStatus}" FontSize="11" VerticalAlignment="Center"
+                       Foreground="{StaticResource TextSecondaryBrush}"/>
+        </Grid>
+
+        <Border Grid.Row="2" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                BorderThickness="1" Padding="14,12" Margin="0,0,0,10"
+                Visibility="{Binding IsCreating, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel>
+                <TextBlock Text="Новий графік" Style="{StaticResource BlockTitleStyle}" FontSize="13"/>
+                <WrapPanel>
+                    <TextBlock Text="Період з" Style="{StaticResource FieldLabelStyle}"/>
+                    <DatePicker Width="130" SelectedDate="{Binding NewDateFrom}"/>
+                    <TextBlock Text="по" Style="{StaticResource FieldLabelStyle}" Margin="8,0,6,0"/>
+                    <DatePicker Width="130" SelectedDate="{Binding NewDateTo}"/>
+                    <TextBlock Text="Набір" Style="{StaticResource FieldLabelStyle}" Margin="18,0,6,0"/>
+                    <ComboBox Width="240" ItemsSource="{Binding Intakes}" SelectedItem="{Binding NewIntake}" DisplayMemberPath="Label"/>
+                    <TextBlock Text="Підрозділ" Style="{StaticResource FieldLabelStyle}" Margin="12,0,6,0"
+                               Visibility="{Binding NewIntakeHasNodes, Converter={StaticResource BoolToVisibility}}"/>
+                    <ComboBox Width="200" ItemsSource="{Binding OrgNodes}" SelectedItem="{Binding NewOrgNode}" DisplayMemberPath="Label"
+                              Visibility="{Binding NewIntakeHasNodes, Converter={StaticResource BoolToVisibility}}"/>
+                </WrapPanel>
+                <CheckBox Margin="0,12,0,0" IsChecked="{Binding NewWeekendsExempt}"
+                          Content="Вихідні (субота, неділя) одразу зеленим"/>
+                <CheckBox Margin="0,8,0,0" IsChecked="{Binding NewUseEventExemptions}"
+                          Content="Звільняти за подіями: відпустка, шпиталь, відрядження - зелені клітинки ставляться самі"/>
+                <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                    <Button Content="Створити графік" Command="{Binding CreateCommand}"/>
+                    <Button Content="Скасувати" Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0"
+                            Command="{Binding CancelCreateCommand}"
+                            Visibility="{Binding HasRoster, Converter={StaticResource BoolToVisibility}}"/>
+                    <TextBlock Text="{Binding CreateError}" Style="{StaticResource ErrorTextStyle}" Margin="12,0,0,0"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="3" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                BorderThickness="1" Padding="12,10"
+                Visibility="{Binding HasRoster, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel>
+                <WrapPanel>
+                    <TextBlock Text="Період з" Style="{StaticResource FieldLabelStyle}"/>
+                    <DatePicker Width="125" SelectedDate="{Binding DateFrom}"/>
+                    <TextBlock Text="по" Style="{StaticResource FieldLabelStyle}" Margin="8,0,6,0"/>
+                    <DatePicker Width="125" SelectedDate="{Binding DateTo}"/>
+                    <TextBlock Text="На добу" Style="{StaticResource FieldLabelStyle}" Margin="16,0,6,0"/>
+                    <ComboBox Width="56" ItemsSource="{Binding PeoplePerDayOptions}" SelectedItem="{Binding PeoplePerDay}"
+                              ToolTip="Скільки людей у наряді щодоби = скільки змін у легенді"/>
+                    <Button Content="Рандом" Style="{StaticResource SecondaryButtonStyle}" Margin="16,0,0,0"
+                            Command="{Binding RandomizeCommand}"
+                            ToolTip="Новий варіант: ручні «н» лишаються, решта розставляється заново, але так само порівну"/>
+                    <Button Content="Зафіксувати" Style="{StaticResource SecondaryButtonStyle}" Margin="6,0,0,0"
+                            Command="{Binding FreezeCommand}"
+                            ToolTip="Зробити всі сині «н» ручними - далі програма їх не переставлятиме"/>
+                    <Button Content="Очистити ручні" Style="{StaticResource SecondaryButtonStyle}" Margin="6,0,0,0"
+                            Command="{Binding ClearManualCommand}"
+                            ToolTip="Зняти всі ручні «н» і «×»; звільнення лишаються"/>
+                    <Button Content="Оновити з подій" Style="{StaticResource SecondaryButtonStyle}" Margin="6,0,0,0"
+                            Command="{Binding RefreshEventsCommand}"
+                            ToolTip="Підтягнути відпустки, шпиталь і відрядження з карток людей"/>
+                    <Button Content="Експорт у Excel" Margin="16,0,0,0" Command="{Binding ExportCommand}"
+                            ToolTip="Лист як на паперовому графіку: A4 альбомна, одна сторінка"/>
+                </WrapPanel>
+                <TextBlock Text="{Binding PeriodError}" Style="{StaticResource ErrorTextStyle}" Margin="0,6,0,0"/>
+                <WrapPanel Margin="0,10,0,0">
+                    <TextBlock Text="Пензель:" Style="{StaticResource FieldLabelStyle}"/>
+                    <RadioButton GroupName="DutyBrush" Content="Наряд «н»" Style="{StaticResource BrushSegmentStyle}"
+                                 IsChecked="{Binding IsDutyBrush}"
+                                 ToolTip="Клік ставить або знімає «н»; можна протягнути мишкою по кількох клітинках"/>
+                    <RadioButton GroupName="DutyBrush" Content="Звільнений" Style="{StaticResource BrushSegmentStyle}"
+                                 IsChecked="{Binding IsExemptBrush}" ToolTip="Зелене: у цей день людину в наряд не ставити"/>
+                    <RadioButton GroupName="DutyBrush" Content="Гумка" Style="{StaticResource BrushSegmentStyle}"
+                                 IsChecked="{Binding IsEraseBrush}" ToolTip="Стерти позначку"/>
+                    <CheckBox Content="Вихідні - зеленим" IsChecked="{Binding WeekendsExempt}"
+                              VerticalAlignment="Center" Margin="16,0,0,0"
+                              ToolTip="Субота й неділя - зелені цілим днем. Окремий вихідний можна зняти кліком по даті."/>
+                    <CheckBox Content="Лише «н» (без номерів змін)" IsChecked="{Binding DutyMarkOnly}"
+                              VerticalAlignment="Center" Margin="16,0,0,0"
+                              ToolTip="Типово в клітинці номер зміни: хто вище в списку цього дня - І, далі ІІ, ІІІ. З галочкою - лише «н», і на екрані, і в Excel."/>
+                    <TextBlock Text="{Binding StatsText}" FontSize="11.5" VerticalAlignment="Center" Margin="16,0,0,0"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                </WrapPanel>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="4" Background="{StaticResource WarningSoftBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                BorderThickness="1,0,1,1" Padding="12,8"
+                Visibility="{Binding HasWarnings, Converter={StaticResource BoolToVisibility}}">
+            <ScrollViewer MaxHeight="64" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <TextBlock Text="{Binding WarningsText}" Foreground="{StaticResource WarnTextBrush}" FontSize="11.5" TextWrapping="Wrap"/>
+            </ScrollViewer>
+        </Border>
+
+        <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,10,0,8"
+                    Visibility="{Binding HasRoster, Converter={StaticResource BoolToVisibility}}">
+            <RadioButton GroupName="DutyTab" Content="Графік" Style="{StaticResource BrushSegmentStyle}"
+                         IsChecked="{Binding IsSettingsOpen, Converter={StaticResource InverseBoolean}}"/>
+            <RadioButton GroupName="DutyTab" Content="Склад, шапка і підвал листа" Style="{StaticResource BrushSegmentStyle}"
+                         IsChecked="{Binding IsSettingsOpen}"/>
+        </StackPanel>
+
+        <Border Grid.Row="6" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1"
+                Visibility="{Binding ShowGridArea, Converter={StaticResource BoolToVisibility}}">
+            <Grid>
+                <TextBlock Text="Графіків ще немає - натисніть «+ Новий графік», задайте період і набір."
+                           Foreground="{StaticResource TextSecondaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                           Visibility="{Binding ShowEmptyHint, Converter={StaticResource BoolToVisibility}}"/>
+
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                              Visibility="{Binding ShowGrid, Converter={StaticResource BoolToVisibility}}">
+                    <StackPanel Margin="12" HorizontalAlignment="Left">
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="34" Style="{StaticResource HeaderCellStyle}" BorderThickness="1">
+                                <TextBlock Text="№" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                            </Border>
+                            <Border Width="200" Style="{StaticResource HeaderCellStyle}">
+                                <TextBlock Text="П.І.Б." FontSize="11.5" FontWeight="SemiBold" Margin="6,0" VerticalAlignment="Center"
+                                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                            </Border>
+                            <ItemsControl ItemsSource="{Binding Days}" ItemsPanel="{StaticResource HorizontalPanel}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border x:Name="DayCell" Width="26" Style="{StaticResource HeaderCellStyle}" Cursor="Hand"
+                                                ToolTip="{Binding Hint}">
+                                            <Border.InputBindings>
+                                                <MouseBinding Gesture="LeftClick"
+                                                              Command="{Binding DataContext.ToggleDayExemptCommand, ElementName=DutyRoot}"
+                                                              CommandParameter="{Binding}"/>
+                                            </Border.InputBindings>
+                                            <StackPanel VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding DayNumber}" FontSize="11.5" FontWeight="SemiBold"
+                                                           HorizontalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                <TextBlock x:Name="WeekDay" Text="{Binding WeekDay}" FontSize="9.5"
+                                                           HorizontalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding IsWeekend}" Value="True">
+                                                <Setter TargetName="WeekDay" Property="Foreground" Value="{StaticResource DangerBrush}"/>
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsExempt}" Value="True">
+                                                <Setter TargetName="DayCell" Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <Border Width="34" Style="{StaticResource HeaderCellStyle}" ToolTip="Нарядів за період (у друк не йде)">
+                                <TextBlock Text="Σ" FontSize="11.5" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                            </Border>
+                        </StackPanel>
+
+                        <ItemsControl x:Name="RowsHost" ItemsSource="{Binding Rows}" Background="Transparent"
+                                      PreviewMouseLeftButtonDown="RowsHost_PreviewMouseLeftButtonDown"
+                                      MouseMove="RowsHost_MouseMove"
+                                      PreviewMouseLeftButtonUp="RowsHost_PreviewMouseLeftButtonUp"
+                                      LostMouseCapture="RowsHost_LostMouseCapture">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Border x:Name="NumberCell" Width="34" Height="24" BorderThickness="1,0,1,1"
+                                                BorderBrush="{StaticResource BorderLineBrush}" Background="{StaticResource PanelBrush}">
+                                            <TextBlock Text="{Binding Number}" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                       Margin="0,0,6,0" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        </Border>
+                                        <Border x:Name="NameCell" Width="200" Height="24" BorderThickness="0,0,1,1"
+                                                BorderBrush="{StaticResource BorderLineBrush}" Background="{StaticResource PanelBrush}"
+                                                Cursor="Hand" Tag="{Binding DataContext, ElementName=DutyRoot}"
+                                                ToolTip="Клік - звільнити на весь період або повернути; правий клік - порядок і склад">
+                                            <Border.InputBindings>
+                                                <MouseBinding Gesture="LeftClick"
+                                                              Command="{Binding DataContext.ToggleRowExemptCommand, ElementName=DutyRoot}"
+                                                              CommandParameter="{Binding}"/>
+                                            </Border.InputBindings>
+                                            <Border.ContextMenu>
+                                                <ContextMenu Style="{StaticResource AppContextMenuStyle}">
+                                                    <MenuItem Header="{Binding ExemptMenuHeader}" Style="{StaticResource AppContextMenuItemStyle}"
+                                                              Command="{Binding PlacementTarget.Tag.ToggleRowExemptCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                                    <MenuItem Header="Вгору (раніша зміна)" Style="{StaticResource AppContextMenuItemStyle}"
+                                                              Command="{Binding PlacementTarget.Tag.MoveUpCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                                    <MenuItem Header="Вниз (пізніша зміна)" Style="{StaticResource AppContextMenuItemStyle}"
+                                                              Command="{Binding PlacementTarget.Tag.MoveDownCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                                    <MenuItem Header="Прибрати з графіка" Style="{StaticResource AppContextMenuItemStyle}"
+                                                              Command="{Binding PlacementTarget.Tag.RemoveMemberCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                                </ContextMenu>
+                                            </Border.ContextMenu>
+                                            <TextBlock Text="{Binding DisplayName}" FontSize="12" Margin="6,0" VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        </Border>
+                                        <ItemsControl ItemsSource="{Binding Cells}" ItemsPanel="{StaticResource HorizontalPanel}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border x:Name="Cell" Width="26" Height="24" BorderThickness="0,0,1,1"
+                                                            BorderBrush="{StaticResource BorderLineBrush}" Background="{StaticResource PanelBrush}"
+                                                            ToolTip="{Binding Hint}">
+                                                        <Grid>
+                                                            <TextBlock x:Name="Mark" Text="{Binding Text}" FontSize="12" FontWeight="Bold"
+                                                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                            <Border x:Name="WarnFrame" BorderBrush="{StaticResource WarningBrush}"
+                                                                    BorderThickness="2" Visibility="Collapsed"/>
+                                                        </Grid>
+                                                    </Border>
+                                                    <DataTemplate.Triggers>
+                                                        <DataTrigger Binding="{Binding IsExempt}" Value="True">
+                                                            <Setter TargetName="Cell" Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsAuto}" Value="True">
+                                                            <Setter TargetName="Mark" Property="Foreground" Value="{StaticResource AccentBrush}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsBlocked}" Value="True">
+                                                            <Setter TargetName="Mark" Property="Foreground" Value="{StaticResource PlaceholderBrush}"/>
+                                                            <Setter TargetName="Mark" Property="FontWeight" Value="Normal"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding HasWarning}" Value="True">
+                                                            <Setter TargetName="WarnFrame" Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </DataTemplate.Triggers>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <Border Width="34" Height="24" BorderThickness="0,0,1,1" BorderBrush="{StaticResource BorderLineBrush}"
+                                                Background="{StaticResource RowAltBrush}">
+                                            <TextBlock Text="{Binding Total}" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        </Border>
+                                    </StackPanel>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsExemptWholePeriod}" Value="True">
+                                            <Setter TargetName="NumberCell" Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
+                                            <Setter TargetName="NameCell" Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="234" Height="22">
+                                <TextBlock Text="на добу" FontSize="11" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                           Margin="0,0,8,0" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            </Border>
+                            <ItemsControl ItemsSource="{Binding Days}" ItemsPanel="{StaticResource HorizontalPanel}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border x:Name="CountCell" Width="26" Height="22">
+                                            <TextBlock x:Name="CountText" Text="{Binding Count}" FontSize="11" HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        </Border>
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding IsShort}" Value="True">
+                                                <Setter TargetName="CountCell" Property="Background" Value="{StaticResource WarningSoftBrush}"/>
+                                                <Setter TargetName="CountText" Property="Foreground" Value="{StaticResource WarnTextBrush}"/>
+                                                <Setter TargetName="CountText" Property="FontWeight" Value="Bold"/>
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <WrapPanel Margin="0,12,0,0">
+                            <Border Style="{StaticResource LegendSwatchStyle}">
+                                <TextBlock Text="н" FontWeight="Bold" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                            </Border>
+                            <TextBlock Text="поставлено вручну" Style="{StaticResource LegendTextStyle}"/>
+                            <Border Style="{StaticResource LegendSwatchStyle}">
+                                <TextBlock Text="н" FontWeight="Bold" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Foreground="{StaticResource AccentBrush}"/>
+                            </Border>
+                            <TextBlock Text="поставила програма" Style="{StaticResource LegendTextStyle}"/>
+                            <Border Style="{StaticResource LegendSwatchStyle}" Background="{StaticResource SuccessSoftBrush}"/>
+                            <TextBlock Text="звільнений" Style="{StaticResource LegendTextStyle}"/>
+                            <Border Style="{StaticResource LegendSwatchStyle}">
+                                <TextBlock Text="×" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Foreground="{StaticResource PlaceholderBrush}"/>
+                            </Border>
+                            <TextBlock Text="не ставити в цей день (у друк не йде)" Style="{StaticResource LegendTextStyle}"/>
+                            <Border Style="{StaticResource LegendSwatchStyle}" BorderBrush="{StaticResource WarningBrush}" BorderThickness="2"/>
+                            <TextBlock Text="перевірте" Style="{StaticResource LegendTextStyle}"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </ScrollViewer>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                              Visibility="{Binding ShowSettings, Converter={StaticResource BoolToVisibility}}">
+                    <WrapPanel Margin="16,14,0,0">
+                        <StackPanel Width="340" Margin="0,0,32,18">
+                            <TextBlock Text="Склад графіка" Style="{StaticResource BlockTitleStyle}"/>
+                            <TextBlock Text="Додати людину з бази" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,4"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox ItemsSource="{Binding PeopleToAdd}" SelectedItem="{Binding PersonToAdd}" DisplayMemberPath="Label"/>
+                                <Button Grid.Column="1" Content="Додати" Style="{StaticResource SecondaryButtonStyle}" Margin="6,0,0,0"
+                                        Command="{Binding AddPersonCommand}"/>
+                            </Grid>
+                            <TextBlock Text="Або вписати вручну" Style="{StaticResource FieldLabelStyle}" Margin="0,10,0,4"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBox Text="{Binding ManualName, UpdateSourceTrigger=PropertyChanged}" Tag="ПРІЗВИЩЕ І.Б."/>
+                                <Button Grid.Column="1" Content="Вписати" Style="{StaticResource SecondaryButtonStyle}" Margin="6,0,0,0"
+                                        Command="{Binding AddManualPersonCommand}"/>
+                            </Grid>
+                            <CheckBox Margin="0,14,0,0" IsChecked="{Binding UseEventExemptions}"
+                                      Content="Звільняти за подіями (відпустка, шпиталь, відрядження)"/>
+                            <CheckBox Margin="0,8,0,0" IsChecked="{Binding CarryOverBalance}"
+                                      Content="Продовжувати чергу з минулого графіка"/>
+                            <TextBlock Text="{Binding CarryOverText}" FontSize="11" TextWrapping="Wrap" Margin="21,4,0,0"
+                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                        </StackPanel>
+
+                        <StackPanel Width="340" Margin="0,0,32,18">
+                            <TextBlock Text="Шапка листа" Style="{StaticResource BlockTitleStyle}"/>
+                            <TextBox Text="{Binding Heading}" AcceptsReturn="True" TextWrapping="Wrap" Height="76"
+                                     VerticalScrollBarVisibility="Auto"
+                                     ToolTip="Рядки шапки; рядок «на ... р.» програма додає сама з дат періоду"/>
+                            <TextBlock Text="На листі (рядок періоду програма додає сама):" FontSize="11"
+                                       TextWrapping="Wrap" Margin="0,8,0,4" Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <TextBlock Text="{Binding TitlePreview}" FontWeight="SemiBold" FontSize="12" TextWrapping="Wrap"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                        </StackPanel>
+
+                        <StackPanel Width="340" Margin="0,0,32,18">
+                            <TextBlock Text="Підвал листа" Style="{StaticResource BlockTitleStyle}"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="Перезмінка" Style="{StaticResource FieldLabelStyle}" Width="80"/>
+                                <TextBox Grid.Column="1" Text="{Binding Changeover}"/>
+                                <TextBlock Grid.Row="1" Text="Прибирання" Style="{StaticResource FieldLabelStyle}" Width="80" Margin="0,6,6,0"/>
+                                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Cleaning}" Margin="0,6,0,0"/>
+                            </Grid>
+                            <ItemsControl ItemsSource="{Binding Shifts}" Margin="0,6,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,6,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="80"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="6"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="{Binding Label}" Style="{StaticResource FieldLabelStyle}"/>
+                                            <TextBox Grid.Column="1" Text="{Binding Day}" ToolTip="Денний відрізок зміни"/>
+                                            <TextBox Grid.Column="3" Text="{Binding Night}" ToolTip="Нічний відрізок зміни"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </WrapPanel>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
