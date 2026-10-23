@@ -82,10 +82,25 @@
 
                         <StackPanel Grid.Row="2" Margin="24,20,24,0"
                                     Visibility="{Binding Stage, Converter={StaticResource EnumToVisibility}, ConverterParameter=DatabasePassword, FallbackValue=Visible}">
+                            <StackPanel Visibility="{Binding IsNewDatabase, Converter={StaticResource BoolToVisibility}}" Margin="0 0 0 12">
+                                <TextBlock Text="Перший запуск: базу даних буде створено" FontWeight="SemiBold" FontSize="12.5"
+                                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                                <TextBlock Text="Придумайте пароль і запам'ятайте його: без нього базу не відкрити, а відновити пароль неможливо."
+                                           TextWrapping="Wrap" FontSize="11.5" Margin="0 4 0 0"
+                                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                                <TextBlock Text="{Binding DatabasePath, StringFormat='Розташування: {0}'}" ToolTip="{Binding DatabasePath}"
+                                           TextTrimming="CharacterEllipsis" FontSize="11" Margin="0 4 0 0"
+                                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                            </StackPanel>
                             <TextBlock Text="Пароль бази даних" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" Margin="0 0 0 6"/>
                             <PasswordBox x:Name="DatabasePasswordBox"
                                          PasswordChanged="DatabasePasswordBox_PasswordChanged"/>
-                            <Button Content="Розблокувати" Command="{Binding UnlockDatabaseCommand}"
+                            <StackPanel Visibility="{Binding IsNewDatabase, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock Text="Повторіть пароль" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" Margin="0 14 0 6"/>
+                                <PasswordBox x:Name="DatabasePasswordConfirmBox"
+                                             PasswordChanged="DatabasePasswordConfirmBox_PasswordChanged"/>
+                            </StackPanel>
+                            <Button Content="{Binding UnlockButtonText}" Command="{Binding UnlockDatabaseCommand}"
                                     Margin="0 18 0 0" Padding="0,11" HorizontalAlignment="Stretch"/>
                             <StackPanel Margin="0 12 0 0" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}">
                                 <ProgressBar IsIndeterminate="True" Height="4"/>
@@ -130,8 +145,14 @@
 
                         <StackPanel Grid.Row="2" Margin="24,20,24,0"
                                     Visibility="{Binding Stage, Converter={StaticResource EnumToVisibility}, ConverterParameter=CreateProfile, FallbackValue=Collapsed}">
-                            <TextBlock Text="Повне ім'я" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" Margin="0 0 0 6"/>
-                            <TextBox x:Name="NewProfileFullNameBox" Text="{Binding NewProfileFullName, UpdateSourceTrigger=PropertyChanged}"/>
+                            <TextBlock Text="Створіть свій профіль" FontWeight="SemiBold" FontSize="12.5" Margin="0 0 0 4"
+                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <TextBlock Text="ПІБ профілю потрапить у постійний склад як курсовий офіцер - його підпис ставиться у відомості."
+                                       TextWrapping="Wrap" FontSize="11.5" Margin="0 0 0 12"
+                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <TextBlock Text="Прізвище, ім'я та по батькові" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" Margin="0 0 0 6"/>
+                            <TextBox x:Name="NewProfileFullNameBox" Text="{Binding NewProfileFullName, UpdateSourceTrigger=PropertyChanged}"
+                                     Tag="напр. Петренко Іван Іванович"/>
                             <TextBlock Text="Пароль" Foreground="{StaticResource TextSecondaryBrush}" FontSize="11.5" Margin="0 14 0 6"/>
                             <PasswordBox x:Name="NewProfilePasswordBox"
                                          PasswordChanged="NewProfilePasswordBox_PasswordChanged"/>
@@ -139,8 +160,9 @@
                             <PasswordBox x:Name="NewProfilePasswordConfirmBox"
                                          PasswordChanged="NewProfilePasswordConfirmBox_PasswordChanged"/>
                             <StackPanel Orientation="Horizontal" Margin="0 16 0 0">
-                                <Button Content="Створити" Command="{Binding CreateProfileCommand}" Padding="16,8"/>
+                                <Button Content="Створити й увійти" Command="{Binding CreateProfileCommand}" Padding="16,8"/>
                                 <Button Content="Скасувати" Command="{Binding CancelCreateProfileCommand}"
+                                        Visibility="{Binding HasProfiles, Converter={StaticResource BoolToVisibility}}"
                                         Style="{StaticResource GhostButtonStyle}" Padding="16,8" Margin="10 0 0 0"/>
                             </StackPanel>
                         </StackPanel>

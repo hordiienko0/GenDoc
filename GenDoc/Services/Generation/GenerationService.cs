@@ -332,7 +332,6 @@ namespace GenDoc.Services.Generation
                                     || (perRecipient
                                         && m.SourceType == MappingSourceType.Recipient
                                         && m.FieldName == nameof(ExportFieldKey.RowNumber))))
-                    .OrderBy(m => m.PlaceholderTag)
                     .Select(m => m.PlaceholderTag)
                     .ToList();
 
@@ -346,7 +345,6 @@ namespace GenDoc.Services.Generation
             {
                 var manualTags = db.ExportTemplateColumnMappings
                     .Where(m => m.ExportTemplateId == templateId && m.SourceType == MappingSourceType.Manual)
-                    .OrderBy(m => m.PlaceholderTag)
                     .Select(m => m.PlaceholderTag)
                     .ToList();
 
@@ -355,6 +353,9 @@ namespace GenDoc.Services.Generation
                     if (seen.Add(tag)) tags.Add(tag);
                 }
             }
+
+            // Один алфавітний список на весь пакет: «Вправи стрільби 1…7» поруч, а не розкидані по шаблонах.
+            tags.Sort(ManualTagOrder.Instance);
 
             var repeatsSheetPerDate = exportTemplateIds.Count > 0
                 && db.ExportTemplates.Any(t => exportTemplateIds.Contains(t.Id) && t.RepeatSheetPerDate);

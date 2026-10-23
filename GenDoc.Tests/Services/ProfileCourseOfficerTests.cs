@@ -35,6 +35,16 @@ public class ProfileCourseOfficerTests
     }
 
     [Fact]
+    public void TheSameNameWithTrailingSpaces_IsRejectedAsADuplicate()
+    {
+        using var db = new TestDb();
+        Assert.True(NewService(db).TryCreateProfile("ПЕТРЕНКО Іван Іванович", "тест-пароль", out _));
+
+        Assert.False(NewService(db).TryCreateProfile("  ПЕТРЕНКО Іван Іванович ", "тест-пароль", out var error));
+        Assert.Equal("Профіль з таким іменем уже існує.", error);
+    }
+
+    [Fact]
     public void ANewProfileIsMarkedAsACourseOfficer()
     {
         using var db = new TestDb();

@@ -48,6 +48,7 @@ public class MissingDatabaseGuardTests
 
         var vm = Vm(unlock, schema, _ => { confirmed = true; return false; });
         vm.DatabasePassword = "pwd";
+        vm.DatabasePasswordConfirm = "pwd";
 
         await vm.UnlockDatabaseCommand.ExecuteAsync(null);
 
@@ -65,11 +66,61 @@ public class MissingDatabaseGuardTests
 
         var vm = Vm(unlock, schema, _ => true);
         vm.DatabasePassword = "pwd";
+        vm.DatabasePasswordConfirm = "pwd";
 
         await vm.UnlockDatabaseCommand.ExecuteAsync(null);
 
         Assert.Equal(1, unlock.UnlockCalls);
-        Assert.Equal(LoginStage.ProfileSelect, vm.Stage);
+        // У щойно створеній базі профілів немає - одразу форма створення профілю.
+        Assert.Equal(LoginStage.CreateProfile, vm.Stage);
+    }
+
+    [Fact]
+    public async Task MissingDatabase_PasswordsDiffer_NothingIsCreated()
+    {
+        var unlock = new FakeUnlock { Exists = false };
+        var schema = new FakeSchema();
+        var asked = false;
+
+        var vm = Vm(unlock, schema, _ => { asked = true; return true; });
+        vm.DatabasePassword = "pwd";
+        vm.DatabasePasswordConfirm = "pdw";
+
+        await vm.UnlockDatabaseCommand.ExecuteAsync(null);
+
+        Assert.True(vm.IsNewDatabase);
+        Assert.False(asked);
+        Assert.Equal(0, unlock.UnlockCalls);
+        Assert.Equal(0, schema.Calls);
+        Assert.Equal("Паролі не збігаються.", vm.ErrorMessage);
+        Assert.Equal(LoginStage.DatabasePassword, vm.Stage);
+    }
+
+    [Fact]
+    public void ExistingDatabase_AsksForThePasswordOnce()
+    {
+        var vm = Vm(new FakeUnlock { Exists = true }, new FakeSchema(), _ => true);
+
+        Assert.False(vm.IsNewDatabase);
+        Assert.Equal("Розблокувати", vm.UnlockButtonText);
+    }
+
+    [Fact]
+    public async Task CreatingAProfile_LogsStraightIn()
+    {
+        var vm = Vm(new FakeUnlock { Exists = true }, new FakeSchema(), _ => true);
+        vm.DatabasePassword = "pwd";
+        await vm.UnlockDatabaseCommand.ExecuteAsync(null);
+        var closed = false;
+        vm.RequestClose += (_, _) => closed = true;
+
+        vm.NewProfileFullName = "Петренко Іван Іванович";
+        vm.NewProfilePassword = "1234";
+        vm.NewProfilePasswordConfirm = "1234";
+        vm.CreateProfileCommand.Execute(null);
+
+        Assert.True(closed);
+        Assert.True(vm.LoginResult);
     }
 
     [Fact]
@@ -84,7 +135,7 @@ public class MissingDatabaseGuardTests
         await vm.UnlockDatabaseCommand.ExecuteAsync(null);
 
         Assert.False(asked);
-        Assert.Equal(LoginStage.ProfileSelect, vm.Stage);
+        Assert.Equal(LoginStage.CreateProfile, vm.Stage);
     }
 
     [Fact]
@@ -95,6 +146,7 @@ public class MissingDatabaseGuardTests
 
         var vm = Vm(unlock, new FakeSchema(), message => { shown = message; return false; });
         vm.DatabasePassword = "pwd";
+        vm.DatabasePasswordConfirm = "pwd";
 
         await vm.UnlockDatabaseCommand.ExecuteAsync(null);
 

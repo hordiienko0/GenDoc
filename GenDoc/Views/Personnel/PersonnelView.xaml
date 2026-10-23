@@ -344,6 +344,7 @@
                                   AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Single"
                                   CanUserSortColumns="False"
                                   CanUserResizeColumns="True"
+                                  HorizontalScrollBarVisibility="Auto"
                                   MouseLeftButtonUp="PeopleGrid_MouseLeftButtonUp"
                                   Visibility="{Binding HasRows, Converter={StaticResource BoolToVisibility}}">
                             <DataGrid.Columns>
@@ -364,7 +365,9 @@
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
 
-                                <DataGridTextColumn Header="ПІБ" Binding="{Binding ShortName}" Width="1.95*">
+                                <!-- MinWidth: у вузькому вікні (а надто з відкритою карткою) зіркові колонки
+                                     стискались до «БО…», «м…» - краще горизонтальна прокрутка, ніж нечитабельне ПІБ. -->
+                                <DataGridTextColumn Header="ПІБ" Binding="{Binding ShortName}" Width="1.95*" MinWidth="140">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock" BasedOn="{StaticResource TruncatedCellStyle}">
                                             <Setter Property="FontWeight" Value="Bold"/>
@@ -372,7 +375,7 @@
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
-                                <DataGridTextColumn Header="ЗВАННЯ" Binding="{Binding RankShort}" Width="1.6*">
+                                <DataGridTextColumn Header="ЗВАННЯ" Binding="{Binding RankShort}" Width="1.6*" MinWidth="95">
                                     <DataGridTextColumn.ElementStyle>
                                         <Style TargetType="TextBlock" BasedOn="{StaticResource TruncatedCellStyle}">
                                             <Setter Property="ToolTip" Value="{Binding Rank}"/>
@@ -380,7 +383,7 @@
                                     </DataGridTextColumn.ElementStyle>
                                 </DataGridTextColumn>
 
-                                <DataGridTextColumn Header="ПОСАДА" Binding="{Binding Position}" Width="1.55*"
+                                <DataGridTextColumn Header="ПОСАДА" Binding="{Binding Position}" Width="1.55*" MinWidth="95"
                                                      ElementStyle="{StaticResource TruncatedCellStyle}"/>
 
                                 <DataGridTemplateColumn Header="ПРИДАТНІСТЬ" Width="Auto">
@@ -777,11 +780,11 @@
                                 <ItemsControl ItemsSource="{Binding GroupDocumentRows}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <StackPanel Orientation="Horizontal" Margin="0,2">
-                                                <TextBlock FontSize="12" TextWrapping="Wrap">
-                                                    <Run Text="{Binding TemplateName, Mode=OneWay}" Foreground="{StaticResource TextPrimaryBrush}"/><Run Text=" · " Foreground="{StaticResource TextSecondaryBrush}"/><Run Text="{Binding StateText, Mode=OneWay}" Foreground="{StaticResource TextSecondaryBrush}"/>
-                                                </TextBlock>
-                                                <TextBlock Text=" · Відкрити" FontSize="12" FontWeight="Bold" Cursor="Hand"
+                                            <!-- DockPanel, а не горизонтальний StackPanel: у ньому текст не переноситься
+                                                 й обрізався за краєм картки разом із «Відкрити». -->
+                                            <DockPanel Margin="0,2">
+                                                <TextBlock DockPanel.Dock="Right" Text="Відкрити" FontSize="12" FontWeight="Bold" Cursor="Hand"
+                                                           Margin="8,0,0,0" VerticalAlignment="Top"
                                                            Foreground="{StaticResource AccentBrush}"
                                                            Visibility="{Binding CanOpen, Converter={StaticResource BoolToVisibility}}">
                                                     <TextBlock.InputBindings>
@@ -790,7 +793,10 @@
                                                                       CommandParameter="{Binding}"/>
                                                     </TextBlock.InputBindings>
                                                 </TextBlock>
-                                            </StackPanel>
+                                                <TextBlock FontSize="12" TextWrapping="Wrap">
+                                                    <Run Text="{Binding TemplateName, Mode=OneWay}" Foreground="{StaticResource TextPrimaryBrush}"/><Run Text=" · " Foreground="{StaticResource TextSecondaryBrush}"/><Run Text="{Binding StateText, Mode=OneWay}" Foreground="{StaticResource TextSecondaryBrush}"/>
+                                                </TextBlock>
+                                            </DockPanel>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>

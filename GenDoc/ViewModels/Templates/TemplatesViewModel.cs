@@ -256,9 +256,13 @@ public partial class TemplatesViewModel : ObservableObject, IGuardedSection
                 lines.Add($"  • {package.Name} - {string.Join(", ", parts)}");
             }
 
-            lines.Add(string.Empty);
-            lines.Add("Персональні шаблони завантажені, але в пакет не входять - їх видають "
-                      + "вибраній людині за потреби.");
+            // Лише коли персональні справді були - для «Стрільб» (самі групові) рядок збивав з пантелику.
+            if (result.Packages.Any(p => p.PerRecipientCount > 0))
+            {
+                lines.Add(string.Empty);
+                lines.Add("Персональні шаблони завантажені, але в пакет не входять - їх видають "
+                          + "вибраній людині за потреби.");
+            }
         }
 
         if (result.Failures.Count > 0)

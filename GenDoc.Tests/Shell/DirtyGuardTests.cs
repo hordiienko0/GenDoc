@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.Messaging;
 using GenDoc.Models;
 using GenDoc.Models.TemplateBuilder;
 using GenDoc.Services.Templates;
@@ -95,6 +96,29 @@ public class DirtyGuardTests
         vm.SaveCore();
 
         Assert.False(vm.IsDirty);
+    }
+
+    [Fact]
+    public void Settings_Saving_TellsTheShellToRefreshTheUnitCaption()
+    {
+        using var db = new TestDb();
+        var vm = NewSettings(db);
+        var listener = new object();
+        var received = 0;
+        WeakReferenceMessenger.Default
+            .Register<object, GenDoc.Services.OrganizationSettingsChangedMessage>(listener, (_, _) => received++);
+        try
+        {
+            vm.UnitNumber = "А1111";
+            vm.SaveCore();
+        }
+        finally
+        {
+            WeakReferenceMessenger.Default
+                .Unregister<GenDoc.Services.OrganizationSettingsChangedMessage>(listener);
+        }
+
+        Assert.True(received > 0, "Після збереження шапка вікна й меню лишались зі старою назвою частини до перезапуску.");
     }
 
     [Fact]

@@ -186,5 +186,17 @@ public class TemplateFolderImportTests : IDisposable
         Assert.Contains("Котлове (2) - групових шаблонів: 5, вже були завантажені: 5", text);
         Assert.Contains("Не вдалося завантажити:", text);
         Assert.Contains("Зламаний.docx", text);
+        Assert.Contains("Персональні шаблони завантажені", text);
+    }
+
+    [Fact]
+    public void Summary_WithoutPersonalTemplates_DoesNotTalkAboutThem()
+    {
+        var result = new FolderImportResult(
+            true, null, new[] { new FolderImportPackage("Стрільби", 9, 3, 0) }, Array.Empty<string>());
+
+        var text = GenDoc.ViewModels.Templates.TemplatesViewModel.BuildFolderImportSummary(result);
+
+        Assert.DoesNotContain("Персональні шаблони", text);
     }
 }

@@ -88,13 +88,16 @@ public class ImportService : IImportService
         var existingNameKeys = LoadExistingNameKeys(db);
         var seenInFile = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var seenNameKeysInFile = new HashSet<string>(StringComparer.Ordinal);
+        var roomColumnMapped = HasRoomColumn(parsed);
+        var serviceNumberColumnMapped = HasColumn(parsed, ImportTargetField.ServiceNumber);
 
         var previews = new List<ImportRowPreview>();
         foreach (var row in rows)
         {
             var intakeId = ResolveTargetIntakeId(target, orgNodeIntakeMap, row.Fields.UnitName);
             var (status, note, existingRecipientId) = EvaluateRow(row.Fields, row.IncompleteFullName, row.CourseArrivalDateInvalid,
-                existingServiceNumbers, seenInFile, intakeId, existingNameKeys, seenNameKeysInFile);
+                existingServiceNumbers, seenInFile, intakeId, existingNameKeys, seenNameKeysInFile,
+                roomColumnMapped, serviceNumberColumnMapped);
             previews.Add(new ImportRowPreview
             {
                 RowNumber = row.RowNumber,
@@ -143,7 +146,8 @@ public class ImportService : IImportService
         {
             var intakeId = ResolveTargetIntakeId(target, orgNodeIntakeMap, row.Fields.UnitName);
             var (status, _, existingRecipientId) = EvaluateRow(row.Fields, row.IncompleteFullName, row.CourseArrivalDateInvalid,
-                existingServiceNumbers, seenInFile, intakeId, existingNameKeys, seenNameKeysInFile);
+                existingServiceNumbers, seenInFile, intakeId, existingNameKeys, seenNameKeysInFile,
+                roomColumnMapped: true, serviceNumberColumnMapped: true);
 
             var moveThisRow = status == ImportRowStatus.Duplicate
                 && existingRecipientId is not null
@@ -537,7 +541,10 @@ public class ImportService : IImportService
             fields.OriginUnit = values.GetValueOrDefault(ImportTargetField.OriginUnit) ?? string.Empty;
             fields.Vehicle = values.GetValueOrDefault(ImportTargetField.Vehicle) ?? string.Empty;
             fields.WeaponRaw = values.GetValueOrDefault(ImportTargetField.Weapon) ?? string.Empty;
-            fields.FitnessRaw = values.GetValueOrDefault(ImportTargetField.Fitness);
+            // В анкетах окремої колонки придатності немає - категорія записана у «Висновку ВЛК»
+            // («придатний» / «обмежено придатний»). Без цього всі люди йшли в «Без категорії».
+            var fitnessRaw = values.GetValueOrDefault(ImportTargetField.Fitness);
+            fields.FitnessRaw = string.IsNullOrWhiteSpace(fitnessRaw) ? fields.MedicalBoardConclusion : fitnessRaw;
 
             fields.DateOfBirthRaw = values.GetValueOrDefault(ImportTargetField.DateOfBirth);
             if (!string.IsNullOrWhiteSpace(fields.DateOfBirthRaw) &&
@@ -563,6 +570,11 @@ public class ImportService : IImportService
         return result;
     }
 
+    public static bool HasColumn(ImportParseResult parsed, ImportTargetField field)
+        => parsed.Columns.Any(c => c.MappedField == field);
+
+    private static bool HasRoomColumn(ImportParseResult parsed) => HasColumn(parsed, ImportTargetField.RoomNumber);
+
     public const string TrashedDuplicateNote =
         "Особа з таким особовим номером є в кошику - рядок пропущено. "
         + "Відновіть її через «Кошик» і повторіть імпорт, щоб перенести в цей набір";
@@ -570,7 +582,8 @@ public class ImportService : IImportService
     private static (ImportRowStatus Status, string Note, int? ExistingRecipientId) EvaluateRow(
         RowFields fields, bool incompleteFullName, bool courseArrivalDateInvalid,
         Dictionary<string, ExistingByNumber> existingServiceNumbers, HashSet<string> seenInFile,
-        int? intakeId, Dictionary<string, int> existingNameKeys, HashSet<string> seenNameKeysInFile)
+        int? intakeId, Dictionary<string, int> existingNameKeys, HashSet<string> seenNameKeysInFile,
+        bool roomColumnMapped, bool serviceNumberColumnMapped)
     {
         if (string.IsNullOrWhiteSpace(fields.LastName) && string.IsNullOrWhiteSpace(fields.FirstName))
             return (ImportRowStatus.Error, "Порожнє поле ПІБ", null);
@@ -610,10 +623,13 @@ public class ImportService : IImportService
         if (courseArrivalDateInvalid)
             return (ImportRowStatus.Warning, "Некоректна дата прибуття - поле пропущено", null);
 
-        if (string.IsNullOrWhiteSpace(fields.RoomNumber))
-            return (ImportRowStatus.Warning, "Немає поля «Кімната» - додасться без розміщення", null);
+        // Колонки «Кімната» у файлі немає зовсім (так в анкетах) - про це одне повідомлення над таблицею,
+        // а не «УВАГА» на кожному рядку.
+        if (roomColumnMapped && string.IsNullOrWhiteSpace(fields.RoomNumber))
+            return (ImportRowStatus.Warning, "Кімнату не вказано - додасться без розміщення", null);
 
-        if (nameCheckedInstead)
+        // Як і з кімнатою: якщо колонки особового номера немає взагалі, це одне повідомлення над таблицею.
+        if (nameCheckedInstead && serviceNumberColumnMapped)
             return (ImportRowStatus.Warning, "Без особового номера - дубль перевірено за ПІБ і датою народження", null);
 
         return (ImportRowStatus.Ok, string.Empty, null);

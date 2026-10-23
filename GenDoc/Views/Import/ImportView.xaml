@@ -350,8 +350,22 @@
                 <StackPanel Visibility="{Binding IsStep4, Converter={StaticResource BoolToVisibility}}">
 
                     <Border Style="{StaticResource CardStyle}" Padding="16,12" Margin="0,0,0,14">
-                        <TextBlock Text="{Binding RowStatsText}" VerticalAlignment="Center" FontSize="12"
-                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <StackPanel>
+                            <TextBlock Text="{Binding RowStatsText}" VerticalAlignment="Center" FontSize="12"
+                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                            <TextBlock Text="{Binding MissingColumnsNote}" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0"
+                                       Foreground="{StaticResource WarnTextBrush}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding MissingColumnsNote}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
                     </Border>
 
                     <Border Style="{StaticResource CardStyle}" Padding="16,12" Margin="0,0,0,14"

@@ -20,7 +20,18 @@ public partial class LoginViewModel : ObservableObject
         _unlockService = unlockService;
         _userProfileService = userProfileService;
         _schemaInitializer = schemaInitializer;
+        IsNewDatabase = !unlockService.DatabaseExists;
     }
+
+    /// <summary>
+    /// Бази ще немає - перший запуск: пароль задається, а не вводиться, тож його треба повторити.
+    /// Помилка в паролі нової зашифрованої бази означала б, що наступного разу її вже не відкрити.
+    /// </summary>
+    public bool IsNewDatabase { get; }
+
+    public string DatabasePath => _unlockService.DatabasePath;
+
+    public string UnlockButtonText => IsNewDatabase ? "Створити базу" : "Розблокувати";
 
     public Func<string, bool> ConfirmCreateDatabase { get; set; } = message =>
         System.Windows.MessageBox.Show(
@@ -51,6 +62,7 @@ public partial class LoginViewModel : ObservableObject
     private string newProfileFullName = string.Empty;
 
     public string? DatabasePassword { private get; set; }
+    public string? DatabasePasswordConfirm { private get; set; }
     public string? ProfilePassword { private get; set; }
     public string? NewProfilePassword { private get; set; }
     public string? NewProfilePasswordConfirm { private get; set; }
@@ -71,6 +83,12 @@ public partial class LoginViewModel : ObservableObject
 
         if (!_unlockService.DatabaseExists)
         {
+            if (IsNewDatabase && DatabasePasswordConfirm != DatabasePassword)
+            {
+                ErrorMessage = "Паролі не збігаються.";
+                return;
+            }
+
             var agreed = ConfirmCreateDatabase(
                 $"Базу даних не знайдено за шляхом\n{_unlockService.DatabasePath}\n\n"
                 + "Якщо база має бути там, застосунок запущено не з тієї теки - тоді "
@@ -105,7 +123,8 @@ public partial class LoginViewModel : ObservableObject
 
             Profiles = new ObservableCollection<UserProfileListItem>(outcome.Profiles);
             SelectedProfile = Profiles.Count == 1 ? Profiles[0] : null;
-            Stage = LoginStage.ProfileSelect;
+            // Профілів ще немає (перший запуск) - одразу форма створення, а не порожній список «Профіль».
+            Stage = Profiles.Count == 0 ? LoginStage.CreateProfile : LoginStage.ProfileSelect;
         }
         catch (Exception ex)
         {
@@ -176,10 +195,13 @@ public partial class LoginViewModel : ObservableObject
             return;
         }
 
-        var createdFullName = NewProfileFullName.Trim();
-
-        Profiles = new ObservableCollection<UserProfileListItem>(_userProfileService.GetActiveProfiles());
-        SelectedProfile = Profiles.FirstOrDefault(p => p.FullName == createdFullName);
-        Stage = LoginStage.ProfileSelect;
+        // Профіль щойно створено з паролем, який людина двічі ввела, - TryCreateProfile уже зробив її
+        // поточним користувачем. Просити той самий пароль утретє немає сенсу.
+        LoginResult = true;
+        RequestClose?.Invoke(this, EventArgs.Empty);
     }
+
+    public bool HasProfiles => Profiles.Count > 0;
+
+    partial void OnProfilesChanged(ObservableCollection<UserProfileListItem> value) => OnPropertyChanged(nameof(HasProfiles));
 }

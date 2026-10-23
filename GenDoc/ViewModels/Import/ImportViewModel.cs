@@ -122,8 +122,29 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
 
     private string LabelOf(int step) => step == CurrentStep ? "active" : string.Empty;
 
+    // «Увага» в таблиці - рядок імпортується з попередженням; пропускаються лише помилки й дублі.
+    // Раніше тут стояло «потребують уваги 0» поруч із рядками «УВАГА» - одне одному суперечило.
     public string RowStatsText =>
-        $"Рядків: {TotalRows} · готово {ReadyCount} · потребують уваги {IssueCount}";
+        $"Рядків: {TotalRows} · буде імпортовано {ReadyCount}"
+        + (WarningCount > 0 ? $" (з них з попередженням: {WarningCount})" : string.Empty)
+        + $" · буде пропущено {IssueCount}";
+
+    private int WarningCount => _validatedRows.Count(r => r.Status == ImportRowStatus.Warning);
+
+    /// <summary>Чого немає в усьому файлі - одним рядком над таблицею, а не попередженням на кожній людині.</summary>
+    public string? MissingColumnsNote
+    {
+        get
+        {
+            if (_parsed is null) return null;
+            var notes = new List<string>();
+            if (!ImportService.HasColumn(_parsed, ImportTargetField.RoomNumber))
+                notes.Add("колонки «Кімната» немає - людей буде додано без розміщення (розселити можна в розділі «Кімнати»)");
+            if (!ImportService.HasColumn(_parsed, ImportTargetField.ServiceNumber))
+                notes.Add("колонки особового номера немає - повторний імпорт тих самих людей розпізнається за ПІБ і датою народження");
+            return notes.Count == 0 ? null : "У файлі " + string.Join("; ", notes) + ".";
+        }
+    }
 
     public bool CanGoBack => CurrentStep > 1;
 
@@ -466,6 +487,7 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
             : $"Попередній перегляд ({Preview.Count} з {TotalRows} рядків)";
 
         OnPropertyChanged(nameof(RowStatsText));
+        OnPropertyChanged(nameof(MissingColumnsNote));
 
         UpdateImportButton();
         HasSkippedRows = IssueCount > 0;

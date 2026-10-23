@@ -36,6 +36,7 @@ namespace GenDoc
 
         protected override void OnStartup(StartupEventArgs e)
         {
+            UseUkrainianCulture();
             base.OnStartup(e);
 
             DispatcherUnhandledException += OnDispatcherUnhandledException;
@@ -54,6 +55,22 @@ namespace GenDoc
             Services = services.BuildServiceProvider();
 
             RunLoginFlow();
+        }
+
+        /// <summary>
+        /// Календарі й поля дат WPF беруть формат із мови системи: на англомовній Windows «Початок набору»
+        /// показувався як «1/12/2027» (12 січня чи 1 грудня?), а календар - «October», тиждень з неділі.
+        /// Програма україномовна - тож і дати завжди «дд.мм.рррр», а місяці українською.
+        /// </summary>
+        private static void UseUkrainianCulture()
+        {
+            var ukrainian = System.Globalization.CultureInfo.GetCultureInfo("uk-UA");
+            System.Globalization.CultureInfo.DefaultThreadCurrentCulture = ukrainian;
+            System.Globalization.CultureInfo.DefaultThreadCurrentUICulture = ukrainian;
+            System.Threading.Thread.CurrentThread.CurrentCulture = ukrainian;
+            System.Threading.Thread.CurrentThread.CurrentUICulture = ukrainian;
+            FrameworkElement.LanguageProperty.OverrideMetadata(typeof(FrameworkElement),
+                new FrameworkPropertyMetadata(System.Windows.Markup.XmlLanguage.GetLanguage(ukrainian.IetfLanguageTag)));
         }
 
         private static void ConfigureServices(IServiceCollection services)

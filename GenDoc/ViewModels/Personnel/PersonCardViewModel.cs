@@ -250,7 +250,9 @@ namespace GenDoc.ViewModels.Personnel
                 DocumentRows.Clear();
                 foreach (var status in statuses) DocumentRows.Add(new RecipientDocRowViewModel(status));
 
-                DocumentsEmptyNote = statuses.Count == 0 ? "У пакеті немає шаблонів." : null;
+                // «Пакет повний» поруч із «У пакеті немає шаблонів» читалось як суперечність:
+                // мова лише про персональні документи, групові відомості - нижче.
+                DocumentsEmptyNote = statuses.Count == 0 ? "Персональних документів у пакеті немає." : null;
                 DocumentsFooterNote = await BuildDocumentsFooterNoteAsync(packageId.Value);
 
                 var groupDocs = await _completenessService.GetPackageGroupDocumentsAsync(packageId.Value, IntakeId, Id);

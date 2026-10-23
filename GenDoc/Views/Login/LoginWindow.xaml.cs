@@ -67,6 +67,15 @@ public partial class LoginWindow : Window
     {
         if (e.Key != Key.Enter) return;
 
+        // Нова база: Enter у першому полі веде до «Повторіть пароль», а не одразу до помилки «не збігаються».
+        if (_viewModel.Stage == LoginStage.DatabasePassword && _viewModel.IsNewDatabase
+            && DatabasePasswordBox.IsKeyboardFocusWithin)
+        {
+            DatabasePasswordConfirmBox.Focus();
+            e.Handled = true;
+            return;
+        }
+
         var command = _viewModel.Stage switch
         {
             LoginStage.DatabasePassword => _viewModel.UnlockDatabaseCommand,
@@ -98,6 +107,9 @@ public partial class LoginWindow : Window
 
     private void DatabasePasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
         => _viewModel.DatabasePassword = ((PasswordBox)sender).Password;
+
+    private void DatabasePasswordConfirmBox_PasswordChanged(object sender, RoutedEventArgs e)
+        => _viewModel.DatabasePasswordConfirm = ((PasswordBox)sender).Password;
 
     private void ProfilePasswordBox_PasswordChanged(object sender, RoutedEventArgs e)
         => _viewModel.ProfilePassword = ((PasswordBox)sender).Password;

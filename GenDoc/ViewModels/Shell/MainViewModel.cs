@@ -32,6 +32,7 @@ public partial class MainViewModel : ObservableObject
     public const string ArchiveSectionTitle = "Архів документів";
 
     private readonly IServiceProvider _serviceProvider;
+    private readonly IDbContextFactory<AppDbContext> _dbFactory;
 
     private readonly ActiveIntakeState _activeIntakeState;
     private readonly Services.Completeness.ICompletenessService _completenessService;
@@ -48,6 +49,7 @@ public partial class MainViewModel : ObservableObject
         IIntakeService intakeService)
     {
         _serviceProvider = serviceProvider;
+        _dbFactory = dbFactory;
         _activeIntakeState = activeIntakeState;
         _completenessService = completenessService;
         _intakeService = intakeService;
@@ -65,23 +67,12 @@ public partial class MainViewModel : ObservableObject
             static (recipient, message) => recipient.RefreshCompletenessBadgeFireAndForget());
         WeakReferenceMessenger.Default.Register<MainViewModel, NavigateToSectionMessage>(this,
             static (recipient, message) => _ = recipient.NavigateAsync(message));
+        WeakReferenceMessenger.Default.Register<MainViewModel, OrganizationSettingsChangedMessage>(this,
+            static (recipient, message) => recipient.ApplyOrganization(ReadOrganizationSettings(recipient._dbFactory)));
         _ = InitializeIntakeStateAsync();
         CurrentUserFullName = currentUserContext.CurrentUserFullName ?? string.Empty;
-        var organization = ReadOrganizationSettings(dbFactory);
-        OrganizationDisplayName = FormatOrganizationDisplayName(organization);
-        SidebarUnitShortName = organization?.UnitNumber ?? string.Empty;
-        SidebarUnitFullName = organization?.UnitFullName ?? string.Empty;
-
-        var unitCaption = string.Join(" ", new[] { SidebarUnitShortName, SidebarUnitFullName }
-            .Where(part => !string.IsNullOrWhiteSpace(part)));
-        WindowTitleText = string.IsNullOrWhiteSpace(unitCaption)
-            ? AppTitle
-            : $"{AppTitle} · {unitCaption}";
-
         StatusBarUserText = $"Користувач: {CurrentUserFullName}";
-        StatusBarConnectionText = string.IsNullOrWhiteSpace(OrganizationDisplayName)
-            ? "Захищене з'єднання"
-            : $"{OrganizationDisplayName} · Захищене з'єднання";
+        ApplyOrganization(ReadOrganizationSettings(dbFactory));
 
         Groups = new ObservableCollection<NavigationGroup>
         {
@@ -176,10 +167,30 @@ public partial class MainViewModel : ObservableObject
 
     private const string AppTitle = "GenDoc - Облік особового складу";
 
-    public string WindowTitleText { get; private set; } = AppTitle;
+    [ObservableProperty]
+    private string windowTitleText = AppTitle;
 
     public string StatusBarUserText { get; private set; } = string.Empty;
-    public string StatusBarConnectionText { get; private set; } = string.Empty;
+
+    [ObservableProperty]
+    private string statusBarConnectionText = string.Empty;
+
+    internal void ApplyOrganization(OrganizationSettings? organization)
+    {
+        OrganizationDisplayName = FormatOrganizationDisplayName(organization);
+        SidebarUnitShortName = organization?.UnitNumber ?? string.Empty;
+        SidebarUnitFullName = organization?.UnitFullName ?? string.Empty;
+
+        var unitCaption = string.Join(" ", new[] { SidebarUnitShortName, SidebarUnitFullName }
+            .Where(part => !string.IsNullOrWhiteSpace(part)));
+        WindowTitleText = string.IsNullOrWhiteSpace(unitCaption)
+            ? AppTitle
+            : $"{AppTitle} · {unitCaption}";
+
+        StatusBarConnectionText = string.IsNullOrWhiteSpace(OrganizationDisplayName)
+            ? "Захищене з'єднання"
+            : $"{OrganizationDisplayName} · Захищене з'єднання";
+    }
 
     [ObservableProperty]
     private string statusBarIntakeText = "Активного набору немає";

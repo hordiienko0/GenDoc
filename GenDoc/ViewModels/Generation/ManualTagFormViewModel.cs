@@ -82,6 +82,14 @@ namespace GenDoc.ViewModels.Generation
 
         public ManualTagKind Kind { get; }
 
+        /// <summary>Підказка про формат - лише для дат і періодів; текстовим полям («Калібр», «Номер наказу») її не треба.</summary>
+        public string? InputHint => Kind switch
+        {
+            ManualTagKind.Period => "Дата - дд.мм.рррр; період - дд.мм.рррр-дд.мм.рррр або перелік дат через кому",
+            ManualTagKind.Date => "Дата - дд.мм.рррр",
+            _ => null
+        };
+
         public IReadOnlyList<string> DrivenTags { get; private init; } = Array.Empty<string>();
 
         public bool IsDocumentDate => DrivenTags.Count > 0;

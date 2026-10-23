@@ -66,6 +66,7 @@ public class UserProfileService : IUserProfileService
             return false;
         }
 
+        fullName = fullName.Trim();
         if (db.Users.Any(u => u.FullName == fullName))
         {
             errorMessage = "Профіль з таким іменем уже існує.";
@@ -74,7 +75,7 @@ public class UserProfileService : IUserProfileService
 
         var profile = new UserProfile
         {
-            FullName = fullName.Trim(),
+            FullName = fullName,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
             CreatedAt = DateTime.Now
         };
