@@ -181,6 +181,9 @@
                             ToolTip="Підтягнути відпустки, шпиталь і відрядження з карток людей"/>
                     <Button Content="Експорт у Excel" Margin="16,0,0,0" Command="{Binding ExportCommand}"
                             ToolTip="Лист як на паперовому графіку: A4 альбомна, одна сторінка"/>
+                    <Button Content="Друк / PDF" Style="{StaticResource SecondaryButtonStyle}" Margin="6,0,0,0"
+                            Command="{Binding PrintCommand}"
+                            ToolTip="Той самий лист на A4 - одразу на принтер. Немає принтера - обрано «Microsoft Print to PDF», і Windows спитає, куди зберегти PDF"/>
                 </WrapPanel>
                 <TextBlock Text="{Binding PeriodError}" Style="{StaticResource ErrorTextStyle}" Margin="0,6,0,0"/>
                 <WrapPanel Margin="0,10,0,0">

@@ -909,6 +909,26 @@ public partial class DutyRosterViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Той самий лист, що й в Excel, - одразу на принтер. Без підключеного принтера у вікні друку обрано
+    /// «Microsoft Print to PDF»: Windows спитає, куди зберегти PDF.
+    /// </summary>
+    [RelayCommand]
+    private void Print()
+    {
+        if (_roster is null) return;
+
+        try
+        {
+            var printer = DutyRosterPrinter.Print(_roster, $"Графік чергувань {DutyRosterText.PeriodLabel(_roster.DateFrom, _roster.DateTo)}");
+            if (printer is not null) _service.LogExport(_roster, printer);
+        }
+        catch (Exception ex) when (ex is System.Printing.PrintSystemException or InvalidOperationException)
+        {
+            MessageBox.Show($"Не вдалося надрукувати:\n{ex.Message}", Caption, MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     // ---- Поля редактора ----
 
     partial void OnDateFromChanged(DateTime? value) => OnPeriodEdited();

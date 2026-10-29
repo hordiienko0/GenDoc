@@ -19,10 +19,10 @@ public static class DutyRosterXlsxExporter
     /// <summary>Колір документа (не UI): жовта заливка «н» наряду по столовій.</summary>
     public const string CanteenFillHex = "#FFFF00";
 
-    private const string FontName = "Times New Roman";
-    private const int NumberColumn = 1;
-    private const int NameColumn = 2;
-    private const int FirstDayColumn = 3;
+    internal const string FontName = "Times New Roman";
+    internal const int NumberColumn = 1;
+    internal const int NameColumn = 2;
+    internal const int FirstDayColumn = 3;
 
     private const double NumberWidth = 4.5;
     private const double NameWidth = 22;
@@ -56,31 +56,85 @@ public static class DutyRosterXlsxExporter
         return workbook;
     }
 
+    internal enum SheetFill
+    {
+        None,
+        Exempt,
+        Canteen
+    }
+
+    /// <summary>
+    /// Геометрія листа, однакова для Excel і друку (<c>Views/Duty/DutyRosterPrintLayout</c>): ширини колонок
+    /// в одиницях ширини Excel, рядки (з 1, як в Excel) і колонки блоків змін у підвалі.
+    /// </summary>
+    internal sealed record SheetLayout(
+        IReadOnlyList<string> TitleLines,
+        IReadOnlyList<double> ColumnWidths,
+        int LastTableColumn,
+        int MemberCount,
+        IReadOnlyList<int> ShiftColumns)
+    {
+        public int LastPrintColumn => ColumnWidths.Count;
+        public int HeaderRow => TitleLines.Count + 2;
+        public int LastTableRow => HeaderRow + MemberCount;
+        public int FooterRow => LastTableRow + 2;
+        public int ShiftsRow => FooterRow + 4;
+        public int LastRow => ShiftColumns.Count > 0 ? ShiftsRow + 2 : FooterRow + 1;
+    }
+
+    internal static SheetLayout Layout(DutyRosterData roster)
+    {
+        var dayCount = roster.DateTo.DayNumber - roster.DateFrom.DayNumber + 1;
+        var titleLines = DutyRosterText.TitleLines(roster.Heading, roster.DateFrom, roster.DateTo);
+        var shiftCount = roster.Footer.Shifts.Count;
+        var dayWidth = DayColumnWidth(dayCount, titleLines, shiftCount);
+        var lastTableColumn = FirstDayColumn + dayCount - 1;
+        var shiftColumns = Enumerable.Range(0, shiftCount).Select(k => ShiftColumn(k, shiftCount, dayCount, dayWidth)).ToList();
+
+        // На один день останній блок змін стає правіше таблиці - його колонка теж іде у друк.
+        var lastPrintColumn = Math.Max(lastTableColumn, shiftColumns.DefaultIfEmpty(0).Max());
+        var widths = new List<double> { NumberWidth, NameWidth };
+        for (var column = FirstDayColumn; column <= lastPrintColumn; column++)
+            widths.Add(column <= lastTableColumn ? dayWidth : ColumnWidth(ShiftBlockPixels));
+
+        return new SheetLayout(titleLines, widths, lastTableColumn, roster.Members.Count, shiftColumns);
+    }
+
+    /// <summary>Що стоїть у клітинці дня і як вона залита: наряд - номер зміни або «н», столова - жовта «н», звільнений і вихідний - зелене.</summary>
+    internal static (string Text, SheetFill Fill) DayCell(
+        DutyRosterData roster, IReadOnlyDictionary<int, int> shiftsOfDay, int memberIndex, DateOnly day)
+    {
+        var isDuty = roster.IsDuty(memberIndex, day);
+        var isCanteen = !isDuty && roster.IsCanteen(memberIndex, day);
+        var text = isDuty ? DutyRosterPlanner.DutyText(roster, shiftsOfDay, memberIndex) : isCanteen ? DutyMark : string.Empty;
+        var fill = isCanteen ? SheetFill.Canteen
+            : roster.IsExempt(memberIndex, day) || roster.IsGreenWeekend(day) ? SheetFill.Exempt
+            : SheetFill.None;
+        return (text, fill);
+    }
+
     private static void BuildRosterSheet(IXLWorksheet sheet, DutyRosterData roster)
     {
         var exemptFill = XLColor.FromHtml(ExemptFillHex);
         var canteenFill = XLColor.FromHtml(CanteenFillHex);
         var days = roster.Days.ToList();
-        var lastColumn = FirstDayColumn + days.Count - 1;
-        var titleLines = DutyRosterText.TitleLines(roster.Heading, roster.DateFrom, roster.DateTo);
-        var dayWidth = DayColumnWidth(days.Count, titleLines, roster.Footer.Shifts.Count);
+        var layout = Layout(roster);
+        var lastColumn = layout.LastTableColumn;
 
         sheet.Style.Font.FontName = FontName;
         sheet.Style.Font.FontSize = 11;
         sheet.ShowGridLines = false;
 
-        var row = 1;
-        foreach (var line in titleLines)
+        for (var line = 0; line < layout.TitleLines.Count; line++)
         {
-            var title = sheet.Range(row, NumberColumn, row, lastColumn).Merge();
-            title.FirstCell().Value = line;
+            var title = sheet.Range(line + 1, NumberColumn, line + 1, lastColumn).Merge();
+            title.FirstCell().Value = layout.TitleLines[line];
             title.Style.Font.Bold = true;
             title.Style.Font.FontSize = 12;
             title.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-            row++;
         }
 
-        var headerRow = row + 1;
+        var headerRow = layout.HeaderRow;
         var number = sheet.Cell(headerRow, NumberColumn);
         number.Value = "№ з/п";
         number.Style.Font.FontSize = 7;
@@ -120,53 +174,43 @@ public static class DutyRosterXlsxExporter
             for (var d = 0; d < days.Count; d++)
             {
                 var cell = sheet.Cell(r, FirstDayColumn + d);
-                var isDuty = roster.IsDuty(m, days[d]);
-                var isCanteen = !isDuty && roster.IsCanteen(m, days[d]);
-                if (isDuty || isCanteen)
+                var (text, fill) = DayCell(roster, shiftsByDay[days[d]], m, days[d]);
+                if (text.Length > 0)
                 {
-                    cell.Value = isDuty ? DutyRosterPlanner.DutyText(roster, shiftsByDay[days[d]], m) : DutyMark;
+                    cell.Value = text;
                     cell.Style.Font.Bold = true;
                     cell.Style.Font.FontSize = 9;
                     cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
                 }
-                if (isCanteen)
+                if (fill == SheetFill.Canteen)
                     cell.Style.Fill.BackgroundColor = canteenFill;
-                else if (roster.IsExempt(m, days[d]) || roster.IsGreenWeekend(days[d]))
+                else if (fill == SheetFill.Exempt)
                     cell.Style.Fill.BackgroundColor = exemptFill;
             }
         }
 
-        var lastTableRow = headerRow + roster.Members.Count;
-        var table = sheet.Range(headerRow, NumberColumn, lastTableRow, lastColumn);
+        var table = sheet.Range(headerRow, NumberColumn, layout.LastTableRow, lastColumn);
         table.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
         table.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
         table.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
 
-        var footerRow = lastTableRow + 2;
-        Bold(sheet.Cell(footerRow, NameColumn), $"Перезмінка: {roster.Footer.Changeover} год.");
-        Bold(sheet.Cell(footerRow + 1, NameColumn), $"Прибирання: {roster.Footer.Cleaning} год.");
+        Bold(sheet.Cell(layout.FooterRow, NameColumn), ChangeoverText(roster));
+        Bold(sheet.Cell(layout.FooterRow + 1, NameColumn), CleaningText(roster));
 
-        var shiftsRow = footerRow + 4;
         var shifts = roster.Footer.Shifts;
-        var lastPrintColumn = lastColumn;
         for (var k = 0; k < shifts.Count; k++)
         {
-            var column = ShiftColumn(k, shifts.Count, days.Count, dayWidth);
-            lastPrintColumn = Math.Max(lastPrintColumn, column);
-            Bold(sheet.Cell(shiftsRow, column), $"{DutyRosterEngine.RomanShift(k + 1)} Зміна");
-            Bold(sheet.Cell(shiftsRow + 1, column), shifts[k].Day);
-            Bold(sheet.Cell(shiftsRow + 2, column), shifts[k].Night);
+            var column = layout.ShiftColumns[k];
+            Bold(sheet.Cell(layout.ShiftsRow, column), ShiftTitle(k));
+            Bold(sheet.Cell(layout.ShiftsRow + 1, column), shifts[k].Day);
+            Bold(sheet.Cell(layout.ShiftsRow + 2, column), shifts[k].Night);
         }
 
-        sheet.Column(NumberColumn).Width = NumberWidth;
-        sheet.Column(NameColumn).Width = NameWidth;
-        for (var column = FirstDayColumn; column <= lastColumn; column++)
-            sheet.Column(column).Width = dayWidth;
-        // На один день останній блок змін стає правіше таблиці - його колонка теж іде у друк.
-        for (var column = lastColumn + 1; column <= lastPrintColumn; column++)
-            sheet.Column(column).Width = ColumnWidth(ShiftBlockPixels);
+        for (var column = 1; column <= layout.LastPrintColumn; column++)
+            sheet.Column(column).Width = layout.ColumnWidths[column - 1];
 
-        var lastRow = shifts.Count > 0 ? shiftsRow + 2 : footerRow + 1;
+        var lastRow = layout.LastRow;
+        var lastPrintColumn = layout.LastPrintColumn;
         var page = sheet.PageSetup;
         page.PageOrientation = XLPageOrientation.Landscape;
         page.PaperSize = XLPaperSize.A4Paper;
@@ -228,6 +272,12 @@ public static class DutyRosterXlsxExporter
         var spread = FirstDayColumn + (int)Math.Floor(Math.Max(0, x) / dayPixels);
         return Math.Max(FirstDayColumn + (index - 1) * daysPerBlock, spread);
     }
+
+    internal static string ChangeoverText(DutyRosterData roster) => $"Перезмінка: {roster.Footer.Changeover} год.";
+
+    internal static string CleaningText(DutyRosterData roster) => $"Прибирання: {roster.Footer.Cleaning} год.";
+
+    internal static string ShiftTitle(int index) => $"{DutyRosterEngine.RomanShift(index + 1)} Зміна";
 
     private static void Bold(IXLCell cell, string text)
     {
