@@ -56,6 +56,15 @@ namespace GenDoc.Models
         public string? OriginUnit { get; set; }
         public string? Vehicle { get; set; }
 
+        public string? CivilEducation { get; set; }
+        public string? MilitaryEducation { get; set; }
+        public DateOnly? ArmedForcesSince { get; set; }
+        public string? ConscriptionOffice { get; set; }
+        public string? TaxNumber { get; set; }
+        public string? Passport { get; set; }
+        public string? PlaceOfBirth { get; set; }
+        public string? RankOrder { get; set; }
+
         public bool IsCourseOfficer { get; set; }
 
         public Gender? Gender { get; set; }

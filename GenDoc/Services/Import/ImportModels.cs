@@ -36,7 +36,16 @@ public enum ImportTargetField
     OriginUnit,
     Vehicle,
     Weapon,
-    Fitness
+    Fitness,
+
+    CivilEducation,
+    MilitaryEducation,
+    ArmedForcesSince,
+    ConscriptionOffice,
+    TaxNumber,
+    Passport,
+    PlaceOfBirth,
+    RankOrder
 }
 
 public static class ImportTargetFieldNames
@@ -77,7 +86,16 @@ public static class ImportTargetFieldNames
         [ImportTargetField.OriginUnit] = "З якої частини прибув",
         [ImportTargetField.Vehicle] = "Автомобіль, номер авто",
         [ImportTargetField.Weapon] = "Особиста зброя (найменування, серія, номер)",
-        [ImportTargetField.Fitness] = "Категорія придатності"
+        [ImportTargetField.Fitness] = "Категорія придатності",
+
+        [ImportTargetField.CivilEducation] = "Освіта цивільна",
+        [ImportTargetField.MilitaryEducation] = "Освіта військова (ВОС)",
+        [ImportTargetField.ArmedForcesSince] = "З якого часу в ЗСУ",
+        [ImportTargetField.ConscriptionOffice] = "Яким РТЦК та СП призваний",
+        [ImportTargetField.TaxNumber] = "ІПН",
+        [ImportTargetField.Passport] = "Паспорт",
+        [ImportTargetField.PlaceOfBirth] = "Місце народження",
+        [ImportTargetField.RankOrder] = "Наказ про присвоєння в/звання"
     };
 }
 

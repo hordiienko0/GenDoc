@@ -600,6 +600,47 @@
                             <TextBlock Text="Придатність" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,10,0,4"/>
                             <TextBlock Text="{Binding Fitness}" Style="{StaticResource CardReadValueStyle}"/>
                             <ComboBox ItemsSource="{Binding FitnessList}" SelectedItem="{Binding Fitness}" Style="{StaticResource CardEditComboStyle}"/>
+
+                            <TextBlock Text="АНКЕТНІ ДАНІ" FontSize="10.5" FontWeight="Bold"
+                                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,18,0,0"/>
+                            <Border Height="1" Background="{StaticResource BorderLineBrush}" Margin="0,4,0,0"/>
+                            <ItemsControl ItemsSource="{Binding QuestionnaireFields}" Focusable="False">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:QuestionnaireFieldViewModel}">
+                                        <StackPanel Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibility}}">
+                                            <TextBlock Text="{Binding Label}" FontSize="11.5" TextWrapping="Wrap"
+                                                       Foreground="{StaticResource TextSecondaryBrush}" Margin="0,10,0,4"/>
+                                            <TextBlock Text="{Binding DisplayValue}" Style="{StaticResource CardReadValueStyle}"/>
+                                            <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Tag="{Binding Hint}">
+                                                <TextBox.Style>
+                                                    <Style TargetType="TextBox" BasedOn="{StaticResource CardEditFieldStyle}">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsMultiline}" Value="True">
+                                                                <Setter Property="AcceptsReturn" Value="True"/>
+                                                                <Setter Property="TextWrapping" Value="Wrap"/>
+                                                                <Setter Property="MinHeight" Value="54"/>
+                                                                <Setter Property="VerticalContentAlignment" Value="Top"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBox.Style>
+                                            </TextBox>
+                                            <TextBlock Text="{Binding Error}" FontSize="11" TextWrapping="Wrap"
+                                                       Foreground="{StaticResource DangerBrush}" Margin="0,3,0,0">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Error}" Value="{x:Null}">
+                                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
 
                         <StackPanel Visibility="{Binding IsDocumentsTab, Converter={StaticResource BoolToVisibility}}">

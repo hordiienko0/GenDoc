@@ -55,7 +55,7 @@ namespace GenDoc.ViewModels.Personnel
 
         private record CleanValues(
             string LastName, string FirstMiddle, string Rank, string Position, string ServiceNumber,
-            string? RoomBuilding, string? RoomNumber, string? Fitness);
+            string? RoomBuilding, string? RoomNumber, string? Fitness, string?[] Questionnaire);
         private CleanValues _clean = null!;
 
         public PersonCardViewModel(
@@ -95,6 +95,18 @@ namespace GenDoc.ViewModels.Personnel
 
             isEditing = IsNew;
             if (IsNew) documentsEmptyNote = SaveFirstNote;
+
+            QuestionnaireFields = new ObservableCollection<QuestionnaireFieldViewModel>(
+                PersonQuestionnaire.Fields.Select(f =>
+                    new QuestionnaireFieldViewModel(f, model.Questionnaire?.GetValueOrDefault(f.Key), isEditing)));
+            foreach (var field in QuestionnaireFields)
+            {
+                field.PropertyChanged += (_, e) =>
+                {
+                    if (e.PropertyName == nameof(QuestionnaireFieldViewModel.Value))
+                        IsDirty = CurrentState() != _snapshot;
+                };
+            }
 
             TakeSnapshot();
         }
@@ -136,6 +148,8 @@ namespace GenDoc.ViewModels.Personnel
         }
 
         public ObservableCollection<string> FitnessList { get; }
+
+        public ObservableCollection<QuestionnaireFieldViewModel> QuestionnaireFields { get; }
 
         [ObservableProperty] private string lastName;
         [ObservableProperty] private string firstMiddle;
@@ -203,6 +217,11 @@ namespace GenDoc.ViewModels.Personnel
         private bool isDirty;
 
         [ObservableProperty] private bool isEditing;
+
+        partial void OnIsEditingChanged(bool value)
+        {
+            foreach (var field in QuestionnaireFields) field.IsEditing = value;
+        }
 
         protected override void OnPropertyChanged(PropertyChangedEventArgs e)
         {
@@ -396,13 +415,14 @@ namespace GenDoc.ViewModels.Personnel
         }
 
         private string CurrentState()
-            => string.Join("|", LastName, FirstMiddle, Rank, Position, ServiceNumber,
-                RoomBuilding, RoomNumber, Fitness);
+            => string.Join("|", new[] { LastName, FirstMiddle, Rank, Position, ServiceNumber,
+                RoomBuilding, RoomNumber, Fitness }.Concat(QuestionnaireFields.Select(f => f.Value)));
 
         private void TakeSnapshot()
         {
             _snapshot = CurrentState();
-            _clean = new CleanValues(LastName, FirstMiddle, Rank, Position, ServiceNumber, RoomBuilding, RoomNumber, Fitness);
+            _clean = new CleanValues(LastName, FirstMiddle, Rank, Position, ServiceNumber, RoomBuilding, RoomNumber, Fitness,
+                QuestionnaireFields.Select(f => f.Value).ToArray());
             IsDirty = false;
         }
 
@@ -416,6 +436,11 @@ namespace GenDoc.ViewModels.Personnel
             RoomBuilding = _clean.RoomBuilding;
             RoomNumber = _clean.RoomNumber;
             Fitness = _clean.Fitness;
+            for (var i = 0; i < QuestionnaireFields.Count; i++)
+            {
+                QuestionnaireFields[i].Value = _clean.Questionnaire[i];
+                QuestionnaireFields[i].Error = null;
+            }
             LastNameError = null;
             ServiceNumberError = null;
             RoomError = null;
@@ -426,6 +451,7 @@ namespace GenDoc.ViewModels.Personnel
             LastNameError = null;
             ServiceNumberError = null;
             RoomError = null;
+            foreach (var field in QuestionnaireFields) field.Error = null;
 
             var parts = (FirstMiddle ?? string.Empty).Trim()
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries);
@@ -443,7 +469,8 @@ namespace GenDoc.ViewModels.Personnel
                 RoomNumber = RoomNumber,
                 FitnessCategory = FitnessToSave(Fitness),
                 OrgNodeId = OrgNodeId,
-                IntakeId = IntakeId
+                IntakeId = IntakeId,
+                Questionnaire = QuestionnaireFields.ToDictionary(f => f.Key, f => f.Value)
             };
 
             var wasNew = IsNew;
@@ -453,6 +480,7 @@ namespace GenDoc.ViewModels.Personnel
                 LastNameError = result.Errors.GetValueOrDefault("LastName");
                 ServiceNumberError = result.Errors.GetValueOrDefault("ServiceNumber");
                 RoomError = result.Errors.GetValueOrDefault("Room");
+                foreach (var field in QuestionnaireFields) field.Error = result.Errors.GetValueOrDefault(field.Key);
                 return false;
             }
 

@@ -30,7 +30,20 @@ public class HeaderMappersAgreeTests
         new object[] { "Дата народження", ImportTargetField.DateOfBirth, ExportFieldKey.DateOfBirth },
         new object[] { "Висновок ВЛК", ImportTargetField.MedicalBoardConclusion, ExportFieldKey.MedicalBoardConclusion },
         new object[] { "Категорія придатності", ImportTargetField.Fitness, ExportFieldKey.FitnessCategory },
-        new object[] { "Особиста зброя (найменування, серія, номер)", ImportTargetField.Weapon, ExportFieldKey.WeaponFull }
+        new object[] { "Особиста зброя (найменування, серія, номер)", ImportTargetField.Weapon, ExportFieldKey.WeaponFull },
+        new object[] { "Освіта цивільна", ImportTargetField.CivilEducation, ExportFieldKey.CivilEducation },
+        new object[] { "Освіта військова\n (ВОС)", ImportTargetField.MilitaryEducation, ExportFieldKey.MilitaryEducation },
+        new object[] { "ВОС", ImportTargetField.Vos, ExportFieldKey.Vos },
+        new object[] { "З якого часу в ЗСУ", ImportTargetField.ArmedForcesSince, ExportFieldKey.ArmedForcesSince },
+        new object[] { "яким РТЦТК та СП\n призваний", ImportTargetField.ConscriptionOffice, ExportFieldKey.ConscriptionOffice },
+        new object[] { "Сімейний стан\n (ПІП дружини рік народження; ім’я і рік народження дитини)",
+            ImportTargetField.MaritalStatus, ExportFieldKey.MaritalStatus },
+        new object[] { "ІПН", ImportTargetField.TaxNumber, ExportFieldKey.TaxNumber },
+        new object[] { "Паспорт", ImportTargetField.Passport, ExportFieldKey.Passport },
+        new object[] { "Місце народження", ImportTargetField.PlaceOfBirth, ExportFieldKey.PlaceOfBirth },
+        new object[] { "Довідка\nВЛК № \nвід якої дати", ImportTargetField.MedicalBoard, ExportFieldKey.MedicalBoard },
+        new object[] { "Наказ про присвоєння в/звання", ImportTargetField.RankOrder, ExportFieldKey.RankOrder },
+        new object[] { "Військове звання", ImportTargetField.Rank, ExportFieldKey.Rank }
     };
 
     [Theory]

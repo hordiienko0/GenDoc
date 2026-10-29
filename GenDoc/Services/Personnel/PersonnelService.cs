@@ -60,7 +60,8 @@ namespace GenDoc.Services.Personnel
                 RoomNumber = r.Room?.Number,
                 FitnessCategory = r.FitnessCategory,
                 OrgNodeId = r.OrgNodeId.Value,
-                IntakeId = r.IntakeId
+                IntakeId = r.IntakeId,
+                Questionnaire = PersonQuestionnaire.Read(r)
             };
         }
 
@@ -88,6 +89,12 @@ namespace GenDoc.Services.Personnel
             if (string.IsNullOrWhiteSpace(model.RoomBuilding) != string.IsNullOrWhiteSpace(model.RoomNumber))
                 errors["Room"] = "Вкажіть і корпус, і номер";
 
+            if (model.Questionnaire is not null)
+            {
+                foreach (var (key, message) in PersonQuestionnaire.Validate(model.Questionnaire))
+                    errors[key] = message;
+            }
+
             if (errors.Count > 0) return new PersonSaveResult(false, model.Id, errors);
 
             var isNew = model.Id == 0;
@@ -100,6 +107,10 @@ namespace GenDoc.Services.Personnel
             recipient.Rank = model.Rank.Trim();
             recipient.Position = model.Position.Trim();
             recipient.ServiceNumber = serviceNumber;
+
+            var changedQuestionnaire = model.Questionnaire is null
+                ? new List<string>()
+                : PersonQuestionnaire.Write(recipient, model.Questionnaire);
 
             var previousFitness = recipient.FitnessCategory;
             recipient.FitnessCategory = string.IsNullOrWhiteSpace(model.FitnessCategory) ? null : model.FitnessCategory;
@@ -134,7 +145,8 @@ namespace GenDoc.Services.Personnel
             if (isNew)
                 _auditLogService.LogCreate(db, "Recipient", recipient.Id, newSnapshot);
             else
-                _auditLogService.LogUpdate(db, "Recipient", recipient.Id, oldSnapshot, newSnapshot);
+                _auditLogService.LogUpdate(db, "Recipient", recipient.Id, oldSnapshot, newSnapshot,
+                    changedQuestionnaire.Count > 0 ? $"анкета: {string.Join(", ", changedQuestionnaire)}" : null);
             await db.SaveChangesAsync();
 
             return new PersonSaveResult(true, recipient.Id, errors);

@@ -95,7 +95,7 @@ public class ImportService : IImportService
         foreach (var row in rows)
         {
             var intakeId = ResolveTargetIntakeId(target, orgNodeIntakeMap, row.Fields.UnitName);
-            var (status, note, existingRecipientId) = EvaluateRow(row.Fields, row.IncompleteFullName, row.CourseArrivalDateInvalid,
+            var (status, note, existingRecipientId) = EvaluateRow(row,
                 existingServiceNumbers, seenInFile, intakeId, existingNameKeys, seenNameKeysInFile,
                 roomColumnMapped, serviceNumberColumnMapped);
             previews.Add(new ImportRowPreview
@@ -145,7 +145,7 @@ public class ImportService : IImportService
         foreach (var row in rows)
         {
             var intakeId = ResolveTargetIntakeId(target, orgNodeIntakeMap, row.Fields.UnitName);
-            var (status, _, existingRecipientId) = EvaluateRow(row.Fields, row.IncompleteFullName, row.CourseArrivalDateInvalid,
+            var (status, _, existingRecipientId) = EvaluateRow(row,
                 existingServiceNumbers, seenInFile, intakeId, existingNameKeys, seenNameKeysInFile,
                 roomColumnMapped: true, serviceNumberColumnMapped: true);
 
@@ -243,7 +243,16 @@ public class ImportService : IImportService
                     MedicalBoard = NullIfEmpty(row.Fields.MedicalBoard),
                     MedicalBoardConclusion = NullIfEmpty(row.Fields.MedicalBoardConclusion),
                     OriginUnit = NullIfEmpty(row.Fields.OriginUnit),
-                    Vehicle = NullIfEmpty(row.Fields.Vehicle)
+                    Vehicle = NullIfEmpty(row.Fields.Vehicle),
+
+                    CivilEducation = NullIfEmpty(row.Fields.CivilEducation),
+                    MilitaryEducation = NullIfEmpty(row.Fields.MilitaryEducation),
+                    ArmedForcesSince = row.Fields.ArmedForcesSince,
+                    ConscriptionOffice = NullIfEmpty(row.Fields.ConscriptionOffice),
+                    TaxNumber = NullIfEmpty(row.Fields.TaxNumber),
+                    Passport = NullIfEmpty(row.Fields.Passport),
+                    PlaceOfBirth = NullIfEmpty(row.Fields.PlaceOfBirth),
+                    RankOrder = NullIfEmpty(row.Fields.RankOrder)
                 };
 
                 foreach (var (name, serialNumber, rawText) in ParseWeaponUnits(row.Fields.WeaponRaw))
@@ -367,6 +376,15 @@ public class ImportService : IImportService
         person.OriginUnit = KeepNullable(fields.OriginUnit, person.OriginUnit);
         person.Vehicle = KeepNullable(fields.Vehicle, person.Vehicle);
 
+        person.CivilEducation = KeepNullable(fields.CivilEducation, person.CivilEducation);
+        person.MilitaryEducation = KeepNullable(fields.MilitaryEducation, person.MilitaryEducation);
+        person.ArmedForcesSince = fields.ArmedForcesSince ?? person.ArmedForcesSince;
+        person.ConscriptionOffice = KeepNullable(fields.ConscriptionOffice, person.ConscriptionOffice);
+        person.TaxNumber = KeepNullable(fields.TaxNumber, person.TaxNumber);
+        person.Passport = KeepNullable(fields.Passport, person.Passport);
+        person.PlaceOfBirth = KeepNullable(fields.PlaceOfBirth, person.PlaceOfBirth);
+        person.RankOrder = KeepNullable(fields.RankOrder, person.RankOrder);
+
         var weapons = ParseWeaponUnits(fields.WeaponRaw);
         if (weapons.Count > 0)
         {
@@ -421,6 +439,10 @@ public class ImportService : IImportService
 
         if (normalized.Contains("командир")) return ImportTargetField.CommanderContact;
 
+        // «Сімейний стан (ПІП дружини рік народження; ім'я і рік народження дитини)» містить «ім'я» -
+        // перевірка після імен віддавала колонку полю «Ім'я», і сімейний стан губився.
+        if (normalized.Contains("сімейний стан")) return ImportTargetField.MaritalStatus;
+
         if (normalized.Contains("іноземній мові")) return ImportTargetField.NameTransliterated;
         if (normalized.Contains("піб")) return ImportTargetField.FullName;
 
@@ -428,15 +450,23 @@ public class ImportService : IImportService
         if (normalized.Contains("по батькові")) return ImportTargetField.MiddleName;
         if (normalized.Contains("імя")) return ImportTargetField.FirstName;
 
+        if (normalized.Contains("наказ") && normalized.Contains("звання")) return ImportTargetField.RankOrder;
         if (normalized.Contains("звання")) return ImportTargetField.Rank;
         if (normalized.Contains("національність")) return ImportTargetField.Nationality;
+        // «Освіта військова (ВОС)» - заклад і ВОС за дипломом, а не ВОС, на яку людина навчається.
+        if (normalized.Contains("освіта"))
+            return normalized.Contains("військов") ? ImportTargetField.MilitaryEducation : ImportTargetField.CivilEducation;
         if (normalized.Contains("вос")) return ImportTargetField.Vos;
         if (normalized.Contains("прибув на курси")) return ImportTargetField.CourseArrivalDate;
-        if (normalized.Contains("сімейний стан")) return ImportTargetField.MaritalStatus;
+        if (normalized.Contains("з якого часу") && normalized.Contains("зсу")) return ImportTargetField.ArmedForcesSince;
+        if (normalized.Contains("призван")) return ImportTargetField.ConscriptionOffice;
         if (normalized.Contains("адреса реєстрації")) return ImportTargetField.RegistrationAddress;
         if (normalized.Contains("фактичного проживання")) return ImportTargetField.ResidenceAddress;
 
         if (normalized.Contains("телефон")) return ImportTargetField.Phone;
+        if (normalized.Contains("іпн")) return ImportTargetField.TaxNumber;
+        if (normalized.Contains("паспорт")) return ImportTargetField.Passport;
+        if (normalized.Contains("місце народження")) return ImportTargetField.PlaceOfBirth;
 
         if (normalized.Contains("примітка"))
         {
@@ -541,10 +571,19 @@ public class ImportService : IImportService
             fields.OriginUnit = values.GetValueOrDefault(ImportTargetField.OriginUnit) ?? string.Empty;
             fields.Vehicle = values.GetValueOrDefault(ImportTargetField.Vehicle) ?? string.Empty;
             fields.WeaponRaw = values.GetValueOrDefault(ImportTargetField.Weapon) ?? string.Empty;
+            fields.CivilEducation = values.GetValueOrDefault(ImportTargetField.CivilEducation) ?? string.Empty;
+            fields.MilitaryEducation = values.GetValueOrDefault(ImportTargetField.MilitaryEducation) ?? string.Empty;
+            fields.ConscriptionOffice = values.GetValueOrDefault(ImportTargetField.ConscriptionOffice) ?? string.Empty;
+            fields.TaxNumber = values.GetValueOrDefault(ImportTargetField.TaxNumber) ?? string.Empty;
+            fields.Passport = values.GetValueOrDefault(ImportTargetField.Passport) ?? string.Empty;
+            fields.PlaceOfBirth = values.GetValueOrDefault(ImportTargetField.PlaceOfBirth) ?? string.Empty;
+            fields.RankOrder = values.GetValueOrDefault(ImportTargetField.RankOrder) ?? string.Empty;
             // В анкетах окремої колонки придатності немає - категорія записана у «Висновку ВЛК»
-            // («придатний» / «обмежено придатний»). Без цього всі люди йшли в «Без категорії».
+            // («придатний» / «обмежено придатний»), а в анкеті 31 набору висновку окремо немає зовсім -
+            // «придатний до в/с» дописано в кінці «Довідки ВЛК». Без цього всі люди йшли в «Без категорії».
             var fitnessRaw = values.GetValueOrDefault(ImportTargetField.Fitness);
-            fields.FitnessRaw = string.IsNullOrWhiteSpace(fitnessRaw) ? fields.MedicalBoardConclusion : fitnessRaw;
+            fields.FitnessRaw = new[] { fitnessRaw, fields.MedicalBoardConclusion, fields.MedicalBoard }
+                .FirstOrDefault(v => !string.IsNullOrWhiteSpace(v));
 
             fields.DateOfBirthRaw = values.GetValueOrDefault(ImportTargetField.DateOfBirth);
             if (!string.IsNullOrWhiteSpace(fields.DateOfBirthRaw) &&
@@ -553,21 +592,27 @@ public class ImportService : IImportService
                 fields.DateOfBirth = dob;
             }
 
-            var courseArrivalDateRaw = values.GetValueOrDefault(ImportTargetField.CourseArrivalDate);
-            var courseArrivalDateInvalid = false;
-            if (!string.IsNullOrWhiteSpace(courseArrivalDateRaw))
-            {
-                if (DateOnly.TryParseExact(courseArrivalDateRaw, DateFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var arrivalDate))
-                    fields.CourseArrivalDate = arrivalDate;
-                else
-                    courseArrivalDateInvalid = true;
-            }
+            var courseArrivalDateInvalid = !TryParseOptionalDate(
+                values.GetValueOrDefault(ImportTargetField.CourseArrivalDate), out fields.CourseArrivalDate);
+            var armedForcesSinceInvalid = !TryParseOptionalDate(
+                values.GetValueOrDefault(ImportTargetField.ArmedForcesSince), out fields.ArmedForcesSince);
 
             var rowNumber = i < parsed.RawRowNumbers.Count ? parsed.RawRowNumbers[i] : i + 2;
-            result.Add(new RowInfo(rowNumber, fields, incompleteFullName, courseArrivalDateInvalid));
+            result.Add(new RowInfo(rowNumber, fields, incompleteFullName, courseArrivalDateInvalid, armedForcesSinceInvalid));
         }
 
         return result;
+    }
+
+    // Порожня клітинка - не помилка: помилка лише текст, який не читається як дата.
+    private static bool TryParseOptionalDate(string? raw, out DateOnly? date)
+    {
+        date = null;
+        if (string.IsNullOrWhiteSpace(raw)) return true;
+        if (!DateOnly.TryParseExact(raw, DateFormats, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
+            return false;
+        date = parsed;
+        return true;
     }
 
     public static bool HasColumn(ImportParseResult parsed, ImportTargetField field)
@@ -580,11 +625,12 @@ public class ImportService : IImportService
         + "Відновіть її через «Кошик» і повторіть імпорт, щоб перенести в цей набір";
 
     private static (ImportRowStatus Status, string Note, int? ExistingRecipientId) EvaluateRow(
-        RowFields fields, bool incompleteFullName, bool courseArrivalDateInvalid,
+        RowInfo row,
         Dictionary<string, ExistingByNumber> existingServiceNumbers, HashSet<string> seenInFile,
         int? intakeId, Dictionary<string, int> existingNameKeys, HashSet<string> seenNameKeysInFile,
         bool roomColumnMapped, bool serviceNumberColumnMapped)
     {
+        var fields = row.Fields;
         if (string.IsNullOrWhiteSpace(fields.LastName) && string.IsNullOrWhiteSpace(fields.FirstName))
             return (ImportRowStatus.Error, "Порожнє поле ПІБ", null);
 
@@ -617,11 +663,14 @@ public class ImportService : IImportService
             nameCheckedInstead = true;
         }
 
-        if (incompleteFullName)
+        if (row.IncompleteFullName)
             return (ImportRowStatus.Warning, "Неповне ПІБ", null);
 
-        if (courseArrivalDateInvalid)
+        if (row.CourseArrivalDateInvalid)
             return (ImportRowStatus.Warning, "Некоректна дата прибуття - поле пропущено", null);
+
+        if (row.ArmedForcesSinceInvalid)
+            return (ImportRowStatus.Warning, "Некоректна дата «З якого часу в ЗСУ» - поле пропущено", null);
 
         // Колонки «Кімната» у файлі немає зовсім (так в анкетах) - про це одне повідомлення над таблицею,
         // а не «УВАГА» на кожному рядку.
@@ -913,7 +962,17 @@ public class ImportService : IImportService
         public string Vehicle = string.Empty;
         public string WeaponRaw = string.Empty;
         public string? FitnessRaw;
+
+        public string CivilEducation = string.Empty;
+        public string MilitaryEducation = string.Empty;
+        public DateOnly? ArmedForcesSince;
+        public string ConscriptionOffice = string.Empty;
+        public string TaxNumber = string.Empty;
+        public string Passport = string.Empty;
+        public string PlaceOfBirth = string.Empty;
+        public string RankOrder = string.Empty;
     }
 
-    private record RowInfo(int RowNumber, RowFields Fields, bool IncompleteFullName, bool CourseArrivalDateInvalid);
+    private record RowInfo(
+        int RowNumber, RowFields Fields, bool IncompleteFullName, bool CourseArrivalDateInvalid, bool ArmedForcesSinceInvalid);
 }

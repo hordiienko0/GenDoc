@@ -28,6 +28,9 @@ namespace GenDoc.Services.Personnel
         public string? FitnessCategory { get; set; }
         public int OrgNodeId { get; set; }
         public int? IntakeId { get; set; }
+
+        // Анкетні поля за ключами PersonQuestionnaire.Fields; null - анкету під час збереження не чіпати.
+        public Dictionary<string, string?>? Questionnaire { get; set; }
     }
 
     public record PersonSaveResult(bool Success, int Id, Dictionary<string, string> Errors);

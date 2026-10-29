@@ -467,6 +467,8 @@ namespace GenDoc.Services
 
             if (normalized.Contains("командир")) return ExportFieldKey.CommanderContact;
 
+            if (normalized.Contains("сімейний стан")) return ExportFieldKey.MaritalStatus;
+
             if (normalized.Contains("іноземній мові")) return ExportFieldKey.NameTransliterated;
             if (normalized.Contains("піб")) return ExportFieldKey.FullNameFormatted;
 
@@ -474,15 +476,22 @@ namespace GenDoc.Services
             if (normalized.Contains("по батькові")) return ExportFieldKey.MiddleName;
             if (normalized.Contains("імя")) return ExportFieldKey.FirstName;
 
+            if (normalized.Contains("наказ") && normalized.Contains("звання")) return ExportFieldKey.RankOrder;
             if (normalized.Contains("звання")) return ExportFieldKey.Rank;
             if (normalized.Contains("національність")) return ExportFieldKey.Nationality;
+            if (normalized.Contains("освіта"))
+                return normalized.Contains("військов") ? ExportFieldKey.MilitaryEducation : ExportFieldKey.CivilEducation;
             if (normalized.Contains("вос")) return ExportFieldKey.Vos;
             if (normalized.Contains("прибув на курси")) return ExportFieldKey.CourseArrivalDate;
-            if (normalized.Contains("сімейний стан")) return ExportFieldKey.MaritalStatus;
+            if (normalized.Contains("з якого часу") && normalized.Contains("зсу")) return ExportFieldKey.ArmedForcesSince;
+            if (normalized.Contains("призван")) return ExportFieldKey.ConscriptionOffice;
             if (normalized.Contains("адреса реєстрації")) return ExportFieldKey.RegistrationAddress;
             if (normalized.Contains("фактичного проживання")) return ExportFieldKey.ResidenceAddress;
 
             if (normalized.Contains("телефон")) return ExportFieldKey.Phone;
+            if (normalized.Contains("іпн")) return ExportFieldKey.TaxNumber;
+            if (normalized.Contains("паспорт")) return ExportFieldKey.Passport;
+            if (normalized.Contains("місце народження")) return ExportFieldKey.PlaceOfBirth;
 
             if (normalized.Contains("примітка"))
             {

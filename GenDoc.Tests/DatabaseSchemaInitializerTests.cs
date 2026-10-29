@@ -377,6 +377,8 @@ public class DatabaseSchemaInitializerTests
 
     [Theory]
     [InlineData("Recipients", "Nationality")]
+    [InlineData("Recipients", "ArmedForcesSince")]
+    [InlineData("Recipients", "TaxNumber")]
     [InlineData("OrganizationSettings", "HrOfficerFullName")]
     [InlineData("Rooms", "Note")]
     [InlineData("Rooms", "CreatedAt")]

@@ -6,7 +6,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 29;
+    private const int CurrentSchemaVersion = 30;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -124,6 +124,14 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     private static readonly (string Name, string Type)[] RecipientColumnsV18 =
     {
         ("AssignedVehicleId", "INTEGER")
+    };
+
+    // Колонки анкети 31 набору (ЗРВ 15.10-31.10.2026), яких не було в попередніх формах.
+    internal static readonly (string Name, string Type)[] RecipientColumnsV30 =
+    {
+        ("CivilEducation", "TEXT"), ("MilitaryEducation", "TEXT"), ("ArmedForcesSince", "TEXT"),
+        ("ConscriptionOffice", "TEXT"), ("TaxNumber", "TEXT"), ("Passport", "TEXT"),
+        ("PlaceOfBirth", "TEXT"), ("RankOrder", "TEXT")
     };
 
     private static readonly (string Name, string Type)[] UserSettingsColumnsV26 =
@@ -605,6 +613,19 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                 });
                 currentVersion = 29;
             }
+
+            if (currentVersion < 30)
+            {
+                AddMissingColumns(db, "Recipients", RecipientColumnsV30);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 30,
+                    AppliedAt = DateTime.Now,
+                    Description = "Анкета 31 набору: освіта, з якого часу в ЗСУ, яким ТЦК призваний, ІПН, паспорт, місце народження, наказ про звання"
+                });
+                currentVersion = 30;
+            }
         }
 
         EnsureOrgTables(db);
@@ -657,6 +678,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 
         EnsureWeaponVehicleTables(db);
         AddMissingColumns(db, "Recipients", RecipientColumnsV18);
+        AddMissingColumns(db, "Recipients", RecipientColumnsV30);
 
         AddMissingColumns(db, "ExportTemplates", ExportTemplateColumnsV19);
 
