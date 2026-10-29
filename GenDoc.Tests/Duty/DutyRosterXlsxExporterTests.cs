@@ -188,6 +188,27 @@ public class DutyRosterXlsxExporterTests
         Assert.True(lefts[^1] + 86 <= Left(printArea.LastColumn().ColumnNumber() + 1));
     }
 
+    [Theory]
+    [InlineData(2)]
+    [InlineData(4)]
+    [InlineData(10)]
+    [InlineData(20)]
+    [InlineData(31)]
+    public void EverySheetSpansTheA4WidthAndSitsInTheMiddle(int days)
+    {
+        var roster = Roster();
+        roster.DateTo = From.AddDays(days - 1);
+        using var workbook = DutyRosterXlsxExporter.Build(roster);
+        var sheet = workbook.Worksheet(DutyRosterXlsxExporter.SheetName);
+
+        var tablePoints = Enumerable.Range(1, 2 + days).Sum(c => DutyRosterXlsxExporter.Pixels(sheet.Column(c).Width))
+                          * DutyRosterXlsxExporter.PointsPerPixel;
+        Assert.InRange(tablePoints, 0.97 * DutyRosterXlsxExporter.PrintableWidthPoints, DutyRosterXlsxExporter.PrintableWidthPoints);
+        Assert.Equal(2 + days, sheet.PageSetup.PrintAreas.Single().LastColumn().ColumnNumber());
+        Assert.True(sheet.PageSetup.CenterHorizontally);
+        Assert.True(sheet.PageSetup.CenterVertically);
+    }
+
     [Fact]
     public void LongPeriodKeepsNarrowDayColumns()
     {

@@ -6,7 +6,7 @@ namespace GenDoc.Services.Duty;
 /// Лист «як на паперовому графіку»: шапка, «№ з/п», «П.І.Б.», числа днів за справжнім календарем,
 /// у днях наряду номер зміни римськими (або «н», якщо так обрано), зелена заливка звільнених і вихідних,
 /// жовта «н» - столова, унизу перезмінка, прибирання і години змін.
-/// A4 альбомна, вписано в одну сторінку.
+/// A4 альбомна, одна сторінка: таблиця на всю ширину поля друку і по центру аркуша.
 /// </summary>
 public static class DutyRosterXlsxExporter
 {
@@ -33,6 +33,15 @@ public static class DutyRosterXlsxExporter
 
     /// <summary>Один знак жирної шапки 12 pt (виміряно на друці ~7.5 px) з запасом.</summary>
     private const double HeadingCharPixels = 8;
+
+    /// <summary>Ширина поля друку: A4 альбомна мінус поля 0.25" з боків.</summary>
+    public const double PrintableWidthPoints = 806;
+
+    /// <summary>
+    /// Скільки pt на друці дає один піксель розрахунку <see cref="Pixels"/> (виміряно через Excel → PDF: ~0.81;
+    /// збігається з базою ~157 pt і ~20.25 pt на вузький день у <see cref="PrintScale"/>).
+    /// </summary>
+    public const double PointsPerPixel = 0.81;
 
     public static void Save(DutyRosterData roster, string path)
     {
@@ -151,9 +160,11 @@ public static class DutyRosterXlsxExporter
 
         sheet.Column(NumberColumn).Width = NumberWidth;
         sheet.Column(NameColumn).Width = NameWidth;
-        // На один-два дні останній блок змін може стати правіше таблиці - його колонки теж ідуть у друк.
-        for (var column = FirstDayColumn; column <= lastPrintColumn; column++)
+        for (var column = FirstDayColumn; column <= lastColumn; column++)
             sheet.Column(column).Width = dayWidth;
+        // На один день останній блок змін стає правіше таблиці - його колонка теж іде у друк.
+        for (var column = lastColumn + 1; column <= lastPrintColumn; column++)
+            sheet.Column(column).Width = ColumnWidth(ShiftBlockPixels);
 
         var lastRow = shifts.Count > 0 ? shiftsRow + 2 : footerRow + 1;
         var page = sheet.PageSetup;
@@ -161,6 +172,7 @@ public static class DutyRosterXlsxExporter
         page.PaperSize = XLPaperSize.A4Paper;
         page.FitToPages(1, 1);
         page.CenterHorizontally = true;
+        page.CenterVertically = true;
         page.Margins.Left = 0.25;
         page.Margins.Right = 0.25;
         page.Margins.Top = 0.35;
@@ -178,19 +190,21 @@ public static class DutyRosterXlsxExporter
     /// база ~157 pt + ~20.25 pt на день у ширину, ~187 pt + ~14 pt на людину у висоту; поле друку 806 × 545 pt).
     /// </summary>
     public static double PrintScale(int days, int people)
-        => Math.Min(1.0, Math.Min(806.0 / (157 + 20.25 * days), 545.0 / (187 + 14.0 * people)));
+        => Math.Min(1.0, Math.Min(PrintableWidthPoints / (157 + 20.25 * days), 545.0 / (187 + 14.0 * people)));
 
     /// <summary>
-    /// Колонка дня типово вузька. На короткому періоді (кілька днів) таблиця вужча за шапку й підвал:
-    /// шапка обрізалась, а блоки змін налазили один на одного. Тоді колонки днів ширшають, щоб усе вмістилося.
+    /// Кожен графік - на весь аркуш A4: колонки днів ширшають, поки таблиця не займе всю ширину поля друку
+    /// (Excel лише зменшує аркуш до сторінки, а не збільшує - короткий період друкувався б дрібним блоком угорі).
+    /// Не вужче за шапку й блоки змін у підвалі. Довгий період лишає вузькі колонки, і Excel зменшує його до сторінки.
     /// </summary>
     internal static double DayColumnWidth(int dayCount, IEnumerable<string> titleLines, int shiftCount)
     {
-        var heading = titleLines.Select(l => l.Length).DefaultIfEmpty(0).Max() * HeadingCharPixels
-                      - Pixels(NumberWidth) - Pixels(NameWidth);
+        var fixedColumns = Pixels(NumberWidth) + Pixels(NameWidth);
+        var page = PrintableWidthPoints / PointsPerPixel - fixedColumns;
+        var heading = titleLines.Select(l => l.Length).DefaultIfEmpty(0).Max() * HeadingCharPixels - fixedColumns;
         var footer = Math.Max(0, shiftCount - 1) * ShiftBlockPixels;
-        var perDay = Math.Max(heading, footer) / Math.Max(1, dayCount);
-        return Math.Max(DayWidth, Math.Ceiling(ColumnWidth(perDay) * 10) / 10);
+        var perDay = Math.Max(page, Math.Max(heading, footer)) / Math.Max(1, dayCount);
+        return Math.Max(DayWidth, Math.Floor(ColumnWidth(perDay) * 10) / 10);
     }
 
     /// <summary>
@@ -202,14 +216,16 @@ public static class DutyRosterXlsxExporter
     private static double ColumnWidth(double pixels) => Math.Max(0, pixels - 5) / 7;
 
     /// <summary>
-    /// Блоки змін розкладено по ширині таблиці, перший - під «П.І.Б.», як на фото.
-    /// Кожен наступний - не ближче, ніж на ширину блоку від попереднього, щоб тексти не перекривались.
+    /// Блоки змін розкладено по ширині днів, перший - під «П.І.Б.», як на фото: наступні - на рівних частках
+    /// ширини, трохи лівіше (на два вузькі дні). Кожен - не ближче, ніж на ширину блоку від попереднього.
     /// </summary>
     internal static int ShiftColumn(int index, int count, int dayCount, double dayWidth)
     {
         if (index == 0) return NameColumn;
-        var daysPerBlock = (int)Math.Ceiling(ShiftBlockPixels / Pixels(dayWidth));
-        var spread = FirstDayColumn + dayCount * index / count - 2;
+        var dayPixels = Pixels(dayWidth);
+        var daysPerBlock = (int)Math.Ceiling(ShiftBlockPixels / dayPixels);
+        var x = dayCount * dayPixels * index / count - 2 * Pixels(DayWidth);
+        var spread = FirstDayColumn + (int)Math.Floor(Math.Max(0, x) / dayPixels);
         return Math.Max(FirstDayColumn + (index - 1) * daysPerBlock, spread);
     }
 
