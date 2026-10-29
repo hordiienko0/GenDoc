@@ -174,7 +174,20 @@ public class ImportPolishTests : IDisposable
         Assert.Equal(11 + ImportViewModel.PreviewSampleSize, vm.Preview.Count);
         Assert.Equal(11, vm.Preview.Count(r => r.Status == ImportRowStatus.Duplicate));
         Assert.Contains("показано всі 11 рядків, що потребують уваги", vm.PreviewHeaderText);
-        Assert.Contains("причини вказані вище", vm.SkippedNoteText);
+    }
+
+    [Fact]
+    public void SkippedNote_PointsWhereTheReasonsActuallyAre()
+    {
+        using var db = new TestDb();
+        var vm = BuildViewModel(db);
+        vm.Load(FileWith(("Перший Тест Тестович", "СН0001"), ("Другий Тест Тестович", "СН0001")), "список.xlsx");
+
+        vm.CurrentStep = 3;
+        Assert.Equal("1 рядок буде пропущено - причини на кроці «Перевірка»", vm.SkippedNoteText);
+
+        vm.CurrentStep = 4;
+        Assert.Equal("1 рядок буде пропущено - причини в таблиці вище", vm.SkippedNoteText);
     }
 
     private static int SeedTrashedPerson(TestDb db, string serviceNumber)

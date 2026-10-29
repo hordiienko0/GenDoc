@@ -526,6 +526,10 @@ public class ImportService : IImportService
                 values[column.MappedField] = trimmed;
             }
 
+            // Заповнені лише колонки, яких не імпортуємо (у бланку анкети - порожні рядки з одним «№ з/п»):
+            // це не людина, тож не показуємо рядок помилкою «Порожнє поле ПІБ» і не рахуємо його.
+            if (values.Values.All(string.IsNullOrWhiteSpace)) continue;
+
             var fields = new RowFields();
             var incompleteFullName = false;
 

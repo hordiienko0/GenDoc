@@ -195,6 +195,26 @@ public class ImportQuestionnaire31Tests : IDisposable
     }
 
     [Fact]
+    public void NumberedBlankRowsOfTheForm_AreNotRowsAtAll()
+    {
+        using var db = new TestDb();
+        var service = new ImportService(db.Factory, new FakeAuditLog());
+
+        var parsed = service.ParseFile(WriteWorkbook(ws =>
+        {
+            FillTestPerson(ws, 2, "ТЕСТЕНКО Петро Іванович", "ВЛК - придатний");
+            ws.Cell(3, 1).Value = 2;
+            ws.Cell(4, 1).Value = 3;
+        }));
+
+        var preview = Assert.Single(service.Validate(parsed));
+        Assert.Equal(ImportRowStatus.Ok, preview.Status);
+
+        var summary = service.Import(parsed);
+        Assert.Equal((1, 0, 0), (summary.Imported, summary.Skipped, summary.Errors));
+    }
+
+    [Fact]
     public void UnreadableArmedForcesDate_IsAWarningNotAnError()
     {
         using var db = new TestDb();

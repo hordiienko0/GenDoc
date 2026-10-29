@@ -466,7 +466,8 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
         if (_parsed is null) return;
 
         var rows = _importService.Validate(_parsed, BuildTarget());
-        TotalRows = _parsed.TotalRows;
+        // Рядки без жодного імпортованого значення Validate не повертає - їх і не рахуємо.
+        TotalRows = rows.Count;
         ReadyCount = rows.Count(r => r.Status is ImportRowStatus.Ok or ImportRowStatus.Warning);
         IssueCount = rows.Count(r => r.Status is ImportRowStatus.Error or ImportRowStatus.Duplicate);
 
@@ -491,7 +492,24 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
 
         UpdateImportButton();
         HasSkippedRows = IssueCount > 0;
-        SkippedNoteText = IssueCount > 0 ? $"{IssueCount} рядків буде пропущено - причини вказані вище" : string.Empty;
+        UpdateSkippedNote();
+    }
+
+    partial void OnCurrentStepChanged(int value) => UpdateSkippedNote();
+
+    // Таблиця з причинами є лише на кроці «Перевірка»; на «Наборі» і «Зіставленні» вище нічого не видно.
+    private void UpdateSkippedNote()
+    {
+        if (IssueCount <= 0)
+        {
+            SkippedNoteText = string.Empty;
+            return;
+        }
+
+        var rows = $"{IssueCount} {PluralHelper.Pluralize(IssueCount, "рядок", "рядки", "рядків")} буде пропущено";
+        SkippedNoteText = CurrentStep == 4
+            ? $"{rows} - причини в таблиці вище"
+            : $"{rows} - причини на кроці «Перевірка»";
     }
 
     internal const int PreviewSampleSize = 8;
