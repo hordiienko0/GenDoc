@@ -58,7 +58,7 @@ public class DutyRosterViewModelTests
         await vm.PendingWork;
         vm.NewDateFrom = From.ToDateTime(TimeOnly.MinValue);
         vm.NewDateTo = From.AddDays(days - 1).ToDateTime(TimeOnly.MinValue);
-        vm.NewWeekendsExempt = false;
+        vm.NewWeekendsGreen = false;
         await vm.CreateCommand.ExecuteAsync(null);
         return (vm, service);
     }
@@ -164,12 +164,12 @@ public class DutyRosterViewModelTests
         await vm.ToggleRowExemptCommand.ExecuteAsync(vm.Rows[0]);
         await vm.ToggleDayExemptCommand.ExecuteAsync(vm.Days[3]);
 
-        Assert.True(vm.Rows[0].IsExemptWholePeriod);
-        Assert.Equal(0, vm.Rows[0].Total);
+        Assert.True(vm.Rows[^1].IsExemptWholePeriod);
+        Assert.Equal(0, vm.Rows[^1].Total);
         Assert.True(vm.Days[3].IsExempt);
         Assert.Equal(0, OnDuty(vm, 3));
         Assert.False(vm.Days[3].IsShort);
-        Assert.Equal("Повернути в графік", vm.Rows[0].ExemptMenuHeader);
+        Assert.Equal("Повернути в графік", vm.Rows[^1].ExemptMenuHeader);
     }
 
     [Fact]
@@ -257,7 +257,7 @@ public class DutyRosterViewModelTests
         Assert.All(vm.Rows.SelectMany(r => r.Cells).Where(c => c.IsDuty), c => Assert.Equal("н", c.Text));
         Assert.True((await service.LoadAsync(vm.Roster!.Id))!.DutyMarkOnly);
 
-        var next = await service.CreateAsync(new DutyRosterCreateRequest(From.AddDays(20), From.AddDays(30), vm.Roster.IntakeId, null, true, WeekendsExempt: false));
+        var next = await service.CreateAsync(new DutyRosterCreateRequest(From.AddDays(20), From.AddDays(30), vm.Roster.IntakeId, null, true, WeekendsGreen: false));
         Assert.True(next.DutyMarkOnly);
     }
 
@@ -292,7 +292,7 @@ public class DutyRosterViewModelTests
         Assert.False(vm.NewIntakeHasNodes);
         vm.NewDateFrom = From.ToDateTime(TimeOnly.MinValue);
         vm.NewDateTo = From.AddDays(5).ToDateTime(TimeOnly.MinValue);
-        vm.NewWeekendsExempt = false;
+        vm.NewWeekendsGreen = false;
         await vm.CreateCommand.ExecuteAsync(null);
 
         Assert.True(vm.HasRoster);
@@ -328,35 +328,142 @@ public class DutyRosterViewModelTests
     }
 
     [Fact]
-    public async Task WeekendsCheckboxGreensSaturdaysAndSundays()
+    public async Task WeekendsCheckboxOnlyColoursSaturdaysAndSundays()
     {
         using var db = new TestDb();
         var (vm, _) = await CreatedRoster(db);
-        Assert.False(vm.WeekendsExempt);
+        Assert.False(vm.WeekendsGreen);
+        var before = vm.Rows.Select(r => string.Join(",", r.Cells.Select(c => c.Text))).ToList();
 
-        vm.WeekendsExempt = true;
+        vm.WeekendsGreen = true;
         await vm.PendingWork;
 
         var weekends = vm.Days.Where(d => d.IsWeekend).ToList();
         Assert.NotEmpty(weekends);
         Assert.All(weekends, d =>
         {
-            Assert.True(d.IsExempt);
-            Assert.Equal(0, d.Count);
-        });
-        Assert.All(vm.Days.Where(d => !d.IsWeekend), d => Assert.Equal(3, d.Count));
-
-        vm.WeekendsExempt = false;
-        await vm.PendingWork;
-
-        Assert.All(weekends, d =>
-        {
+            Assert.True(d.IsWeekendGreen);
             Assert.False(d.IsExempt);
             Assert.Equal(3, d.Count);
         });
+        var weekendIndex = vm.Days.IndexOf(weekends[0]);
+        Assert.All(vm.Rows, r => Assert.True(r.Cells[weekendIndex].IsWeekendGreen));
+        Assert.All(vm.Days, d => Assert.Equal(3, d.Count));
+        Assert.Equal(before, vm.Rows.Select(r => string.Join(",", r.Cells.Select(c => c.Text))));
+
+        vm.WeekendsGreen = false;
+        await vm.PendingWork;
+
+        Assert.All(weekends, d => Assert.False(d.IsWeekendGreen));
+        Assert.Equal(before, vm.Rows.Select(r => string.Join(",", r.Cells.Select(c => c.Text))));
 
         await vm.StartCreateCommand.ExecuteAsync(null);
-        Assert.False(vm.NewWeekendsExempt);
+        Assert.False(vm.NewWeekendsGreen);
+    }
+
+    [Fact]
+    public async Task RosterSavedWithEmptyWeekendsIsRefilledOnOpen()
+    {
+        using var db = new TestDb();
+        var (vm, service) = await CreatedRoster(db);
+        var roster = (await service.LoadAsync(vm.Roster!.Id))!;
+        var saturday = roster.Days.First(DutyRosterPlanner.IsWeekend);
+        foreach (var member in roster.Members) member.Duties.Remove(saturday);
+        await service.SaveAsync(roster);
+
+        await vm.OpenRosterAsync(roster.Id);
+
+        Assert.Equal(3, vm.Days.Single(d => d.Date == saturday).Count);
+        Assert.Equal(3, (await service.LoadAsync(roster.Id))!.Members.Count(m => m.Duties.ContainsKey(saturday)));
+    }
+
+    [Fact]
+    public async Task CanteenBrushPutsYellowNThatTheQueueWorksAround()
+    {
+        using var db = new TestDb();
+        var (vm, service) = await CreatedRoster(db);
+        var cell = vm.Rows.First(r => r.Cells[4].IsDuty).Cells[4];
+        var member = cell.Row.Member;
+
+        vm.IsCanteenBrush = true;
+        vm.BeginPaint(cell);
+        await vm.EndPaintAsync();
+
+        Assert.True(cell.IsCanteen);
+        Assert.False(cell.IsDuty);
+        Assert.Equal("н", cell.Text);
+        Assert.Equal(3, vm.Days[4].Count);
+        var saved = (await service.LoadAsync(vm.Roster!.Id))!;
+        var index = vm.Rows.IndexOf(cell.Row);
+        Assert.True(saved.IsCanteen(index, vm.Days[4].Date));
+        Assert.False(saved.IsDuty(index, vm.Days[4].Date));
+
+        vm.Brush = DutyBrush.Erase;
+        vm.BeginPaint(cell);
+        await vm.EndPaintAsync();
+
+        Assert.False(cell.IsCanteen);
+        Assert.Empty(member.Canteen);
+    }
+
+    [Fact]
+    public async Task ShiftBrushPinsTheShiftAndOthersTakeTheRest()
+    {
+        using var db = new TestDb();
+        var (vm, service) = await CreatedRoster(db);
+        Assert.Equal(new[] { "І", "ІІ", "ІІІ" }, vm.ShiftBrushes.Select(b => b.Label));
+        var onDuty = vm.Rows.Where(r => r.Cells[2].IsDuty).ToList();
+        var lowest = onDuty[^1];
+        Assert.Equal("ІІІ", lowest.Cells[2].Text);
+
+        vm.ShiftBrushes[0].IsSelected = true;
+        Assert.Equal(DutyBrush.Shift, vm.Brush);
+        Assert.False(vm.IsDutyBrush);
+        vm.BeginPaint(lowest.Cells[2]);
+        await vm.EndPaintAsync();
+
+        Assert.Equal("І", lowest.Cells[2].Text);
+        Assert.Equal("ІІ", onDuty[0].Cells[2].Text);
+        Assert.Equal("ІІІ", onDuty[1].Cells[2].Text);
+        Assert.Equal(3, vm.Days[2].Count);
+        var saved = (await service.LoadAsync(vm.Roster!.Id))!;
+        Assert.Equal(1, saved.Members[vm.Rows.IndexOf(lowest)].Shifts[vm.Days[2].Date]);
+
+        vm.BeginPaint(onDuty[0].Cells[2]);
+        await vm.EndPaintAsync();
+        Assert.True(onDuty[0].Cells[2].HasWarning);
+        Assert.Contains("Одна зміна вручну двом людям", vm.WarningsText);
+
+        vm.BeginPaint(lowest.Cells[2]);
+        await vm.EndPaintAsync();
+        Assert.False(lowest.Member.Shifts.ContainsKey(vm.Days[2].Date));
+        Assert.Equal("І", onDuty[0].Cells[2].Text);
+        Assert.DoesNotContain("Одна зміна вручну двом людям", vm.WarningsText);
+
+        vm.IsDutyBrush = true;
+        Assert.All(vm.ShiftBrushes, b => Assert.False(b.IsSelected));
+    }
+
+    [Fact]
+    public async Task ExemptWholePeriodMovesToTheBottom()
+    {
+        using var db = new TestDb();
+        var (vm, service) = await CreatedRoster(db);
+        var row = vm.Rows[2];
+        var others = vm.Rows.Where(r => r != row).Select(r => r.DisplayName).ToList();
+
+        await vm.ToggleRowExemptCommand.ExecuteAsync(row);
+
+        Assert.Equal(row.DisplayName, vm.Rows[^1].DisplayName);
+        Assert.True(vm.Rows[^1].IsExemptWholePeriod);
+        Assert.Equal(others, vm.Rows.Take(vm.Rows.Count - 1).Select(r => r.DisplayName));
+        Assert.Equal(vm.Rows.Count, vm.Rows[^1].Number);
+        Assert.Equal(row.DisplayName, (await service.LoadAsync(vm.Roster!.Id))!.Members[^1].DisplayName);
+
+        vm.ManualName = "ВПИСАНИЙ В.В.";
+        await vm.AddManualPersonCommand.ExecuteAsync(null);
+        Assert.Equal("ВПИСАНИЙ В.В.", vm.Rows[^2].DisplayName);
+        Assert.Equal(row.DisplayName, vm.Rows[^1].DisplayName);
     }
 
     [Fact]

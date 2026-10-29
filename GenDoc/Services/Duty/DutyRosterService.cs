@@ -102,7 +102,7 @@ public class DutyRosterService : IDutyRosterService
             IntakeId = request.IntakeId,
             OrgNodeId = request.IntakeId is null ? null : request.OrgNodeId,
             UseEventExemptions = request.UseEventExemptions,
-            WeekendsExempt = request.WeekendsExempt,
+            WeekendsGreen = request.WeekendsGreen,
             Seed = Random.Shared.Next(1, 1_000_000)
         };
 
@@ -146,7 +146,7 @@ public class DutyRosterService : IDutyRosterService
             }
         }
 
-        DutyRosterPlanner.ApplyWeekends(roster);
+        DutyRosterPlanner.MoveExemptToBottom(roster);
         await ApplyEventExemptionsAsync(roster);
         var carryOver = await GetCarryOverAsync(roster);
         DutyRosterPlanner.Replan(roster, carryOver?.State);
@@ -266,7 +266,7 @@ public class DutyRosterService : IDutyRosterService
         entity.UseEventExemptions = roster.UseEventExemptions;
         entity.CarryOverBalance = roster.CarryOverBalance;
         entity.DutyMarkOnly = roster.DutyMarkOnly;
-        entity.WeekendsExempt = roster.WeekendsExempt;
+        entity.WeekendsGreen = roster.WeekendsGreen;
 
         for (var i = 0; i < roster.Members.Count; i++)
         {
@@ -281,11 +281,19 @@ public class DutyRosterService : IDutyRosterService
             };
 
             foreach (var (day, origin) in source.Duties.Where(d => InPeriod(d.Key)))
-                member.Cells.Add(new DutyRosterCell { Date = day, Kind = DutyCellKind.Duty, Source = origin });
+            {
+                member.Cells.Add(new DutyRosterCell
+                {
+                    Date = day, Kind = DutyCellKind.Duty, Source = origin,
+                    Shift = source.Shifts.TryGetValue(day, out var shift) ? shift : null
+                });
+            }
             foreach (var (day, origin) in source.Exemptions.Where(d => InPeriod(d.Key)))
                 member.Cells.Add(new DutyRosterCell { Date = day, Kind = DutyCellKind.Exempt, Source = origin });
             foreach (var day in source.Blocked.Where(InPeriod))
                 member.Cells.Add(new DutyRosterCell { Date = day, Kind = DutyCellKind.Blocked, Source = DutyCellSource.Manual });
+            foreach (var day in source.Canteen.Where(InPeriod))
+                member.Cells.Add(new DutyRosterCell { Date = day, Kind = DutyCellKind.Canteen, Source = DutyCellSource.Manual });
 
             db.DutyRosterMembers.Add(member);
         }
@@ -406,7 +414,7 @@ public class DutyRosterService : IDutyRosterService
 
         return new DutyRosterPrefs
         {
-            WeekendsExempt = last.WeekendsExempt,
+            WeekendsGreen = last.WeekendsGreen,
             DutyMarkOnly = last.DutyMarkOnly,
             UseEventExemptions = last.UseEventExemptions,
             CarryOverBalance = last.CarryOverBalance,
@@ -420,7 +428,7 @@ public class DutyRosterService : IDutyRosterService
     {
         var json = JsonSerializer.Serialize(new DutyRosterPrefs
         {
-            WeekendsExempt = roster.WeekendsExempt,
+            WeekendsGreen = roster.WeekendsGreen,
             DutyMarkOnly = roster.DutyMarkOnly,
             UseEventExemptions = roster.UseEventExemptions,
             CarryOverBalance = roster.CarryOverBalance,
@@ -455,7 +463,7 @@ public class DutyRosterService : IDutyRosterService
             UseEventExemptions = entity.UseEventExemptions,
             CarryOverBalance = entity.CarryOverBalance,
             DutyMarkOnly = entity.DutyMarkOnly,
-            WeekendsExempt = entity.WeekendsExempt
+            WeekendsGreen = entity.WeekendsGreen
         };
 
         foreach (var day in ParseDays(entity.ExemptDays)) roster.ExemptDays.Add(day);
@@ -473,9 +481,13 @@ public class DutyRosterService : IDutyRosterService
             {
                 switch (cell.Kind)
                 {
-                    case DutyCellKind.Duty: data.Duties[cell.Date] = cell.Source; break;
+                    case DutyCellKind.Duty:
+                        data.Duties[cell.Date] = cell.Source;
+                        if (cell.Shift is int shift) data.Shifts[cell.Date] = shift;
+                        break;
                     case DutyCellKind.Exempt: data.Exemptions[cell.Date] = cell.Source; break;
                     case DutyCellKind.Blocked: data.Blocked.Add(cell.Date); break;
+                    case DutyCellKind.Canteen: data.Canteen.Add(cell.Date); break;
                 }
             }
             roster.Members.Add(data);

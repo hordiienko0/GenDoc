@@ -102,7 +102,7 @@
 
         <StackPanel Grid.Row="0" Margin="0,0,0,14">
             <TextBlock Text="Графік чергувань" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
-            <TextBlock Text="Наряди «н» по днях, звільнені - зеленим; решту програма розставляє по черзі й порівну"
+            <TextBlock Text="Наряди «н» по днях, звільнені й вихідні - зеленим, столова - жовта «н»; решту програма розставляє по черзі й порівну"
                        FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0"/>
         </StackPanel>
 
@@ -141,8 +141,8 @@
                     <ComboBox Width="200" ItemsSource="{Binding OrgNodes}" SelectedItem="{Binding NewOrgNode}" DisplayMemberPath="Label"
                               Visibility="{Binding NewIntakeHasNodes, Converter={StaticResource BoolToVisibility}}"/>
                 </WrapPanel>
-                <CheckBox Margin="0,12,0,0" IsChecked="{Binding NewWeekendsExempt}"
-                          Content="Вихідні (субота, неділя) одразу зеленим"/>
+                <CheckBox Margin="0,12,0,0" IsChecked="{Binding NewWeekendsGreen}"
+                          Content="Вихідні (субота, неділя) зеленим - наряди на них ставляться як завжди"/>
                 <CheckBox Margin="0,8,0,0" IsChecked="{Binding NewUseEventExemptions}"
                           Content="Звільняти за подіями: відпустка, шпиталь, відрядження - зелені клітинки ставляться самі"/>
                 <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
@@ -187,14 +187,25 @@
                     <TextBlock Text="Пензель:" Style="{StaticResource FieldLabelStyle}"/>
                     <RadioButton GroupName="DutyBrush" Content="Наряд «н»" Style="{StaticResource BrushSegmentStyle}"
                                  IsChecked="{Binding IsDutyBrush}"
-                                 ToolTip="Клік ставить або знімає «н»; можна протягнути мишкою по кількох клітинках"/>
+                                 ToolTip="Клік ставить або знімає «н»; можна протягнути мишкою по кількох клітинках. Зміна - за порядком у списку дня"/>
+                    <ItemsControl ItemsSource="{Binding ShiftBrushes}" ItemsPanel="{StaticResource HorizontalPanel}" VerticalAlignment="Center">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <RadioButton GroupName="DutyBrush" Content="{Binding Label}" Style="{StaticResource BrushSegmentStyle}"
+                                             IsChecked="{Binding IsSelected}" ToolTip="{Binding Hint}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <RadioButton GroupName="DutyBrush" Content="Столова «н»" Style="{StaticResource BrushSegmentStyle}"
+                                 IsChecked="{Binding IsCanteenBrush}"
+                                 ToolTip="Жовта «н» - наряд по столовій. Лише вручну: програма її не ставить і в чергу нарядів не рахує, але в цей день людину в наряд не ставить"/>
                     <RadioButton GroupName="DutyBrush" Content="Звільнений" Style="{StaticResource BrushSegmentStyle}"
                                  IsChecked="{Binding IsExemptBrush}" ToolTip="Зелене: у цей день людину в наряд не ставити"/>
                     <RadioButton GroupName="DutyBrush" Content="Гумка" Style="{StaticResource BrushSegmentStyle}"
                                  IsChecked="{Binding IsEraseBrush}" ToolTip="Стерти позначку"/>
-                    <CheckBox Content="Вихідні - зеленим" IsChecked="{Binding WeekendsExempt}"
+                    <CheckBox Content="Вихідні - зеленим" IsChecked="{Binding WeekendsGreen}"
                               VerticalAlignment="Center" Margin="16,0,0,0"
-                              ToolTip="Субота й неділя - зелені цілим днем. Окремий вихідний можна зняти кліком по даті."/>
+                              ToolTip="Субота й неділя зафарбовані зеленим як вихідні, наряди на них ставляться як завжди. День зовсім без нарядів - клік по даті."/>
                     <CheckBox Content="Лише «н» (без номерів змін)" IsChecked="{Binding DutyMarkOnly}"
                               VerticalAlignment="Center" Margin="16,0,0,0"
                               ToolTip="Типово в клітинці номер зміни: хто вище в списку цього дня - І, далі ІІ, ІІІ. З галочкою - лише «н», і на екрані, і в Excel."/>
@@ -260,6 +271,9 @@
                                             <DataTrigger Binding="{Binding IsWeekend}" Value="True">
                                                 <Setter TargetName="WeekDay" Property="Foreground" Value="{StaticResource DangerBrush}"/>
                                             </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsWeekendGreen}" Value="True">
+                                                <Setter TargetName="DayCell" Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
+                                            </DataTrigger>
                                             <DataTrigger Binding="{Binding IsExempt}" Value="True">
                                                 <Setter TargetName="DayCell" Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
                                             </DataTrigger>
@@ -267,7 +281,7 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <Border Width="34" Style="{StaticResource HeaderCellStyle}" ToolTip="Нарядів за період (у друк не йде)">
+                            <Border Width="34" Style="{StaticResource HeaderCellStyle}" ToolTip="Нарядів за період, без столової (у друк не йде)">
                                 <TextBlock Text="Σ" FontSize="11.5" HorizontalAlignment="Center" VerticalAlignment="Center"
                                            Foreground="{StaticResource TextSecondaryBrush}"/>
                             </Border>
@@ -329,8 +343,14 @@
                                                         </Grid>
                                                     </Border>
                                                     <DataTemplate.Triggers>
+                                                        <DataTrigger Binding="{Binding IsWeekendGreen}" Value="True">
+                                                            <Setter TargetName="Cell" Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
+                                                        </DataTrigger>
                                                         <DataTrigger Binding="{Binding IsExempt}" Value="True">
                                                             <Setter TargetName="Cell" Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
+                                                        </DataTrigger>
+                                                        <DataTrigger Binding="{Binding IsCanteen}" Value="True">
+                                                            <Setter TargetName="Cell" Property="Background" Value="{StaticResource YellowMarkBrush}"/>
                                                         </DataTrigger>
                                                         <DataTrigger Binding="{Binding IsAuto}" Value="True">
                                                             <Setter TargetName="Mark" Property="Foreground" Value="{StaticResource AccentBrush}"/>
@@ -397,8 +417,13 @@
                                            Foreground="{StaticResource AccentBrush}"/>
                             </Border>
                             <TextBlock Text="поставила програма" Style="{StaticResource LegendTextStyle}"/>
+                            <Border Style="{StaticResource LegendSwatchStyle}" Background="{StaticResource YellowMarkBrush}">
+                                <TextBlock Text="н" FontWeight="Bold" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Foreground="{StaticResource TextPrimaryBrush}"/>
+                            </Border>
+                            <TextBlock Text="столова (лише вручну)" Style="{StaticResource LegendTextStyle}"/>
                             <Border Style="{StaticResource LegendSwatchStyle}" Background="{StaticResource SuccessSoftBrush}"/>
-                            <TextBlock Text="звільнений" Style="{StaticResource LegendTextStyle}"/>
+                            <TextBlock Text="звільнений; вихідні - теж зелені, але з нарядами" Style="{StaticResource LegendTextStyle}"/>
                             <Border Style="{StaticResource LegendSwatchStyle}">
                                 <TextBlock Text="×" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"
                                            Foreground="{StaticResource PlaceholderBrush}"/>

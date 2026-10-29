@@ -218,6 +218,16 @@ public class DutyRosterEngineTests
     }
 
     [Fact]
+    public void ManualShiftStaysAndOthersTakeTheFreeNumbersInListOrder()
+    {
+        var shifts = DutyRosterEngine.ShiftsOfDay(new[] { 18, 5, 19 }, new Dictionary<int, int> { [19] = 1 });
+
+        Assert.Equal(1, shifts[19]);
+        Assert.Equal(2, shifts[5]);
+        Assert.Equal(3, shifts[18]);
+    }
+
+    [Fact]
     public void LegendNumbersShiftsInRomanNumerals()
     {
         Assert.Equal("І", DutyRosterEngine.RomanShift(1));

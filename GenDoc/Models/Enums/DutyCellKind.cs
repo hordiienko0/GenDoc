@@ -9,7 +9,10 @@ namespace GenDoc.Models.Enums
         Exempt = 2,
 
         /// <summary>«×» - не ставити в цей день (знятий авто-наряд); у друк не йде.</summary>
-        Blocked = 3
+        Blocked = 3,
+
+        /// <summary>Жовта «н» - наряд по столовій: лише вручну, у чергу нарядів не йде, але в цей день людину в наряд не ставлять.</summary>
+        Canteen = 4
     }
 
     public enum DutyCellSource

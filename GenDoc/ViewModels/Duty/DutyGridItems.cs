@@ -8,11 +8,15 @@ namespace GenDoc.ViewModels.Duty;
 public enum DutyBrush
 {
     Duty,
+
+    /// <summary>Наряд із номером зміни, проставленим вручну (пензлі «І», «ІІ», «ІІІ»).</summary>
+    Shift,
+    Canteen,
     Exempt,
     Erase
 }
 
-/// <summary>Клітинка «людина × день»: «н», зелене, «×» або порожньо.</summary>
+/// <summary>Клітинка «людина × день»: «н», жовта «н» (столова), зелене, «×» або порожньо.</summary>
 public partial class DutyCellViewModel : ObservableObject
 {
     public DutyCellViewModel(DutyRowViewModel row, DateOnly date)
@@ -28,6 +32,8 @@ public partial class DutyCellViewModel : ObservableObject
     [ObservableProperty] private bool _isDuty;
     [ObservableProperty] private bool _isAuto;
     [ObservableProperty] private bool _isExempt;
+    [ObservableProperty] private bool _isWeekendGreen;
+    [ObservableProperty] private bool _isCanteen;
     [ObservableProperty] private bool _isBlocked;
     [ObservableProperty] private bool _hasWarning;
     [ObservableProperty] private string? _hint;
@@ -72,8 +78,34 @@ public partial class DutyDayViewModel : ObservableObject
     public string Hint => Date.ToString("dddd, dd.MM.yyyy", Ukrainian) + " - клік: звільнити всіх у цей день";
 
     [ObservableProperty] private bool _isExempt;
+
+    /// <summary>Субота чи неділя з галочкою «Вихідні - зеленим»: лише колір, наряди ставляться.</summary>
+    [ObservableProperty] private bool _isWeekendGreen;
     [ObservableProperty] private int _count;
     [ObservableProperty] private bool _isShort;
+}
+
+/// <summary>Пензель «І», «ІІ», «ІІІ»: наряд на цій зміні, проставлений вручну.</summary>
+public partial class DutyShiftBrushViewModel : ObservableObject
+{
+    private readonly Action<DutyShiftBrushViewModel> _selected;
+
+    public DutyShiftBrushViewModel(int shift, Action<DutyShiftBrushViewModel> selected)
+    {
+        Shift = shift;
+        _selected = selected;
+    }
+
+    public int Shift { get; }
+    public string Label => DutyRosterEngine.RomanShift(Shift);
+    public string Hint => $"Наряд на {Label} зміні, вручну. Решта в цей день займає вільні зміни за порядком у списку. Повторний клік знімає.";
+
+    [ObservableProperty] private bool _isSelected;
+
+    partial void OnIsSelectedChanged(bool value)
+    {
+        if (value) _selected(this);
+    }
 }
 
 public partial class DutyShiftEditViewModel : ObservableObject

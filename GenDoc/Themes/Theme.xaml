@@ -20,6 +20,7 @@
     <SolidColorBrush x:Key="DangerSoftBrush" Color="#FFE9E6"/>
     <SolidColorBrush x:Key="SuccessBrush" Color="#007E46"/>
     <SolidColorBrush x:Key="SuccessSoftBrush" Color="#CFF2DA"/>
+    <SolidColorBrush x:Key="YellowMarkBrush" Color="#FFF27A"/>
     <SolidColorBrush x:Key="RowAltBrush" Color="#F2F7FD"/>
     <SolidColorBrush x:Key="RowHoverBrush" Color="#ECF5FD"/>
     <SolidColorBrush x:Key="SidebarDividerBrush" Color="#324E73"/>

@@ -33,8 +33,8 @@ namespace GenDoc.Models
         /// <summary>Лише «н» у клітинках; типово - номер зміни римськими (І, ІІ, ІІІ за порядком у списку дня).</summary>
         public bool DutyMarkOnly { get; set; }
 
-        /// <summary>Субота й неділя одразу зелені (звільнені цілим днем).</summary>
-        public bool WeekendsExempt { get; set; } = true;
+        /// <summary>Субота й неділя зафарбовані зеленим як вихідні; наряди на них ставляться як завжди (колонка «WeekendsExempt»).</summary>
+        public bool WeekendsGreen { get; set; } = true;
 
         public DateTime CreatedAt { get; set; }
         public string? CreatedBy { get; set; }
@@ -73,5 +73,8 @@ namespace GenDoc.Models
         public DateOnly Date { get; set; }
         public DutyCellKind Kind { get; set; }
         public DutyCellSource Source { get; set; }
+
+        /// <summary>Номер зміни, проставлений вручну (лише в наряді); порожній - зміна за порядком у списку дня.</summary>
+        public int? Shift { get; set; }
     }
 }

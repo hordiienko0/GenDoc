@@ -19,12 +19,12 @@ public sealed record DutyPersonOption(int RecipientId, string DisplayName, strin
 }
 
 public sealed record DutyRosterCreateRequest(
-    DateOnly DateFrom, DateOnly DateTo, int? IntakeId, int? OrgNodeId, bool UseEventExemptions, bool WeekendsExempt = true);
+    DateOnly DateFrom, DateOnly DateTo, int? IntakeId, int? OrgNodeId, bool UseEventExemptions, bool WeekendsGreen = true);
 
 /// <summary>Налаштування графіка, що запам'ятовуються окремо для кожного курсового (профілю).</summary>
 public sealed class DutyRosterPrefs
 {
-    public bool WeekendsExempt { get; set; } = true;
+    public bool WeekendsGreen { get; set; } = true;
     public bool DutyMarkOnly { get; set; }
     public bool UseEventExemptions { get; set; } = true;
     public bool CarryOverBalance { get; set; } = true;
@@ -76,6 +76,12 @@ public sealed class DutyRosterMemberData
     /// <summary>Дні «×»: знятий вручну авто-наряд - програма сюди людину не ставить, на листі клітинка порожня.</summary>
     public HashSet<DateOnly> Blocked { get; } = new();
 
+    /// <summary>Жовта «н» - наряд по столовій: ставиться лише вручну, у чергу нарядів не рахується.</summary>
+    public HashSet<DateOnly> Canteen { get; } = new();
+
+    /// <summary>Номер зміни, проставлений вручну для дня наряду; решта в цей день - за порядком у списку.</summary>
+    public Dictionary<DateOnly, int> Shifts { get; } = new();
+
     /// <summary>Ключ для переносу балансу: людина з бази - за Id, вписана вручну - за ПІБ.</summary>
     public string Key => RecipientId is int id
         ? $"r{id}"
@@ -105,14 +111,21 @@ public sealed class DutyRosterData
     /// <summary>Лише «н»; типово в клітинці номер зміни римськими за порядком у списку дня.</summary>
     public bool DutyMarkOnly { get; set; }
 
-    /// <summary>Субота й неділя одразу зелені; окремий вихідний можна зняти кліком по даті.</summary>
-    public bool WeekendsExempt { get; set; } = true;
+    /// <summary>
+    /// Субота й неділя зафарбовані зеленим лише як позначка вихідного - наряди на них ставляться.
+    /// День без нарядів - це звільнений день (<see cref="ExemptDays"/>, клік по даті).
+    /// </summary>
+    public bool WeekendsGreen { get; set; } = true;
 
     public List<DutyRosterMemberData> Members { get; } = new();
 
     public IEnumerable<DateOnly> Days => DutyRosterEngine.Days(DateFrom, DateTo);
 
+    public bool IsGreenWeekend(DateOnly day) => WeekendsGreen && DutyRosterPlanner.IsWeekend(day);
+
     public bool IsDuty(int memberIndex, DateOnly day) => Members[memberIndex].Duties.ContainsKey(day);
+
+    public bool IsCanteen(int memberIndex, DateOnly day) => Members[memberIndex].Canteen.Contains(day);
 
     public bool IsExempt(int memberIndex, DateOnly day)
         => Members[memberIndex].ExemptWholePeriod

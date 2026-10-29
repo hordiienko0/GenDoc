@@ -245,12 +245,30 @@ public static class DutyRosterEngine
             exemptDays is null ? Empty() : exemptDays.ToHashSet(),
             manualDuties is null ? Empty() : manualDuties.ToHashSet());
 
-    /// <summary>Зміна = порядок у списку цього дня: хто вище - І, наступний - ІІ, ще нижчий - ІІІ.</summary>
-    public static IReadOnlyDictionary<int, int> ShiftsOfDay(IEnumerable<int> dutyMemberIndexes)
-        => dutyMemberIndexes
-            .OrderBy(i => i)
-            .Select((memberIndex, position) => (memberIndex, shift: position + 1))
-            .ToDictionary(x => x.memberIndex, x => x.shift);
+    /// <summary>
+    /// Зміна = порядок у списку цього дня: хто вище - І, наступний - ІІ, ще нижчий - ІІІ.
+    /// Зміна, проставлена вручну, лишається за людиною; решта займає вільні номери за порядком у списку.
+    /// </summary>
+    public static IReadOnlyDictionary<int, int> ShiftsOfDay(IEnumerable<int> dutyMemberIndexes,
+        IReadOnlyDictionary<int, int>? manualShifts = null)
+    {
+        var ordered = dutyMemberIndexes.OrderBy(i => i).ToList();
+        var shifts = new Dictionary<int, int>();
+        if (manualShifts is not null)
+        {
+            foreach (var index in ordered)
+                if (manualShifts.TryGetValue(index, out var manual)) shifts[index] = manual;
+        }
+
+        var taken = shifts.Values.ToHashSet();
+        var next = 1;
+        foreach (var index in ordered.Where(i => !shifts.ContainsKey(i)))
+        {
+            while (taken.Contains(next)) next++;
+            shifts[index] = next++;
+        }
+        return shifts;
+    }
 
     /// <summary>Номер зміни римськими: у клітинках (якщо не «лише н») і в легенді підвалу («І Зміна»).</summary>
     public static string RomanShift(int shift) => shift switch

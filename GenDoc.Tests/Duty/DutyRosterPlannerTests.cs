@@ -62,6 +62,49 @@ public class DutyRosterPlannerTests
         Assert.Single(roster.Members[0].Duties);
     }
 
+    [Fact]
+    public void CanteenDayKeepsThePersonOutOfTheQueueThatDay()
+    {
+        var roster = Roster(4, days: 3);
+        roster.Members[1].Canteen.Add(From.AddDays(1));
+
+        DutyRosterPlanner.Replan(roster, null);
+
+        Assert.False(roster.IsDuty(1, From.AddDays(1)));
+        Assert.Equal(3, Enumerable.Range(0, 4).Count(i => roster.IsDuty(i, From.AddDays(1))));
+    }
+
+    [Fact]
+    public void ExemptWholePeriodGoToTheBottomInTheirOrder()
+    {
+        var roster = Roster(5);
+        roster.Members[0].ExemptWholePeriod = true;
+        roster.Members[2].ExemptWholePeriod = true;
+
+        Assert.True(DutyRosterPlanner.MoveExemptToBottom(roster));
+        Assert.Equal(new[] { "ЛЮДИНА02 А.Б.", "ЛЮДИНА04 А.Б.", "ЛЮДИНА05 А.Б.", "ЛЮДИНА01 А.Б.", "ЛЮДИНА03 А.Б." },
+            roster.Members.Select(m => m.DisplayName));
+        Assert.False(DutyRosterPlanner.MoveExemptToBottom(roster));
+    }
+
+    [Fact]
+    public void EmptyWeekendIsFoundOnlyWhenSomeoneCouldStand()
+    {
+        var roster = Roster(3, days: 3);
+        DutyRosterPlanner.Replan(roster, null);
+        Assert.False(DutyRosterPlanner.HasEmptyWeekends(roster));
+
+        foreach (var member in roster.Members) member.Duties.Remove(From);
+        Assert.True(DutyRosterPlanner.HasEmptyWeekends(roster));
+
+        roster.ExemptDays.Add(From);
+        Assert.False(DutyRosterPlanner.HasEmptyWeekends(roster));
+        roster.ExemptDays.Clear();
+
+        foreach (var member in roster.Members) member.Blocked.Add(From);
+        Assert.False(DutyRosterPlanner.HasEmptyWeekends(roster));
+    }
+
     private static string Snapshot(DutyRosterData roster)
         => string.Join(";", roster.Members.Select(m => string.Join(",", m.Duties.Keys.OrderBy(d => d))));
 }

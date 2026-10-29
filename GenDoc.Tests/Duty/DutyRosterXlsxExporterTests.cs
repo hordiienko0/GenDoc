@@ -109,6 +109,96 @@ public class DutyRosterXlsxExporterTests
     }
 
     [Fact]
+    public void WeekendColumnsAreGreenAndKeepTheirDuties()
+    {
+        var roster = Roster();
+        var saturday = new DateOnly(2026, 9, 26);
+        roster.Members[2].Duties[saturday] = DutyCellSource.Auto;
+        var green = XLColor.FromHtml(DutyRosterXlsxExporter.ExemptFillHex);
+
+        using (var workbook = DutyRosterXlsxExporter.Build(roster))
+        {
+            var sheet = workbook.Worksheet(DutyRosterXlsxExporter.SheetName);
+            Assert.Equal("І", sheet.Cell(HeaderRow + 3, DayColumn(saturday)).GetString());
+            Assert.Equal(green, sheet.Cell(HeaderRow + 3, DayColumn(saturday)).Style.Fill.BackgroundColor);
+            Assert.Equal(green, sheet.Cell(HeaderRow + 2, DayColumn(saturday)).Style.Fill.BackgroundColor);
+        }
+
+        roster.WeekendsGreen = false;
+        using (var workbook = DutyRosterXlsxExporter.Build(roster))
+        {
+            var sheet = workbook.Worksheet(DutyRosterXlsxExporter.SheetName);
+            Assert.NotEqual(green, sheet.Cell(HeaderRow + 2, DayColumn(saturday)).Style.Fill.BackgroundColor);
+        }
+    }
+
+    [Fact]
+    public void CanteenIsAYellowNOutsideTheShiftNumbering()
+    {
+        var roster = Roster();
+        var day = new DateOnly(2026, 9, 24);
+        roster.Members[5].Canteen.Add(day);
+        using var workbook = DutyRosterXlsxExporter.Build(roster);
+        var sheet = workbook.Worksheet(DutyRosterXlsxExporter.SheetName);
+
+        var cell = sheet.Cell(HeaderRow + 6, DayColumn(day));
+        Assert.Equal("н", cell.GetString());
+        Assert.True(cell.Style.Font.Bold);
+        Assert.Equal(XLColor.FromHtml(DutyRosterXlsxExporter.CanteenFillHex), cell.Style.Fill.BackgroundColor);
+        Assert.Equal("ІІІ", sheet.Cell(HeaderRow + 4, DayColumn(day)).GetString());
+    }
+
+    [Fact]
+    public void ManualShiftIsPrintedAndOthersTakeTheFreeShifts()
+    {
+        var roster = Roster();
+        var day = new DateOnly(2026, 9, 24);
+        roster.Members[3].Duties[day] = DutyCellSource.Manual;
+        roster.Members[3].Shifts[day] = 1;
+        using var workbook = DutyRosterXlsxExporter.Build(roster);
+        var sheet = workbook.Worksheet(DutyRosterXlsxExporter.SheetName);
+
+        Assert.Equal("ІІ", sheet.Cell(HeaderRow + 2, DayColumn(day)).GetString());
+        Assert.Equal("ІІІ", sheet.Cell(HeaderRow + 3, DayColumn(day)).GetString());
+        Assert.Equal("І", sheet.Cell(HeaderRow + 4, DayColumn(day)).GetString());
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(4)]
+    [InlineData(7)]
+    public void ShortPeriodSheetFitsTheHeadingAndEveryShiftBlock(int days)
+    {
+        var roster = Roster();
+        roster.DateTo = From.AddDays(days - 1);
+        using var workbook = DutyRosterXlsxExporter.Build(roster);
+        var sheet = workbook.Worksheet(DutyRosterXlsxExporter.SheetName);
+        var printArea = sheet.PageSetup.PrintAreas.Single();
+        double Left(int column) => Enumerable.Range(1, column - 1).Sum(c => DutyRosterXlsxExporter.Pixels(sheet.Column(c).Width));
+
+        // На друці (Excel → PDF) знак шапки ~7.5 px, «20:00 - 00:00» ~86 px.
+        var tableWidth = Left(3 + days);
+        Assert.True(tableWidth >= "курсів перепідготовки та підвищення кваліфікації ХНУПС".Length * 7.5, $"{tableWidth}");
+
+        var blocks = sheet.CellsUsed(c => c.GetString().EndsWith(" Зміна")).ToList();
+        Assert.Equal(new[] { "І Зміна", "ІІ Зміна", "ІІІ Зміна" }, blocks.Select(c => c.GetString()));
+        var lefts = blocks.Select(c => Left(c.Address.ColumnNumber)).ToList();
+        Assert.All(lefts.Zip(lefts.Skip(1)), pair => Assert.True(pair.Second - pair.First >= 90, $"{pair.First} → {pair.Second}"));
+        Assert.All(blocks, c => Assert.True(c.Address.ColumnNumber <= printArea.LastColumn().ColumnNumber()));
+        Assert.True(lefts[^1] + 86 <= Left(printArea.LastColumn().ColumnNumber() + 1));
+    }
+
+    [Fact]
+    public void LongPeriodKeepsNarrowDayColumns()
+    {
+        using var workbook = DutyRosterXlsxExporter.Build(Roster());
+        var sheet = workbook.Worksheet(DutyRosterXlsxExporter.SheetName);
+
+        Assert.Equal(2.9, sheet.Column(3).Width);
+        Assert.Equal(2.9, sheet.Column(36).Width);
+    }
+
+    [Fact]
     public void PrintsOnOneLandscapeA4Page()
     {
         using var workbook = DutyRosterXlsxExporter.Build(Roster());

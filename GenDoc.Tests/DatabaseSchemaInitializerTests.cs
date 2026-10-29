@@ -659,6 +659,31 @@ public class DatabaseSchemaInitializerTests
         Assert.Equal(11L, Scalar(connection, """SELECT COUNT(*) FROM "OrgNodes";"""));
     }
 
+    [Fact]
+    public void StripWeekendExemptDays_FreesWeekendsOfCurrentRostersOnly()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        DatabaseSchemaInitializer.EnsureDutyRosterTables((DbConnection)connection);
+        Assert.Contains("Shift", DatabaseSchemaInitializer.GetExistingColumns((DbConnection)connection, "DutyRosterCells"));
+
+        Exec(connection, """
+            INSERT INTO "DutyRosters" ("Id", "DateFrom", "DateTo", "ExemptDays", "WeekendsExempt", "CreatedAt") VALUES
+                (1, '2026-10-30', '2026-11-02', '2026-10-31,2026-11-01,2026-11-02', 1, '2026-10-28'),
+                (2, '2026-10-01', '2026-10-28', '2026-10-03,2026-10-04', 1, '2026-09-30'),
+                (3, '2026-10-30', '2026-11-02', '2026-10-31', 0, '2026-10-28'),
+                (4, '2026-10-30', '2026-11-01', '2026-10-31,2026-11-01', 1, '2026-10-28');
+            """);
+
+        DatabaseSchemaInitializer.StripWeekendExemptDays((DbConnection)connection, new DateOnly(2026, 10, 29));
+        DatabaseSchemaInitializer.StripWeekendExemptDays((DbConnection)connection, new DateOnly(2026, 10, 29));
+
+        Assert.Equal("2026-11-02", Scalar(connection, """SELECT "ExemptDays" FROM "DutyRosters" WHERE "Id" = 1"""));
+        Assert.Equal("2026-10-03,2026-10-04", Scalar(connection, """SELECT "ExemptDays" FROM "DutyRosters" WHERE "Id" = 2"""));
+        Assert.Equal("2026-10-31", Scalar(connection, """SELECT "ExemptDays" FROM "DutyRosters" WHERE "Id" = 3"""));
+        Assert.Equal(DBNull.Value, Scalar(connection, """SELECT "ExemptDays" FROM "DutyRosters" WHERE "Id" = 4"""));
+    }
+
     private static void Exec(SqliteConnection connection, string sql)
     {
         using var cmd = connection.CreateCommand();

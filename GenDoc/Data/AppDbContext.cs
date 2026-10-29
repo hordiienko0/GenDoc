@@ -139,6 +139,7 @@ namespace GenDoc.Data
             modelBuilder.Entity<DutyRoster>(e =>
             {
                 e.HasIndex(r => r.IntakeId);
+                e.Property(r => r.WeekendsGreen).HasColumnName("WeekendsExempt");
                 e.HasMany(r => r.Members).WithOne(m => m.Roster).HasForeignKey(m => m.RosterId)
                     .OnDelete(DeleteBehavior.Cascade);
             });

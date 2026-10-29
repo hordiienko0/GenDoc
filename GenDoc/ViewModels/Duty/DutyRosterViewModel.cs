@@ -31,6 +31,8 @@ public partial class DutyRosterViewModel : ObservableObject
     private DutyRosterData? _roster;
     private DutyCarryOver? _carryOver;
     private PaintAction? _paint;
+    private int _brushShift = 1;
+    private int _paintShift;
     private DutyCellViewModel? _lastPainted;
     private bool _loading;
     private bool _suppressOpen;
@@ -39,7 +41,10 @@ public partial class DutyRosterViewModel : ObservableObject
     private enum PaintAction
     {
         SetDuty,
+        SetShift,
         ClearDuty,
+        SetCanteen,
+        ClearCanteen,
         SetExempt,
         ClearExempt,
         Erase
@@ -57,6 +62,9 @@ public partial class DutyRosterViewModel : ObservableObject
     public ObservableCollection<DutyDayViewModel> Days { get; } = new();
     public ObservableCollection<DutyRowViewModel> Rows { get; } = new();
     public ObservableCollection<DutyShiftEditViewModel> Shifts { get; } = new();
+
+    /// <summary>Пензлі «І», «ІІ», «ІІІ» - стільки, скільки людей на добу.</summary>
+    public ObservableCollection<DutyShiftBrushViewModel> ShiftBrushes { get; } = new();
     public ObservableCollection<DutyPersonOption> PeopleToAdd { get; } = new();
     public IReadOnlyList<int> PeoplePerDayOptions { get; } = new[] { 1, 2, 3, 4, 5, 6 };
 
@@ -70,14 +78,14 @@ public partial class DutyRosterViewModel : ObservableObject
     [ObservableProperty, NotifyPropertyChangedFor(nameof(NewIntakeHasNodes))] private DutyIntakeOption? _newIntake;
     [ObservableProperty] private DutyOrgNodeOption? _newOrgNode;
     [ObservableProperty] private bool _newUseEventExemptions = true;
-    [ObservableProperty] private bool _newWeekendsExempt = true;
+    [ObservableProperty] private bool _newWeekendsGreen = true;
     [ObservableProperty] private string? _createError;
 
     [ObservableProperty] private DateTime? _dateFrom;
     [ObservableProperty] private DateTime? _dateTo;
     [ObservableProperty] private string? _periodError;
     [ObservableProperty] private int _peoplePerDay = 3;
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsDutyBrush), nameof(IsExemptBrush), nameof(IsEraseBrush))]
+    [ObservableProperty, NotifyPropertyChangedFor(nameof(IsDutyBrush), nameof(IsCanteenBrush), nameof(IsExemptBrush), nameof(IsEraseBrush))]
     private DutyBrush _brush = DutyBrush.Duty;
     [ObservableProperty] private bool _useEventExemptions;
     [ObservableProperty] private bool _carryOverBalance;
@@ -85,8 +93,8 @@ public partial class DutyRosterViewModel : ObservableObject
     /// <summary>Лише «н» замість номерів змін (І, ІІ, ІІІ за порядком у списку дня).</summary>
     [ObservableProperty] private bool _dutyMarkOnly;
 
-    /// <summary>Субота й неділя одразу зелені.</summary>
-    [ObservableProperty] private bool _weekendsExempt;
+    /// <summary>Субота й неділя зафарбовані зеленим як вихідні; наряди на них ставляться.</summary>
+    [ObservableProperty] private bool _weekendsGreen;
     [ObservableProperty] private string _heading = string.Empty;
     [ObservableProperty] private string _changeover = string.Empty;
     [ObservableProperty] private string _cleaning = string.Empty;
@@ -115,6 +123,27 @@ public partial class DutyRosterViewModel : ObservableObject
     {
         get => Brush == DutyBrush.Duty;
         set { if (value) Brush = DutyBrush.Duty; }
+    }
+
+    partial void OnBrushChanged(DutyBrush value) => SyncShiftBrushes();
+
+    private void SelectShiftBrush(DutyShiftBrushViewModel brush)
+    {
+        _brushShift = brush.Shift;
+        Brush = DutyBrush.Shift;
+        SyncShiftBrushes();
+    }
+
+    private void SyncShiftBrushes()
+    {
+        foreach (var brush in ShiftBrushes)
+            brush.IsSelected = Brush == DutyBrush.Shift && brush.Shift == _brushShift;
+    }
+
+    public bool IsCanteenBrush
+    {
+        get => Brush == DutyBrush.Canteen;
+        set { if (value) Brush = DutyBrush.Canteen; }
     }
 
     public bool IsExemptBrush
@@ -210,8 +239,17 @@ public partial class DutyRosterViewModel : ObservableObject
             _roster = roster;
             _carryOver = await _service.GetCarryOverAsync(roster);
             LoadEditorFields();
+            var reordered = DutyRosterPlanner.MoveExemptToBottom(roster);
             BuildGrid();
-            ApplyToGrid(DutyRosterPlanner.Check(roster));
+            if (DutyRosterPlanner.HasEmptyWeekends(roster))
+            {
+                await ReplanAndSaveAsync();
+            }
+            else
+            {
+                ApplyToGrid(DutyRosterPlanner.Check(roster));
+                if (reordered) await SaveAsync();
+            }
             await LoadPeopleToAddAsync();
 
             IsSettingsOpen = roster.Members.Count == 0;
@@ -241,7 +279,7 @@ public partial class DutyRosterViewModel : ObservableObject
                     ?? NoIntake;
         var prefs = await _service.GetUserPrefsAsync();
         NewUseEventExemptions = prefs.UseEventExemptions;
-        NewWeekendsExempt = prefs.WeekendsExempt;
+        NewWeekendsGreen = prefs.WeekendsGreen;
         IsCreating = true;
     }
 
@@ -282,7 +320,7 @@ public partial class DutyRosterViewModel : ObservableObject
         {
             var roster = await _service.CreateAsync(new DutyRosterCreateRequest(
                 DateOnly.FromDateTime(from), DateOnly.FromDateTime(to),
-                intakeId, intakeId is null ? null : NewOrgNode?.Id, NewUseEventExemptions, NewWeekendsExempt));
+                intakeId, intakeId is null ? null : NewOrgNode?.Id, NewUseEventExemptions, NewWeekendsGreen));
             CreateError = null;
             IsCreating = false;
             await ReloadListAsync(roster.Id);
@@ -324,7 +362,7 @@ public partial class DutyRosterViewModel : ObservableObject
             UseEventExemptions = _roster.UseEventExemptions;
             CarryOverBalance = _roster.CarryOverBalance;
             DutyMarkOnly = _roster.DutyMarkOnly;
-            WeekendsExempt = _roster.WeekendsExempt;
+            WeekendsGreen = _roster.WeekendsGreen;
             Heading = _roster.Heading;
             Changeover = _roster.Footer.Changeover;
             Cleaning = _roster.Footer.Cleaning;
@@ -344,6 +382,12 @@ public partial class DutyRosterViewModel : ObservableObject
         Shifts.Clear();
         for (var i = 0; i < _roster.Footer.Shifts.Count; i++)
             Shifts.Add(new DutyShiftEditViewModel(i + 1, _roster.Footer.Shifts[i], () => Track(SaveSettingsAsync)));
+
+        ShiftBrushes.Clear();
+        for (var shift = 1; shift <= _roster.PeoplePerDay; shift++)
+            ShiftBrushes.Add(new DutyShiftBrushViewModel(shift, SelectShiftBrush));
+        if (Brush == DutyBrush.Shift && _brushShift > _roster.PeoplePerDay) Brush = DutyBrush.Duty;
+        SyncShiftBrushes();
     }
 
     private void UpdateCaptions()
@@ -388,10 +432,12 @@ public partial class DutyRosterViewModel : ObservableObject
             .Select(w => (w.MemberIndex!.Value, w.Date))
             .ToHashSet();
         var shifts = Days.ToDictionary(d => d.Date, d => DutyRosterPlanner.ShiftsOfDay(_roster, d.Date));
+        var clashes = Days.ToDictionary(d => d.Date, d => DutyRosterPlanner.ShiftClashes(_roster, d.Date));
 
         foreach (var day in Days)
         {
             day.IsExempt = _roster.ExemptDays.Contains(day.Date);
+            day.IsWeekendGreen = _roster.IsGreenWeekend(day.Date);
             day.Count = shifts[day.Date].Count;
             day.IsShort = !day.IsExempt && day.Count < _roster.PeoplePerDay;
         }
@@ -409,17 +455,25 @@ public partial class DutyRosterViewModel : ObservableObject
             {
                 var isDuty = member.Duties.TryGetValue(cell.Date, out var source);
                 var isEvent = member.Exemptions.TryGetValue(cell.Date, out var exemptSource) && exemptSource == DutyCellSource.Event;
+                var isCanteen = !isDuty && member.Canteen.Contains(cell.Date);
                 cell.IsDuty = isDuty;
                 cell.IsAuto = isDuty && source == DutyCellSource.Auto;
+                cell.IsCanteen = isCanteen;
                 cell.IsExempt = _roster.IsExempt(i, cell.Date);
-                cell.IsBlocked = !isDuty && member.Blocked.Contains(cell.Date);
-                cell.HasWarning = flagged.Contains((i, cell.Date));
+                cell.IsWeekendGreen = _roster.IsGreenWeekend(cell.Date);
+                cell.IsBlocked = !isDuty && !isCanteen && member.Blocked.Contains(cell.Date);
+                cell.HasWarning = flagged.Contains((i, cell.Date)) || (isCanteen && cell.IsExempt) || clashes[cell.Date].Contains(i);
 
                 var shiftsOfDay = shifts[cell.Date];
-                cell.Text = isDuty ? DutyRosterPlanner.DutyText(_roster, shiftsOfDay, i) : cell.IsBlocked ? "×" : string.Empty;
+                cell.Text = isDuty ? DutyRosterPlanner.DutyText(_roster, shiftsOfDay, i)
+                    : isCanteen ? DutyRosterXlsxExporter.DutyMark
+                    : cell.IsBlocked ? "×" : string.Empty;
                 cell.Hint = isDuty
                     ? (cell.IsAuto ? "Поставила програма" : "Поставлено вручну")
-                      + (shiftsOfDay.TryGetValue(i, out var shift) ? $", {DutyRosterEngine.RomanShift(shift)} зміна (порядок у списку дня)" : string.Empty)
+                      + (shiftsOfDay.TryGetValue(i, out var shift)
+                          ? $", {DutyRosterEngine.RomanShift(shift)} зміна ({(member.Shifts.ContainsKey(cell.Date) ? "проставлена вручну" : "порядок у списку дня")})"
+                          : string.Empty)
+                    : isCanteen ? "Столова (жовта «н», лише вручну)" + (cell.IsExempt ? " - але людина в цей день звільнена" : string.Empty)
                     : isEvent ? "Звільнений: відпустка, шпиталь або відрядження"
                     : cell.IsExempt ? "Звільнений від наряду"
                     : cell.IsBlocked ? "Не ставити в цей день (у друк не йде)"
@@ -458,6 +512,10 @@ public partial class DutyRosterViewModel : ObservableObject
         var consecutive = warnings.Where(w => w.Kind == DutyWarningKind.ConsecutiveDays && w.MemberIndex is not null).ToList();
         if (consecutive.Count > 0)
             lines.Add("Два дні поспіль: " + Listed(consecutive.Select(w => $"{Name(w)} {w.Date.AddDays(-1):dd}-{w.Date:dd.MM}")));
+
+        var clashDays = _roster.Days.Where(d => DutyRosterPlanner.ShiftClashes(_roster, d).Count > 0).ToList();
+        if (clashDays.Count > 0)
+            lines.Add("Одна зміна вручну двом людям: " + Listed(clashDays.Select(d => $"{d:dd.MM}")));
 
         var days = _roster.DateTo.DayNumber - _roster.DateFrom.DayNumber + 1;
         var scale = DutyRosterXlsxExporter.PrintScale(days, _roster.Members.Count);
@@ -539,9 +597,14 @@ public partial class DutyRosterViewModel : ObservableObject
         _paint = Brush switch
         {
             DutyBrush.Duty => member.Duties.ContainsKey(cell.Date) ? PaintAction.ClearDuty : PaintAction.SetDuty,
+            DutyBrush.Shift => member.Duties.ContainsKey(cell.Date) && member.Shifts.TryGetValue(cell.Date, out var shift) && shift == _brushShift
+                ? PaintAction.ClearDuty
+                : PaintAction.SetShift,
+            DutyBrush.Canteen => member.Canteen.Contains(cell.Date) ? PaintAction.ClearCanteen : PaintAction.SetCanteen,
             DutyBrush.Exempt => member.Exemptions.ContainsKey(cell.Date) ? PaintAction.ClearExempt : PaintAction.SetExempt,
             _ => PaintAction.Erase
         };
+        _paintShift = _brushShift;
         _painted.Clear();
         _lastPainted = null;
         ContinuePaint(cell);
@@ -560,7 +623,7 @@ public partial class DutyRosterViewModel : ObservableObject
         {
             if (_painted.Add(step))
             {
-                Paint(action, step);
+                Paint(action, step, _paintShift);
                 changed = true;
             }
         }
@@ -597,30 +660,47 @@ public partial class DutyRosterViewModel : ObservableObject
         if (steps == 0) yield return to;
     }
 
-    private static void Paint(PaintAction action, DutyCellViewModel cell)
+    private static void Paint(PaintAction action, DutyCellViewModel cell, int shift)
     {
         var member = cell.Row.Member;
         var day = cell.Date;
         switch (action)
         {
             case PaintAction.SetDuty:
+            case PaintAction.SetShift:
                 member.Blocked.Remove(day);
+                member.Canteen.Remove(day);
                 if (member.Exemptions.TryGetValue(day, out var exempt) && exempt == DutyCellSource.Manual)
                     member.Exemptions.Remove(day);
                 member.Duties[day] = DutyCellSource.Manual;
+                if (action == PaintAction.SetShift) member.Shifts[day] = shift;
+                else member.Shifts.Remove(day);
                 break;
             case PaintAction.ClearDuty:
                 ClearDuty(member, day);
                 break;
+            case PaintAction.SetCanteen:
+                member.Duties.Remove(day);
+                member.Blocked.Remove(day);
+                if (member.Exemptions.TryGetValue(day, out var exemptForCanteen) && exemptForCanteen == DutyCellSource.Manual)
+                    member.Exemptions.Remove(day);
+                member.Canteen.Add(day);
+                break;
+            case PaintAction.ClearCanteen:
+                member.Canteen.Remove(day);
+                break;
             case PaintAction.SetExempt:
                 member.Duties.Remove(day);
                 member.Blocked.Remove(day);
+                member.Canteen.Remove(day);
                 member.Exemptions[day] = DutyCellSource.Manual;
                 break;
             case PaintAction.ClearExempt:
                 member.Exemptions.Remove(day);
                 break;
             case PaintAction.Erase:
+                if (member.Canteen.Remove(day))
+                    break;
                 if (member.Duties.ContainsKey(day))
                     ClearDuty(member, day);
                 else
@@ -635,6 +715,7 @@ public partial class DutyRosterViewModel : ObservableObject
     /// <summary>Ручне «н» просто знімається; авто «н» стає «×», інакше програма поставить людину назад.</summary>
     private static void ClearDuty(DutyRosterMemberData member, DateOnly day)
     {
+        member.Shifts.Remove(day);
         if (!member.Duties.Remove(day, out var source)) return;
         if (source == DutyCellSource.Auto) member.Blocked.Add(day);
     }
@@ -652,6 +733,7 @@ public partial class DutyRosterViewModel : ObservableObject
     {
         if (_roster is null || row is null) return;
         row.Member.ExemptWholePeriod = !row.Member.ExemptWholePeriod;
+        if (DutyRosterPlanner.MoveExemptToBottom(_roster)) BuildGrid();
         await ReplanAndSaveAsync();
     }
 
@@ -725,6 +807,7 @@ public partial class DutyRosterViewModel : ObservableObject
         if (_roster is null) return;
         if (member.RecipientId is int addedId) _roster.ExcludedRecipientIds.Remove(addedId);
         _roster.Members.Add(member);
+        DutyRosterPlanner.MoveExemptToBottom(_roster);
         if (_roster.UseEventExemptions && member.RecipientId is not null)
             await _service.ApplyEventExemptionsAsync(_roster);
         BuildGrid();
@@ -768,7 +851,7 @@ public partial class DutyRosterViewModel : ObservableObject
     private async Task ClearManualAsync()
     {
         if (_roster is null) return;
-        if (MessageBox.Show("Зняти всі ручні «н» і «×»? Звільнення лишаться, решту програма розставить заново.", Caption,
+        if (MessageBox.Show("Зняти всі ручні «н» і «×»? Звільнення і жовті «н» (столова) лишаться, решту програма розставить заново.", Caption,
                 MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
 
         await ClearManualCoreAsync();
@@ -859,7 +942,6 @@ public partial class DutyRosterViewModel : ObservableObject
         _roster.DateFrom = from;
         _roster.DateTo = to;
         _carryOver = await _service.GetCarryOverAsync(_roster);
-        if (_roster.WeekendsExempt) DutyRosterPlanner.ApplyWeekends(_roster);
         if (_roster.UseEventExemptions) await _service.ApplyEventExemptionsAsync(_roster);
 
         UpdateCaptions();
@@ -900,16 +982,13 @@ public partial class DutyRosterViewModel : ObservableObject
         Track(SaveSettingsAsync);
     }
 
-    partial void OnWeekendsExemptChanged(bool value)
+    /// <summary>Лише колір вихідних - на розподіл нарядів не впливає.</summary>
+    partial void OnWeekendsGreenChanged(bool value)
     {
         if (_loading || _roster is null) return;
-        _roster.WeekendsExempt = value;
-        DutyRosterPlanner.ApplyWeekends(_roster);
-        Track(async () =>
-        {
-            await ReplanAndSaveAsync();
-            await _service.RememberPrefsAsync(_roster);
-        });
+        _roster.WeekendsGreen = value;
+        ApplyToGrid(DutyRosterPlanner.Check(_roster));
+        Track(SaveSettingsAsync);
     }
 
     partial void OnCarryOverBalanceChanged(bool value)

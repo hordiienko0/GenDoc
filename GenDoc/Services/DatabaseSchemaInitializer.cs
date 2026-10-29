@@ -1,12 +1,13 @@
 using GenDoc.Data;
 using GenDoc.Models;
+using GenDoc.Services.Duty;
 using Microsoft.EntityFrameworkCore;
 
 namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 30;
+    private const int CurrentSchemaVersion = 31;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -164,6 +165,12 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     {
         ("RecipientId", "INTEGER"), ("DisplayName", "TEXT NOT NULL DEFAULT ''"),
         ("SortOrder", "INTEGER NOT NULL DEFAULT 0"), ("ExemptWholePeriod", "INTEGER NOT NULL DEFAULT 0")
+    };
+
+    /// <summary>v31: номер зміни, проставлений вручну (І, ІІ, ІІІ); порожній - зміна за порядком у списку дня.</summary>
+    private static readonly (string Name, string Type)[] DutyRosterCellColumnsV31 =
+    {
+        ("Shift", "INTEGER")
     };
 
     private static readonly (string Name, string Type)[] WeaponColumnsV18 =
@@ -625,6 +632,20 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                     Description = "Анкета 31 набору: освіта, з якого часу в ЗСУ, яким ТЦК призваний, ІПН, паспорт, місце народження, наказ про звання"
                 });
                 currentVersion = 30;
+            }
+
+            if (currentVersion < 31)
+            {
+                EnsureDutyRosterTables(db);
+                StripWeekendExemptDays(db);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 31,
+                    AppliedAt = DateTime.Now,
+                    Description = "Графік чергувань: вихідні лише зелені, наряди на них ставляться; жовта «н» - столова; зміна вручну"
+                });
+                currentVersion = 31;
             }
         }
 
@@ -1178,6 +1199,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                     "Date" TEXT NOT NULL,
                     "Kind" INTEGER NOT NULL,
                     "Source" INTEGER NOT NULL DEFAULT 0,
+                    "Shift" INTEGER NULL,
                     CONSTRAINT "PK_DutyRosterCells" PRIMARY KEY ("MemberId", "Date", "Kind"),
                     CONSTRAINT "FK_DutyRosterCells_DutyRosterMembers_MemberId"
                         FOREIGN KEY ("MemberId") REFERENCES "DutyRosterMembers" ("Id") ON DELETE CASCADE
@@ -1188,6 +1210,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 
         AddMissingColumns(connection, "DutyRosters", DutyRosterColumnsV29);
         AddMissingColumns(connection, "DutyRosterMembers", DutyRosterMemberColumnsV29);
+        AddMissingColumns(connection, "DutyRosterCells", DutyRosterCellColumnsV31);
 
         using var index = connection.CreateCommand();
         index.CommandText = """
@@ -1729,6 +1752,60 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         tag.Value = "{{назва_вч}}";
         heal.Parameters.Add(tag);
         heal.ExecuteNonQuery();
+    }
+
+    private static void StripWeekendExemptDays(AppDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        var wasClosed = connection.State != System.Data.ConnectionState.Open;
+        if (wasClosed) connection.Open();
+        try { StripWeekendExemptDays(connection, DateOnly.FromDateTime(DateTime.Today)); }
+        finally { if (wasClosed) connection.Close(); }
+    }
+
+    /// <summary>
+    /// «Вихідні - зеленим» раніше робило суботу й неділю днями без нарядів; тепер це лише зелена позначка.
+    /// З графіків, що ще не закінчились, вихідні прибираються зі звільнених днів - наряди на них програма
+    /// поставить, коли графік відкриють. Минулі графіки лишаються такими, як їх надрукували.
+    /// </summary>
+    internal static void StripWeekendExemptDays(System.Data.Common.DbConnection connection, DateOnly today)
+    {
+        if (!TableExists(connection, "DutyRosters")) return;
+
+        var rosters = new List<(long Id, string? ExemptDays)>();
+        using (var select = connection.CreateCommand())
+        {
+            select.CommandText = """
+                SELECT "Id", "ExemptDays" FROM "DutyRosters"
+                WHERE "WeekendsExempt" = 1 AND "ExemptDays" IS NOT NULL AND "DateTo" >= $today;
+                """;
+            var todayParameter = select.CreateParameter();
+            todayParameter.ParameterName = "$today";
+            todayParameter.Value = today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+            select.Parameters.Add(todayParameter);
+
+            using var reader = select.ExecuteReader();
+            while (reader.Read()) rosters.Add((reader.GetInt64(0), reader.GetString(1)));
+        }
+
+        foreach (var (id, text) in rosters)
+        {
+            var days = DutyRosterService.ParseDays(text).ToList();
+            if (!days.Any(DutyRosterPlanner.IsWeekend)) continue;
+
+            using var update = connection.CreateCommand();
+            update.CommandText = """UPDATE "DutyRosters" SET "ExemptDays" = $days WHERE "Id" = $id;""";
+            var daysParameter = update.CreateParameter();
+            daysParameter.ParameterName = "$days";
+            daysParameter.Value = (object?)DutyRosterService.FormatDays(days.Where(d => !DutyRosterPlanner.IsWeekend(d)))
+                                  ?? DBNull.Value;
+            update.Parameters.Add(daysParameter);
+            var idParameter = update.CreateParameter();
+            idParameter.ParameterName = "$id";
+            idParameter.Value = id;
+            update.Parameters.Add(idParameter);
+            update.ExecuteNonQuery();
+        }
     }
 
     private static bool TableExists(System.Data.Common.DbConnection connection, string tableName)

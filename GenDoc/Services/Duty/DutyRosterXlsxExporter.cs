@@ -4,7 +4,8 @@ namespace GenDoc.Services.Duty;
 
 /// <summary>
 /// Лист «як на паперовому графіку»: шапка, «№ з/п», «П.І.Б.», числа днів за справжнім календарем,
-/// у днях наряду номер зміни римськими (або «н», якщо так обрано), зелена заливка звільнених, унизу перезмінка, прибирання і години змін.
+/// у днях наряду номер зміни римськими (або «н», якщо так обрано), зелена заливка звільнених і вихідних,
+/// жовта «н» - столова, унизу перезмінка, прибирання і години змін.
 /// A4 альбомна, вписано в одну сторінку.
 /// </summary>
 public static class DutyRosterXlsxExporter
@@ -15,10 +16,23 @@ public static class DutyRosterXlsxExporter
     /// <summary>Колір документа (не UI): світло-зелений, як на паперовому графіку.</summary>
     public const string ExemptFillHex = "#C6E9D2";
 
+    /// <summary>Колір документа (не UI): жовта заливка «н» наряду по столовій.</summary>
+    public const string CanteenFillHex = "#FFFF00";
+
     private const string FontName = "Times New Roman";
     private const int NumberColumn = 1;
     private const int NameColumn = 2;
     private const int FirstDayColumn = 3;
+
+    private const double NumberWidth = 4.5;
+    private const double NameWidth = 22;
+    private const double DayWidth = 2.9;
+
+    /// <summary>Блок зміни в підвалі: «20:00 - 00:00» (~86 px) і проміжок до наступного.</summary>
+    private const double ShiftBlockPixels = 100;
+
+    /// <summary>Один знак жирної шапки 12 pt (виміряно на друці ~7.5 px) з запасом.</summary>
+    private const double HeadingCharPixels = 8;
 
     public static void Save(DutyRosterData roster, string path)
     {
@@ -36,15 +50,18 @@ public static class DutyRosterXlsxExporter
     private static void BuildRosterSheet(IXLWorksheet sheet, DutyRosterData roster)
     {
         var exemptFill = XLColor.FromHtml(ExemptFillHex);
+        var canteenFill = XLColor.FromHtml(CanteenFillHex);
         var days = roster.Days.ToList();
         var lastColumn = FirstDayColumn + days.Count - 1;
+        var titleLines = DutyRosterText.TitleLines(roster.Heading, roster.DateFrom, roster.DateTo);
+        var dayWidth = DayColumnWidth(days.Count, titleLines, roster.Footer.Shifts.Count);
 
         sheet.Style.Font.FontName = FontName;
         sheet.Style.Font.FontSize = 11;
         sheet.ShowGridLines = false;
 
         var row = 1;
-        foreach (var line in DutyRosterText.TitleLines(roster.Heading, roster.DateFrom, roster.DateTo))
+        foreach (var line in titleLines)
         {
             var title = sheet.Range(row, NumberColumn, row, lastColumn).Merge();
             title.FirstCell().Value = line;
@@ -94,14 +111,18 @@ public static class DutyRosterXlsxExporter
             for (var d = 0; d < days.Count; d++)
             {
                 var cell = sheet.Cell(r, FirstDayColumn + d);
-                if (roster.IsDuty(m, days[d]))
+                var isDuty = roster.IsDuty(m, days[d]);
+                var isCanteen = !isDuty && roster.IsCanteen(m, days[d]);
+                if (isDuty || isCanteen)
                 {
-                    cell.Value = DutyRosterPlanner.DutyText(roster, shiftsByDay[days[d]], m);
+                    cell.Value = isDuty ? DutyRosterPlanner.DutyText(roster, shiftsByDay[days[d]], m) : DutyMark;
                     cell.Style.Font.Bold = true;
                     cell.Style.Font.FontSize = 9;
                     cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
                 }
-                if (roster.IsExempt(m, days[d]))
+                if (isCanteen)
+                    cell.Style.Fill.BackgroundColor = canteenFill;
+                else if (roster.IsExempt(m, days[d]) || roster.IsGreenWeekend(days[d]))
                     cell.Style.Fill.BackgroundColor = exemptFill;
             }
         }
@@ -118,18 +139,21 @@ public static class DutyRosterXlsxExporter
 
         var shiftsRow = footerRow + 4;
         var shifts = roster.Footer.Shifts;
+        var lastPrintColumn = lastColumn;
         for (var k = 0; k < shifts.Count; k++)
         {
-            var column = ShiftColumn(k, shifts.Count, days.Count);
+            var column = ShiftColumn(k, shifts.Count, days.Count, dayWidth);
+            lastPrintColumn = Math.Max(lastPrintColumn, column);
             Bold(sheet.Cell(shiftsRow, column), $"{DutyRosterEngine.RomanShift(k + 1)} Зміна");
             Bold(sheet.Cell(shiftsRow + 1, column), shifts[k].Day);
             Bold(sheet.Cell(shiftsRow + 2, column), shifts[k].Night);
         }
 
-        sheet.Column(NumberColumn).Width = 4.5;
-        sheet.Column(NameColumn).Width = 22;
-        for (var d = 0; d < days.Count; d++)
-            sheet.Column(FirstDayColumn + d).Width = 2.9;
+        sheet.Column(NumberColumn).Width = NumberWidth;
+        sheet.Column(NameColumn).Width = NameWidth;
+        // На один-два дні останній блок змін може стати правіше таблиці - його колонки теж ідуть у друк.
+        for (var column = FirstDayColumn; column <= lastPrintColumn; column++)
+            sheet.Column(column).Width = dayWidth;
 
         var lastRow = shifts.Count > 0 ? shiftsRow + 2 : footerRow + 1;
         var page = sheet.PageSetup;
@@ -143,7 +167,7 @@ public static class DutyRosterXlsxExporter
         page.Margins.Bottom = 0.35;
         page.Margins.Header = 0;
         page.Margins.Footer = 0;
-        page.PrintAreas.Add(1, NumberColumn, lastRow, lastColumn);
+        page.PrintAreas.Add(1, NumberColumn, lastRow, lastPrintColumn);
     }
 
     /// <summary>Нижче цього масштабу на A4 прізвища й «н» стають дрібними (менше ~9 pt).</summary>
@@ -156,12 +180,37 @@ public static class DutyRosterXlsxExporter
     public static double PrintScale(int days, int people)
         => Math.Min(1.0, Math.Min(806.0 / (157 + 20.25 * days), 545.0 / (187 + 14.0 * people)));
 
-    /// <summary>Блоки змін розкладено по ширині таблиці, перший - під «П.І.Б.», як на фото.</summary>
-    internal static int ShiftColumn(int index, int count, int dayCount)
+    /// <summary>
+    /// Колонка дня типово вузька. На короткому періоді (кілька днів) таблиця вужча за шапку й підвал:
+    /// шапка обрізалась, а блоки змін налазили один на одного. Тоді колонки днів ширшають, щоб усе вмістилося.
+    /// </summary>
+    internal static double DayColumnWidth(int dayCount, IEnumerable<string> titleLines, int shiftCount)
+    {
+        var heading = titleLines.Select(l => l.Length).DefaultIfEmpty(0).Max() * HeadingCharPixels
+                      - Pixels(NumberWidth) - Pixels(NameWidth);
+        var footer = Math.Max(0, shiftCount - 1) * ShiftBlockPixels;
+        var perDay = Math.Max(heading, footer) / Math.Max(1, dayCount);
+        return Math.Max(DayWidth, Math.Ceiling(ColumnWidth(perDay) * 10) / 10);
+    }
+
+    /// <summary>
+    /// Ширина колонки Excel - у знаках «0» стандартного шрифту (7 px) плюс ~5 px полів клітинки.
+    /// Через ці поля вузькі колонки на друці ширші, ніж пропорційно їхній ширині.
+    /// </summary>
+    internal static double Pixels(double columnWidth) => 7 * columnWidth + 5;
+
+    private static double ColumnWidth(double pixels) => Math.Max(0, pixels - 5) / 7;
+
+    /// <summary>
+    /// Блоки змін розкладено по ширині таблиці, перший - під «П.І.Б.», як на фото.
+    /// Кожен наступний - не ближче, ніж на ширину блоку від попереднього, щоб тексти не перекривались.
+    /// </summary>
+    internal static int ShiftColumn(int index, int count, int dayCount, double dayWidth)
     {
         if (index == 0) return NameColumn;
-        var column = FirstDayColumn + dayCount * index / count - 2;
-        return Math.Max(FirstDayColumn, column);
+        var daysPerBlock = (int)Math.Ceiling(ShiftBlockPixels / Pixels(dayWidth));
+        var spread = FirstDayColumn + dayCount * index / count - 2;
+        return Math.Max(FirstDayColumn + (index - 1) * daysPerBlock, spread);
     }
 
     private static void Bold(IXLCell cell, string text)

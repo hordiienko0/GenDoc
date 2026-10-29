@@ -58,7 +58,7 @@ public class DutyRosterServiceTests
         var seeded = Seed(db);
         var audit = new FakeAuditLog();
 
-        var created = await Service(db, audit).CreateAsync(new DutyRosterCreateRequest(From, To, seeded.IntakeId, null, true, WeekendsExempt: false));
+        var created = await Service(db, audit).CreateAsync(new DutyRosterCreateRequest(From, To, seeded.IntakeId, null, true, WeekendsGreen: false));
 
         Assert.True(created.Id > 0);
         Assert.Equal(12, created.Members.Count);
@@ -82,7 +82,7 @@ public class DutyRosterServiceTests
         using var db = new TestDb();
         var seeded = Seed(db);
 
-        var created = await Service(db).CreateAsync(new DutyRosterCreateRequest(From, To, seeded.IntakeId, seeded.GroupNodeId, true, WeekendsExempt: false));
+        var created = await Service(db).CreateAsync(new DutyRosterCreateRequest(From, To, seeded.IntakeId, seeded.GroupNodeId, true, WeekendsGreen: false));
 
         Assert.Equal(6, created.Members.Count);
         var options = await Service(db).GetOrgNodesAsync(seeded.IntakeId);
@@ -105,7 +105,7 @@ public class DutyRosterServiceTests
             ctx.SaveChanges();
         }
 
-        var created = await Service(db).CreateAsync(new DutyRosterCreateRequest(From, To, seeded.IntakeId, null, true, WeekendsExempt: false));
+        var created = await Service(db).CreateAsync(new DutyRosterCreateRequest(From, To, seeded.IntakeId, null, true, WeekendsGreen: false));
 
         var member = created.Members.Single(m => m.RecipientId == onLeave.Id);
         var leaveDays = DutyRosterEngine.Days(From, new DateOnly(2026, 9, 30)).ToList();
@@ -113,7 +113,7 @@ public class DutyRosterServiceTests
         Assert.DoesNotContain(member.Duties.Keys, leaveDays.Contains);
         Assert.Contains(member.Duties.Keys, d => d > new DateOnly(2026, 9, 30));
 
-        var withoutEvents = await Service(db).CreateAsync(new DutyRosterCreateRequest(From, To, seeded.IntakeId, null, false, WeekendsExempt: false));
+        var withoutEvents = await Service(db).CreateAsync(new DutyRosterCreateRequest(From, To, seeded.IntakeId, null, false, WeekendsGreen: false));
         Assert.Empty(withoutEvents.Members.Single(m => m.RecipientId == onLeave.Id).Exemptions);
     }
 
@@ -123,7 +123,7 @@ public class DutyRosterServiceTests
         using var db = new TestDb();
         var seeded = Seed(db);
         var service = Service(db);
-        var roster = await service.CreateAsync(new DutyRosterCreateRequest(From, To, seeded.IntakeId, null, true, WeekendsExempt: false));
+        var roster = await service.CreateAsync(new DutyRosterCreateRequest(From, To, seeded.IntakeId, null, true, WeekendsGreen: false));
         roster.Members[1].Exemptions[From] = DutyCellSource.Manual;
         roster.Members[1].Exemptions[From.AddDays(1)] = DutyCellSource.Event;
 
@@ -139,7 +139,7 @@ public class DutyRosterServiceTests
         using var db = new TestDb();
         var seeded = Seed(db);
         var service = Service(db);
-        var roster = await service.CreateAsync(new DutyRosterCreateRequest(From, To, seeded.IntakeId, null, false, WeekendsExempt: false));
+        var roster = await service.CreateAsync(new DutyRosterCreateRequest(From, To, seeded.IntakeId, null, false, WeekendsGreen: false));
 
         roster.Members[0].Duties[From] = DutyCellSource.Manual;
         roster.Members[0].ExemptWholePeriod = true;
@@ -172,11 +172,11 @@ public class DutyRosterServiceTests
         var seeded = Seed(db, people: 9);
         var service = Service(db);
 
-        var first = await service.CreateAsync(new DutyRosterCreateRequest(From, From.AddDays(3), seeded.IntakeId, null, true, WeekendsExempt: false));
+        var first = await service.CreateAsync(new DutyRosterCreateRequest(From, From.AddDays(3), seeded.IntakeId, null, true, WeekendsGreen: false));
         var servedTwice = Enumerable.Range(0, 9).Where(i => first.Members[i].Duties.Count == 2).Select(i => first.Members[i].Key).ToList();
         Assert.Equal(3, servedTwice.Count);
 
-        var second = await service.CreateAsync(new DutyRosterCreateRequest(From.AddDays(4), From.AddDays(4), seeded.IntakeId, null, true, WeekendsExempt: false));
+        var second = await service.CreateAsync(new DutyRosterCreateRequest(From.AddDays(4), From.AddDays(4), seeded.IntakeId, null, true, WeekendsGreen: false));
         var carry = await service.GetCarryOverAsync(second);
 
         Assert.NotNull(carry);
@@ -193,11 +193,12 @@ public class DutyRosterServiceTests
         var seeded = Seed(db, people: 8);
         var service = Service(db);
 
-        var first = await service.CreateAsync(new DutyRosterCreateRequest(From, From.AddDays(9), seeded.IntakeId, null, true, WeekendsExempt: false));
+        var first = await service.CreateAsync(new DutyRosterCreateRequest(From, From.AddDays(9), seeded.IntakeId, null, true, WeekendsGreen: false));
         var moved = first.Members[5];
         first.Members.RemoveAt(5);
         first.Members.Insert(0, moved);
         first.Members[1].ExemptWholePeriod = true;
+        var exempt = first.Members[1];
         var removed = first.Members[3];
         first.Members.Remove(removed);
         first.ExcludedRecipientIds.Add(removed.RecipientId!.Value);
@@ -219,17 +220,19 @@ public class DutyRosterServiceTests
         }
         var leftId = first.Members[2].RecipientId;
 
-        var second = await service.CreateAsync(new DutyRosterCreateRequest(From.AddDays(10), From.AddDays(19), seeded.IntakeId, null, true, WeekendsExempt: false));
+        var second = await service.CreateAsync(new DutyRosterCreateRequest(From.AddDays(10), From.AddDays(19), seeded.IntakeId, null, true, WeekendsGreen: false));
 
         Assert.Equal(moved.RecipientId, second.Members[0].RecipientId);
-        Assert.True(second.Members[1].ExemptWholePeriod);
+        Assert.Equal(exempt.RecipientId, second.Members[^1].RecipientId);
+        Assert.True(second.Members[^1].ExemptWholePeriod);
+        Assert.Single(second.Members, m => m.ExemptWholePeriod);
         Assert.DoesNotContain(second.Members, m => m.RecipientId == removed.RecipientId);
         Assert.Contains(removed.RecipientId!.Value, second.ExcludedRecipientIds);
         Assert.DoesNotContain(second.Members, m => m.RecipientId == leftId);
         Assert.Contains(second.Members, m => m.RecipientId is null && m.DisplayName == "ВПИСАНИЙ В.В.");
         Assert.Contains(second.Members, m => m.RecipientId == seeded.Staff.Id);
-        Assert.Equal(newcomerId, second.Members[^1].RecipientId);
-        Assert.Equal("НОВЕНЬКИЙ П.", second.Members[^1].DisplayName);
+        Assert.Equal(newcomerId, second.Members[^2].RecipientId);
+        Assert.Equal("НОВЕНЬКИЙ П.", second.Members[^2].DisplayName);
         Assert.Equal("Графік чергувань\nкурсу", second.Heading);
         Assert.False(second.CarryOverBalance);
         Assert.Equal(8 - 1 - 1 + 1 + 2, second.Members.Count);
@@ -244,19 +247,19 @@ public class DutyRosterServiceTests
         using var db = new TestDb();
         var service = Service(db);
 
-        var first = await service.CreateAsync(new DutyRosterCreateRequest(From, From.AddDays(4), null, null, true, WeekendsExempt: false));
+        var first = await service.CreateAsync(new DutyRosterCreateRequest(From, From.AddDays(4), null, null, true, WeekendsGreen: false));
         first.Members.Add(new DutyRosterMemberData { DisplayName = "ПЕРШИЙ А.А." });
         first.Members.Add(new DutyRosterMemberData { DisplayName = "ДРУГИЙ Б.Б.", ExemptWholePeriod = true });
         await service.SaveAsync(first);
 
-        var second = await service.CreateAsync(new DutyRosterCreateRequest(From.AddDays(5), From.AddDays(9), null, null, true, WeekendsExempt: false));
+        var second = await service.CreateAsync(new DutyRosterCreateRequest(From.AddDays(5), From.AddDays(9), null, null, true, WeekendsGreen: false));
 
         Assert.Equal(new[] { "ПЕРШИЙ А.А.", "ДРУГИЙ Б.Б." }, second.Members.Select(m => m.DisplayName));
         Assert.True(second.Members[1].ExemptWholePeriod);
     }
 
     [Fact]
-    public async Task WeekendsAreGreenRightAwayAndGetNoDuty()
+    public async Task WeekendsAreOnlyGreenAndStillGetDuties()
     {
         using var db = new TestDb();
         var seeded = Seed(db);
@@ -265,11 +268,31 @@ public class DutyRosterServiceTests
 
         var weekends = roster.Days.Where(d => d.DayOfWeek is DayOfWeek.Saturday or DayOfWeek.Sunday).ToList();
         Assert.Equal(4, weekends.Count);
-        Assert.True(roster.WeekendsExempt);
-        Assert.All(weekends, d => Assert.Contains(d, roster.ExemptDays));
-        Assert.All(weekends, d => Assert.DoesNotContain(roster.Members, m => m.Duties.ContainsKey(d)));
-        Assert.All(roster.Days.Except(weekends), d => Assert.Equal(3, roster.Members.Count(m => m.Duties.ContainsKey(d))));
-        Assert.True((await Service(db).LoadAsync(roster.Id))!.WeekendsExempt);
+        Assert.True(roster.WeekendsGreen);
+        Assert.All(weekends, d => Assert.True(roster.IsGreenWeekend(d)));
+        Assert.Empty(roster.ExemptDays);
+        Assert.All(roster.Days, d => Assert.Equal(3, roster.Members.Count(m => m.Duties.ContainsKey(d))));
+        Assert.True((await Service(db).LoadAsync(roster.Id))!.WeekendsGreen);
+    }
+
+    [Fact]
+    public async Task CanteenMarksAndManualShiftsSurviveSaveAndLoad()
+    {
+        using var db = new TestDb();
+        var seeded = Seed(db);
+        var service = Service(db);
+        var roster = await service.CreateAsync(new DutyRosterCreateRequest(From, From.AddDays(4), seeded.IntakeId, null, true));
+
+        roster.Members[0].Canteen.Add(From.AddDays(1));
+        roster.Members[5].Duties[From.AddDays(2)] = DutyCellSource.Manual;
+        roster.Members[5].Shifts[From.AddDays(2)] = 1;
+        await service.SaveAsync(roster);
+
+        var loaded = (await service.LoadAsync(roster.Id))!;
+        Assert.Equal(new[] { From.AddDays(1) }, loaded.Members[0].Canteen);
+        Assert.Equal(1, loaded.Members[5].Shifts[From.AddDays(2)]);
+        Assert.Equal(1, DutyRosterPlanner.ShiftsOfDay(loaded, From.AddDays(2))[5]);
+        Assert.Empty(loaded.Members[1].Shifts);
     }
 
     [Fact]
@@ -291,7 +314,7 @@ public class DutyRosterServiceTests
         var officerA = Service(db, userId: a);
         var rosterA = await officerA.CreateAsync(new DutyRosterCreateRequest(From, From.AddDays(9), seeded.IntakeId, null, true));
         rosterA.DutyMarkOnly = true;
-        rosterA.WeekendsExempt = false;
+        rosterA.WeekendsGreen = false;
         rosterA.Heading = "Шапка першого";
         rosterA.Footer.Changeover = "07:00";
         await officerA.SaveAsync(rosterA);
@@ -301,23 +324,23 @@ public class DutyRosterServiceTests
         Assert.Equal("Шапка першого", (await officerB.GetUserPrefsAsync()).Heading);
         var rosterB = await officerB.CreateAsync(new DutyRosterCreateRequest(From.AddDays(10), From.AddDays(19), seeded.IntakeId, null, true));
         rosterB.DutyMarkOnly = false;
-        rosterB.WeekendsExempt = true;
+        rosterB.WeekendsGreen = true;
         rosterB.Heading = "Шапка другого";
         await officerB.SaveAsync(rosterB);
         await officerB.RememberPrefsAsync(rosterB);
 
         var prefsA = await officerA.GetUserPrefsAsync();
         Assert.True(prefsA.DutyMarkOnly);
-        Assert.False(prefsA.WeekendsExempt);
+        Assert.False(prefsA.WeekendsGreen);
         Assert.Equal("Шапка першого", prefsA.Heading);
         Assert.Equal("07:00", prefsA.Footer.Changeover);
 
         var prefsB = await officerB.GetUserPrefsAsync();
         Assert.False(prefsB.DutyMarkOnly);
-        Assert.True(prefsB.WeekendsExempt);
+        Assert.True(prefsB.WeekendsGreen);
         Assert.Equal("Шапка другого", prefsB.Heading);
 
-        var nextA = await officerA.CreateAsync(new DutyRosterCreateRequest(From.AddDays(20), From.AddDays(29), seeded.IntakeId, null, true, prefsA.WeekendsExempt));
+        var nextA = await officerA.CreateAsync(new DutyRosterCreateRequest(From.AddDays(20), From.AddDays(29), seeded.IntakeId, null, true, prefsA.WeekendsGreen));
         Assert.True(nextA.DutyMarkOnly);
         Assert.Equal("Шапка першого", nextA.Heading);
         Assert.Equal("07:00", nextA.Footer.Changeover);
@@ -329,8 +352,8 @@ public class DutyRosterServiceTests
         var seeded = Seed(db);
         var audit = new FakeAuditLog();
         var service = Service(db, audit);
-        var older = await service.CreateAsync(new DutyRosterCreateRequest(From, To, seeded.IntakeId, null, true, WeekendsExempt: false));
-        var newer = await service.CreateAsync(new DutyRosterCreateRequest(To.AddDays(1), To.AddDays(30), seeded.IntakeId, null, true, WeekendsExempt: false));
+        var older = await service.CreateAsync(new DutyRosterCreateRequest(From, To, seeded.IntakeId, null, true, WeekendsGreen: false));
+        var newer = await service.CreateAsync(new DutyRosterCreateRequest(To.AddDays(1), To.AddDays(30), seeded.IntakeId, null, true, WeekendsGreen: false));
 
         var list = await service.GetListAsync();
         Assert.Equal(new[] { newer.Id, older.Id }, list.Select(r => r.Id));
@@ -362,9 +385,9 @@ public class DutyRosterServiceTests
         var service = Service(db);
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            service.CreateAsync(new DutyRosterCreateRequest(To, From, null, null, true, WeekendsExempt: false)));
+            service.CreateAsync(new DutyRosterCreateRequest(To, From, null, null, true, WeekendsGreen: false)));
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            service.CreateAsync(new DutyRosterCreateRequest(From, From.AddDays(DutyRosterService.MaxDays), null, null, true, WeekendsExempt: false)));
+            service.CreateAsync(new DutyRosterCreateRequest(From, From.AddDays(DutyRosterService.MaxDays), null, null, true, WeekendsGreen: false)));
     }
 
     [Fact]
