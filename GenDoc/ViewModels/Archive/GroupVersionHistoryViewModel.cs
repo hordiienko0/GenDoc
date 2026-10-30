@@ -85,7 +85,7 @@ namespace GenDoc.ViewModels.Archive
             if (row is null || !row.CanOpen) return;
 
             var dialog = new SaveFileDialog { FileName = System.IO.Path.GetFileName(row.Dto.FileName) };
-            if (dialog.ShowDialog() != true) return;
+            if (dialog.ShowDialog() != true || ViewModels.Common.CloudFolderGuard.Blocks(dialog.FileName)) return;
 
             var result = await _archiveService.SaveGroupAsAsync(row.Dto.Id, dialog.FileName);
             if (!result.Success)

@@ -177,6 +177,7 @@ namespace GenDoc
         private void RunLoginFlow()
         {
             _ = Services.GetRequiredService<ISecureTempFileService>().CleanupAsync();
+            WarnIfDatabaseInOneDrive();
 
             var loginWindow = Services.GetRequiredService<LoginWindow>();
             var loginSucceeded = loginWindow.ShowDialog() == true;
@@ -192,6 +193,21 @@ namespace GenDoc
             mainWindow.Show();
 
             ShutdownMode = ShutdownMode.OnMainWindowClose;
+        }
+
+        /// <summary>
+        /// Тека на «Робочому столі» чи в «Документах» Windows 11 часто насправді лежить в OneDrive: тоді база
+        /// з персональними даними синхронізується в хмару, а файл SQLite під синхронізацією ще й може зіпсуватись.
+        /// </summary>
+        private static void WarnIfDatabaseInOneDrive()
+        {
+            if (!CloudFolders.IsInOneDrive(DbPaths.DatabasePath)) return;
+
+            MessageBox.Show(
+                $"Програма й база даних лежать в OneDrive:\n{AppContext.BaseDirectory}\n\n" +
+                "Звідти база й документи вивантажуються в хмару Microsoft. Закрийте програму й перенесіть " +
+                "цю теку на локальний диск, наприклад D:\\ДокОблік.",
+                "GenDoc - база в OneDrive", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 

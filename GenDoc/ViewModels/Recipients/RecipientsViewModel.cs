@@ -216,7 +216,7 @@ namespace GenDoc.ViewModels.Recipients
                 Filter = "Excel файли (*.xlsx)|*.xlsx",
                 DefaultExt = ".xlsx"
             };
-            if (dialog.ShowDialog() != true) return;
+            if (dialog.ShowDialog() != true || ViewModels.Common.CloudFolderGuard.Blocks(dialog.FileName)) return;
 
             var items = _recipientService.SearchEntities(SearchText, SortColumn, SortDescending);
             var result = await _exportService.ExportByTemplateAsync(option.TemplateId.Value, items, manualValues, dialog.FileName);
@@ -246,7 +246,7 @@ namespace GenDoc.ViewModels.Recipients
                 Filter = "Excel файли (*.xlsx)|*.xlsx",
                 DefaultExt = ".xlsx"
             };
-            if (dialog.ShowDialog() != true) return;
+            if (dialog.ShowDialog() != true || ViewModels.Common.CloudFolderGuard.Blocks(dialog.FileName)) return;
 
             var items = _recipientService.SearchEntities(SearchText, SortColumn, SortDescending);
 

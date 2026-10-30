@@ -722,7 +722,7 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     private async Task PickOutputFolderAsync()
     {
         var dialog = new OpenFolderDialog { Title = "Оберіть папку для документів" };
-        if (dialog.ShowDialog() != true) return;
+        if (dialog.ShowDialog() != true || ViewModels.Common.CloudFolderGuard.Blocks(dialog.FolderName)) return;
 
         var confirm = MessageBox.Show(
             OutputFolderChangeQuestion(dialog.FolderName), "Спільне налаштування",

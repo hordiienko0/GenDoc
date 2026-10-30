@@ -576,7 +576,7 @@ namespace GenDoc.ViewModels.Archive
             if (rows.Count == 1)
             {
                 var dialog = new SaveFileDialog { FileName = System.IO.Path.GetFileName(rows[0].Dto.FileName) };
-                if (dialog.ShowDialog() != true) return;
+                if (dialog.ShowDialog() != true || ViewModels.Common.CloudFolderGuard.Blocks(dialog.FileName)) return;
 
                 IsBusy = true;
                 try
@@ -592,7 +592,7 @@ namespace GenDoc.ViewModels.Archive
             }
 
             var folderDialog = new OpenFolderDialog { Title = "Папка для експорту" };
-            if (folderDialog.ShowDialog() != true) return;
+            if (folderDialog.ShowDialog() != true || ViewModels.Common.CloudFolderGuard.Blocks(folderDialog.FolderName)) return;
 
             IsBusy = true;
             try
@@ -908,7 +908,7 @@ namespace GenDoc.ViewModels.Archive
             if (item?.Dto.DocumentId is not int docId || !item.CanOpen) return;
 
             var dialog = new SaveFileDialog { FileName = System.IO.Path.GetFileName(item.Dto.FileName) };
-            if (dialog.ShowDialog() != true) return;
+            if (dialog.ShowDialog() != true || ViewModels.Common.CloudFolderGuard.Blocks(dialog.FileName)) return;
 
             var result = item.IsGroup
                 ? await _archiveService.SaveGroupAsAsync(docId, dialog.FileName)
@@ -1157,7 +1157,7 @@ namespace GenDoc.ViewModels.Archive
             if (rows.Count == 1)
             {
                 var dialog = new SaveFileDialog { FileName = System.IO.Path.GetFileName(rows[0].Dto.FileName) };
-                if (dialog.ShowDialog() != true) return;
+                if (dialog.ShowDialog() != true || ViewModels.Common.CloudFolderGuard.Blocks(dialog.FileName)) return;
 
                 IsBusy = true;
                 try
@@ -1172,7 +1172,7 @@ namespace GenDoc.ViewModels.Archive
             }
 
             var folderDialog = new OpenFolderDialog { Title = "Папка для експорту" };
-            if (folderDialog.ShowDialog() != true) return;
+            if (folderDialog.ShowDialog() != true || ViewModels.Common.CloudFolderGuard.Blocks(folderDialog.FolderName)) return;
 
             IsBusy = true;
             try

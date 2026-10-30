@@ -689,7 +689,7 @@ namespace GenDoc.ViewModels.Completeness
             if (recipientIds.Count == 0 || SelectedPackage is null) return;
 
             var folderDialog = new OpenFolderDialog { Title = "Папка для експорту пакетів" };
-            if (folderDialog.ShowDialog() != true) return;
+            if (folderDialog.ShowDialog() != true || ViewModels.Common.CloudFolderGuard.Blocks(folderDialog.FolderName)) return;
 
             IsBusy = true;
             try
@@ -903,7 +903,7 @@ namespace GenDoc.ViewModels.Completeness
             {
                 FileName = SaveAsFileName(row?.FullName, template?.Name, current?.FileName ?? string.Empty)
             };
-            if (dialog.ShowDialog() != true) return;
+            if (dialog.ShowDialog() != true || ViewModels.Common.CloudFolderGuard.Blocks(dialog.FileName)) return;
 
             var result = await _archiveService.SaveAsAsync(docId, dialog.FileName);
             if (!result.Success)

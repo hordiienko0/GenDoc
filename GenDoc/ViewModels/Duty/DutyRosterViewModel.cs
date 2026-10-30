@@ -888,7 +888,7 @@ public partial class DutyRosterViewModel : ObservableObject
             Filter = "Excel файли (*.xlsx)|*.xlsx",
             DefaultExt = ".xlsx"
         };
-        if (dialog.ShowDialog() != true) return;
+        if (dialog.ShowDialog() != true || ViewModels.Common.CloudFolderGuard.Blocks(dialog.FileName)) return;
 
         try
         {
