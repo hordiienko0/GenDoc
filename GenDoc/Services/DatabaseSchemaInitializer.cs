@@ -7,7 +7,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 32;
+    private const int CurrentSchemaVersion = 33;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -157,6 +157,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         ("ExcludedRecipients", "TEXT"),
         ("UseEventExemptions", "INTEGER NOT NULL DEFAULT 1"), ("CarryOverBalance", "INTEGER NOT NULL DEFAULT 1"),
         ("DutyMarkOnly", "INTEGER NOT NULL DEFAULT 0"), ("WeekendsExempt", "INTEGER NOT NULL DEFAULT 1"),
+        ("ShiftRotation", "INTEGER NOT NULL DEFAULT 0"),
         ("CreatedAt", "TEXT NOT NULL DEFAULT ''"), ("CreatedBy", "TEXT"), ("UpdatedAt", "TEXT"),
         ("DeletedAt", "TEXT"), ("DeletedBy", "TEXT")
     };
@@ -672,6 +673,20 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                     Description = "Графік чергувань: склад - вибрані папки (кілька, з будь-якого місця дерева) замість набору з підрозділом"
                 });
                 currentVersion = 32;
+            }
+
+            if (currentVersion < 33)
+            {
+                EnsureDutyRosterTables(db);
+                EnableShiftRotation(db);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 33,
+                    AppliedAt = DateTime.Now,
+                    Description = "Графік чергувань: зміни по черзі (після ІІІ - І, після І - ІІІ, кожному порівну), столова - з відпочинком"
+                });
+                currentVersion = 33;
             }
         }
 
@@ -1189,6 +1204,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                     "CarryOverBalance" INTEGER NOT NULL DEFAULT 1,
                     "DutyMarkOnly" INTEGER NOT NULL DEFAULT 0,
                     "WeekendsExempt" INTEGER NOT NULL DEFAULT 1,
+                    "ShiftRotation" INTEGER NOT NULL DEFAULT 0,
                     "CreatedAt" TEXT NOT NULL,
                     "CreatedBy" TEXT NULL,
                     "UpdatedAt" TEXT NULL,
@@ -1815,6 +1831,32 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                 "RosterId" IN (SELECT "Id" FROM "DutyRosters" WHERE "IntakeId" IS NULL)
                 OR "RecipientId" IN (SELECT "Id" FROM "Recipients" WHERE "IntakeId" IS NULL));
             """;
+        command.ExecuteNonQuery();
+    }
+
+    private static void EnableShiftRotation(AppDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        var wasClosed = connection.State != System.Data.ConnectionState.Open;
+        if (wasClosed) connection.Open();
+        try { EnableShiftRotation(connection, DateOnly.FromDateTime(DateTime.Today)); }
+        finally { if (wasClosed) connection.Close(); }
+    }
+
+    /// <summary>
+    /// Зміни по черзі вмикаються в графіках, що ще не закінчились: при відкритті номери змін там перераховуються.
+    /// Минулі графіки лишають зміну за порядком у списку дня - друкуються так, як їх друкували.
+    /// </summary>
+    internal static void EnableShiftRotation(System.Data.Common.DbConnection connection, DateOnly today)
+    {
+        if (!TableExists(connection, "DutyRosters")) return;
+
+        using var command = connection.CreateCommand();
+        command.CommandText = """UPDATE "DutyRosters" SET "ShiftRotation" = 1 WHERE "DateTo" >= $today;""";
+        var todayParameter = command.CreateParameter();
+        todayParameter.ParameterName = "$today";
+        todayParameter.Value = today.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+        command.Parameters.Add(todayParameter);
         command.ExecuteNonQuery();
     }
 

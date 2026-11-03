@@ -27,6 +27,13 @@ public class DutyRosterXlsxExporterTests
 
     private static int DayColumn(DateOnly day) => 3 + day.DayNumber - From.DayNumber;
 
+    private static string[] Texts(IXLWorksheet sheet, DateOnly day, params int[] members)
+        => members.Select(m => sheet.Cell(HeaderRow + 1 + m, DayColumn(day)).GetString()).ToArray();
+
+    /// <summary>Номери змін, які рахує планувальник (по черзі змін), - аркуш має друкувати саме їх.</summary>
+    private static string[] PlannedShifts(DutyRosterData roster, DateOnly day, params int[] members)
+        => members.Select(m => DutyRosterEngine.RomanShift(DutyRosterPlanner.ShiftsByDay(roster)[day][m])).ToArray();
+
     [Fact]
     public void TitleIsHeadingPlusPeriodLine()
     {
@@ -66,11 +73,10 @@ public class DutyRosterXlsxExporterTests
             Enumerable.Range(HeaderRow + 1, 6).Select(r => (int)sheet.Cell(r, 1).GetDouble()));
         Assert.Equal("ПОПЕНКО В.В.", sheet.Cell(HeaderRow + 6, 2).GetString());
 
-        var column = DayColumn(new DateOnly(2026, 9, 24));
-        Assert.Equal("І", sheet.Cell(HeaderRow + 2, column).GetString());
-        Assert.Equal("ІІ", sheet.Cell(HeaderRow + 3, column).GetString());
-        Assert.Equal("ІІІ", sheet.Cell(HeaderRow + 4, column).GetString());
-        Assert.True(sheet.Cell(HeaderRow + 5, column).IsEmpty());
+        var day = new DateOnly(2026, 9, 24);
+        Assert.Equal(PlannedShifts(roster, day, 1, 2, 3), Texts(sheet, day, 1, 2, 3));
+        Assert.Equal(new[] { "І", "ІІ", "ІІІ" }, Texts(sheet, day, 1, 2, 3).OrderBy(t => t.Length));
+        Assert.True(sheet.Cell(HeaderRow + 5, DayColumn(day)).IsEmpty());
     }
 
     [Fact]
@@ -145,7 +151,7 @@ public class DutyRosterXlsxExporterTests
         Assert.Equal("к", cell.GetString());
         Assert.True(cell.Style.Font.Bold);
         Assert.Equal(XLColor.FromHtml(DutyRosterXlsxExporter.CanteenFillHex), cell.Style.Fill.BackgroundColor);
-        Assert.Equal("ІІІ", sheet.Cell(HeaderRow + 4, DayColumn(day)).GetString());
+        Assert.Equal(new[] { "І", "ІІ", "ІІІ" }, Texts(sheet, day, 1, 2, 3).OrderBy(t => t.Length));
     }
 
     [Fact]
@@ -158,9 +164,9 @@ public class DutyRosterXlsxExporterTests
         using var workbook = DutyRosterXlsxExporter.Build(roster);
         var sheet = workbook.Worksheet(DutyRosterXlsxExporter.SheetName);
 
-        Assert.Equal("ІІ", sheet.Cell(HeaderRow + 2, DayColumn(day)).GetString());
-        Assert.Equal("ІІІ", sheet.Cell(HeaderRow + 3, DayColumn(day)).GetString());
-        Assert.Equal("І", sheet.Cell(HeaderRow + 4, DayColumn(day)).GetString());
+        Assert.Equal("І", Texts(sheet, day, 3).Single());
+        Assert.Equal(new[] { "ІІ", "ІІІ" }, Texts(sheet, day, 1, 2).OrderBy(t => t.Length));
+        Assert.Equal(PlannedShifts(roster, day, 1, 2), Texts(sheet, day, 1, 2));
     }
 
     [Theory]

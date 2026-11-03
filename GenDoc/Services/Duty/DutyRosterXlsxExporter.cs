@@ -200,7 +200,7 @@ public static class DutyRosterXlsxExporter
         sheet.Range(headerRow, NumberColumn, headerRow, lastColumn).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
         sheet.Range(headerRow, NumberColumn, headerRow, lastColumn).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
 
-        var shiftsByDay = days.ToDictionary(day => day, day => DutyRosterPlanner.ShiftsOfDay(roster, day));
+        var shiftsByDay = DutyRosterPlanner.ShiftsByDay(roster);
         for (var m = 0; m < roster.Members.Count; m++)
         {
             var r = headerRow + 1 + m;

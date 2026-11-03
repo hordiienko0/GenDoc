@@ -119,7 +119,7 @@ public sealed class DutyRosterData
     public bool UseEventExemptions { get; set; } = true;
     public bool CarryOverBalance { get; set; } = true;
 
-    /// <summary>Лише «н»; типово в клітинці номер зміни римськими за порядком у списку дня.</summary>
+    /// <summary>Лише «н»; типово в клітинці номер зміни римськими.</summary>
     public bool DutyMarkOnly { get; set; }
 
     /// <summary>
@@ -127,6 +127,12 @@ public sealed class DutyRosterData
     /// День без нарядів - це звільнений день (<see cref="ExemptDays"/>, клік по даті).
     /// </summary>
     public bool WeekendsGreen { get; set; } = true;
+
+    /// <summary>
+    /// Зміни по черзі (після ІІІ - І, після І - ІІІ, кожному порівну). Вимкнено в графіках, що закінчились до
+    /// черги змін (v33): там зміна - порядок у списку дня, щоб графік друкувався так, як його друкували.
+    /// </summary>
+    public bool ShiftRotation { get; set; } = true;
 
     public List<DutyRosterMemberData> Members { get; } = new();
 

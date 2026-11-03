@@ -456,7 +456,7 @@ public partial class DutyRosterViewModel : ObservableObject
             .Where(w => w.MemberIndex is not null && w.Kind != DutyWarningKind.ShortDay)
             .Select(w => (w.MemberIndex!.Value, w.Date))
             .ToHashSet();
-        var shifts = Days.ToDictionary(d => d.Date, d => DutyRosterPlanner.ShiftsOfDay(_roster, d.Date));
+        var shifts = DutyRosterPlanner.ShiftsByDay(_roster);
         var clashes = Days.ToDictionary(d => d.Date, d => DutyRosterPlanner.ShiftClashes(_roster, d.Date));
 
         foreach (var day in Days)
@@ -496,7 +496,7 @@ public partial class DutyRosterViewModel : ObservableObject
                 cell.Hint = isDuty
                     ? (cell.IsAuto ? "Поставила програма" : "Поставлено вручну")
                       + (shiftsOfDay.TryGetValue(i, out var shift)
-                          ? $", {DutyRosterEngine.RomanShift(shift)} зміна ({(member.Shifts.ContainsKey(cell.Date) ? "проставлена вручну" : "порядок у списку дня")})"
+                          ? $", {DutyRosterEngine.RomanShift(shift)} зміна ({(member.Shifts.ContainsKey(cell.Date) ? "проставлена вручну" : _roster.ShiftRotation ? "по черзі змін" : "порядок у списку дня")})"
                           : string.Empty)
                     : isCanteen ? "Столова (жовта «к», лише вручну)" + (cell.IsExempt ? " - але людина в цей день звільнена" : string.Empty)
                     : isEvent ? "Звільнений: відпустка, шпиталь або відрядження"

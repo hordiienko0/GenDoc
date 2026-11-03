@@ -35,11 +35,14 @@ namespace GenDoc.Models
         public bool UseEventExemptions { get; set; } = true;
         public bool CarryOverBalance { get; set; } = true;
 
-        /// <summary>Лише «н» у клітинках; типово - номер зміни римськими (І, ІІ, ІІІ за порядком у списку дня).</summary>
+        /// <summary>Лише «н» у клітинках; типово - номер зміни римськими (І, ІІ, ІІІ).</summary>
         public bool DutyMarkOnly { get; set; }
 
         /// <summary>Субота й неділя зафарбовані зеленим як вихідні; наряди на них ставляться як завжди (колонка «WeekendsExempt»).</summary>
         public bool WeekendsGreen { get; set; } = true;
+
+        /// <summary>Зміни по черзі; вимкнено в графіках, що закінчились до v33 (там зміна - порядок у списку дня).</summary>
+        public bool ShiftRotation { get; set; } = true;
 
         public DateTime CreatedAt { get; set; }
         public string? CreatedBy { get; set; }

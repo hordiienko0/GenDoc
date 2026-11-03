@@ -685,6 +685,27 @@ public class DatabaseSchemaInitializerTests
     }
 
     [Fact]
+    public void EnableShiftRotation_TurnsOnRotationForCurrentRostersOnly()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        DatabaseSchemaInitializer.EnsureDutyRosterTables((DbConnection)connection);
+        Exec(connection, """
+            INSERT INTO "DutyRosters" ("Id", "DateFrom", "DateTo", "CreatedAt") VALUES
+                (1, '2026-10-01', '2026-10-31', '2026-09-30'),
+                (2, '2026-10-15', '2026-11-03', '2026-10-14'),
+                (3, '2026-11-01', '2026-11-30', '2026-10-30');
+            """);
+        Assert.Equal(0L, Scalar(connection, """SELECT COUNT(*) FROM "DutyRosters" WHERE "ShiftRotation" = 1"""));
+
+        DatabaseSchemaInitializer.EnableShiftRotation((DbConnection)connection, new DateOnly(2026, 11, 3));
+
+        Assert.Equal(0L, Scalar(connection, """SELECT "ShiftRotation" FROM "DutyRosters" WHERE "Id" = 1"""));
+        Assert.Equal(1L, Scalar(connection, """SELECT "ShiftRotation" FROM "DutyRosters" WHERE "Id" = 2"""));
+        Assert.Equal(1L, Scalar(connection, """SELECT "ShiftRotation" FROM "DutyRosters" WHERE "Id" = 3"""));
+    }
+
+    [Fact]
     public void BackfillDutyRosterFolders_TurnsIntakeAndSubdivisionIntoFoldersAndMarksPeopleAddedByHand()
     {
         using var connection = new SqliteConnection("Data Source=:memory:");

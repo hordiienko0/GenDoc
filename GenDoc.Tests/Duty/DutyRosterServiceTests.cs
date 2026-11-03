@@ -416,8 +416,24 @@ public class DutyRosterServiceTests
         var loaded = (await service.LoadAsync(roster.Id))!;
         Assert.Equal(new[] { From.AddDays(1) }, loaded.Members[0].Canteen);
         Assert.Equal(1, loaded.Members[5].Shifts[From.AddDays(2)]);
-        Assert.Equal(1, DutyRosterPlanner.ShiftsOfDay(loaded, From.AddDays(2))[5]);
+        Assert.Equal(1, DutyRosterPlanner.ShiftsByDay(loaded)[From.AddDays(2)][5]);
         Assert.Empty(loaded.Members[1].Shifts);
+    }
+
+    [Fact]
+    public async Task NewRosterRotatesShiftsAndOldOneKeepsListOrderAfterLoad()
+    {
+        using var db = new TestDb();
+        var seeded = Seed(db);
+        var service = Service(db);
+        var roster = await service.CreateAsync(new DutyRosterCreateRequest(From, From.AddDays(4), new[] { seeded.RootNodeId }, true));
+
+        Assert.True(roster.ShiftRotation);
+        Assert.True((await service.LoadAsync(roster.Id))!.ShiftRotation);
+
+        roster.ShiftRotation = false;
+        await service.SaveAsync(roster);
+        Assert.False((await service.LoadAsync(roster.Id))!.ShiftRotation);
     }
 
     [Fact]

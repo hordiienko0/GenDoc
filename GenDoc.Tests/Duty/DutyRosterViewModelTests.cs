@@ -300,15 +300,21 @@ public class DutyRosterViewModelTests
     }
 
     [Fact]
-    public async Task CellsShowShiftByListOrderAndJustNWhenTicked()
+    public async Task CellsShowRotatedShiftsAndJustNWhenTicked()
     {
         using var db = new TestDb();
         var (vm, service) = await CreatedRoster(db);
 
         Assert.False(vm.DutyMarkOnly);
+        Assert.True(vm.Roster!.ShiftRotation);
         foreach (var day in Enumerable.Range(0, vm.Days.Count))
-            Assert.Equal(new[] { "І", "ІІ", "ІІІ" }, vm.Rows.Select(r => r.Cells[day]).Where(c => c.IsDuty).Select(c => c.Text));
-        Assert.Contains("зміна", vm.Rows.SelectMany(r => r.Cells).First(c => c.IsDuty).Hint);
+        {
+            Assert.Equal(new[] { "І", "ІІ", "ІІІ" },
+                vm.Rows.Select(r => r.Cells[day]).Where(c => c.IsDuty).Select(c => c.Text).OrderBy(t => t.Length));
+        }
+        Assert.Contains(Enumerable.Range(0, vm.Days.Count),
+            day => vm.Rows.Select(r => r.Cells[day]).First(c => c.IsDuty).Text != "І");
+        Assert.Contains("зміна (по черзі змін)", vm.Rows.SelectMany(r => r.Cells).First(c => c.IsDuty).Hint);
 
         vm.DutyMarkOnly = true;
         await vm.PendingWork;
@@ -472,31 +478,30 @@ public class DutyRosterViewModelTests
         var (vm, service) = await CreatedRoster(db);
         Assert.Equal(new[] { "І", "ІІ", "ІІІ" }, vm.ShiftBrushes.Select(b => b.Label));
         var onDuty = vm.Rows.Where(r => r.Cells[2].IsDuty).ToList();
-        var lowest = onDuty[^1];
-        Assert.Equal("ІІІ", lowest.Cells[2].Text);
+        var pinned = onDuty.First(r => r.Cells[2].Text != "І");
+        var others = onDuty.Where(r => r != pinned).ToList();
 
         vm.ShiftBrushes[0].IsSelected = true;
         Assert.Equal(DutyBrush.Shift, vm.Brush);
         Assert.False(vm.IsDutyBrush);
-        vm.BeginPaint(lowest.Cells[2]);
+        vm.BeginPaint(pinned.Cells[2]);
         await vm.EndPaintAsync();
 
-        Assert.Equal("І", lowest.Cells[2].Text);
-        Assert.Equal("ІІ", onDuty[0].Cells[2].Text);
-        Assert.Equal("ІІІ", onDuty[1].Cells[2].Text);
+        Assert.Equal("І", pinned.Cells[2].Text);
+        Assert.Equal(new[] { "ІІ", "ІІІ" }, others.Select(r => r.Cells[2].Text).OrderBy(t => t.Length));
         Assert.Equal(3, vm.Days[2].Count);
         var saved = (await service.LoadAsync(vm.Roster!.Id))!;
-        Assert.Equal(1, saved.Members[vm.Rows.IndexOf(lowest)].Shifts[vm.Days[2].Date]);
+        Assert.Equal(1, saved.Members[vm.Rows.IndexOf(pinned)].Shifts[vm.Days[2].Date]);
 
-        vm.BeginPaint(onDuty[0].Cells[2]);
+        vm.BeginPaint(others[0].Cells[2]);
         await vm.EndPaintAsync();
-        Assert.True(onDuty[0].Cells[2].HasWarning);
+        Assert.True(others[0].Cells[2].HasWarning);
         Assert.Contains("Одна зміна вручну двом людям", vm.WarningsText);
 
-        vm.BeginPaint(lowest.Cells[2]);
+        vm.BeginPaint(pinned.Cells[2]);
         await vm.EndPaintAsync();
-        Assert.False(lowest.Member.Shifts.ContainsKey(vm.Days[2].Date));
-        Assert.Equal("І", onDuty[0].Cells[2].Text);
+        Assert.False(pinned.Member.Shifts.ContainsKey(vm.Days[2].Date));
+        Assert.Equal("І", others[0].Cells[2].Text);
         Assert.DoesNotContain("Одна зміна вручну двом людям", vm.WarningsText);
 
         vm.IsDutyBrush = true;

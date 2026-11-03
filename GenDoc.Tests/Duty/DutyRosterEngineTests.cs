@@ -227,6 +227,129 @@ public class DutyRosterEngineTests
         Assert.Equal(3, shifts[18]);
     }
 
+    private static IReadOnlyDictionary<DateOnly, IReadOnlyDictionary<int, int>> RotatedShifts(DutyEngineInput input, DutyEngineResult result)
+        => DutyRosterEngine.RotateShifts(input.Members.Select(m => m.Key).ToList(),
+            DutyRosterEngine.Days(input.DateFrom, input.DateTo)
+                .Select(d => new DutyShiftDay(d, OnDuty(input, result, d).ToList(), new Dictionary<int, int>())),
+            input.PeoplePerDay, input.Seed);
+
+    private static DutyShiftDay ShiftDay(int offset, params int[] onDuty) => new(From.AddDays(offset), onDuty, new Dictionary<int, int>());
+
+    private static readonly string[] SixKeys = { "p0", "p1", "p2", "p3", "p4", "p5" };
+
+    [Fact]
+    public void AfterTheThirdShiftComesTheFirstAndAfterTheFirstTheThird()
+    {
+        foreach (var seed in new[] { 1, 7, 42 })
+        {
+            var first = DutyRosterEngine.RotateShifts(SixKeys, new[] { ShiftDay(0, 0, 1, 2) }, 3, seed)[From];
+            var hadThird = first.Single(s => s.Value == 3).Key;
+            var hadFirst = first.Single(s => s.Value == 1).Key;
+
+            var shifts = DutyRosterEngine.RotateShifts(SixKeys,
+                new[] { ShiftDay(0, 0, 1, 2), ShiftDay(2, hadThird, hadFirst, 3) }, 3, seed)[From.AddDays(2)];
+
+            Assert.Equal(1, shifts[hadThird]);
+            Assert.Equal(3, shifts[hadFirst]);
+            Assert.Equal(2, shifts[3]);
+        }
+    }
+
+    [Fact]
+    public void AfterTheSecondShiftComesUsuallyTheFirstButNotAlways()
+    {
+        var next = new List<int>();
+        for (var seed = 1; seed <= 200; seed++)
+        {
+            var first = DutyRosterEngine.RotateShifts(SixKeys, new[] { ShiftDay(0, 0, 1, 2) }, 3, seed)[From];
+            var hadSecond = first.Single(s => s.Value == 2).Key;
+            next.Add(DutyRosterEngine.RotateShifts(SixKeys,
+                new[] { ShiftDay(0, 0, 1, 2), ShiftDay(2, hadSecond, 3, 4) }, 3, seed)[From.AddDays(2)][hadSecond]);
+        }
+
+        Assert.DoesNotContain(2, next);
+        Assert.Contains(3, next);
+        Assert.True(next.Count(s => s == 1) > 2 * next.Count(s => s == 3),
+            $"І: {next.Count(s => s == 1)}, ІІІ: {next.Count(s => s == 3)}");
+    }
+
+    [Fact]
+    public void RotatedShiftsDoNotFavourTheTopOfTheListAndGiveEveryoneAnEvenMix()
+    {
+        int topFirst = 0, topAll = 0, bottomFirst = 0, bottomAll = 0;
+        var spreads = new List<int>();
+        for (var seed = 1; seed <= 10; seed++)
+        {
+            var input = Input(People(18), seed);
+            var shifts = RotatedShifts(input, DutyRosterEngine.Run(input));
+            for (var p = 0; p < 18; p++)
+            {
+                var mine = shifts.Values.Where(d => d.ContainsKey(p)).Select(d => d[p]).ToList();
+                var counts = Enumerable.Range(1, 3).Select(s => mine.Count(x => x == s)).ToList();
+                spreads.Add(counts.Max() - counts.Min());
+                if (p < 6) { topFirst += counts[0]; topAll += mine.Count; }
+                if (p >= 12) { bottomFirst += counts[0]; bottomAll += mine.Count; }
+            }
+
+            foreach (var day in shifts.Values)
+                Assert.Equal(new[] { 1, 2, 3 }, day.Values.Order());
+        }
+
+        Assert.InRange(topFirst / (double)topAll, 0.27, 0.40);
+        Assert.InRange(bottomFirst / (double)bottomAll, 0.27, 0.40);
+        Assert.True(spreads.Average() <= 1.2, $"середній розкид І/ІІ/ІІІ: {spreads.Average():F2}");
+        Assert.True(spreads.Max() <= 3, $"найбільший розкид І/ІІ/ІІІ: {spreads.Max()}");
+    }
+
+    [Fact]
+    public void ReorderingRowsKeepsEveryonesShifts()
+    {
+        var members = People(12);
+        var input = Input(members);
+        var shifts = RotatedShifts(input, DutyRosterEngine.Run(input));
+
+        var reversed = Input(members.AsEnumerable().Reverse().ToList());
+        var shiftsReversed = RotatedShifts(reversed, DutyRosterEngine.Run(reversed));
+
+        foreach (var (day, ofDay) in shifts)
+            foreach (var (index, shift) in ofDay)
+                Assert.Equal(shift, shiftsReversed[day][11 - index]);
+    }
+
+    [Fact]
+    public void ManualShiftStaysInRotationAndCountsInTheHistory()
+    {
+        var days = new[]
+        {
+            new DutyShiftDay(From, new[] { 0, 1, 2 }, new Dictionary<int, int> { [0] = 3 }),
+            ShiftDay(2, 0, 3, 4)
+        };
+        var shifts = DutyRosterEngine.RotateShifts(SixKeys, days, 3, 7);
+
+        Assert.Equal(3, shifts[From][0]);
+        Assert.Equal(new[] { 1, 2 }, new[] { shifts[From][1], shifts[From][2] }.Order());
+        Assert.Equal(1, shifts[From.AddDays(2)][0]);
+    }
+
+    [Fact]
+    public void CanteenDayIsRestedLikeADutyBeforeAndAfter()
+    {
+        var baseline = Input(People(18));
+        var dutyDay = DutyRosterEngine.Run(baseline).AutoDuties[0].Order().First(d => d > From.AddDays(5));
+        var canteen = dutyDay.AddDays(1);
+
+        var members = People(18);
+        members[0] = DutyRosterEngine.Member("p1", canteenDays: new[] { canteen });
+        var input = Input(members);
+        var result = DutyRosterEngine.Run(input);
+
+        Assert.DoesNotContain(dutyDay, result.AutoDuties[0]);
+        Assert.DoesNotContain(canteen, result.AutoDuties[0]);
+        Assert.DoesNotContain(canteen.AddDays(1), result.AutoDuties[0]);
+        var counts = Counts(input, result);
+        Assert.True(counts.Max() - counts.Min() <= 1, string.Join(",", counts));
+    }
+
     [Fact]
     public void LegendNumbersShiftsInRomanNumerals()
     {

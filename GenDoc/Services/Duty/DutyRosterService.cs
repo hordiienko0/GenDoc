@@ -252,6 +252,7 @@ public class DutyRosterService : IDutyRosterService
         entity.CarryOverBalance = roster.CarryOverBalance;
         entity.DutyMarkOnly = roster.DutyMarkOnly;
         entity.WeekendsGreen = roster.WeekendsGreen;
+        entity.ShiftRotation = roster.ShiftRotation;
 
         for (var i = 0; i < roster.Members.Count; i++)
         {
@@ -448,7 +449,8 @@ public class DutyRosterService : IDutyRosterService
             UseEventExemptions = entity.UseEventExemptions,
             CarryOverBalance = entity.CarryOverBalance,
             DutyMarkOnly = entity.DutyMarkOnly,
-            WeekendsGreen = entity.WeekendsGreen
+            WeekendsGreen = entity.WeekendsGreen,
+            ShiftRotation = entity.ShiftRotation
         };
 
         foreach (var day in ParseDays(entity.ExemptDays)) roster.ExemptDays.Add(day);

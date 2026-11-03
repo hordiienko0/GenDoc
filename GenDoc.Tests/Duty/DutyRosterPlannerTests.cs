@@ -75,6 +75,39 @@ public class DutyRosterPlannerTests
     }
 
     [Fact]
+    public void CanteenMovesTheDutyAwayAndTheRosterStaysFair()
+    {
+        var roster = Roster(12, days: 30);
+        DutyRosterPlanner.Replan(roster, null);
+        var day = From.AddDays(10);
+        var moved = Enumerable.Range(0, 12).First(i => roster.IsDuty(i, day));
+        roster.Members[moved].Canteen.Add(day);
+
+        DutyRosterPlanner.Replan(roster, null);
+
+        Assert.False(roster.IsDuty(moved, day));
+        Assert.False(roster.IsDuty(moved, day.AddDays(-1)));
+        Assert.False(roster.IsDuty(moved, day.AddDays(1)));
+        var counts = roster.Members.Select(m => m.Duties.Count).ToList();
+        Assert.True(counts.Max() - counts.Min() <= 1, string.Join(",", counts));
+
+        var shifts = DutyRosterPlanner.ShiftsByDay(roster);
+        Assert.All(roster.Days, d => Assert.Equal(new[] { 1, 2, 3 }, shifts[d].Values.Order()));
+    }
+
+    [Fact]
+    public void RosterFromBeforeShiftRotationKeepsShiftsByListOrder()
+    {
+        var roster = Roster(9);
+        roster.ShiftRotation = false;
+        DutyRosterPlanner.Replan(roster, null);
+
+        var shifts = DutyRosterPlanner.ShiftsByDay(roster);
+
+        Assert.All(roster.Days, d => Assert.Equal(new[] { 1, 2, 3 }, shifts[d].OrderBy(s => s.Key).Select(s => s.Value)));
+    }
+
+    [Fact]
     public void ExemptWholePeriodGoToTheBottomInTheirOrder()
     {
         var roster = Roster(5);

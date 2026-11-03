@@ -15,7 +15,8 @@ public static class DutyRosterPlanner
                 .Where(d => d.Key >= roster.DateFrom && d.Key <= roster.DateTo
                             && (!fillAutomatically || d.Value == DutyCellSource.Manual))
                 .Select(d => d.Key)
-                .ToHashSet())).ToList();
+                .ToHashSet(),
+            m.Canteen.Count == 0 ? null : m.Canteen.ToHashSet())).ToList();
 
         return new DutyEngineInput(roster.DateFrom, roster.DateTo, members, roster.ExemptDays,
             roster.PeoplePerDay, roster.Seed, state, fillAutomatically);
@@ -100,13 +101,25 @@ public static class DutyRosterPlanner
                                                           && !roster.Members[i].Blocked.Contains(day)));
     }
 
-    public static IReadOnlyDictionary<int, int> ShiftsOfDay(DutyRosterData roster, DateOnly day)
+    /// <summary>
+    /// Номери змін на кожен день періоду: по черзі змін (<see cref="DutyRosterEngine.RotateShifts"/>), а в графіках,
+    /// складених до неї (<see cref="DutyRosterData.ShiftRotation"/> вимкнено), - за порядком у списку дня.
+    /// </summary>
+    public static IReadOnlyDictionary<DateOnly, IReadOnlyDictionary<int, int>> ShiftsByDay(DutyRosterData roster)
     {
-        var onDuty = Enumerable.Range(0, roster.Members.Count).Where(i => roster.IsDuty(i, day)).ToList();
-        var manual = onDuty
-            .Where(i => roster.Members[i].Shifts.ContainsKey(day))
-            .ToDictionary(i => i, i => roster.Members[i].Shifts[day]);
-        return DutyRosterEngine.ShiftsOfDay(onDuty, manual);
+        var days = roster.Days.Select(day =>
+        {
+            var onDuty = Enumerable.Range(0, roster.Members.Count).Where(i => roster.IsDuty(i, day)).ToList();
+            var manual = onDuty
+                .Where(i => roster.Members[i].Shifts.ContainsKey(day))
+                .ToDictionary(i => i, i => roster.Members[i].Shifts[day]);
+            return new DutyShiftDay(day, onDuty, manual);
+        }).ToList();
+
+        if (roster.ShiftRotation)
+            return DutyRosterEngine.RotateShifts(roster.Members.Select(m => m.Key).ToList(), days, roster.PeoplePerDay, roster.Seed);
+
+        return days.ToDictionary(d => d.Date, d => DutyRosterEngine.ShiftsOfDay(d.OnDuty, d.ManualShifts));
     }
 
     /// <summary>Хто в цей день стоїть на зміні, яку вручну проставили ще комусь (дві «ІІ» в один день).</summary>

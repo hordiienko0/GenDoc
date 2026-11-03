@@ -100,7 +100,7 @@ public static class DutyRosterPrintLayout
                 Text(days[d].Day.ToString(), 9, bold: true, HorizontalAlignment.Center), null);
         }
 
-        var shiftsByDay = days.ToDictionary(day => day, day => DutyRosterPlanner.ShiftsOfDay(roster, day));
+        var shiftsByDay = DutyRosterPlanner.ShiftsByDay(roster);
         for (var m = 0; m < roster.Members.Count; m++)
         {
             var row = header + 1 + m;
