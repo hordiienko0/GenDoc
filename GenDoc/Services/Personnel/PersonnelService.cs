@@ -185,6 +185,14 @@ namespace GenDoc.Services.Personnel
             }
         }
 
+        public void LogListExport(int count, string filePath)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            _auditLogService.LogExport(db, "Recipient", count,
+                $"Список слухачів: {count} ПІБ → {System.IO.Path.GetFileName(filePath)}");
+            db.SaveChanges();
+        }
+
         public async Task DeleteManyAsync(IReadOnlyList<int> recipientIds)
         {
             using var db = _dbFactory.CreateDbContext();

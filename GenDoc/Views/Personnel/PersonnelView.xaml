@@ -312,10 +312,24 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBox x:Name="SearchBox" Tag="Пошук за ПІБ або посадою… (Ctrl+F)"
                              Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
-                    <Button Grid.Column="1" Content="+ Додати запис" Command="{Binding AddCommand}" Margin="10,0,0,0"/>
+                    <Button Grid.Column="1" Content="Список ПІБ ▾" Style="{StaticResource SecondaryButtonStyle}"
+                            Margin="10,0,0,0" Click="ListNamesButton_Click"
+                            IsEnabled="{Binding HasRows}" ToolTip="{Binding ListNamesToolTip}"
+                            Tag="{Binding}">
+                        <Button.ContextMenu>
+                            <ContextMenu Style="{StaticResource AppContextMenuStyle}">
+                                <MenuItem Header="Копіювати в буфер обміну" Style="{StaticResource AppContextMenuItemStyle}"
+                                          Command="{Binding PlacementTarget.Tag.CopyListenerNamesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                                <MenuItem Header="Зберегти в Excel…" Style="{StaticResource AppContextMenuItemStyle}"
+                                          Command="{Binding PlacementTarget.Tag.SaveListenerNamesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                    </Button>
+                    <Button Grid.Column="2" Content="+ Додати запис" Command="{Binding AddCommand}" Margin="10,0,0,0"/>
                 </Grid>
 
                 <Border Grid.Row="3" Background="{StaticResource AccentSoftBrush}"
@@ -439,8 +453,13 @@
                     </Grid>
                 </Border>
 
-                <TextBlock Grid.Row="5" Text="{Binding FooterText}" FontSize="11.5"
-                           Foreground="{StaticResource TextSecondaryBrush}" Margin="0,6,0,0"/>
+                <DockPanel Grid.Row="5" Margin="0,6,0,0">
+                    <TextBlock DockPanel.Dock="Right" Text="{Binding ListNote}" FontSize="11.5" FontWeight="SemiBold"
+                               Foreground="{StaticResource SuccessBrush}" Margin="12,0,0,0"
+                               TextTrimming="CharacterEllipsis" ToolTip="{Binding ListNote}"/>
+                    <TextBlock Text="{Binding FooterText}" FontSize="11.5" TextTrimming="CharacterEllipsis"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                </DockPanel>
             </Grid>
         </Grid>
 

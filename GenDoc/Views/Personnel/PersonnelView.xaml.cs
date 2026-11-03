@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using GenDoc.ViewModels.Personnel;
@@ -25,6 +26,16 @@ public partial class PersonnelView : UserControl
     {
         if (DataContext is PersonnelViewModel vm)
             await vm.InitializeAsync();
+    }
+
+    private void ListNamesButton_Click(object sender, RoutedEventArgs e)
+    {
+        var button = (Button)sender;
+        if (button.ContextMenu is null) return;
+
+        button.ContextMenu.PlacementTarget = button;
+        button.ContextMenu.Placement = PlacementMode.Bottom;
+        button.ContextMenu.IsOpen = true;
     }
 
     private void OrgTree_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)

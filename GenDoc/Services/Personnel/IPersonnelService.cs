@@ -53,6 +53,7 @@ namespace GenDoc.Services.Personnel
         Task<PersonSaveResult> SaveAsync(PersonEditModel model);
         Task MoveManyAsync(IReadOnlyList<int> recipientIds, int targetNodeId, string sourceBranchName);
         Task DeleteManyAsync(IReadOnlyList<int> recipientIds);
+        void LogListExport(int count, string filePath);
         Task<List<DeletedPersonInfo>> GetDeletedAsync();
         Task<PersonRestoreResult> RestoreAsync(int id);
     }

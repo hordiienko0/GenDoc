@@ -119,7 +119,8 @@ public class SearchApostropheTests
             provider.GetRequiredService<IIntakeService>(),
             new NoDialogs(),
             TestServices.ManualTagForm(db, TestServices.Staff(db, 1), new FakeCurrentUser(), new FakeIntakeAccessor(), 1),
-            new OutputFolderService(db.Factory));
+            new OutputFolderService(db.Factory),
+            new ExportService(db.Factory, new FakeAuditLog(), new XlsxGenerationService()));
         WeakReferenceMessenger.Default.Unregister<CountsChangedMessage>(vm);
         await vm.InitializeAsync();
 

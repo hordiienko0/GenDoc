@@ -12,7 +12,9 @@ using GenDoc.Services.Generation;
 using GenDoc.Services.Intakes;
 using GenDoc.Services.Navigation;
 using GenDoc.Services.Personnel;
+using GenDoc.ViewModels.Common;
 using GenDoc.ViewModels.Shell;
+using Microsoft.Win32;
 
 namespace GenDoc.ViewModels.Personnel
 {
@@ -32,7 +34,9 @@ namespace GenDoc.ViewModels.Personnel
 
         private readonly Services.Generation.IManualTagFormBuilder _manualTagFormBuilder;
         private readonly IOutputFolderService _outputFolderService;
+        private readonly IExportService _exportService;
         private readonly DispatcherTimer _searchDebounceTimer;
+        private readonly DispatcherTimer _listNoteTimer;
 
         private List<PersonRowViewModel> _allRows = new();
         private readonly ViewModels.Shell.ReloadGeneration _reload = new();
@@ -48,10 +52,12 @@ namespace GenDoc.ViewModels.Personnel
             IIntakeService intakeService,
             IDialogService dialogService,
             Services.Generation.IManualTagFormBuilder manualTagFormBuilder,
-            IOutputFolderService outputFolderService)
+            IOutputFolderService outputFolderService,
+            IExportService exportService)
         {
             _manualTagFormBuilder = manualTagFormBuilder;
             _outputFolderService = outputFolderService;
+            _exportService = exportService;
             Tree = tree;
             _personnelService = personnelService;
             _completenessService = completenessService;
@@ -65,6 +71,13 @@ namespace GenDoc.ViewModels.Personnel
             {
                 _searchDebounceTimer.Stop();
                 ApplySearch();
+            };
+
+            _listNoteTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(6) };
+            _listNoteTimer.Tick += (_, _) =>
+            {
+                _listNoteTimer.Stop();
+                ListNote = null;
             };
 
             Tree.LeaveGuard = TryLeaveEditAsync;
@@ -323,6 +336,92 @@ namespace GenDoc.ViewModels.Personnel
                 _generationService, _completenessService, _archiveService, _manualTagFormBuilder,
                 _dialogService, _outputFolderService, people);
             _dialogService.ShowDialog(dialog, Application.Current.MainWindow);
+        }
+
+        [ObservableProperty]
+        private string? listNote;
+
+        public string ListNamesToolTip =>
+            "Повне ПІБ кожного окремим рядком, за абеткою - для списку слухачів.\n"
+            + "Беруться позначені галочкою; якщо не позначено нікого - усі, хто зараз у списку.";
+
+        // Позначені, а якщо нікого - усі видимі в списку (з урахуванням пошуку й «Показувати підпорядковані»).
+        internal IReadOnlyList<string> ListenerNames()
+        {
+            IEnumerable<PersonRowViewModel> source = HasChecked ? CheckedRows : Rows;
+            return source
+                .OrderBy(r => r.LastName, UkrainianCollation.Surname)
+                .ThenBy(r => r.FirstName, UkrainianCollation.Surname)
+                .ThenBy(r => r.MiddleName ?? string.Empty, UkrainianCollation.Surname)
+                .Select(r => NameFormatter.FullName(r.LastName, r.FirstName, r.MiddleName))
+                .ToList();
+        }
+
+        internal Task<ExportResult> WriteListenerNamesAsync(IReadOnlyList<string> names, string filePath)
+        {
+            var columns = new List<ExportColumn<(int Number, string Name)>>
+            {
+                new("№ з/п", x => x.Number),
+                new("Прізвище, ім'я та по батькові", x => x.Name),
+            };
+            return _exportService.ExportToXlsxAsync(
+                names.Select((name, i) => (i + 1, name)), columns, filePath, "Список слухачів");
+        }
+
+        private void ShowListNote(string text)
+        {
+            ListNote = text;
+            _listNoteTimer.Stop();
+            _listNoteTimer.Start();
+        }
+
+        [RelayCommand]
+        private void CopyListenerNames()
+        {
+            var names = ListenerNames();
+            if (names.Count == 0) return;
+
+            try
+            {
+                Clipboard.SetText(string.Join(Environment.NewLine, names));
+            }
+            catch (System.Runtime.InteropServices.ExternalException)
+            {
+                MessageBox.Show(
+                    "Буфер обміну зайнятий іншою програмою. Спробуйте ще раз.",
+                    "Не вдалося скопіювати", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            ShowListNote($"Скопійовано {names.Count} ПІБ - вставте в колонку Excel чи Word (Ctrl+V)");
+        }
+
+        [RelayCommand]
+        private async Task SaveListenerNamesAsync()
+        {
+            var names = ListenerNames();
+            if (names.Count == 0) return;
+
+            var dialog = new SaveFileDialog
+            {
+                FileName = $"список_слухачів_{DateTime.Now:ddMMyyyy}.xlsx",
+                Filter = "Excel файли (*.xlsx)|*.xlsx",
+                DefaultExt = ".xlsx"
+            };
+            if (dialog.ShowDialog() != true || CloudFolderGuard.Blocks(dialog.FileName)) return;
+
+            var result = await WriteListenerNamesAsync(names, dialog.FileName);
+            if (result.Success)
+            {
+                _personnelService.LogListExport(result.RowCount, result.FilePath!);
+                ShowListNote($"Збережено {result.RowCount} ПІБ у файл {System.IO.Path.GetFileName(result.FilePath)}");
+            }
+            else
+            {
+                MessageBox.Show(
+                    $"Не вдалося зберегти список:\n{result.ErrorMessage}",
+                    "Помилка експорту", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         [RelayCommand]
