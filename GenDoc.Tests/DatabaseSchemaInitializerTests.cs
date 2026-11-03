@@ -684,6 +684,41 @@ public class DatabaseSchemaInitializerTests
         Assert.Equal(DBNull.Value, Scalar(connection, """SELECT "ExemptDays" FROM "DutyRosters" WHERE "Id" = 4"""));
     }
 
+    [Fact]
+    public void BackfillDutyRosterFolders_TurnsIntakeAndSubdivisionIntoFoldersAndMarksPeopleAddedByHand()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        Exec(connection, """
+            CREATE TABLE "Intakes" ("Id" INTEGER PRIMARY KEY, "RootOrgNodeId" INTEGER NOT NULL);
+            CREATE TABLE "Recipients" ("Id" INTEGER PRIMARY KEY, "IntakeId" INTEGER NULL);
+            INSERT INTO "Intakes" VALUES (5, 50);
+            INSERT INTO "Recipients" VALUES (1, 5), (2, NULL), (3, 5);
+            """);
+        DatabaseSchemaInitializer.EnsureDutyRosterTables((DbConnection)connection);
+        Assert.Contains("OrgNodeIds", DatabaseSchemaInitializer.GetExistingColumns((DbConnection)connection, "DutyRosters"));
+        Assert.Contains("AddedByHand", DatabaseSchemaInitializer.GetExistingColumns((DbConnection)connection, "DutyRosterMembers"));
+
+        Exec(connection, """
+            INSERT INTO "DutyRosters" ("Id", "DateFrom", "DateTo", "IntakeId", "OrgNodeId", "CreatedAt") VALUES
+                (1, '2026-10-01', '2026-10-31', 5, NULL, '2026-09-30'),
+                (2, '2026-10-01', '2026-10-31', 5, 52, '2026-09-30'),
+                (3, '2026-10-01', '2026-10-31', NULL, NULL, '2026-09-30');
+            INSERT INTO "DutyRosterMembers" ("Id", "RosterId", "RecipientId", "DisplayName") VALUES
+                (10, 1, 1, 'А'), (11, 1, 2, 'Б'), (12, 1, NULL, 'В'),
+                (20, 2, 3, 'Г'),
+                (30, 3, 1, 'А'), (31, 3, NULL, 'В');
+            """);
+
+        DatabaseSchemaInitializer.BackfillDutyRosterFolders((DbConnection)connection);
+
+        Assert.Equal("50", Scalar(connection, """SELECT "OrgNodeIds" FROM "DutyRosters" WHERE "Id" = 1"""));
+        Assert.Equal("52", Scalar(connection, """SELECT "OrgNodeIds" FROM "DutyRosters" WHERE "Id" = 2"""));
+        Assert.Equal(DBNull.Value, Scalar(connection, """SELECT "OrgNodeIds" FROM "DutyRosters" WHERE "Id" = 3"""));
+        Assert.Equal("11,30", Scalar(connection,
+            """SELECT group_concat("Id") FROM (SELECT "Id" FROM "DutyRosterMembers" WHERE "AddedByHand" = 1 ORDER BY "Id")"""));
+    }
+
     private static void Exec(SqliteConnection connection, string sql)
     {
         using var cmd = connection.CreateCommand();

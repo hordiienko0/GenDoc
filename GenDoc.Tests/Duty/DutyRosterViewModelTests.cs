@@ -78,9 +78,68 @@ public class DutyRosterViewModelTests
 
         Assert.True(vm.IsCreating);
         Assert.False(vm.HasRoster);
-        Assert.Equal("Набір №29", vm.NewIntake?.Label);
-        Assert.Equal("Увесь набір", vm.NewOrgNode?.Label);
+        var intake = Assert.Single(vm.Folders);
+        Assert.Equal("Набір №29", intake.Name);
+        Assert.True(intake.IsChecked);
+        Assert.Equal(new[] { intake.Id }, vm.PickedFolderIds);
+        Assert.Equal("Разом 3 особи з 1 папки, вкладені папки входять.", vm.NewPeopleSummary);
         Assert.Equal(DateTime.Today, vm.NewDateFrom);
+    }
+
+    [Fact]
+    public async Task TickingAFolderCoversItsSubfoldersAndTheNextRosterKeepsTheChoice()
+    {
+        using var db = new TestDb();
+        SeedIntake(db, 4);
+        int groupId, secondedId;
+        using (var ctx = db.Factory.CreateDbContext())
+        {
+            var groupNode = new OrgNode { Name = "1 група", ParentId = 1, Path = "/1/2/", Depth = 1 };
+            var secondedNode = new OrgNode { Name = "Командировані", Depth = 0, SortOrder = 1 };
+            ctx.OrgNodes.AddRange(groupNode, secondedNode);
+            ctx.SaveChanges();
+            secondedNode.Path = $"/{secondedNode.Id}/";
+            ctx.Recipients.AddRange(Enumerable.Range(1, 2).Select(i => new Recipient
+            {
+                LastName = $"Командирований{i}", FirstName = "Іван", Rank = "сержант", OrgNodeId = secondedNode.Id
+            }));
+            ctx.SaveChanges();
+            (groupId, secondedId) = (groupNode.Id, secondedNode.Id);
+        }
+        var service = new DutyRosterService(db.Factory, new FakeAuditLog(), new FakeCurrentUser(), TestServices.UserSettings(db, null));
+        var vm = new DutyRosterViewModel(service, new ActiveIntakeState(new NoActiveIntake()));
+        await vm.InitializeCommand.ExecuteAsync(null);
+        await vm.PendingWork;
+
+        var intake = vm.Folders.Single(f => f.Name == "Набір №29");
+        var group = Assert.Single(intake.Children);
+        var seconded = vm.Folders.Single(f => f.Id == secondedId);
+        Assert.True(group.IsCovered);
+        Assert.True(group.IsTicked);
+        Assert.False(group.CanTick);
+
+        group.IsTicked = true;
+        seconded.IsTicked = true;
+        Assert.Equal(new[] { intake.Id, secondedId }, vm.PickedFolderIds);
+        Assert.Equal("Разом 6 осіб з 2 папок, вкладені папки входять.", vm.NewPeopleSummary);
+
+        intake.IsTicked = false;
+        Assert.False(group.IsCovered);
+        Assert.False(group.IsTicked);
+
+        vm.NewDateFrom = From.ToDateTime(TimeOnly.MinValue);
+        vm.NewDateTo = From.AddDays(9).ToDateTime(TimeOnly.MinValue);
+        vm.NewWeekendsGreen = false;
+        intake.IsTicked = true;
+        await vm.CreateCommand.ExecuteAsync(null);
+
+        Assert.Equal(6, vm.Rows.Count);
+        Assert.EndsWith("· Набір №29, Командировані", vm.RosterCaption);
+
+        await vm.StartCreateCommand.ExecuteAsync(null);
+        Assert.Equal(new[] { intake.Id, secondedId }, vm.PickedFolderIds);
+        Assert.True(vm.Folders.Single(f => f.Id == secondedId).IsChecked);
+        Assert.Contains(vm.Folders.SelectMany(f => f.SelfAndDescendants()), f => f.Id == groupId && f.IsCovered);
     }
 
     [Fact]
@@ -257,7 +316,7 @@ public class DutyRosterViewModelTests
         Assert.All(vm.Rows.SelectMany(r => r.Cells).Where(c => c.IsDuty), c => Assert.Equal("н", c.Text));
         Assert.True((await service.LoadAsync(vm.Roster!.Id))!.DutyMarkOnly);
 
-        var next = await service.CreateAsync(new DutyRosterCreateRequest(From.AddDays(20), From.AddDays(30), vm.Roster.IntakeId, null, true, WeekendsGreen: false));
+        var next = await service.CreateAsync(new DutyRosterCreateRequest(From.AddDays(20), From.AddDays(30), vm.Roster.FolderIds, true, WeekendsGreen: false));
         Assert.True(next.DutyMarkOnly);
     }
 
@@ -287,9 +346,9 @@ public class DutyRosterViewModelTests
         await vm.InitializeCommand.ExecuteAsync(null);
         await vm.PendingWork;
 
-        vm.NewIntake = vm.Intakes.Single(i => i.Id == 0);
-        await vm.PendingWork;
-        Assert.False(vm.NewIntakeHasNodes);
+        Assert.Single(vm.Folders).IsChecked = false;
+        Assert.Empty(vm.PickedFolderIds);
+        Assert.StartsWith("Папок не відмічено", vm.NewPeopleSummary);
         vm.NewDateFrom = From.ToDateTime(TimeOnly.MinValue);
         vm.NewDateTo = From.AddDays(5).ToDateTime(TimeOnly.MinValue);
         vm.NewWeekendsGreen = false;
@@ -378,7 +437,7 @@ public class DutyRosterViewModelTests
     }
 
     [Fact]
-    public async Task CanteenBrushPutsYellowNThatTheQueueWorksAround()
+    public async Task CanteenBrushPutsYellowKThatTheQueueWorksAround()
     {
         using var db = new TestDb();
         var (vm, service) = await CreatedRoster(db);
@@ -391,7 +450,7 @@ public class DutyRosterViewModelTests
 
         Assert.True(cell.IsCanteen);
         Assert.False(cell.IsDuty);
-        Assert.Equal("н", cell.Text);
+        Assert.Equal("к", cell.Text);
         Assert.Equal(3, vm.Days[4].Count);
         var saved = (await service.LoadAsync(vm.Roster!.Id))!;
         var index = vm.Rows.IndexOf(cell.Row);

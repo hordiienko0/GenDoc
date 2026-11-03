@@ -7,8 +7,8 @@ using System.Windows.Media;
 namespace GenDoc.Services.Duty;
 
 /// <summary>
-/// Аркуш графіка для друку й PDF - той самий лист, що в Excel: A4 альбомна, таблиця на всю ширину поля друку
-/// і по центру сторінки. Ширини колонок, рядки й місця блоків змін беруться з <see cref="DutyRosterXlsxExporter.Layout"/>,
+/// Аркуш графіка для друку й PDF - той самий лист, що в Excel: A4 альбомна, таблиця на все поле друку
+/// і по центру сторінки. Ширини колонок, висоти рядків і місця блоків змін беруться з <see cref="DutyRosterXlsxExporter.Layout"/>,
 /// тож друк і Excel не розходяться. Кольори - кольори документа, а не теми застосунку.
 /// </summary>
 public static class DutyRosterPrintLayout
@@ -23,9 +23,6 @@ public static class DutyRosterPrintLayout
     private const double DipPerPixel = DutyRosterXlsxExporter.PointsPerPixel * 96 / 72;
 
     private const double Point = 96.0 / 72;
-    private const double RowHeight = 15 * Point;
-    private const double TitleRowHeight = 16 * Point;
-    private const double HeaderRowHeight = 20 * Point;
     private const double CellPadding = 2;
 
     private static readonly Brush Line = Brushes.Black;
@@ -81,7 +78,7 @@ public static class DutyRosterPrintLayout
             sheet.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(DutyRosterXlsxExporter.Pixels(width) * DipPerPixel) });
         for (var row = 1; row <= layout.LastRow; row++)
         {
-            var height = row <= layout.TitleLines.Count ? TitleRowHeight : row == layout.HeaderRow ? HeaderRowHeight : RowHeight;
+            var height = layout.RowHeight(row) * Point;
             sheet.RowDefinitions.Add(new RowDefinition { Height = new GridLength(height) });
         }
 

@@ -12,7 +12,12 @@ namespace GenDoc.Models
         public DateOnly DateTo { get; set; }
 
         public int? IntakeId { get; set; }
+
+        /// <summary>Одна папка графіка до v32; тепер склад задає <see cref="OrgNodeIds"/>.</summary>
         public int? OrgNodeId { get; set; }
+
+        /// <summary>Папки, чиї люди в графіку (разом із вкладеними), Id через кому; порожньо - людей вписано вручну.</summary>
+        public string? OrgNodeIds { get; set; }
 
         public int PeoplePerDay { get; set; } = 3;
         public int Seed { get; set; }
@@ -61,6 +66,9 @@ namespace GenDoc.Models
 
         public int SortOrder { get; set; }
         public bool ExemptWholePeriod { get; set; }
+
+        /// <summary>Доданий кнопкою «Додати», а не з папок графіка - наступний графік бере його теж.</summary>
+        public bool AddedByHand { get; set; }
 
         public ICollection<DutyRosterCell> Cells { get; set; } = new List<DutyRosterCell>();
     }

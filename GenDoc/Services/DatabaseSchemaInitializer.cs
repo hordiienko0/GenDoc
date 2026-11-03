@@ -7,7 +7,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 31;
+    private const int CurrentSchemaVersion = 32;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -171,6 +171,18 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     private static readonly (string Name, string Type)[] DutyRosterCellColumnsV31 =
     {
         ("Shift", "INTEGER")
+    };
+
+    /// <summary>v32: склад графіка - кілька папок (Id через кому) замість набору з одним підрозділом.</summary>
+    private static readonly (string Name, string Type)[] DutyRosterColumnsV32 =
+    {
+        ("OrgNodeIds", "TEXT")
+    };
+
+    /// <summary>v32: людина додана в графік кнопкою «Додати», а не з його папок.</summary>
+    private static readonly (string Name, string Type)[] DutyRosterMemberColumnsV32 =
+    {
+        ("AddedByHand", "INTEGER NOT NULL DEFAULT 0")
     };
 
     private static readonly (string Name, string Type)[] WeaponColumnsV18 =
@@ -646,6 +658,20 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                     Description = "Графік чергувань: вихідні лише зелені, наряди на них ставляться; жовта «н» - столова; зміна вручну"
                 });
                 currentVersion = 31;
+            }
+
+            if (currentVersion < 32)
+            {
+                EnsureDutyRosterTables(db);
+                BackfillDutyRosterFolders(db);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 32,
+                    AppliedAt = DateTime.Now,
+                    Description = "Графік чергувань: склад - вибрані папки (кілька, з будь-якого місця дерева) замість набору з підрозділом"
+                });
+                currentVersion = 32;
             }
         }
 
@@ -1152,6 +1178,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                     "DateTo" TEXT NOT NULL,
                     "IntakeId" INTEGER NULL,
                     "OrgNodeId" INTEGER NULL,
+                    "OrgNodeIds" TEXT NULL,
                     "PeoplePerDay" INTEGER NOT NULL DEFAULT 3,
                     "Seed" INTEGER NOT NULL DEFAULT 0,
                     "Heading" TEXT NOT NULL DEFAULT '',
@@ -1183,6 +1210,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                     "DisplayName" TEXT NOT NULL DEFAULT '',
                     "SortOrder" INTEGER NOT NULL DEFAULT 0,
                     "ExemptWholePeriod" INTEGER NOT NULL DEFAULT 0,
+                    "AddedByHand" INTEGER NOT NULL DEFAULT 0,
                     CONSTRAINT "FK_DutyRosterMembers_DutyRosters_RosterId"
                         FOREIGN KEY ("RosterId") REFERENCES "DutyRosters" ("Id") ON DELETE CASCADE
                 );
@@ -1211,6 +1239,8 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         AddMissingColumns(connection, "DutyRosters", DutyRosterColumnsV29);
         AddMissingColumns(connection, "DutyRosterMembers", DutyRosterMemberColumnsV29);
         AddMissingColumns(connection, "DutyRosterCells", DutyRosterCellColumnsV31);
+        AddMissingColumns(connection, "DutyRosters", DutyRosterColumnsV32);
+        AddMissingColumns(connection, "DutyRosterMembers", DutyRosterMemberColumnsV32);
 
         using var index = connection.CreateCommand();
         index.CommandText = """
@@ -1752,6 +1782,40 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
         tag.Value = "{{назва_вч}}";
         heal.Parameters.Add(tag);
         heal.ExecuteNonQuery();
+    }
+
+    private static void BackfillDutyRosterFolders(AppDbContext db)
+    {
+        var connection = db.Database.GetDbConnection();
+        var wasClosed = connection.State != System.Data.ConnectionState.Open;
+        if (wasClosed) connection.Open();
+        try { BackfillDutyRosterFolders(connection); }
+        finally { if (wasClosed) connection.Close(); }
+    }
+
+    /// <summary>
+    /// Графік до v32 брав увесь набір або один його підрозділ - тепер це папка графіка (корінь набору чи підрозділ),
+    /// тож наступний графік того самого складу далі повторює попередній і продовжує його чергу.
+    /// «Додано вручну» - ті, кого старе правило переносило в новий графік поза набором: постійний склад
+    /// у графіку набору і всі люди з бази в графіку без набору.
+    /// </summary>
+    internal static void BackfillDutyRosterFolders(System.Data.Common.DbConnection connection)
+    {
+        if (!TableExists(connection, "DutyRosters")) return;
+
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            UPDATE "DutyRosters"
+            SET "OrgNodeIds" = CAST(COALESCE("OrgNodeId",
+                (SELECT "RootOrgNodeId" FROM "Intakes" WHERE "Intakes"."Id" = "DutyRosters"."IntakeId")) AS TEXT)
+            WHERE "OrgNodeIds" IS NULL AND "IntakeId" IS NOT NULL;
+
+            UPDATE "DutyRosterMembers" SET "AddedByHand" = 1
+            WHERE "RecipientId" IS NOT NULL AND (
+                "RosterId" IN (SELECT "Id" FROM "DutyRosters" WHERE "IntakeId" IS NULL)
+                OR "RecipientId" IN (SELECT "Id" FROM "Recipients" WHERE "IntakeId" IS NULL));
+            """;
+        command.ExecuteNonQuery();
     }
 
     private static void StripWeekendExemptDays(AppDbContext db)

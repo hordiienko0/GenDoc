@@ -2,24 +2,27 @@ using GenDoc.Models.Enums;
 
 namespace GenDoc.Services.Duty;
 
-public sealed record DutyRosterListItem(int Id, DateOnly DateFrom, DateOnly DateTo, string? IntakeLabel)
+public sealed record DutyRosterListItem(int Id, DateOnly DateFrom, DateOnly DateTo, string? FoldersLabel)
 {
-    public string Label => IntakeLabel is null
+    public string Label => FoldersLabel is null
         ? DutyRosterText.PeriodLabel(DateFrom, DateTo)
-        : $"{DutyRosterText.PeriodLabel(DateFrom, DateTo)} · {IntakeLabel}";
+        : $"{DutyRosterText.PeriodLabel(DateFrom, DateTo)} · {FoldersLabel}";
 }
 
-public sealed record DutyIntakeOption(int Id, string Label, DateOnly DateStart, DateOnly DateEnd);
-
-public sealed record DutyOrgNodeOption(int? Id, string Label);
+/// <summary>
+/// Папка дерева для вибору складу графіка. <see cref="PeopleIds"/> - хто піде в графік з цієї папки:
+/// люди її і вкладених папок, а коренева папка набору бере й людей набору без папки.
+/// </summary>
+public sealed record DutyFolderOption(int Id, int? ParentId, string Name, int? IntakeId, bool IsIntakeRoot, IReadOnlyList<int> PeopleIds);
 
 public sealed record DutyPersonOption(int RecipientId, string DisplayName, string Hint)
 {
     public string Label => string.IsNullOrEmpty(Hint) ? DisplayName : $"{DisplayName} · {Hint}";
 }
 
+/// <summary>Новий графік з людей вибраних папок (разом із вкладеними); без папок - людей вписують вручну.</summary>
 public sealed record DutyRosterCreateRequest(
-    DateOnly DateFrom, DateOnly DateTo, int? IntakeId, int? OrgNodeId, bool UseEventExemptions, bool WeekendsGreen = true);
+    DateOnly DateFrom, DateOnly DateTo, IReadOnlyCollection<int> FolderIds, bool UseEventExemptions, bool WeekendsGreen = true);
 
 /// <summary>Налаштування графіка, що запам'ятовуються окремо для кожного курсового (профілю).</summary>
 public sealed class DutyRosterPrefs
@@ -70,13 +73,16 @@ public sealed class DutyRosterMemberData
     public string DisplayName { get; set; } = string.Empty;
     public bool ExemptWholePeriod { get; set; }
 
+    /// <summary>Доданий кнопкою «Додати», а не з папок графіка - наступний графік бере його теж.</summary>
+    public bool AddedByHand { get; set; }
+
     public Dictionary<DateOnly, DutyCellSource> Duties { get; } = new();
     public Dictionary<DateOnly, DutyCellSource> Exemptions { get; } = new();
 
     /// <summary>Дні «×»: знятий вручну авто-наряд - програма сюди людину не ставить, на листі клітинка порожня.</summary>
     public HashSet<DateOnly> Blocked { get; } = new();
 
-    /// <summary>Жовта «н» - наряд по столовій: ставиться лише вручну, у чергу нарядів не рахується.</summary>
+    /// <summary>Жовта «к» - наряд по столовій: ставиться лише вручну, у чергу нарядів не рахується.</summary>
     public HashSet<DateOnly> Canteen { get; } = new();
 
     /// <summary>Номер зміни, проставлений вручну для дня наряду; решта в цей день - за порядком у списку.</summary>
@@ -93,16 +99,21 @@ public sealed class DutyRosterData
     public int Id { get; set; }
     public DateOnly DateFrom { get; set; }
     public DateOnly DateTo { get; set; }
+    /// <summary>Набір, якщо всі папки графіка з одного набору - тоді «Додати» пропонує його людей і постійний склад.</summary>
     public int? IntakeId { get; set; }
-    public int? OrgNodeId { get; set; }
-    public string? IntakeLabel { get; set; }
+
+    /// <summary>Папки, чиї люди в графіку (без вкладених у вже вибрані); порожньо - людей вписано вручну.</summary>
+    public List<int> FolderIds { get; } = new();
+
+    /// <summary>Назви папок графіка для списку й підпису: «Набір №29, Командировані».</summary>
+    public string? FoldersLabel { get; set; }
     public int PeoplePerDay { get; set; } = 3;
     public int Seed { get; set; }
     public string Heading { get; set; } = DutyRosterText.DefaultHeading;
     public DutyRosterFooter Footer { get; set; } = new();
     public HashSet<DateOnly> ExemptDays { get; } = new();
 
-    /// <summary>Кого прибрали з графіка - наступний графік цього набору їх не бере.</summary>
+    /// <summary>Кого прибрали з графіка - наступний графік з тих самих папок їх не бере.</summary>
     public HashSet<int> ExcludedRecipientIds { get; } = new();
 
     public bool UseEventExemptions { get; set; } = true;

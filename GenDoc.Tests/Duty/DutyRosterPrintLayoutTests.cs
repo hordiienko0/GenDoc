@@ -81,7 +81,7 @@ public class DutyRosterPrintLayoutTests
         Brush? BackgroundOf(string text) => Texts(sheet).Where(t => t.Text == text).Select(t => (t.Parent as Border)?.Background).First();
         Color ColorOf(Brush? brush) => ((SolidColorBrush)brush!).Color;
 
-        Assert.Equal((Color)ColorConverter.ConvertFromString(DutyRosterXlsxExporter.CanteenFillHex), ColorOf(BackgroundOf("н")));
+        Assert.Equal((Color)ColorConverter.ConvertFromString(DutyRosterXlsxExporter.CanteenFillHex), ColorOf(BackgroundOf("к")));
         Assert.Equal((Color)ColorConverter.ConvertFromString(DutyRosterXlsxExporter.ExemptFillHex), ColorOf(BackgroundOf("ДНІСТРЯНСЬКИЙ В.")));
         Assert.Null(BackgroundOf("КОПЧАК Б.М."));
 
@@ -115,6 +115,22 @@ public class DutyRosterPrintLayoutTests
         Assert.True(((Grid)fit.Child).DesiredSize.Width > DutyRosterPrintLayout.PrintableSize.Width);
         Assert.True(fit.RenderSize.Width <= DutyRosterPrintLayout.PrintableSize.Width + 0.5);
         Assert.True(fit.RenderSize.Height <= DutyRosterPrintLayout.PrintableSize.Height + 0.5);
+    });
+
+    /// <summary>Як на фото: 43 дні й 55 осіб - лист зменшено під висоту, а таблиця все одно на всю ширину аркуша.</summary>
+    [Fact]
+    public void BigGroupFillsBothTheWidthAndTheHeightOfThePage() => Sta(() =>
+    {
+        var roster = new DutyRosterData { DateFrom = new DateOnly(2026, 11, 3), DateTo = new DateOnly(2026, 12, 15), Seed = 7 };
+        for (var p = 1; p <= 55; p++)
+            roster.Members.Add(new DutyRosterMemberData { DisplayName = $"ПРІЗВИЩЕ{p} А.Б." });
+
+        var document = DutyRosterPrintLayout.Document(roster);
+        var fit = (Viewbox)((Grid)document.Pages[0].Child.Children[0]).Children[0];
+        var printable = DutyRosterPrintLayout.PrintableSize;
+
+        Assert.InRange(fit.RenderSize.Width, 0.97 * printable.Width, printable.Width + 0.5);
+        Assert.InRange(fit.RenderSize.Height, 0.97 * printable.Height, printable.Height + 0.5);
     });
 
     [Theory]

@@ -21,8 +21,6 @@ public partial class DutyRosterViewModel : ObservableObject
     private const string Caption = "Графік чергувань";
     private const int ListedWarnings = 6;
 
-    private static readonly DutyIntakeOption NoIntake = new(0, "Без набору - людей вписати вручну", default, default);
-
     private readonly IDutyRosterService _service;
     private readonly ActiveIntakeState _activeIntake;
     private readonly SemaphoreSlim _saveLock = new(1, 1);
@@ -57,8 +55,8 @@ public partial class DutyRosterViewModel : ObservableObject
     }
 
     public ObservableCollection<DutyRosterListItem> Rosters { get; } = new();
-    public ObservableCollection<DutyIntakeOption> Intakes { get; } = new();
-    public ObservableCollection<DutyOrgNodeOption> OrgNodes { get; } = new();
+    /// <summary>Дерево папок нового графіка: чиї люди підуть у графік.</summary>
+    public ObservableCollection<DutyFolderViewModel> Folders { get; } = new();
     public ObservableCollection<DutyDayViewModel> Days { get; } = new();
     public ObservableCollection<DutyRowViewModel> Rows { get; } = new();
     public ObservableCollection<DutyShiftEditViewModel> Shifts { get; } = new();
@@ -75,8 +73,7 @@ public partial class DutyRosterViewModel : ObservableObject
 
     [ObservableProperty] private DateTime? _newDateFrom;
     [ObservableProperty] private DateTime? _newDateTo;
-    [ObservableProperty, NotifyPropertyChangedFor(nameof(NewIntakeHasNodes))] private DutyIntakeOption? _newIntake;
-    [ObservableProperty] private DutyOrgNodeOption? _newOrgNode;
+    [ObservableProperty] private string _newPeopleSummary = string.Empty;
     [ObservableProperty] private bool _newUseEventExemptions = true;
     [ObservableProperty] private bool _newWeekendsGreen = true;
     [ObservableProperty] private string? _createError;
@@ -117,7 +114,6 @@ public partial class DutyRosterViewModel : ObservableObject
     public bool ShowGridArea => HasRoster || !IsCreating;
     public bool ShowGrid => HasRoster && !IsSettingsOpen;
     public bool ShowSettings => HasRoster && IsSettingsOpen;
-    public bool NewIntakeHasNodes => NewIntake is not null && NewIntake.Id != NoIntake.Id;
 
     public bool IsDutyBrush
     {
@@ -166,10 +162,6 @@ public partial class DutyRosterViewModel : ObservableObject
     {
         if (_initialized) return;
         _initialized = true;
-
-        Intakes.Clear();
-        foreach (var intake in await _service.GetIntakesAsync()) Intakes.Add(intake);
-        Intakes.Add(NoIntake);
 
         await ReloadListAsync(null);
         if (Rosters.Count == 0) await StartCreateAsync();
@@ -273,10 +265,8 @@ public partial class DutyRosterViewModel : ObservableObject
         NewDateFrom = start.ToDateTime(TimeOnly.MinValue);
         NewDateTo = start.AddMonths(1).AddDays(-1).ToDateTime(TimeOnly.MinValue);
 
-        var activeId = _activeIntake.Current?.Id;
-        NewIntake = Intakes.FirstOrDefault(i => i.Id == activeId)
-                    ?? Intakes.FirstOrDefault(i => i.Id != NoIntake.Id)
-                    ?? NoIntake;
+        var folders = await _service.GetFoldersAsync();
+        BuildFolders(folders, _roster is { FolderIds.Count: > 0 } ? _roster.FolderIds : DefaultFolderIds(folders));
         var prefs = await _service.GetUserPrefsAsync();
         NewUseEventExemptions = prefs.UseEventExemptions;
         NewWeekendsGreen = prefs.WeekendsGreen;
@@ -290,19 +280,55 @@ public partial class DutyRosterViewModel : ObservableObject
         CreateError = null;
     }
 
-    partial void OnNewIntakeChanged(DutyIntakeOption? value) => Track(LoadOrgNodesAsync);
-
-    private async Task LoadOrgNodesAsync()
+    /// <summary>Без відкритого графіка - активний набір, а як його немає, то останній створений.</summary>
+    private IReadOnlyList<int> DefaultFolderIds(IReadOnlyList<DutyFolderOption> folders)
     {
-        OrgNodes.Clear();
-        if (NewIntake is null || NewIntake.Id == NoIntake.Id)
+        var roots = folders.Where(f => f.IsIntakeRoot).ToList();
+        var root = roots.FirstOrDefault(f => f.Id == _activeIntake.Current?.RootOrgNodeId)
+                   ?? roots.MaxBy(f => f.IntakeId);
+        return root is null ? Array.Empty<int>() : new[] { root.Id };
+    }
+
+    /// <summary>Дерево з відміченими папками; гілки до відмічених розгорнуті, щоб їх було видно одразу.</summary>
+    private void BuildFolders(IReadOnlyList<DutyFolderOption> options, IReadOnlyCollection<int> checkedIds)
+    {
+        Folders.Clear();
+        var byId = new Dictionary<int, DutyFolderViewModel>();
+        foreach (var option in options)
         {
-            NewOrgNode = null;
+            var parent = option.ParentId is int parentId ? byId.GetValueOrDefault(parentId) : null;
+            var folder = new DutyFolderViewModel(option, parent, UpdatePeopleSummary);
+            byId[option.Id] = folder;
+            (parent?.Children ?? Folders).Add(folder);
+        }
+
+        foreach (var folder in Folders) folder.IsExpanded = true;
+        foreach (var id in checkedIds)
+        {
+            if (!byId.TryGetValue(id, out var folder)) continue;
+            folder.IsChecked = true;
+            for (var up = folder.Parent; up is not null; up = up.Parent) up.IsExpanded = true;
+        }
+        UpdatePeopleSummary();
+    }
+
+    private IEnumerable<DutyFolderViewModel> AllFolders() => Folders.SelectMany(f => f.SelfAndDescendants());
+
+    /// <summary>Відмічені папки без вкладених у вже відмічені.</summary>
+    public IReadOnlyList<int> PickedFolderIds => AllFolders().Where(f => f.IsPicked).Select(f => f.Id).ToList();
+
+    private void UpdatePeopleSummary()
+    {
+        var picked = AllFolders().Where(f => f.IsPicked).ToList();
+        if (picked.Count == 0)
+        {
+            NewPeopleSummary = "Папок не відмічено - графік буде порожній, людей впишете вручну на вкладці «Склад».";
             return;
         }
 
-        foreach (var node in await _service.GetOrgNodesAsync(NewIntake.Id)) OrgNodes.Add(node);
-        NewOrgNode = OrgNodes.FirstOrDefault();
+        var people = picked.SelectMany(f => f.Option.PeopleIds).Distinct().Count();
+        NewPeopleSummary = $"Разом {people} {PluralHelper.Pluralize(people, "особа", "особи", "осіб")} "
+                           + $"з {picked.Count} {PluralHelper.Pluralize(picked.Count, "папки", "папок", "папок")}, вкладені папки входять.";
     }
 
     [RelayCommand]
@@ -314,13 +340,12 @@ public partial class DutyRosterViewModel : ObservableObject
             return;
         }
 
-        var intakeId = NewIntake is null || NewIntake.Id == NoIntake.Id ? (int?)null : NewIntake.Id;
         IsBusy = true;
         try
         {
             var roster = await _service.CreateAsync(new DutyRosterCreateRequest(
                 DateOnly.FromDateTime(from), DateOnly.FromDateTime(to),
-                intakeId, intakeId is null ? null : NewOrgNode?.Id, NewUseEventExemptions, NewWeekendsGreen));
+                PickedFolderIds, NewUseEventExemptions, NewWeekendsGreen));
             CreateError = null;
             IsCreating = false;
             await ReloadListAsync(roster.Id);
@@ -394,9 +419,9 @@ public partial class DutyRosterViewModel : ObservableObject
     {
         if (_roster is null) return;
         TitlePreview = string.Join("\n", DutyRosterText.TitleLines(_roster.Heading, _roster.DateFrom, _roster.DateTo));
-        RosterCaption = _roster.IntakeLabel is null
+        RosterCaption = _roster.FoldersLabel is null
             ? DutyRosterText.PeriodLabel(_roster.DateFrom, _roster.DateTo)
-            : $"{DutyRosterText.PeriodLabel(_roster.DateFrom, _roster.DateTo)} · {_roster.IntakeLabel}";
+            : $"{DutyRosterText.PeriodLabel(_roster.DateFrom, _roster.DateTo)} · {_roster.FoldersLabel}";
         CarryOverText = !_roster.CarryOverBalance
             ? "Баланс з минулого графіка вимкнено - черга починається з нуля."
             : _carryOver is null
@@ -466,14 +491,14 @@ public partial class DutyRosterViewModel : ObservableObject
 
                 var shiftsOfDay = shifts[cell.Date];
                 cell.Text = isDuty ? DutyRosterPlanner.DutyText(_roster, shiftsOfDay, i)
-                    : isCanteen ? DutyRosterXlsxExporter.DutyMark
+                    : isCanteen ? DutyRosterXlsxExporter.CanteenMark
                     : cell.IsBlocked ? "×" : string.Empty;
                 cell.Hint = isDuty
                     ? (cell.IsAuto ? "Поставила програма" : "Поставлено вручну")
                       + (shiftsOfDay.TryGetValue(i, out var shift)
                           ? $", {DutyRosterEngine.RomanShift(shift)} зміна ({(member.Shifts.ContainsKey(cell.Date) ? "проставлена вручну" : "порядок у списку дня")})"
                           : string.Empty)
-                    : isCanteen ? "Столова (жовта «н», лише вручну)" + (cell.IsExempt ? " - але людина в цей день звільнена" : string.Empty)
+                    : isCanteen ? "Столова (жовта «к», лише вручну)" + (cell.IsExempt ? " - але людина в цей день звільнена" : string.Empty)
                     : isEvent ? "Звільнений: відпустка, шпиталь або відрядження"
                     : cell.IsExempt ? "Звільнений від наряду"
                     : cell.IsBlocked ? "Не ставити в цей день (у друк не йде)"
@@ -518,7 +543,7 @@ public partial class DutyRosterViewModel : ObservableObject
             lines.Add("Одна зміна вручну двом людям: " + Listed(clashDays.Select(d => $"{d:dd.MM}")));
 
         var days = _roster.DateTo.DayNumber - _roster.DateFrom.DayNumber + 1;
-        var scale = DutyRosterXlsxExporter.PrintScale(days, _roster.Members.Count);
+        var scale = DutyRosterXlsxExporter.PrintScale(_roster);
         if (scale < DutyRosterXlsxExporter.ReadableScale)
             lines.Add($"Аркуш A4: {days} {PluralHelper.Pluralize(days, "день", "дні", "днів")}, {_roster.Members.Count} {PluralHelper.Pluralize(_roster.Members.Count, "особа", "особи", "осіб")} - друк дрібний (≈ {scale:P0}). Краще до 40 днів або два графіки.");
 
@@ -789,7 +814,7 @@ public partial class DutyRosterViewModel : ObservableObject
     private async Task AddPersonAsync()
     {
         if (_roster is null || PersonToAdd is not { } person) return;
-        await AddMemberAsync(new DutyRosterMemberData { RecipientId = person.RecipientId, DisplayName = person.DisplayName });
+        await AddMemberAsync(new DutyRosterMemberData { RecipientId = person.RecipientId, DisplayName = person.DisplayName, AddedByHand = true });
         PersonToAdd = null;
     }
 
@@ -851,7 +876,7 @@ public partial class DutyRosterViewModel : ObservableObject
     private async Task ClearManualAsync()
     {
         if (_roster is null) return;
-        if (MessageBox.Show("Зняти всі ручні «н» і «×»? Звільнення і жовті «н» (столова) лишаться, решту програма розставить заново.", Caption,
+        if (MessageBox.Show("Зняти всі ручні «н» і «×»? Звільнення і жовті «к» (столова) лишаться, решту програма розставить заново.", Caption,
                 MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
 
         await ClearManualCoreAsync();

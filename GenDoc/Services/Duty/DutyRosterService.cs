@@ -34,44 +34,33 @@ public class DutyRosterService : IDutyRosterService
         using var db = _dbFactory.CreateDbContext();
         var rosters = await db.DutyRosters.AsNoTracking()
             .OrderByDescending(r => r.DateFrom).ThenByDescending(r => r.Id)
-            .Select(r => new { r.Id, r.DateFrom, r.DateTo, r.IntakeId })
+            .Select(r => new { r.Id, r.DateFrom, r.DateTo, r.OrgNodeIds })
             .ToListAsync();
 
-        var labels = await IntakeLabelsAsync(db, rosters.Select(r => r.IntakeId));
+        var labels = await FoldersLabelsAsync(db, rosters.Select(r => r.OrgNodeIds));
         return rosters
             .Select(r => new DutyRosterListItem(r.Id, r.DateFrom, r.DateTo,
-                r.IntakeId is int id && labels.TryGetValue(id, out var label) ? label : null))
+                r.OrgNodeIds is { } key && labels.TryGetValue(key, out var label) ? label : null))
             .ToList();
     }
 
-    public async Task<IReadOnlyList<DutyIntakeOption>> GetIntakesAsync()
+    public async Task<IReadOnlyList<DutyFolderOption>> GetFoldersAsync()
     {
         using var db = _dbFactory.CreateDbContext();
-        var intakes = await db.Intakes.AsNoTracking()
-            .OrderByDescending(i => i.DateStart).ThenByDescending(i => i.Number)
-            .ToListAsync();
-        return intakes
-            .Select(i => new DutyIntakeOption(i.Id, IntakeLabel.Of(i.Number, i.DisplayNumber), i.DateStart, i.DateEnd))
-            .ToList();
-    }
-
-    public async Task<IReadOnlyList<DutyOrgNodeOption>> GetOrgNodesAsync(int intakeId)
-    {
-        using var db = _dbFactory.CreateDbContext();
-        var options = new List<DutyOrgNodeOption> { new(null, "Увесь набір") };
-
-        var rootId = await db.Intakes.Where(i => i.Id == intakeId).Select(i => (int?)i.RootOrgNodeId).FirstOrDefaultAsync();
-        var root = rootId is int id ? await db.OrgNodes.AsNoTracking().FirstOrDefaultAsync(n => n.Id == id) : null;
-        if (root is null) return options;
-
         var nodes = await db.OrgNodes.AsNoTracking()
-            .Where(n => n.Path.StartsWith(root.Path) && n.Id != root.Id)
-            .OrderBy(n => n.Path)
+            .OrderBy(n => n.Depth).ThenBy(n => n.SortOrder).ThenBy(n => n.Name)
             .ToListAsync();
+        var intakeByRoot = await IntakeByRootAsync(db);
+        var byFolder = await PeopleByFolderAsync(db);
 
-        options.AddRange(nodes.Select(n =>
-            new DutyOrgNodeOption(n.Id, new string(' ', Math.Max(0, n.Depth - root.Depth - 1) * 3) + n.Name)));
-        return options;
+        return nodes
+            .Select(n =>
+            {
+                var isRoot = intakeByRoot.TryGetValue(n.Id, out var rootOf);
+                var people = byFolder.TryGetValue(n.Id, out var ids) ? ids.Order().ToList() : new List<int>();
+                return new DutyFolderOption(n.Id, n.ParentId, n.Name, n.IntakeId ?? (isRoot ? rootOf : null), isRoot, people);
+            })
+            .ToList();
     }
 
     public async Task<IReadOnlyList<DutyPersonOption>> GetPeopleToAddAsync(int? intakeId, IReadOnlyCollection<int> alreadyInRoster)
@@ -99,8 +88,6 @@ public class DutyRosterService : IDutyRosterService
         {
             DateFrom = request.DateFrom,
             DateTo = request.DateTo,
-            IntakeId = request.IntakeId,
-            OrgNodeId = request.IntakeId is null ? null : request.OrgNodeId,
             UseEventExemptions = request.UseEventExemptions,
             WeekendsGreen = request.WeekendsGreen,
             Seed = Random.Shared.Next(1, 1_000_000)
@@ -116,33 +103,32 @@ public class DutyRosterService : IDutyRosterService
 
         using (var db = _dbFactory.CreateDbContext())
         {
+            var folders = await CanonicalFoldersAsync(db, request.FolderIds);
+            roster.FolderIds.AddRange(folders.Select(f => f.Id));
 
-            if (roster.IntakeId is int intakeId)
+            var intakeByRoot = await IntakeByRootAsync(db);
+            var intakes = folders
+                .Select(f => f.IntakeId ?? (intakeByRoot.TryGetValue(f.Id, out var rootOf) ? rootOf : null))
+                .OfType<int>()
+                .Distinct()
+                .ToList();
+            roster.IntakeId = intakes.Count == 1 ? intakes[0] : null;
+
+            var folderKey = FormatIds(roster.FolderIds);
+            roster.FoldersLabel = await FoldersLabelAsync(db, folderKey);
+
+            var byFolder = await PeopleByFolderAsync(db);
+            var ids = folders.Where(f => byFolder.ContainsKey(f.Id)).SelectMany(f => byFolder[f.Id]).Distinct().ToList();
+            var people = RosterOrdering.Apply(await db.Recipients.AsNoTracking().Where(r => ids.Contains(r.Id)).ToListAsync()).ToList();
+
+            var template = await TemplateRosterAsync(db, folderKey);
+            if (template is null)
             {
-                roster.IntakeLabel = (await IntakeLabelsAsync(db, new int?[] { intakeId })).GetValueOrDefault(intakeId);
-
-                var query = db.Recipients.AsNoTracking().Where(r => r.IntakeId == intakeId);
-                if (roster.OrgNodeId is int nodeId)
-                {
-                    var path = await db.OrgNodes.Where(n => n.Id == nodeId).Select(n => n.Path).FirstOrDefaultAsync();
-                    if (path is not null)
-                        query = query.Where(r => r.OrgNode != null && r.OrgNode.Path.StartsWith(path));
-                }
-
-                var people = RosterOrdering.Apply(await query.ToListAsync()).ToList();
-                var template = await TemplateRosterAsync(db, roster.IntakeId, roster.OrgNodeId);
-                if (template is null)
-                {
-                    foreach (var person in people) roster.Members.Add(Member(person));
-                }
-                else
-                {
-                    await ApplyTemplateAsync(db, roster, template, people);
-                }
+                foreach (var person in people) roster.Members.Add(Member(person));
             }
-            else if (await TemplateRosterAsync(db, null, null) is { } manualTemplate)
+            else
             {
-                await ApplyTemplateAsync(db, roster, manualTemplate, Array.Empty<Recipient>());
+                await ApplyTemplateAsync(db, roster, template, people);
             }
         }
 
@@ -169,31 +155,30 @@ public class DutyRosterService : IDutyRosterService
         DisplayName = DutyRosterText.DisplayName(person.LastName, person.FirstName, person.MiddleName)
     };
 
-    /// <summary>Останній графік того самого складу (набір і підрозділ) - з нього береться склад нового.</summary>
-    private static async Task<DutyRoster?> TemplateRosterAsync(AppDbContext db, int? intakeId, int? orgNodeId)
+    /// <summary>Останній графік того самого складу (тих самих папок) - з нього береться склад нового.</summary>
+    private static async Task<DutyRoster?> TemplateRosterAsync(AppDbContext db, string? folderKey)
         => await db.DutyRosters.AsNoTracking()
             .Include(r => r.Members)
-            .Where(r => r.IntakeId == intakeId && r.OrgNodeId == orgNodeId)
+            .Where(r => r.OrgNodeIds == folderKey)
             .OrderByDescending(r => r.DateFrom).ThenByDescending(r => r.Id)
             .FirstOrDefaultAsync();
 
     /// <summary>
     /// Новий графік повторює склад попереднього: порядок рядків, звільнених на весь період,
-    /// доданих вручну чи з постійного складу і тих, кого прибрали. Хто вибув з набору - випадає,
-    /// новачки набору - у кінець списку.
+    /// вписаних і доданих вручну і тих, кого прибрали. Хто вибув з папок графіка - випадає,
+    /// новачки папок - у кінець списку.
     /// </summary>
     private static async Task ApplyTemplateAsync(AppDbContext db, DutyRosterData roster, DutyRoster template, IReadOnlyList<Recipient> people)
     {
         foreach (var id in ParseIds(template.ExcludedRecipients)) roster.ExcludedRecipientIds.Add(id);
 
-        var inIntake = people.ToDictionary(p => p.Id);
-        var outsideIds = template.Members
-            .Where(m => m.RecipientId is int id && !inIntake.ContainsKey(id))
+        var inFolders = people.ToDictionary(p => p.Id);
+        var byHandIds = template.Members
+            .Where(m => m.AddedByHand && m.RecipientId is int id && !inFolders.ContainsKey(id))
             .Select(m => m.RecipientId!.Value)
             .ToList();
-        var staffOnly = roster.IntakeId is not null;
-        var outside = await db.Recipients.AsNoTracking()
-            .Where(r => outsideIds.Contains(r.Id) && (!staffOnly || r.IntakeId == null))
+        var byHand = await db.Recipients.AsNoTracking()
+            .Where(r => byHandIds.Contains(r.Id))
             .ToDictionaryAsync(r => r.Id);
 
         var taken = new HashSet<int>();
@@ -205,11 +190,12 @@ public class DutyRosterService : IDutyRosterService
                 continue;
             }
 
-            var person = inIntake.GetValueOrDefault(id) ?? outside.GetValueOrDefault(id);
+            var person = inFolders.GetValueOrDefault(id) ?? byHand.GetValueOrDefault(id);
             if (person is null || !taken.Add(id)) continue;
 
             var data = Member(person);
             data.ExemptWholePeriod = member.ExemptWholePeriod;
+            data.AddedByHand = !inFolders.ContainsKey(id);
             roster.Members.Add(data);
         }
 
@@ -226,8 +212,7 @@ public class DutyRosterService : IDutyRosterService
         if (entity is null) return null;
 
         var roster = ToData(entity);
-        if (roster.IntakeId is int intakeId)
-            roster.IntakeLabel = (await IntakeLabelsAsync(db, new int?[] { intakeId })).GetValueOrDefault(intakeId);
+        roster.FoldersLabel = await FoldersLabelAsync(db, entity.OrgNodeIds);
         return roster;
     }
 
@@ -256,7 +241,7 @@ public class DutyRosterService : IDutyRosterService
         entity.DateFrom = roster.DateFrom;
         entity.DateTo = roster.DateTo;
         entity.IntakeId = roster.IntakeId;
-        entity.OrgNodeId = roster.OrgNodeId;
+        entity.OrgNodeIds = FormatIds(roster.FolderIds);
         entity.PeoplePerDay = roster.PeoplePerDay;
         entity.Seed = roster.Seed;
         entity.Heading = roster.Heading;
@@ -277,7 +262,8 @@ public class DutyRosterService : IDutyRosterService
                 RecipientId = source.RecipientId,
                 DisplayName = source.DisplayName,
                 SortOrder = i,
-                ExemptWholePeriod = source.ExemptWholePeriod
+                ExemptWholePeriod = source.ExemptWholePeriod,
+                AddedByHand = source.AddedByHand
             };
 
             foreach (var (day, origin) in source.Duties.Where(d => InPeriod(d.Key)))
@@ -363,11 +349,11 @@ public class DutyRosterService : IDutyRosterService
         if (!roster.CarryOverBalance) return null;
 
         using var db = _dbFactory.CreateDbContext();
+        var folderKey = FormatIds(roster.FolderIds);
         var previous = await db.DutyRosters.AsNoTracking()
             .Include(r => r.Members).ThenInclude(m => m.Cells)
             .Where(r => r.Id != roster.Id
-                        && r.IntakeId == roster.IntakeId
-                        && r.OrgNodeId == roster.OrgNodeId
+                        && r.OrgNodeIds == folderKey
                         && r.DateFrom < roster.DateFrom)
             .OrderByDescending(r => r.DateFrom).ThenByDescending(r => r.Id)
             .Take(CarryOverDepth)
@@ -455,7 +441,6 @@ public class DutyRosterService : IDutyRosterService
             DateFrom = entity.DateFrom,
             DateTo = entity.DateTo,
             IntakeId = entity.IntakeId,
-            OrgNodeId = entity.OrgNodeId,
             PeoplePerDay = entity.PeoplePerDay,
             Seed = entity.Seed,
             Heading = entity.Heading,
@@ -468,6 +453,7 @@ public class DutyRosterService : IDutyRosterService
 
         foreach (var day in ParseDays(entity.ExemptDays)) roster.ExemptDays.Add(day);
         foreach (var id in ParseIds(entity.ExcludedRecipients)) roster.ExcludedRecipientIds.Add(id);
+        roster.FolderIds.AddRange(ParseIds(entity.OrgNodeIds));
 
         foreach (var member in entity.Members.OrderBy(m => m.SortOrder).ThenBy(m => m.Id))
         {
@@ -475,7 +461,8 @@ public class DutyRosterService : IDutyRosterService
             {
                 RecipientId = member.RecipientId,
                 DisplayName = member.DisplayName,
-                ExemptWholePeriod = member.ExemptWholePeriod
+                ExemptWholePeriod = member.ExemptWholePeriod,
+                AddedByHand = member.AddedByHand
             };
             foreach (var cell in member.Cells)
             {
@@ -541,15 +528,94 @@ public class DutyRosterService : IDutyRosterService
         }
     }
 
-    private static async Task<Dictionary<int, string>> IntakeLabelsAsync(AppDbContext db, IEnumerable<int?> intakeIds)
-    {
-        var ids = intakeIds.Where(i => i is not null).Select(i => i!.Value).Distinct().ToList();
-        if (ids.Count == 0) return new Dictionary<int, string>();
+    /// <summary>Id папки й усіх її батьків - з Path («/1/5/9/»).</summary>
+    private static IEnumerable<int> PathIds(string path) => ParseIds(path.Replace('/', ','));
 
-        var intakes = await db.Intakes.IgnoreQueryFilters().AsNoTracking()
-            .Where(i => ids.Contains(i.Id))
-            .Select(i => new { i.Id, i.Number, i.DisplayNumber })
+    /// <summary>Корінь набору → набір.</summary>
+    private static async Task<Dictionary<int, int?>> IntakeByRootAsync(AppDbContext db)
+        => (await db.Intakes.AsNoTracking().Select(i => new { i.Id, i.RootOrgNodeId }).ToListAsync())
+            .GroupBy(i => i.RootOrgNodeId)
+            .ToDictionary(g => g.Key, g => (int?)g.First().Id);
+
+    /// <summary>
+    /// Хто піде в графік з кожної папки: люди її і вкладених папок, а коренева папка набору - ще й люди
+    /// набору без папки (так графік набору, як і раніше, бере весь набір).
+    /// </summary>
+    private static async Task<Dictionary<int, HashSet<int>>> PeopleByFolderAsync(AppDbContext db)
+    {
+        var people = await db.Recipients.AsNoTracking()
+            .Select(r => new { r.Id, r.IntakeId, Path = r.OrgNode != null ? r.OrgNode.Path : null })
             .ToListAsync();
-        return intakes.ToDictionary(i => i.Id, i => IntakeLabel.Of(i.Number, i.DisplayNumber));
+        var rootByIntake = await db.Intakes.AsNoTracking().ToDictionaryAsync(i => i.Id, i => i.RootOrgNodeId);
+
+        var byFolder = new Dictionary<int, HashSet<int>>();
+        foreach (var person in people)
+        {
+            var folders = person.Path is null ? Enumerable.Empty<int>() : PathIds(person.Path);
+            if (person.IntakeId is int intakeId && rootByIntake.TryGetValue(intakeId, out var rootId))
+                folders = folders.Append(rootId);
+
+            foreach (var folderId in folders)
+            {
+                if (!byFolder.TryGetValue(folderId, out var ids)) byFolder[folderId] = ids = new HashSet<int>();
+                ids.Add(person.Id);
+            }
+        }
+        return byFolder;
+    }
+
+    /// <summary>
+    /// Вибрані папки без видалених і без вкладених у вже вибрані - той самий склад дає той самий ключ графіка,
+    /// хоч би як його відмітили.
+    /// </summary>
+    private static async Task<List<OrgNode>> CanonicalFoldersAsync(AppDbContext db, IReadOnlyCollection<int> folderIds)
+    {
+        var ids = folderIds.Distinct().ToList();
+        if (ids.Count == 0) return new List<OrgNode>();
+
+        var nodes = await db.OrgNodes.AsNoTracking().Where(n => ids.Contains(n.Id)).ToListAsync();
+        var picked = nodes.Select(n => n.Id).ToHashSet();
+        return nodes
+            .Where(n => !PathIds(n.Path).Any(a => a != n.Id && picked.Contains(a)))
+            .OrderBy(n => n.Id)
+            .ToList();
+    }
+
+    private static async Task<string?> FoldersLabelAsync(AppDbContext db, string? folderKey)
+        => folderKey is null ? null : (await FoldersLabelsAsync(db, new[] { folderKey })).GetValueOrDefault(folderKey);
+
+    /// <summary>
+    /// Підпис складу за ключем папок: корінь набору - «Набір №29», папка в наборі - «Набір №29 / 1 група»,
+    /// решта - назва папки. Видалені папки й набори теж підписуються - старий графік лишається впізнаваним.
+    /// </summary>
+    private static async Task<Dictionary<string, string>> FoldersLabelsAsync(AppDbContext db, IEnumerable<string?> folderKeys)
+    {
+        var keys = folderKeys.OfType<string>().Distinct().ToDictionary(k => k, k => ParseIds(k).ToList());
+        var ids = keys.Values.SelectMany(v => v).Distinct().ToList();
+        if (ids.Count == 0) return new Dictionary<string, string>();
+
+        var nodes = await db.OrgNodes.IgnoreQueryFilters().AsNoTracking()
+            .Where(n => ids.Contains(n.Id))
+            .ToDictionaryAsync(n => n.Id);
+        var intakeIds = nodes.Values.Select(n => n.IntakeId).OfType<int>().Distinct().ToList();
+        var intakes = await db.Intakes.IgnoreQueryFilters().AsNoTracking()
+            .Where(i => intakeIds.Contains(i.Id) || ids.Contains(i.RootOrgNodeId))
+            .Select(i => new { i.Id, i.RootOrgNodeId, i.Number, i.DisplayNumber })
+            .ToListAsync();
+        var labelById = intakes.ToDictionary(i => i.Id, i => IntakeLabel.Of(i.Number, i.DisplayNumber));
+        var labelByRoot = intakes.GroupBy(i => i.RootOrgNodeId).ToDictionary(g => g.Key, g => labelById[g.First().Id]);
+
+        string Name(OrgNode node)
+        {
+            if (labelByRoot.TryGetValue(node.Id, out var root)) return root;
+            return node.IntakeId is int intakeId && labelById.TryGetValue(intakeId, out var intake)
+                ? $"{intake} / {node.Name}"
+                : node.Name;
+        }
+
+        return keys
+            .Select(k => (k.Key, Label: string.Join(", ", k.Value.Where(nodes.ContainsKey).Select(id => Name(nodes[id])))))
+            .Where(k => k.Label.Length > 0)
+            .ToDictionary(k => k.Key, k => k.Label);
     }
 }

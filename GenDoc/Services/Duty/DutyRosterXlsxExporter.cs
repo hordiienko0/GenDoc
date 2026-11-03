@@ -5,18 +5,19 @@ namespace GenDoc.Services.Duty;
 /// <summary>
 /// Лист «як на паперовому графіку»: шапка, «№ з/п», «П.І.Б.», числа днів за справжнім календарем,
 /// у днях наряду номер зміни римськими (або «н», якщо так обрано), зелена заливка звільнених і вихідних,
-/// жовта «н» - столова, унизу перезмінка, прибирання і години змін.
-/// A4 альбомна, одна сторінка: таблиця на всю ширину поля друку і по центру аркуша.
+/// жовта «к» - столова, унизу перезмінка, прибирання і години змін.
+/// A4 альбомна, одна сторінка: таблиця на весь аркуш (і ширину, і висоту поля друку) і по центру.
 /// </summary>
 public static class DutyRosterXlsxExporter
 {
     public const string SheetName = "Графік";
     public const string DutyMark = "н";
+    public const string CanteenMark = "к";
 
     /// <summary>Колір документа (не UI): світло-зелений, як на паперовому графіку.</summary>
     public const string ExemptFillHex = "#C6E9D2";
 
-    /// <summary>Колір документа (не UI): жовта заливка «н» наряду по столовій.</summary>
+    /// <summary>Колір документа (не UI): жовта заливка «к» наряду по столовій.</summary>
     public const string CanteenFillHex = "#FFFF00";
 
     internal const string FontName = "Times New Roman";
@@ -37,9 +38,20 @@ public static class DutyRosterXlsxExporter
     /// <summary>Ширина поля друку: A4 альбомна мінус поля 0.25" з боків.</summary>
     public const double PrintableWidthPoints = 806;
 
+    /// <summary>Висота поля друку: A4 альбомна мінус поля 0.35" згори й знизу.</summary>
+    public const double PrintableHeightPoints = 545;
+
+    /// <summary>Висоти рядків, pt: шапка графіка, рядок «№ з/п», решта (як рядок Excel під Times New Roman 11).</summary>
+    internal const double TitleRowPoints = 16;
+    internal const double HeaderRowPoints = 20;
+    internal const double RowPoints = 14.4;
+
+    /// <summary>Рядок людини вищає, поки лист не займе висоту аркуша, але на папері не вище ~1 см - кілька людей не стають смугами на пів сторінки.</summary>
+    private const double MaxPrintedMemberRowPoints = 2 * RowPoints;
+
     /// <summary>
     /// Скільки pt на друці дає один піксель розрахунку <see cref="Pixels"/> (виміряно через Excel → PDF: ~0.81;
-    /// збігається з базою ~157 pt і ~20.25 pt на вузький день у <see cref="PrintScale"/>).
+    /// база «№» і «П.І.Б.» ~158 pt і ~20.5 pt на вузький день).
     /// </summary>
     public const double PointsPerPixel = 0.81;
 
@@ -65,13 +77,14 @@ public static class DutyRosterXlsxExporter
 
     /// <summary>
     /// Геометрія листа, однакова для Excel і друку (<c>Views/Duty/DutyRosterPrintLayout</c>): ширини колонок
-    /// в одиницях ширини Excel, рядки (з 1, як в Excel) і колонки блоків змін у підвалі.
+    /// в одиницях ширини Excel, рядки (з 1, як в Excel), висота рядка людини в pt і колонки блоків змін у підвалі.
     /// </summary>
     internal sealed record SheetLayout(
         IReadOnlyList<string> TitleLines,
         IReadOnlyList<double> ColumnWidths,
         int LastTableColumn,
         int MemberCount,
+        double MemberRowPoints,
         IReadOnlyList<int> ShiftColumns)
     {
         public int LastPrintColumn => ColumnWidths.Count;
@@ -80,33 +93,64 @@ public static class DutyRosterXlsxExporter
         public int FooterRow => LastTableRow + 2;
         public int ShiftsRow => FooterRow + 4;
         public int LastRow => ShiftColumns.Count > 0 ? ShiftsRow + 2 : FooterRow + 1;
+
+        public double RowHeight(int row) => row <= TitleLines.Count ? TitleRowPoints
+            : row == HeaderRow ? HeaderRowPoints
+            : row > HeaderRow && row <= LastTableRow ? MemberRowPoints
+            : RowPoints;
+
+        /// <summary>Лист у натуральну величину на друці, pt: уся область друку.</summary>
+        public double WidthPoints => ColumnWidths.Sum(Pixels) * PointsPerPixel;
+
+        public double HeightPoints => Enumerable.Range(1, LastRow).Sum(RowHeight);
+
+        /// <summary>З яким масштабом лист стане на одну сторінку A4 (Excel і друк лише зменшують, не збільшують).</summary>
+        public double Scale => Math.Min(1.0, Math.Min(PrintableWidthPoints / WidthPoints, PrintableHeightPoints / HeightPoints));
     }
 
+    /// <summary>
+    /// Лист на весь аркуш: спершу найвужчий і найнижчий, що вміщує шапку й підвал, - з ним відомо, наскільки лист
+    /// зменшиться до сторінки. Потім колонки днів ширшають, а рядки людей вищають, поки лист не набере пропорцій
+    /// поля друку: зменшений він займає і всю ширину, і всю висоту, а не лише ту, що впирається першою.
+    /// </summary>
     internal static SheetLayout Layout(DutyRosterData roster)
     {
         var dayCount = roster.DateTo.DayNumber - roster.DateFrom.DayNumber + 1;
         var titleLines = DutyRosterText.TitleLines(roster.Heading, roster.DateFrom, roster.DateTo);
         var shiftCount = roster.Footer.Shifts.Count;
-        var dayWidth = DayColumnWidth(dayCount, titleLines, shiftCount);
-        var lastTableColumn = FirstDayColumn + dayCount - 1;
-        var shiftColumns = Enumerable.Range(0, shiftCount).Select(k => ShiftColumn(k, shiftCount, dayCount, dayWidth)).ToList();
+        var memberCount = roster.Members.Count;
 
-        // На один день останній блок змін стає правіше таблиці - його колонка теж іде у друк.
-        var lastPrintColumn = Math.Max(lastTableColumn, shiftColumns.DefaultIfEmpty(0).Max());
-        var widths = new List<double> { NumberWidth, NameWidth };
-        for (var column = FirstDayColumn; column <= lastPrintColumn; column++)
-            widths.Add(column <= lastTableColumn ? dayWidth : ColumnWidth(ShiftBlockPixels));
+        var narrowest = Sheet(DayColumnWidth(dayCount, titleLines, shiftCount, pagePixels: 0), RowPoints);
+        var scale = narrowest.Scale;
+        var dayWidth = DayColumnWidth(dayCount, titleLines, shiftCount, PrintableWidthPoints / scale / PointsPerPixel);
+        var otherRows = narrowest.HeightPoints - memberCount * RowPoints;
+        var memberRow = memberCount == 0 ? RowPoints
+            : Math.Clamp(Math.Floor((PrintableHeightPoints / scale - otherRows) / memberCount * 4) / 4,
+                RowPoints, MaxPrintedMemberRowPoints / scale);
+        return Sheet(dayWidth, memberRow);
 
-        return new SheetLayout(titleLines, widths, lastTableColumn, roster.Members.Count, shiftColumns);
+        SheetLayout Sheet(double day, double member)
+        {
+            var lastTableColumn = FirstDayColumn + dayCount - 1;
+            var shiftColumns = Enumerable.Range(0, shiftCount).Select(k => ShiftColumn(k, shiftCount, dayCount, day)).ToList();
+
+            // На один день останній блок змін стає правіше таблиці - його колонка теж іде у друк.
+            var lastPrintColumn = Math.Max(lastTableColumn, shiftColumns.DefaultIfEmpty(0).Max());
+            var widths = new List<double> { NumberWidth, NameWidth };
+            for (var column = FirstDayColumn; column <= lastPrintColumn; column++)
+                widths.Add(column <= lastTableColumn ? day : ColumnWidth(ShiftBlockPixels));
+
+            return new SheetLayout(titleLines, widths, lastTableColumn, memberCount, member, shiftColumns);
+        }
     }
 
-    /// <summary>Що стоїть у клітинці дня і як вона залита: наряд - номер зміни або «н», столова - жовта «н», звільнений і вихідний - зелене.</summary>
+    /// <summary>Що стоїть у клітинці дня і як вона залита: наряд - номер зміни або «н», столова - жовта «к», звільнений і вихідний - зелене.</summary>
     internal static (string Text, SheetFill Fill) DayCell(
         DutyRosterData roster, IReadOnlyDictionary<int, int> shiftsOfDay, int memberIndex, DateOnly day)
     {
         var isDuty = roster.IsDuty(memberIndex, day);
         var isCanteen = !isDuty && roster.IsCanteen(memberIndex, day);
-        var text = isDuty ? DutyRosterPlanner.DutyText(roster, shiftsOfDay, memberIndex) : isCanteen ? DutyMark : string.Empty;
+        var text = isDuty ? DutyRosterPlanner.DutyText(roster, shiftsOfDay, memberIndex) : isCanteen ? CanteenMark : string.Empty;
         var fill = isCanteen ? SheetFill.Canteen
             : roster.IsExempt(memberIndex, day) || roster.IsGreenWeekend(day) ? SheetFill.Exempt
             : SheetFill.None;
@@ -155,7 +199,6 @@ public static class DutyRosterXlsxExporter
 
         sheet.Range(headerRow, NumberColumn, headerRow, lastColumn).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
         sheet.Range(headerRow, NumberColumn, headerRow, lastColumn).Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
-        sheet.Row(headerRow).Height = 20;
 
         var shiftsByDay = days.ToDictionary(day => day, day => DutyRosterPlanner.ShiftsOfDay(roster, day));
         for (var m = 0; m < roster.Members.Count; m++)
@@ -208,6 +251,8 @@ public static class DutyRosterXlsxExporter
 
         for (var column = 1; column <= layout.LastPrintColumn; column++)
             sheet.Column(column).Width = layout.ColumnWidths[column - 1];
+        for (var row = 1; row <= layout.LastRow; row++)
+            sheet.Row(row).Height = layout.RowHeight(row);
 
         var lastRow = layout.LastRow;
         var lastPrintColumn = layout.LastPrintColumn;
@@ -230,21 +275,20 @@ public static class DutyRosterXlsxExporter
     public const double ReadableScale = 0.8;
 
     /// <summary>
-    /// Оцінка масштабу, з яким Excel впише аркуш в одну сторінку A4 (виміряно на прогонах:
-    /// база ~157 pt + ~20.25 pt на день у ширину, ~187 pt + ~14 pt на людину у висоту; поле друку 806 × 545 pt).
+    /// З яким масштабом Excel і друк впишуть графік в одну сторінку A4 (база ~158 pt + ~20.5 pt на день у ширину,
+    /// ~198 pt + 14.4 pt на людину у висоту; поле друку 806 × 545 pt).
     /// </summary>
-    public static double PrintScale(int days, int people)
-        => Math.Min(1.0, Math.Min(PrintableWidthPoints / (157 + 20.25 * days), 545.0 / (187 + 14.0 * people)));
+    public static double PrintScale(DutyRosterData roster) => Layout(roster).Scale;
 
     /// <summary>
-    /// Кожен графік - на весь аркуш A4: колонки днів ширшають, поки таблиця не займе всю ширину поля друку
-    /// (Excel лише зменшує аркуш до сторінки, а не збільшує - короткий період друкувався б дрібним блоком угорі).
-    /// Не вужче за шапку й блоки змін у підвалі. Довгий період лишає вузькі колонки, і Excel зменшує його до сторінки.
+    /// Колонка дня, щоб таблиця займала <paramref name="pagePixels"/> (з «№» і «П.І.Б.»): Excel лише зменшує аркуш
+    /// до сторінки, а не збільшує - короткий період друкувався б дрібним блоком угорі. Не вужче за шапку й блоки змін
+    /// у підвалі; 0 - найвужча, і довгий період лишає вузькі колонки.
     /// </summary>
-    internal static double DayColumnWidth(int dayCount, IEnumerable<string> titleLines, int shiftCount)
+    internal static double DayColumnWidth(int dayCount, IEnumerable<string> titleLines, int shiftCount, double pagePixels)
     {
         var fixedColumns = Pixels(NumberWidth) + Pixels(NameWidth);
-        var page = PrintableWidthPoints / PointsPerPixel - fixedColumns;
+        var page = pagePixels - fixedColumns;
         var heading = titleLines.Select(l => l.Length).DefaultIfEmpty(0).Max() * HeadingCharPixels - fixedColumns;
         var footer = Math.Max(0, shiftCount - 1) * ShiftBlockPixels;
         var perDay = Math.Max(page, Math.Max(heading, footer)) / Math.Max(1, dayCount);

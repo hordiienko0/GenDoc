@@ -16,7 +16,7 @@ public enum DutyBrush
     Erase
 }
 
-/// <summary>Клітинка «людина × день»: «н», жовта «н» (столова), зелене, «×» або порожньо.</summary>
+/// <summary>Клітинка «людина × день»: «н», жовта «к» (столова), зелене, «×» або порожньо.</summary>
 public partial class DutyCellViewModel : ObservableObject
 {
     public DutyCellViewModel(DutyRowViewModel row, DateOnly date)

@@ -3,12 +3,12 @@ namespace GenDoc.Services.Duty;
 public interface IDutyRosterService
 {
     Task<IReadOnlyList<DutyRosterListItem>> GetListAsync();
-    Task<IReadOnlyList<DutyIntakeOption>> GetIntakesAsync();
-    Task<IReadOnlyList<DutyOrgNodeOption>> GetOrgNodesAsync(int intakeId);
+    /// <summary>Усе дерево папок (батьки перед дітьми) з тим, кого кожна папка приведе в графік.</summary>
+    Task<IReadOnlyList<DutyFolderOption>> GetFoldersAsync();
 
     /// <summary>
     /// Люди, яких можна додати в графік: склад набору й постійний склад, крім уже доданих.
-    /// Для графіка без набору - усі люди з бази.
+    /// Для графіка не з одного набору - усі люди з бази.
     /// </summary>
     Task<IReadOnlyList<DutyPersonOption>> GetPeopleToAddAsync(int? intakeId, IReadOnlyCollection<int> alreadyInRoster);
 

@@ -133,7 +133,7 @@ public class DutyRosterXlsxExporterTests
     }
 
     [Fact]
-    public void CanteenIsAYellowNOutsideTheShiftNumbering()
+    public void CanteenIsAYellowKOutsideTheShiftNumbering()
     {
         var roster = Roster();
         var day = new DateOnly(2026, 9, 24);
@@ -142,7 +142,7 @@ public class DutyRosterXlsxExporterTests
         var sheet = workbook.Worksheet(DutyRosterXlsxExporter.SheetName);
 
         var cell = sheet.Cell(HeaderRow + 6, DayColumn(day));
-        Assert.Equal("н", cell.GetString());
+        Assert.Equal("к", cell.GetString());
         Assert.True(cell.Style.Font.Bold);
         Assert.Equal(XLColor.FromHtml(DutyRosterXlsxExporter.CanteenFillHex), cell.Style.Fill.BackgroundColor);
         Assert.Equal("ІІІ", sheet.Cell(HeaderRow + 4, DayColumn(day)).GetString());
@@ -248,11 +248,54 @@ public class DutyRosterXlsxExporterTests
     [Fact]
     public void MonthFitsA4AlmostFullSizeAndLongPeriodsAreFlagged()
     {
-        Assert.Equal(1.0, DutyRosterXlsxExporter.PrintScale(31, 24));
-        Assert.True(DutyRosterXlsxExporter.PrintScale(35, 24) >= 0.9);
-        Assert.True(DutyRosterXlsxExporter.PrintScale(43, 26) >= DutyRosterXlsxExporter.ReadableScale - 0.05);
-        Assert.True(DutyRosterXlsxExporter.PrintScale(62, 30) < DutyRosterXlsxExporter.ReadableScale);
-        Assert.True(DutyRosterXlsxExporter.PrintScale(35, 40) < DutyRosterXlsxExporter.PrintScale(35, 24));
+        double Scale(int days, int people) => DutyRosterXlsxExporter.PrintScale(Sized(days, people));
+
+        Assert.Equal(1.0, Scale(31, 24));
+        Assert.True(Scale(35, 24) >= 0.9);
+        Assert.True(Scale(43, 26) >= DutyRosterXlsxExporter.ReadableScale - 0.05);
+        Assert.True(Scale(62, 30) < DutyRosterXlsxExporter.ReadableScale);
+        Assert.True(Scale(35, 40) < Scale(35, 24));
+    }
+
+    /// <summary>Як на фото: 43 дні й 55 осіб - аркуш зменшено під висоту, а таблиця все одно на всю ширину.</summary>
+    [Theory]
+    [InlineData(43, 55)]
+    [InlineData(31, 40)]
+    [InlineData(62, 20)]
+    [InlineData(31, 24)]
+    public void SheetFillsTheWholePageNotJustOneSide(int days, int people)
+    {
+        using var workbook = DutyRosterXlsxExporter.Build(Sized(days, people));
+        var sheet = workbook.Worksheet(DutyRosterXlsxExporter.SheetName);
+        var area = sheet.PageSetup.PrintAreas.Single();
+
+        var width = Enumerable.Range(1, area.LastColumn().ColumnNumber())
+            .Sum(c => DutyRosterXlsxExporter.Pixels(sheet.Column(c).Width)) * DutyRosterXlsxExporter.PointsPerPixel;
+        var height = Enumerable.Range(1, area.LastRow().RowNumber()).Sum(r => sheet.Row(r).Height);
+        var scale = Math.Min(1.0, Math.Min(DutyRosterXlsxExporter.PrintableWidthPoints / width, DutyRosterXlsxExporter.PrintableHeightPoints / height));
+
+        Assert.InRange(width * scale, 0.97 * DutyRosterXlsxExporter.PrintableWidthPoints, DutyRosterXlsxExporter.PrintableWidthPoints + 0.5);
+        Assert.InRange(height * scale, 0.97 * DutyRosterXlsxExporter.PrintableHeightPoints, DutyRosterXlsxExporter.PrintableHeightPoints + 0.5);
+        Assert.Equal(DutyRosterXlsxExporter.PrintScale(Sized(days, people)), scale, 2);
+    }
+
+    [Fact]
+    public void FewPeopleGetTallerRowsButNotStripes()
+    {
+        using var workbook = DutyRosterXlsxExporter.Build(Sized(31, 3));
+        var sheet = workbook.Worksheet(DutyRosterXlsxExporter.SheetName);
+
+        Assert.Equal(20, sheet.Row(HeaderRow).Height);
+        Assert.Equal(2 * 14.4, sheet.Row(HeaderRow + 1).Height, 2);
+        Assert.Equal(14.4, sheet.Row(HeaderRow + 5).Height, 2);
+    }
+
+    private static DutyRosterData Sized(int days, int people)
+    {
+        var roster = new DutyRosterData { DateFrom = From, DateTo = From.AddDays(days - 1), Seed = 7 };
+        for (var p = 1; p <= people; p++)
+            roster.Members.Add(new DutyRosterMemberData { DisplayName = $"ПРІЗВИЩЕ{p} А.Б." });
+        return roster;
     }
 
     [Fact]
