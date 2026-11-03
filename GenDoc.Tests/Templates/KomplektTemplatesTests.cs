@@ -92,6 +92,9 @@ public class KomplektTemplatesTests : IDisposable
 
     private static readonly string[] Person = { "звання", "піб" };
 
+    // Рапорти про прибуття: кожен рядок списку - звання, ПІБ, посада з частиною і посвідчення про відрядження.
+    private static readonly string[] ArrivalRow = { "звання", "піб", "посада", "номер_посвідчення" };
+
     public static readonly DocxSpec[] DocxCatalog =
     {
         new("Стрільби", "Шаблон_Заявка на боєприпаси (придатні).docx", TemplateKind.Group,
@@ -135,6 +138,10 @@ public class KomplektTemplatesTests : IDisposable
             new[] { "дата_вибуття", "дата_зняття", Signer, SignerName, SignerPosition, "дата_рапорту" }),
         new("Котлове забезпечення", "Шаблон_Рапорт про зняття з котлового забезпечення (груповий).docx", TemplateKind.Group,
             Person, new[] { "дата_вибуття", "дата_зняття", Signer, SignerName, SignerPosition, "дата_рапорту" }),
+        new("Котлове забезпечення", "Шаблон_Рапорт про прибуття на котлове забезпечення (груповий, ХНУПС).docx", TemplateKind.Group,
+            ArrivalRow, new[] { "дата_прибуття", Signer, SignerName, SignerPosition, "дата_рапорту" }),
+        new("Котлове забезпечення", "Шаблон_Рапорт про прибуття на котлове забезпечення (груповий, ВКСС).docx", TemplateKind.Group,
+            ArrivalRow, new[] { "дата_прибуття", "дата_зарахування", Signer, SignerName, SignerPosition, "дата_рапорту" }),
 
         new("Відпустки та лікування", "Шаблон_Рапорт про приступлення до обов'язків після стаціонарного лікування.docx", TemplateKind.PerRecipient,
             new[] { "звання_зв", "піб_зв", "посада_зв", "таким", "приступив" },
@@ -508,6 +515,16 @@ public class KomplektTemplatesTests : IDisposable
         // Наказ підписує начальник університету (ручні поля), а не начальник курсів із налаштувань.
         Assert.Contains("[піб_начальника_університету]", orderText);
         Assert.DoesNotContain("Іван КОМАНДИР", orderText);
+
+        // Рапорти про прибуття: рядок на людину з посадою й посвідченням, «;» між людьми і «.» після останньої.
+        foreach (var addressee in new[] { "ХНУПС", "ВКСС" })
+        {
+            var arrival = DocxText(Assert.Single(docxFiles,
+                f => f.Contains($"прибуття на котлове забезпечення (груповий, {addressee})", StringComparison.Ordinal)));
+            Assert.Contains("майор ПРІЗВИЩЕ01 Ім'я01 Петрович, слухач, посвідчення про відрядження № 100;", arrival);
+            Assert.Contains("старший лейтенант ПРІЗВИЩЕ03 Ім'я03 Петрович, слухач, посвідчення про відрядження № 102.", arrival);
+            Assert.Contains("вважати такими, що 01 серпня 2026 року прибули", arrival);
+        }
 
         var forma9a = Assert.Single(docxFiles, f => f.Contains("форма 9а", StringComparison.Ordinal));
         var forma9aText = DocxText(forma9a);
