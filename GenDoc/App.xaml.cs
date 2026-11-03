@@ -119,6 +119,8 @@ namespace GenDoc
             services.AddTransient<ViewModels.Staff.StaffCardViewModel>();
             services.AddTransient<Services.Duty.IDutyRosterService, Services.Duty.DutyRosterService>();
             services.AddTransient<ViewModels.Duty.DutyRosterViewModel>();
+            services.AddTransient<Services.Duty.IEveningCheckService, Services.Duty.EveningCheckService>();
+            services.AddTransient<ViewModels.Duty.EveningCheckViewModel>();
 
             services.AddTransient<LoginViewModel>();
             services.AddTransient<LoginWindow>();

@@ -90,6 +90,9 @@
         <DataTemplate DataType="{x:Type dutyVm:DutyRosterViewModel}">
             <dutyView:DutyRosterView/>
         </DataTemplate>
+        <DataTemplate DataType="{x:Type dutyVm:EveningCheckViewModel}">
+            <dutyView:EveningCheckView/>
+        </DataTemplate>
 
         <Style x:Key="WindowButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="Transparent"/>

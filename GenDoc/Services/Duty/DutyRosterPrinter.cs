@@ -1,5 +1,6 @@
 using System.Printing;
 using System.Windows.Controls;
+using System.Windows.Documents;
 
 namespace GenDoc.Services.Duty;
 
@@ -16,6 +17,10 @@ public static class DutyRosterPrinter
 
     /// <summary>Показує вікно друку; повертає назву принтера, на який пішов аркуш, або null, якщо скасовано.</summary>
     public static string? Print(DutyRosterData roster, string jobName)
+        => Print(DutyRosterPrintLayout.Document(roster), jobName);
+
+    /// <summary>Будь-який зверстаний під A4 альбомну документ (графік, список вечірньої перевірки) - у вікно друку.</summary>
+    public static string? Print(FixedDocument document, string jobName)
     {
         var dialog = new PrintDialog { UserPageRangeEnabled = false };
         if (PreferredQueue() is { } queue) dialog.PrintQueue = queue;
@@ -24,7 +29,7 @@ public static class DutyRosterPrinter
 
         // Аркуш зверстаний під A4 альбомну - навіть якщо в налаштуваннях принтера змінили орієнтацію.
         Landscape(dialog);
-        dialog.PrintDocument(DutyRosterPrintLayout.Document(roster).DocumentPaginator, jobName);
+        dialog.PrintDocument(document.DocumentPaginator, jobName);
         return dialog.PrintQueue?.FullName;
     }
 

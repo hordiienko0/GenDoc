@@ -1,0 +1,312 @@
+<UserControl x:Class="GenDoc.Views.Duty.EveningCheckView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:GenDoc.ViewModels.Duty"
+             Loaded="EveningCheckView_Loaded">
+
+    <UserControl.Resources>
+        <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,0,6,0"/>
+        </Style>
+
+        <Style x:Key="ErrorTextStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Style.Triggers>
+                <Trigger Property="Text" Value="">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </Trigger>
+                <Trigger Property="Text" Value="{x:Null}">
+                    <Setter Property="Visibility" Value="Collapsed"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="ListHeaderTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10.5"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="TabSegmentStyle" TargetType="RadioButton">
+            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="12,5"/>
+            <Setter Property="Margin" Value="0,0,4,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Background" Value="{StaticResource AccentBrush}"/>
+                    <Setter Property="Foreground" Value="White"/>
+                    <Setter Property="FontWeight" Value="Bold"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="GroupCardStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource PanelBrush}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderLineBrush}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsIncluded}" Value="False">
+                    <Setter Property="Opacity" Value="0.6"/>
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Тіло картки набору: заголовок блоку, зведення й люди з галочками -->
+        <DataTemplate x:Key="GroupBodyTemplate" DataType="{x:Type vm:EveningCheckGroupViewModel}">
+            <Grid IsEnabled="{Binding IsIncluded}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock Grid.Row="0" Text="Заголовок блоку на листі" Style="{StaticResource FieldLabelStyle}" Margin="0,0,0,4"/>
+                <TextBox Grid.Row="1" Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" FontSize="12"
+                         ToolTip="Рядок над таблицею - як у паперовому списку; можна змінити"/>
+
+                <TextBlock Grid.Row="2" Text="Хто в блоці - відмітьте папки; вкладені папки беруться разом із ними"
+                           Style="{StaticResource FieldLabelStyle}" Margin="0,10,0,4" TextWrapping="Wrap"/>
+                <Border Grid.Row="3" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1"
+                        Background="{StaticResource BackgroundBrush}" MaxHeight="170">
+                    <TreeView ItemsSource="{Binding Folders}" Background="Transparent" BorderThickness="0" Padding="4"
+                              VirtualizingStackPanel.IsVirtualizing="False">
+                        <TreeView.ItemContainerStyle>
+                            <Style TargetType="TreeViewItem">
+                                <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                            </Style>
+                        </TreeView.ItemContainerStyle>
+                        <TreeView.ItemTemplate>
+                            <HierarchicalDataTemplate DataType="{x:Type vm:DutyFolderViewModel}" ItemsSource="{Binding Children}">
+                                <StackPanel Orientation="Horizontal" Margin="0,2">
+                                    <CheckBox IsChecked="{Binding IsTicked}" IsEnabled="{Binding CanTick}" VerticalAlignment="Center">
+                                        <CheckBox.Style>
+                                            <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsCovered}" Value="True">
+                                                        <Setter Property="Opacity" Value="0.55"/>
+                                                        <Setter Property="ToolTip" Value="Уже входить - відмічена вища папка"/>
+                                                        <Setter Property="ToolTipService.ShowOnDisabled" Value="True"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </CheckBox.Style>
+                                        <TextBlock Text="{Binding Name}" FontSize="12.5"/>
+                                    </CheckBox>
+                                    <TextBlock Text="{Binding CountText}" FontSize="11" Margin="8,0,0,0" VerticalAlignment="Center"
+                                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </StackPanel>
+                            </HierarchicalDataTemplate>
+                        </TreeView.ItemTemplate>
+                    </TreeView>
+                </Border>
+                <StackPanel Grid.Row="4">
+                    <TextBlock Text="{Binding FolderSummary}" FontSize="11.5" Margin="0,6,0,0" TextWrapping="Wrap"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                    <CheckBox Margin="0,8,0,0" IsChecked="{Binding SplitByFitness}"
+                              Visibility="{Binding CanSplitByFitness, Converter={StaticResource BoolToVisibility}}"
+                              Content="Окремі таблиці: обмежено придатні й придатні"
+                              ToolTip="Дві таблиці, кожна зі своїм заголовком, блоками по 25 рядків і нумерацією з 1: спершу обмежено придатні, далі придатні. Категорія придатності - з картки людини"/>
+                </StackPanel>
+
+                <Grid Grid.Row="5" Margin="0,10,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="{Binding Summary}" FontSize="11.5" TextWrapping="Wrap" VerticalAlignment="Center"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                    <Button Grid.Column="1" Content="Усіх" Style="{StaticResource TextLinkButtonStyle}" Margin="12,0,0,0"
+                            Command="{Binding CheckAllCommand}" ToolTip="Відмітити всіх"/>
+                    <Button Grid.Column="2" Content="Нікого" Style="{StaticResource TextLinkButtonStyle}" Margin="12,0,0,0"
+                            Command="{Binding UncheckAllCommand}" ToolTip="Зняти всі галочки"/>
+                </Grid>
+
+                <Border Grid.Row="6" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1" Padding="4,4"
+                        Background="{StaticResource RowAltBrush}"
+                        Visibility="{Binding HasPeople, Converter={StaticResource BoolToVisibility}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="30"/>
+                            <ColumnDefinition Width="40"/>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="1" Text="№" ToolTip="№ п/п" Style="{StaticResource ListHeaderTextStyle}"/>
+                        <TextBlock Grid.Column="2" Text="в/зв" Style="{StaticResource ListHeaderTextStyle}"/>
+                        <TextBlock Grid.Column="3" Text="Прізвище та ім’я" Style="{StaticResource ListHeaderTextStyle}"/>
+                    </Grid>
+                </Border>
+
+                <ScrollViewer Grid.Row="7" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding People}" VirtualizingStackPanel.IsVirtualizing="False">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:EveningCheckPersonViewModel}">
+                                <Border x:Name="Row" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1" Padding="4,3">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="30"/>
+                                            <ColumnDefinition Width="40"/>
+                                            <ColumnDefinition Width="150"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <CheckBox IsChecked="{Binding IsChecked}" VerticalAlignment="Center"
+                                                  ToolTip="Зняти галочку - людина не йде в список"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding NumberText}" FontSize="12" VerticalAlignment="Center"
+                                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding Rank}" FontSize="12" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding Rank}"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock x:Name="Name" Grid.Column="3" Text="{Binding FullName}" FontSize="12" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding FullName}"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <TextBlock Grid.Column="4" Text="{Binding FitnessMark}" FontSize="10.5" VerticalAlignment="Center" Margin="8,0,0,0"
+                                                   Foreground="{StaticResource WarnTextBrush}" ToolTip="Категорія придатності з картки людини"/>
+                                    </Grid>
+                                </Border>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding IsChecked}" Value="False">
+                                        <Setter TargetName="Row" Property="Opacity" Value="0.5"/>
+                                        <Setter TargetName="Name" Property="TextDecorations" Value="Strikethrough"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid Background="{StaticResource BackgroundBrush}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,14">
+            <TextBlock Text="Список вечірньої перевірки" FontSize="19" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+            <TextBlock Text="Два блоки - набір і прикомандировані, кожен зі своїх папок дерева - по 25 рядків, дати по 31 дню на сторінку (хвостик до 5 днів - на останню) і блок «Облікові дані»; лист такий самий, як паперовий"
+                       FontSize="12" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <Border Grid.Row="1" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                BorderThickness="1" Padding="12,10" Margin="0,0,0,10">
+            <StackPanel>
+                <WrapPanel>
+                    <TextBlock Text="Період з" Style="{StaticResource FieldLabelStyle}"/>
+                    <DatePicker Width="125" SelectedDate="{Binding DateFrom}"/>
+                    <TextBlock Text="по" Style="{StaticResource FieldLabelStyle}" Margin="8,0,6,0"/>
+                    <DatePicker Width="125" SelectedDate="{Binding DateTo}"/>
+                    <Button Content="2 місяці від сьогодні" Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0"
+                            Command="{Binding ResetPeriodCommand}" ToolTip="Типовий період: від сьогодні на два місяці"/>
+                    <TextBlock Text="{Binding PeriodText}" FontSize="11.5" VerticalAlignment="Center" Margin="12,0,0,0"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                    <Button Content="Експорт у Excel" Margin="16,0,0,0" Command="{Binding ExportCommand}"
+                            ToolTip="Лист як паперовий список: A4 альбомна, кожен блок - окрема сторінка"/>
+                    <Button Content="Друк / PDF" Style="{StaticResource SecondaryButtonStyle}" Margin="6,0,0,0"
+                            Command="{Binding PrintCommand}"
+                            ToolTip="Ті самі сторінки на A4 - одразу на принтер. Немає принтера - обрано «Microsoft Print to PDF», і Windows спитає, куди зберегти PDF"/>
+                </WrapPanel>
+                <TextBlock Text="{Binding PeriodError}" Style="{StaticResource ErrorTextStyle}" Margin="0,6,0,0"/>
+                <WrapPanel Margin="0,10,0,0">
+                    <TextBlock Text="Підпис під блоками" Style="{StaticResource FieldLabelStyle}"/>
+                    <TextBox Width="560" Text="{Binding Signature, UpdateSourceTrigger=PropertyChanged}" FontSize="12"
+                             ToolTip="Рядок «Начальник курсів П та ПК: …» - звання і ПІБ беруться з налаштувань частини, можна виправити"/>
+                </WrapPanel>
+                <TextBlock Text="{Binding TotalText}" FontSize="11.5" Margin="0,8,0,0" TextWrapping="Wrap"
+                           Foreground="{StaticResource TextSecondaryBrush}"/>
+                <TextBlock Text="{Binding Status}" FontSize="11" Margin="0,4,0,0" Foreground="{StaticResource TextSecondaryBrush}"/>
+            </StackPanel>
+        </Border>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,0,0,8">
+            <RadioButton GroupName="EveningCheckTab" Content="Склад блоків" Style="{StaticResource TabSegmentStyle}"
+                         IsChecked="{Binding IsPreviewOpen, Converter={StaticResource InverseBoolean}}"/>
+            <RadioButton GroupName="EveningCheckTab" Content="Попередній перегляд" Style="{StaticResource TabSegmentStyle}"
+                         IsChecked="{Binding IsPreviewOpen}"
+                         ToolTip="Сторінки листа такими, як підуть на друк і в Excel"/>
+        </StackPanel>
+
+        <Border Grid.Row="3" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1"
+                Visibility="{Binding IsPreviewOpen, Converter={StaticResource BoolToVisibility}}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <TextBlock x:Name="PreviewInfo" Margin="12,8" FontSize="11.5" Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                              Background="{StaticResource RowAltBrush}" Padding="24,16">
+                    <StackPanel x:Name="PreviewPages" MaxWidth="1200"/>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="3" Visibility="{Binding IsPreviewOpen, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource GroupCardStyle}" DataContext="{Binding Course}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <CheckBox IsChecked="{Binding IsIncluded}" Margin="0,0,0,10" ToolTip="Без галочки блок у список не йде">
+                        <TextBlock Text="{Binding KindLabel}" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                    </CheckBox>
+                    <ContentControl Grid.Row="1" Content="{Binding}" ContentTemplate="{StaticResource GroupBodyTemplate}"
+                                    HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Focusable="False"/>
+                </Grid>
+            </Border>
+
+            <Border Grid.Column="2" Style="{StaticResource GroupCardStyle}" DataContext="{Binding Seconded}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <CheckBox IsChecked="{Binding IsIncluded}" Margin="0,0,0,10" ToolTip="Без галочки блок у список не йде">
+                        <TextBlock Text="{Binding KindLabel}" FontSize="13" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}"/>
+                    </CheckBox>
+                    <ContentControl Grid.Row="1" Content="{Binding}" ContentTemplate="{StaticResource GroupBodyTemplate}"
+                                    HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Focusable="False"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>
