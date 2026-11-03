@@ -131,17 +131,7 @@ namespace GenDoc.Services.Generation
                 .Select(t => new { t.Id, t.Name }).ToDictionary(t => t.Id, t => t.Name);
 
             for (var i = 0; i < templateIds.Count; i++)
-            {
-                // «… (придатні)» / «… (обмежено придатні)»: іншій категорії шаблон не потрібен. Змінюється у «Вимогах».
-                var filter = FitnessCategoryHelper.FilterFromTemplateName(templateNames.GetValueOrDefault(templateIds[i]));
-                package.Templates.Add(new GenerationPackageTemplate
-                {
-                    TemplateId = templateIds[i],
-                    SortOrder = i,
-                    RequirementRegular = filter == FitnessFilter.LimitedOnly ? TemplateRequirement.NotApplicable : TemplateRequirement.Required,
-                    RequirementLimited = filter == FitnessFilter.RegularOnly ? TemplateRequirement.NotApplicable : TemplateRequirement.Required
-                });
-            }
+                package.Templates.Add(TemplateLink(templateIds[i], templateNames.GetValueOrDefault(templateIds[i]), i));
 
             for (var i = 0; i < exportTemplates.Count; i++)
             {
@@ -163,6 +153,64 @@ namespace GenDoc.Services.Generation
                 $"Шаблонів: {templateIds.Count}, XLSX: {exportTemplates.Count}");
             db.SaveChanges();
             return package.Id;
+        }
+
+        private static GenerationPackageTemplate TemplateLink(int templateId, string? templateName, int sortOrder)
+        {
+            // «… (придатні)» / «… (обмежено придатні)»: іншій категорії шаблон не потрібен. Змінюється у «Вимогах».
+            var filter = FitnessCategoryHelper.FilterFromTemplateName(templateName);
+            return new GenerationPackageTemplate
+            {
+                TemplateId = templateId,
+                SortOrder = sortOrder,
+                RequirementRegular = filter == FitnessFilter.LimitedOnly ? TemplateRequirement.NotApplicable : TemplateRequirement.Required,
+                RequirementLimited = filter == FitnessFilter.RegularOnly ? TemplateRequirement.NotApplicable : TemplateRequirement.Required
+            };
+        }
+
+        public int AddTemplatesToPackage(int packageId, IReadOnlyList<int> templateIds, IReadOnlyList<int> exportTemplateIds)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var package = db.GenerationPackages
+                .Include(p => p.Templates)
+                .Include(p => p.ExportTemplates)
+                .First(p => p.Id == packageId);
+
+            var newTemplateIds = templateIds.Distinct()
+                .Where(id => package.Templates.All(t => t.TemplateId != id)).ToList();
+            var newExportIds = exportTemplateIds.Distinct()
+                .Where(id => package.ExportTemplates.All(t => t.ExportTemplateId != id)).ToList();
+            if (newTemplateIds.Count == 0 && newExportIds.Count == 0) return 0;
+
+            var templateNames = db.Templates.Where(t => newTemplateIds.Contains(t.Id))
+                .Select(t => new { t.Id, t.Name }).ToDictionary(t => t.Id, t => t.Name);
+            var exportNames = db.ExportTemplates.Where(t => newExportIds.Contains(t.Id))
+                .Select(t => new { t.Id, t.Name }).ToDictionary(t => t.Id, t => t.Name);
+
+            // Нові - в кінець пакета, за вже наявними.
+            var sortOrder = package.Templates.Select(t => t.SortOrder).DefaultIfEmpty(-1).Max();
+            foreach (var id in newTemplateIds)
+                package.Templates.Add(TemplateLink(id, templateNames.GetValueOrDefault(id), ++sortOrder));
+
+            var exportSortOrder = package.ExportTemplates.Select(t => t.SortOrder).DefaultIfEmpty(-1).Max();
+            foreach (var id in newExportIds)
+            {
+                package.ExportTemplates.Add(new GenerationPackageExportTemplate
+                {
+                    ExportTemplateId = id,
+                    FitnessFilter = FitnessCategoryHelper.FilterFromTemplateName(exportNames.GetValueOrDefault(id)),
+                    SortOrder = ++exportSortOrder
+                });
+            }
+
+            PackageFolderOrigin.Detach(package);
+
+            var addedNames = newTemplateIds.Select(id => templateNames.GetValueOrDefault(id, $"#{id}"))
+                .Concat(newExportIds.Select(id => exportNames.GetValueOrDefault(id, $"#{id}")));
+            _auditLogService.LogUpdate(db, "GenerationPackage", package.Id, null, string.Join(", ", addedNames),
+                "Додано шаблони до пакета");
+            db.SaveChanges();
+            return newTemplateIds.Count + newExportIds.Count;
         }
 
         public string? RenamePackage(int packageId, string newName)

@@ -69,6 +69,12 @@ namespace GenDoc.Services.Generation
         /// </summary>
         string? RenamePackage(int packageId, string newName);
 
+        /// <summary>
+        /// Дописує в кінець пакета шаблони, яких у ньому ще немає, і відв'язує пакет від теки, якщо щось додано.
+        /// Вимоги й категорію придатності бере з назви шаблона, як при створенні. Повертає, скільки додано.
+        /// </summary>
+        int AddTemplatesToPackage(int packageId, IReadOnlyList<int> templateIds, IReadOnlyList<int> exportTemplateIds);
+
         void DeletePackage(int packageId);
         List<(int TemplateId, string TemplateName, TemplateKind Kind)> GetPackageTemplates(int packageId);
 

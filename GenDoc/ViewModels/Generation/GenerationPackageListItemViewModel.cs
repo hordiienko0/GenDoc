@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace GenDoc.ViewModels.Generation;
@@ -26,10 +27,17 @@ public partial class GenerationPackageListItemViewModel : ObservableObject
     [ObservableProperty]
     private bool isSelected;
 
-    /// <summary>Картка в режимі перейменування: замість назви - поле вводу з «Зберегти»/«Скасувати».</summary>
+    /// <summary>Картка в режимі редагування: замість назви - поле вводу, шаблони на додавання і «Зберегти»/«Скасувати».</summary>
     [ObservableProperty]
-    private bool isRenaming;
+    private bool isEditing;
 
     [ObservableProperty]
     private string editName = string.Empty;
+
+    /// <summary>Групові DOCX і XLSX, яких ще немає в пакеті; позначені додаються після «Зберегти».</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasAddableTemplates))]
+    private ObservableCollection<GenerationTemplateCheckItemViewModel> addableTemplates = new();
+
+    public bool HasAddableTemplates => AddableTemplates.Count > 0;
 }

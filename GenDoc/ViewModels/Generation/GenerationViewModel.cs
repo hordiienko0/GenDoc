@@ -607,17 +607,33 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
         IsCreatingPackage = true;
         NewPackageName = string.Empty;
         NewPackageDescription = string.Empty;
+        TemplateCheckItems = PackageTemplateChoices(packageId: null);
+
+        foreach (var p in Packages) p.IsSelected = false;
+        ClearPackageSelection();
+    }
+
+    /// <summary>Шаблони на вибір для пакета; для наявного пакета - лише ті, яких у ньому ще немає.</summary>
+    private ObservableCollection<GenerationTemplateCheckItemViewModel> PackageTemplateChoices(int? packageId)
+    {
+        var inPackage = new HashSet<int>();
+        var exportsInPackage = new HashSet<int>();
+        if (packageId is int id)
+        {
+            inPackage.UnionWith(_generationService.GetPackageTemplates(id).Select(t => t.TemplateId));
+            exportsInPackage.UnionWith(_generationService.GetPackageExportTemplates(id).Select(t => t.ExportTemplateId));
+        }
+
         var checkItems = new List<GenerationTemplateCheckItemViewModel>();
         // Пакет складають лише групові шаблони: документ на кожного окремо видається
         // вибраній людині за потреби, а не прогоном пакета по всьому набору.
         checkItems.AddRange(_generationService.GetGroupTemplates()
+            .Where(t => !inPackage.Contains(t.Id))
             .Select(t => new GenerationTemplateCheckItemViewModel(t.Id, t.Name, TemplateKind.Docx)));
         checkItems.AddRange(_generationService.GetAllExportTemplates()
+            .Where(t => !exportsInPackage.Contains(t.Id))
             .Select(t => new GenerationTemplateCheckItemViewModel(t.Id, t.Name, TemplateKind.Xlsx)));
-        TemplateCheckItems = new ObservableCollection<GenerationTemplateCheckItemViewModel>(checkItems);
-
-        foreach (var p in Packages) p.IsSelected = false;
-        ClearPackageSelection();
+        return new ObservableCollection<GenerationTemplateCheckItemViewModel>(checkItems);
     }
 
     [RelayCommand]
@@ -650,35 +666,45 @@ public partial class GenerationViewModel : ObservableObject, INavigationTarget
     }
 
     [RelayCommand(CanExecute = nameof(NotBusy))]
-    private void StartRenamePackage(GenerationPackageListItemViewModel? item)
+    private void StartEditPackage(GenerationPackageListItemViewModel? item)
     {
         if (item is null || IsBusy) return;
 
-        foreach (var p in Packages) p.IsRenaming = false;
+        foreach (var p in Packages) p.IsEditing = false;
         item.EditName = item.Name;
-        item.IsRenaming = true;
+        item.AddableTemplates = PackageTemplateChoices(item.Id);
+        item.IsEditing = true;
     }
 
     [RelayCommand]
-    private void ConfirmRenamePackage(GenerationPackageListItemViewModel? item)
+    private async Task ConfirmEditPackageAsync(GenerationPackageListItemViewModel? item)
     {
-        if (item is null || !item.IsRenaming) return;
+        if (item is null || !item.IsEditing) return;
 
         var error = _generationService.RenamePackage(item.Id, item.EditName);
         if (error is not null)
         {
-            MessageBox.Show(error, "Перейменування пакета", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(error, "Редагування пакета", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        item.IsRenaming = false;
+        var chosen = item.AddableTemplates.Where(t => t.IsChecked).ToList();
+        var added = _generationService.AddTemplatesToPackage(item.Id,
+            chosen.Where(t => t.Kind == TemplateKind.Docx).Select(t => t.Id).ToList(),
+            chosen.Where(t => t.Kind == TemplateKind.Xlsx).Select(t => t.Id).ToList());
+
+        item.IsEditing = false;
         RefreshPackages();
+        if (added == 0) return;
+
+        _messenger.Send(new MatrixChangedMessage());
+        if (SelectedPackage?.Id == item.Id) await RefreshPackageContentAsync();
     }
 
     [RelayCommand]
-    private void CancelRenamePackage(GenerationPackageListItemViewModel? item)
+    private void CancelEditPackage(GenerationPackageListItemViewModel? item)
     {
-        if (item is not null) item.IsRenaming = false;
+        if (item is not null) item.IsEditing = false;
     }
 
     [RelayCommand(CanExecute = nameof(NotBusy))]

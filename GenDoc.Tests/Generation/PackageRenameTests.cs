@@ -33,9 +33,14 @@ public class PackageRenameTests
             Name = "Довідка групова", OriginalFileName = "b.docx", Content = new byte[] { 1 },
             UploadedAt = DateTime.Now, Kind = TemplateKind.Group
         };
-        var linkedExport = new ExportTemplate { Name = "Відомість", OriginalFileName = "v.xlsx", UploadedAt = DateTime.Now };
-        var freeExport = new ExportTemplate { Name = "Залік", OriginalFileName = "z.xlsx", UploadedAt = DateTime.Now };
-        ctx.Templates.AddRange(linked, free);
+        var perRecipient = new Template
+        {
+            Name = "Рапорт на кожного", OriginalFileName = "c.docx", Content = new byte[] { 1 },
+            UploadedAt = DateTime.Now, Kind = TemplateKind.PerRecipient
+        };
+        var linkedExport = new ExportTemplate { Name = "Відомість", OriginalFileName = "v.xlsx", UploadedAt = DateTime.Now, UsesPlaceholders = true };
+        var freeExport = new ExportTemplate { Name = "Залік", OriginalFileName = "z.xlsx", UploadedAt = DateTime.Now, UsesPlaceholders = true };
+        ctx.Templates.AddRange(linked, free, perRecipient);
         ctx.ExportTemplates.AddRange(linkedExport, freeExport);
         ctx.SaveChanges();
 
@@ -192,6 +197,78 @@ public class PackageRenameTests
         Assert.False(PackageFolderOrigin.IsFromFolder(null));
     }
 
+    private static List<(int TemplateId, int SortOrder, TemplateRequirement Regular, TemplateRequirement Limited)> Links(TestDb db, int packageId)
+    {
+        using var ctx = db.Factory.CreateDbContext();
+        return ctx.GenerationPackageTemplates.Where(t => t.GenerationPackageId == packageId)
+            .OrderBy(t => t.SortOrder)
+            .Select(t => new { t.TemplateId, t.SortOrder, t.RequirementRegular, t.RequirementLimited })
+            .AsEnumerable()
+            .Select(t => (t.TemplateId, t.SortOrder, t.RequirementRegular, t.RequirementLimited))
+            .ToList();
+    }
+
+    [Fact]
+    public void AddingTemplates_AppendsOnlyTheNewOnesAfterTheExisting_AndDetachesTheFolder()
+    {
+        using var db = new TestDb();
+        var s = Seed(db);
+
+        var added = TestServices.Generation(db).AddTemplatesToPackage(
+            s.PackageId, new[] { s.FreeTemplateId, s.LinkedTemplateId }, new[] { s.FreeExportId });
+
+        Assert.Equal(2, added);
+        Assert.Equal(new[] { (s.LinkedTemplateId, 0), (s.FreeTemplateId, 1) },
+            Links(db, s.PackageId).Select(l => (l.TemplateId, l.SortOrder)));
+        using (var ctx = db.Factory.CreateDbContext())
+        {
+            var exports = ctx.GenerationPackageExportTemplates.Where(t => t.GenerationPackageId == s.PackageId)
+                .OrderBy(t => t.SortOrder).Select(t => new { t.ExportTemplateId, t.SortOrder }).ToList();
+            Assert.Equal(s.FreeExportId, exports.Last().ExportTemplateId);
+            Assert.Equal(1, exports.Last().SortOrder);
+        }
+        Assert.Null(Package(db, s.PackageId).Description);
+    }
+
+    [Fact]
+    public void AddingOnlyTemplatesAlreadyInThePackage_ChangesNothing_AndKeepsTheFolderLink()
+    {
+        using var db = new TestDb();
+        var s = Seed(db);
+
+        var added = TestServices.Generation(db).AddTemplatesToPackage(
+            s.PackageId, new[] { s.LinkedTemplateId }, Array.Empty<int>());
+
+        Assert.Equal(0, added);
+        Assert.Single(Links(db, s.PackageId));
+        Assert.Equal(FolderDescription, Package(db, s.PackageId).Description);
+    }
+
+    [Fact]
+    public void AddedTemplateNamedForOneFitnessCategory_IsNotRequiredFromTheOther()
+    {
+        using var db = new TestDb();
+        var s = Seed(db);
+        int limitedId;
+        using (var ctx = db.Factory.CreateDbContext())
+        {
+            var limited = new Template
+            {
+                Name = "Рапорт про прибуття (обмежено придатні)", OriginalFileName = "l.docx", Content = new byte[] { 1 },
+                UploadedAt = DateTime.Now, Kind = TemplateKind.Group
+            };
+            ctx.Templates.Add(limited);
+            ctx.SaveChanges();
+            limitedId = limited.Id;
+        }
+
+        TestServices.Generation(db).AddTemplatesToPackage(s.PackageId, new[] { limitedId }, Array.Empty<int>());
+
+        var link = Links(db, s.PackageId).Single(l => l.TemplateId == limitedId);
+        Assert.Equal(TemplateRequirement.NotApplicable, link.Regular);
+        Assert.Equal(TemplateRequirement.Required, link.Limited);
+    }
+
     private static async Task<GenerationViewModel> ViewModelAsync(TestDb db)
     {
         var vm = new GenerationViewModel(
@@ -218,17 +295,17 @@ public class PackageRenameTests
         await vm.SelectPackageCommand.ExecuteAsync(vm.Packages.Single(p => p.Id == s.PackageId));
 
         var card = vm.Packages.Single(p => p.Id == s.PackageId);
-        vm.StartRenamePackageCommand.Execute(card);
-        Assert.True(card.IsRenaming);
+        vm.StartEditPackageCommand.Execute(card);
+        Assert.True(card.IsEditing);
         Assert.Equal("Котлове забезпечення", card.EditName);
 
         card.EditName = "Котлове (весна)";
-        vm.ConfirmRenamePackageCommand.Execute(card);
+        await vm.ConfirmEditPackageCommand.ExecuteAsync(card);
 
         var renamed = vm.Packages.Single(p => p.Id == s.PackageId);
         Assert.Equal("Котлове (весна)", renamed.Name);
         Assert.Null(renamed.Description);
-        Assert.False(renamed.IsRenaming);
+        Assert.False(renamed.IsEditing);
         Assert.Same(renamed, vm.SelectedPackage);
     }
 
@@ -240,12 +317,64 @@ public class PackageRenameTests
         var vm = await ViewModelAsync(db);
 
         var card = vm.Packages.Single(p => p.Id == s.PackageId);
-        vm.StartRenamePackageCommand.Execute(card);
+        vm.StartEditPackageCommand.Execute(card);
         card.EditName = "Щось інше";
-        vm.CancelRenamePackageCommand.Execute(card);
+        vm.CancelEditPackageCommand.Execute(card);
 
-        Assert.False(card.IsRenaming);
+        Assert.False(card.IsEditing);
         Assert.Equal("Котлове забезпечення", Package(db, s.PackageId).Name);
+    }
+
+    [Fact]
+    public async Task EditingACard_OffersGroupTemplatesAndSheetsNotYetInThePackage()
+    {
+        using var db = new TestDb();
+        var s = Seed(db);
+        var vm = await ViewModelAsync(db);
+
+        var card = vm.Packages.Single(p => p.Id == s.PackageId);
+        vm.StartEditPackageCommand.Execute(card);
+
+        Assert.True(card.HasAddableTemplates);
+        Assert.Equal(new[] { ("Довідка групова", "docx"), ("Залік", "xlsx") },
+            card.AddableTemplates.Select(t => (t.Name, t.KindBadge)));
+    }
+
+    [Fact]
+    public async Task SavingAnEditWithCheckedTemplates_AddsThemToTheSelectedPackage()
+    {
+        using var db = new TestDb();
+        var s = Seed(db);
+        var vm = await ViewModelAsync(db);
+        await vm.SelectPackageCommand.ExecuteAsync(vm.Packages.Single(p => p.Id == s.PackageId));
+
+        var card = vm.Packages.Single(p => p.Id == s.PackageId);
+        vm.StartEditPackageCommand.Execute(card);
+        card.AddableTemplates.Single(t => t.Name == "Довідка групова").IsChecked = true;
+        await vm.ConfirmEditPackageCommand.ExecuteAsync(card);
+
+        var edited = vm.Packages.Single(p => p.Id == s.PackageId);
+        Assert.False(edited.IsEditing);
+        Assert.Equal(3, edited.TemplateCount);
+        Assert.Equal("Котлове забезпечення", edited.Name);
+        Assert.Same(edited, vm.SelectedPackage);
+        Assert.Contains(vm.PackageTemplates, t => t.Name == "Довідка групова");
+    }
+
+    [Fact]
+    public async Task CancellingAnEdit_DoesNotAddTheCheckedTemplates()
+    {
+        using var db = new TestDb();
+        var s = Seed(db);
+        var vm = await ViewModelAsync(db);
+
+        var card = vm.Packages.Single(p => p.Id == s.PackageId);
+        vm.StartEditPackageCommand.Execute(card);
+        card.AddableTemplates.Single(t => t.Name == "Довідка групова").IsChecked = true;
+        vm.CancelEditPackageCommand.Execute(card);
+
+        Assert.Single(Links(db, s.PackageId));
+        Assert.Equal(FolderDescription, Package(db, s.PackageId).Description);
     }
 
     private sealed class NoDialogs : IDialogService
