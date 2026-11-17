@@ -57,4 +57,8 @@ public static class TestServices
 
     public static GenDoc.Services.UserSettingsService UserSettings(TestDb db, int? userId) =>
         new(db.Factory, new FixedUserContext(userId));
+
+    public static GenDoc.Services.Personnel.PersonExportService PersonExport(
+        TestDb db, int? userId = null, GenDoc.Services.IAuditLogService? auditLog = null) =>
+        new(db.Factory, auditLog ?? new FakeAuditLog(), UserSettings(db, userId));
 }

@@ -35,6 +35,7 @@ namespace GenDoc.ViewModels.Personnel
         private readonly Services.Generation.IManualTagFormBuilder _manualTagFormBuilder;
         private readonly IOutputFolderService _outputFolderService;
         private readonly IExportService _exportService;
+        private readonly IPersonExportService _personExportService;
         private readonly DispatcherTimer _searchDebounceTimer;
         private readonly DispatcherTimer _listNoteTimer;
 
@@ -53,11 +54,13 @@ namespace GenDoc.ViewModels.Personnel
             IDialogService dialogService,
             Services.Generation.IManualTagFormBuilder manualTagFormBuilder,
             IOutputFolderService outputFolderService,
-            IExportService exportService)
+            IExportService exportService,
+            IPersonExportService personExportService)
         {
             _manualTagFormBuilder = manualTagFormBuilder;
             _outputFolderService = outputFolderService;
             _exportService = exportService;
+            _personExportService = personExportService;
             Tree = tree;
             _personnelService = personnelService;
             _completenessService = completenessService;
@@ -83,6 +86,7 @@ namespace GenDoc.ViewModels.Personnel
             Tree.LeaveGuard = TryLeaveEditAsync;
             Tree.SelectedNodeChanged += OnTreeSelectionChanged;
             Tree.NodeRenamed += OnTreeNodeRenamed;
+            Tree.ExportRequested += OnTreeExportRequested;
             Tree.PropertyChanged += OnTreePropertyChanged;
 
             WeakReferenceMessenger.Default.Register<CountsChangedMessage>(this,
@@ -422,6 +426,41 @@ namespace GenDoc.ViewModels.Personnel
                     $"Не вдалося зберегти список:\n{result.ErrorMessage}",
                     "Помилка експорту", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        public string ExportToolTip =>
+            "Таблиця в Excel: самі обираєте поля, їхній порядок і фільтри (звання, придатність, будь-яке поле).\n"
+            + "Беруться позначені галочкою; якщо не позначено нікого - усі, хто зараз у списку.\n"
+            + "Цілу папку можна експортувати й правою кнопкою миші в дереві.";
+
+        // Кнопка над списком: те, що зараз на екрані, - позначені, а якщо нікого, то папка з поточним пошуком.
+        internal PersonExportRequest? BuildExportRequest()
+        {
+            if (Tree.SelectedNode is not { } node) return null;
+
+            return HasChecked
+                ? ExportRequestFor(node) with { OnlyIds = CheckedRows.Select(r => r.Id).ToList() }
+                : ExportRequestFor(node) with { SearchText = SearchNormalization.PrepareQuery(SearchText) };
+        }
+
+        // Права кнопка на папці: уся папка, без пошуку й галочок зі списку.
+        internal PersonExportRequest ExportRequestFor(OrgNodeViewModel node)
+            => new(node.Id, node.Name, Tree.GetFullPathNames(node), Tree.ShowDescendants);
+
+        [RelayCommand]
+        private async Task ExportAsync()
+        {
+            if (BuildExportRequest() is { } request) await OpenExportDialogAsync(request);
+        }
+
+        private async void OnTreeExportRequested(OrgNodeViewModel node)
+            => await OpenExportDialogAsync(ExportRequestFor(node));
+
+        private async Task OpenExportDialogAsync(PersonExportRequest request)
+        {
+            var dialog = new PersonnelExportDialogViewModel(_personExportService, request);
+            await dialog.InitializeAsync();
+            _dialogService.ShowDialog(dialog, Application.Current?.MainWindow);
         }
 
         [RelayCommand]

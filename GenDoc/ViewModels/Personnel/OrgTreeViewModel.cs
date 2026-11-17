@@ -51,6 +51,9 @@ namespace GenDoc.ViewModels.Personnel
 
         public event Action<OrgNodeViewModel>? NodeRenamed;
 
+        /// <summary>«Експортувати людей…» у контекстному меню папки; сам діалог відкриває розділ «Особовий склад».</summary>
+        public event Action<OrgNodeViewModel>? ExportRequested;
+
         [ObservableProperty]
         private OrgNodeViewModel? selectedNode;
 
@@ -287,6 +290,12 @@ namespace GenDoc.ViewModels.Personnel
             node.IsExpanded = true;
             ApplyFilter();
             SelectNode(childVm);
+        }
+
+        [RelayCommand]
+        private void Export(OrgNodeViewModel? node)
+        {
+            if (node is not null) ExportRequested?.Invoke(node);
         }
 
         [RelayCommand]

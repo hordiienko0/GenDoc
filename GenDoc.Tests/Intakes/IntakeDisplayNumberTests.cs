@@ -137,7 +137,8 @@ public class IntakeDisplayNumberTests
             new NoDialogs(),
             TestServices.ManualTagForm(db, TestServices.Staff(db, 1), new FakeCurrentUser(), new FakeIntakeAccessor(), 1),
             new OutputFolderService(db.Factory),
-            new ExportService(db.Factory, new FakeAuditLog(), new XlsxGenerationService()));
+            new ExportService(db.Factory, new FakeAuditLog(), new XlsxGenerationService()),
+            TestServices.PersonExport(db));
         WeakReferenceMessenger.Default.Unregister<CountsChangedMessage>(vm);
         await vm.InitializeAsync();
 

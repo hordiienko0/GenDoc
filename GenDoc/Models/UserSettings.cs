@@ -13,5 +13,8 @@ namespace GenDoc.Models
 
         /// <summary>Налаштування графіка чергувань цього курсового (галочки, шапка, підвал) - JSON.</summary>
         public string? DutyRosterPrefsJson { get; set; }
+
+        /// <summary>Експорт особового складу: які колонки й у якому порядку обрано минулого разу - JSON.</summary>
+        public string? PersonnelExportPrefsJson { get; set; }
     }
 }

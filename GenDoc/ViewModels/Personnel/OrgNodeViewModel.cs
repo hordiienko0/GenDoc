@@ -48,7 +48,11 @@ namespace GenDoc.ViewModels.Personnel
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(CountLabel))]
         [NotifyPropertyChangedFor(nameof(CountTooltip))]
+        [NotifyPropertyChangedFor(nameof(CanExport))]
         private int totalCount;
+
+        /// <summary>Експортувати є кого: у папці чи у вкладених є хоч одна особа.</summary>
+        public bool CanExport => TotalCount > 0;
 
         public string CountLabel => $"{OwnCount} / {TotalCount}";
 

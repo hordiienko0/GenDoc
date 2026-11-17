@@ -52,6 +52,7 @@ public class PersonnelRenameTests
         services.AddSingleton<IManualTagFormBuilder, NoManualTags>();
         services.AddSingleton<IOutputFolderService>(new OutputFolderService(db.Factory));
         services.AddSingleton<IExportService>(new ExportService(db.Factory, new FakeAuditLog(), new XlsxGenerationService()));
+        services.AddSingleton<IPersonExportService, PersonExportService>();
         services.AddSingleton<ActiveIntakeState>();
         services.AddSingleton<OrgTreeViewModel>();
         services.AddSingleton<PersonnelViewModel>();

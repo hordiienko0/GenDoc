@@ -102,6 +102,7 @@ namespace GenDoc
             services.AddTransient<ICountService, CountService>();
             services.AddTransient<IIntakeService, IntakeService>();
             services.AddTransient<IPersonnelService, PersonnelService>();
+            services.AddTransient<IPersonExportService, PersonExportService>();
             services.AddSingleton<ActiveIntakeState>();
             services.AddSingleton<IWatermarkService, NoOpWatermarkService>();
             services.AddSingleton<ISecureTempFileService, SecureTempFileService>();

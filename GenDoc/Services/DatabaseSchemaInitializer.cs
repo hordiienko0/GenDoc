@@ -7,7 +7,7 @@ namespace GenDoc.Services;
 
 public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 {
-    private const int CurrentSchemaVersion = 33;
+    private const int CurrentSchemaVersion = 34;
 
     private static readonly string[] QuestionnaireColumns =
     {
@@ -146,6 +146,11 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
     private static readonly (string Name, string Type)[] UserSettingsColumnsV29 =
     {
         ("DutyRosterPrefsJson", "TEXT")
+    };
+
+    private static readonly (string Name, string Type)[] UserSettingsColumnsV34 =
+    {
+        ("PersonnelExportPrefsJson", "TEXT")
     };
 
     private static readonly (string Name, string Type)[] DutyRosterColumnsV29 =
@@ -688,6 +693,19 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
                 });
                 currentVersion = 33;
             }
+
+            if (currentVersion < 34)
+            {
+                EnsureUserSettingsTable(db);
+
+                db.SchemaVersions.Add(new SchemaVersion
+                {
+                    Version = 34,
+                    AppliedAt = DateTime.Now,
+                    Description = "Особовий склад: експорт із вибором полів і фільтрами - запам'ятовуємо обрані колонки"
+                });
+                currentVersion = 34;
+            }
         }
 
         EnsureOrgTables(db);
@@ -1165,6 +1183,7 @@ public class DatabaseSchemaInitializer : IDatabaseSchemaInitializer
 
         AddMissingColumns(connection, "UserSettings", UserSettingsColumnsV26);
         AddMissingColumns(connection, "UserSettings", UserSettingsColumnsV29);
+        AddMissingColumns(connection, "UserSettings", UserSettingsColumnsV34);
 
         using var index = connection.CreateCommand();
         index.CommandText =

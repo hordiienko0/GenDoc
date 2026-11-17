@@ -319,6 +319,7 @@ public class DatabaseSchemaInitializerTests
         Assert.Contains("ArchiveMineOnly", columns);
         Assert.Contains("LastManualValuesJson", columns);
         Assert.Contains("LastSignerByTemplateJson", columns);
+        Assert.Contains("PersonnelExportPrefsJson", columns);
 
         Exec(connection, """INSERT INTO "UserSettings" ("UserProfileId") VALUES (1);""");
         Assert.Equal(0L, Scalar(connection, """SELECT "ArchiveMineOnly" FROM "UserSettings" WHERE "UserProfileId" = 1"""));
@@ -350,6 +351,7 @@ public class DatabaseSchemaInitializerTests
         Assert.Contains("LastSignerByTemplateJson", columns);
         Assert.Contains("ActiveIntakeId", columns);
         Assert.Contains("LastPackageId", columns);
+        Assert.Contains("PersonnelExportPrefsJson", columns);
 
         Assert.Equal(0L, Scalar(connection, """SELECT "ArchiveMineOnly" FROM "UserSettings" WHERE "Id" = 1"""));
     }

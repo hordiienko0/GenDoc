@@ -1,0 +1,403 @@
+<Window x:Class="GenDoc.Views.Personnel.PersonnelExportDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:GenDoc.ViewModels.Personnel"
+        Style="{StaticResource {x:Type Window}}"
+        Title="{Binding Title}" Width="1100" Height="680"
+        Background="{StaticResource PanelBrush}"
+        WindowStartupLocation="CenterOwner" ResizeMode="CanResize" MinWidth="960" MinHeight="540">
+
+    <Window.Resources>
+        <Style x:Key="SectionCaptionStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="10.5"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+        </Style>
+
+        <Style x:Key="FilterLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
+            <Setter Property="Margin" Value="0,12,0,4"/>
+        </Style>
+
+        <!-- Типовий шаблон CheckBox кладе підпис у горизонтальний StackPanel: довга назва поля там не скорочується
+             трьома крапками, а обрізається на півслові. Тут підпис займає решту ширини й уміє скорочуватись. -->
+        <Style x:Key="FieldCheckBoxStyle" TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+            <Setter Property="FontSize" Value="11.5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid Background="Transparent">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="box" Width="13" Height="13" Background="{StaticResource PanelBrush}"
+                                    BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1"
+                                    VerticalAlignment="Center">
+                                <Path x:Name="checkMark" Data="M1,4 L4,7 L9,1" Stroke="White"
+                                      StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round" Visibility="Collapsed"/>
+                            </Border>
+                            <ContentPresenter Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="checkMark" Property="Visibility" Value="Visible"/>
+                                <Setter TargetName="box" Property="Background" Value="{StaticResource AccentBrush}"/>
+                                <Setter TargetName="box" Property="BorderBrush" Value="{StaticResource AccentBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ColumnOrderButtonStyle" TargetType="Button" BasedOn="{StaticResource RowIconButtonStyle}">
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="Width" Value="22"/>
+            <Setter Property="Height" Value="22"/>
+        </Style>
+
+        <!-- Дерево папок із галочками - те саме, що в графіку чергувань і вечірній перевірці -->
+        <DataTemplate x:Key="FolderPickerTemplate">
+            <StackPanel>
+                <TextBlock Text="{Binding Title}" Style="{StaticResource FilterLabelStyle}" TextWrapping="Wrap"/>
+                <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1"
+                        Background="{StaticResource BackgroundBrush}" MaxHeight="132">
+                    <TreeView ItemsSource="{Binding Folders}" Background="Transparent" BorderThickness="0" Padding="2"
+                              VirtualizingStackPanel.IsVirtualizing="False">
+                        <TreeView.ItemContainerStyle>
+                            <Style TargetType="TreeViewItem">
+                                <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                            </Style>
+                        </TreeView.ItemContainerStyle>
+                        <TreeView.ItemTemplate>
+                            <HierarchicalDataTemplate DataType="{x:Type vm:ExportFolderViewModel}" ItemsSource="{Binding Children}">
+                                <StackPanel Orientation="Horizontal" Margin="0,2">
+                                    <CheckBox IsChecked="{Binding IsTicked}" IsEnabled="{Binding CanTick}" VerticalAlignment="Center">
+                                        <CheckBox.Style>
+                                            <Style TargetType="CheckBox" BasedOn="{StaticResource {x:Type CheckBox}}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsCovered}" Value="True">
+                                                        <Setter Property="Opacity" Value="0.55"/>
+                                                        <Setter Property="ToolTip" Value="Уже входить - відмічена вища папка"/>
+                                                        <Setter Property="ToolTipService.ShowOnDisabled" Value="True"/>
+                                                    </DataTrigger>
+                                                    <!-- Після IsCovered: виключена папка лежить у відміченій, і підказка має бути саме про це -->
+                                                    <DataTrigger Binding="{Binding IsExcluded}" Value="True">
+                                                        <Setter Property="Opacity" Value="0.55"/>
+                                                        <Setter Property="ToolTip" Value="Це прикомандировані - у набір не входять, ідуть на свої аркуші"/>
+                                                        <Setter Property="ToolTipService.ShowOnDisabled" Value="True"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </CheckBox.Style>
+                                        <TextBlock Text="{Binding Name}" FontSize="11.5"/>
+                                    </CheckBox>
+                                    <TextBlock Text="{Binding CountText}" FontSize="10.5" Margin="8,0,0,0" VerticalAlignment="Center"
+                                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                                </StackPanel>
+                            </HierarchicalDataTemplate>
+                        </TreeView.ItemTemplate>
+                    </TreeView>
+                </Border>
+                <TextBlock Text="{Binding Summary}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"
+                           Foreground="{StaticResource TextSecondaryBrush}"/>
+            </StackPanel>
+        </DataTemplate>
+    </Window.Resources>
+
+    <DockPanel Margin="20">
+        <StackPanel DockPanel.Dock="Top" Margin="0,0,0,14">
+            <TextBlock Text="{Binding ScopeText}" FontSize="13" FontWeight="SemiBold"
+                       Foreground="{StaticResource TextPrimaryBrush}"
+                       TextTrimming="CharacterEllipsis" ToolTip="{Binding ScopeText}"/>
+            <TextBlock Text="Ліворуч - кого вивантажити, посередині - які поля, праворуч - у якому порядку вони стануть колонками."
+                       FontSize="11.5" TextWrapping="Wrap" Margin="0,4,0,0"
+                       Foreground="{StaticResource TextSecondaryBrush}"/>
+        </StackPanel>
+
+        <Border DockPanel.Dock="Bottom" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,1,0,0"
+                Padding="0,12,0,0" Margin="0,14,0,0">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="Скасувати" Style="{StaticResource SecondaryButtonStyle}"
+                            Command="{Binding CancelCommand}" IsCancel="True"/>
+                    <Button Content="Копіювати таблицю" Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0"
+                            Command="{Binding CopyCommand}"
+                            Visibility="{Binding IsSingleList, Converter={StaticResource BoolToVisibility}}"
+                            ToolTip="Та сама таблиця в буфер обміну - щоб вставити в уже відкритий Excel чи Word (Ctrl+V)"/>
+                    <!-- Без IsDefault: Enter у полі пошуку чи умови не має раптом відкривати вікно збереження файлу. -->
+                    <Button Content="Зберегти в Excel…" Margin="8,0,0,0" MinWidth="150"
+                            Command="{Binding SaveCommand}"/>
+                </StackPanel>
+
+                <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Text="{Binding SummaryText}" FontSize="12.5" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasNoMatches}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource WarnTextBrush}"/>
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding HasNoColumns}" Value="True">
+                                        <Setter Property="Foreground" Value="{StaticResource WarnTextBrush}"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Text="{Binding StatusNote}" FontSize="11.5" FontWeight="SemiBold" Margin="0,2,0,0"
+                               Foreground="{StaticResource SuccessBrush}" TextTrimming="CharacterEllipsis">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding StatusNote}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </StackPanel>
+            </DockPanel>
+        </Border>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="300"/>
+                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="240"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Кого експортувати -->
+            <DockPanel Grid.Column="0">
+                <TextBlock DockPanel.Dock="Top" Text="КОГО ЕКСПОРТУВАТИ" Style="{StaticResource SectionCaptionStyle}"/>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,8,0,0" Padding="0,0,6,0">
+                    <StackPanel>
+                        <CheckBox Content="Разом із вкладеними папками" FontSize="11.5" Margin="0,0,0,6"
+                                  IsChecked="{Binding IncludeDescendants, Mode=TwoWay}"
+                                  Visibility="{Binding ShowIncludeDescendants, Converter={StaticResource BoolToVisibility}}"/>
+
+                        <CheckBox Content="Окремими аркушами Excel" FontSize="11.5"
+                                  IsChecked="{Binding BySheets, Mode=TwoWay}"
+                                  ToolTip="Одна книга з кількома аркушами: усі слухачі, придатні й обмежено придатні з прикомандированих, набір. Колонки на всіх аркушах однакові"
+                                  Visibility="{Binding IsFolderScope, Converter={StaticResource BoolToVisibility}}"/>
+
+                        <StackPanel Margin="0,8,0,0"
+                                    Visibility="{Binding BySheets, Converter={StaticResource BoolToVisibility}}">
+                            <Border Background="{StaticResource BackgroundBrush}"
+                                    BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1" Padding="8,5">
+                                <ItemsControl ItemsSource="{Binding Sheets}" Focusable="False">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <DockPanel Margin="0,3">
+                                                <TextBlock DockPanel.Dock="Right" Text="{Binding Count}" FontSize="11.5"
+                                                           Margin="8,0,0,0" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                           ToolTip="Скільки людей зараз потрапляє на аркуш"/>
+                                                <CheckBox Style="{StaticResource FieldCheckBoxStyle}"
+                                                          IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                                                          ToolTip="{Binding Hint}">
+                                                    <TextBlock Text="{Binding Label}" TextWrapping="Wrap"
+                                                               Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                </CheckBox>
+                                            </DockPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
+
+                            <!-- Той самий порядок, що й в аркушів: спершу прикомандировані, у кінці набір -->
+                            <ContentControl Content="{Binding SecondedFolders}" Focusable="False"
+                                            ContentTemplate="{StaticResource FolderPickerTemplate}"/>
+                            <ContentControl Content="{Binding IntakeFolders}" Focusable="False"
+                                            ContentTemplate="{StaticResource FolderPickerTemplate}"/>
+                            <TextBlock Text="Хто в папках прикомандированих, на аркуш «Набір» не йде. Фільтри нижче діють на всі аркуші."
+                                       FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"
+                                       Foreground="{StaticResource TextSecondaryBrush}"/>
+                        </StackPanel>
+
+                        <TextBlock Text="ПІБ або посада" Style="{StaticResource FilterLabelStyle}"/>
+                        <TextBox Tag="містить…" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
+
+                        <TextBlock Text="Звання" Style="{StaticResource FilterLabelStyle}"/>
+                        <ItemsControl ItemsSource="{Binding RankOptions}" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <CheckBox Content="{Binding Label}" FontSize="11.5" Margin="0,2"
+                                              IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                                              Visibility="{Binding HasPeople, Converter={StaticResource BoolToVisibility}}"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <TextBlock Text="Придатність" Style="{StaticResource FilterLabelStyle}"/>
+                        <ComboBox ItemsSource="{Binding FitnessOptions}" DisplayMemberPath="Label"
+                                  SelectedItem="{Binding SelectedFitness, Mode=TwoWay}"/>
+
+                        <TextBlock Text="Умови за будь-яким полем" Style="{StaticResource FilterLabelStyle}"/>
+                        <ItemsControl ItemsSource="{Binding Conditions}" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="{StaticResource BackgroundBrush}"
+                                            BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1"
+                                            Padding="6" Margin="0,0,0,6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="112"/>
+                                                <ColumnDefinition Width="6"/>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="Auto"/>
+                                                <RowDefinition Height="Auto"/>
+                                            </Grid.RowDefinitions>
+
+                                            <ComboBox Grid.Row="0" Grid.ColumnSpan="3"
+                                                      ItemsSource="{Binding Fields}" DisplayMemberPath="Label"
+                                                      SelectedItem="{Binding Field, Mode=TwoWay}"/>
+                                            <Button Grid.Row="0" Grid.Column="3" Content="&#xE711;" Margin="4,0,0,0"
+                                                    Style="{StaticResource ColumnOrderButtonStyle}" ToolTip="Прибрати умову"
+                                                    Command="{Binding DataContext.RemoveConditionCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                    CommandParameter="{Binding}"/>
+
+                                            <ComboBox Grid.Row="1" Grid.Column="0" Margin="0,6,0,0"
+                                                      ItemsSource="{Binding Operators}" DisplayMemberPath="Label"
+                                                      SelectedItem="{Binding Comparison, Mode=TwoWay}"/>
+                                            <TextBox Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" Margin="0,6,0,0"
+                                                     Tag="значення"
+                                                     Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
+                                                     Visibility="{Binding NeedsValue, Converter={StaticResource BoolToVisibility}}"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="+ Додати умову" Style="{StaticResource TextLinkButtonStyle}"
+                                    Foreground="{StaticResource AccentBrush}"
+                                    Command="{Binding AddConditionCommand}"
+                                    ToolTip="Наприклад: «Телефон - не заповнено» або «ВОС - містить - 100»"/>
+                            <Button Content="Скинути фільтри" Style="{StaticResource TextLinkButtonStyle}"
+                                    Foreground="{StaticResource TextSecondaryBrush}" Margin="16,0,0,0"
+                                    Command="{Binding ResetFiltersCommand}"
+                                    Visibility="{Binding HasActiveFilters, Converter={StaticResource BoolToVisibility}}"/>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </DockPanel>
+
+            <!-- Які поля -->
+            <DockPanel Grid.Column="2">
+                <DockPanel DockPanel.Dock="Top">
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                        <Button Content="Усі" Style="{StaticResource TextLinkButtonStyle}"
+                                Foreground="{StaticResource AccentBrush}" Command="{Binding SelectAllFieldsCommand}"/>
+                        <Button Content="Жодного" Style="{StaticResource TextLinkButtonStyle}" Margin="12,0,0,0"
+                                Foreground="{StaticResource AccentBrush}" Command="{Binding ClearFieldsCommand}"/>
+                        <Button Content="Типові" Style="{StaticResource TextLinkButtonStyle}" Margin="12,0,0,0"
+                                Foreground="{StaticResource AccentBrush}" Command="{Binding DefaultFieldsCommand}"
+                                ToolTip="№ з/п, звання, ПІБ, посада, особовий номер, кімната"/>
+                    </StackPanel>
+                    <TextBlock Text="ЯКІ ПОЛЯ ЕКСПОРТУВАТИ" Style="{StaticResource SectionCaptionStyle}"/>
+                </DockPanel>
+
+                <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1" Margin="0,8,0,0"
+                        Background="{StaticResource BackgroundBrush}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="12,4,12,10">
+                        <ItemsControl ItemsSource="{Binding FieldGroups}" Focusable="False">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Title}" Style="{StaticResource SectionCaptionStyle}"
+                                                   Margin="0,10,0,4"/>
+                                        <ItemsControl ItemsSource="{Binding Fields}" Focusable="False">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <UniformGrid Columns="2"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <CheckBox Style="{StaticResource FieldCheckBoxStyle}" Margin="0,3,12,3"
+                                                              IsChecked="{Binding IsChecked, Mode=TwoWay}"
+                                                              ToolTip="{Binding Label}">
+                                                        <TextBlock Text="{Binding Label}" TextTrimming="CharacterEllipsis"
+                                                                   Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                    </CheckBox>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
+            </DockPanel>
+
+            <!-- У якому порядку -->
+            <DockPanel Grid.Column="4">
+                <TextBlock DockPanel.Dock="Top" Text="{Binding ColumnsHeader}" Style="{StaticResource SectionCaptionStyle}"/>
+
+                <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,0">
+                    <TextBlock Text="ПОРЯДОК РЯДКІВ" Style="{StaticResource SectionCaptionStyle}" Margin="0,0,0,6"/>
+                    <ComboBox ItemsSource="{Binding SortOptions}" DisplayMemberPath="Label"
+                              SelectedItem="{Binding SelectedSort, Mode=TwoWay}"/>
+                </StackPanel>
+
+                <Border BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1" Margin="0,8,0,0">
+                    <Grid>
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding SelectedFields}" Focusable="False">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border x:Name="row" Background="Transparent" Padding="8,2,4,2"
+                                                BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="0,0,0,1">
+                                            <DockPanel>
+                                                <Button DockPanel.Dock="Right" Content="&#xE711;" ToolTip="Прибрати колонку"
+                                                        Style="{StaticResource ColumnOrderButtonStyle}"
+                                                        Command="{Binding DataContext.RemoveFieldCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                                <Button DockPanel.Dock="Right" Content="&#xE74B;" ToolTip="Нижче (правіше у файлі)"
+                                                        Style="{StaticResource ColumnOrderButtonStyle}"
+                                                        Command="{Binding DataContext.MoveFieldDownCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                                <Button DockPanel.Dock="Right" Content="&#xE74A;" ToolTip="Вище (лівіше у файлі)"
+                                                        Style="{StaticResource ColumnOrderButtonStyle}"
+                                                        Command="{Binding DataContext.MoveFieldUpCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}"/>
+                                                <TextBlock Text="{Binding Label}" FontSize="11.5" VerticalAlignment="Center"
+                                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                                           TextTrimming="CharacterEllipsis" ToolTip="{Binding Label}"/>
+                                            </DockPanel>
+                                        </Border>
+                                        <DataTemplate.Triggers>
+                                            <Trigger SourceName="row" Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="row" Property="Background" Value="{StaticResource RowHoverBrush}"/>
+                                            </Trigger>
+                                        </DataTemplate.Triggers>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+
+                        <TextBlock Text="Позначте поля посередині - вони з'являться тут у тому порядку, в якому стануть колонками."
+                                   FontSize="11.5" TextWrapping="Wrap" TextAlignment="Center" Margin="16"
+                                   VerticalAlignment="Center" Foreground="{StaticResource TextSecondaryBrush}"
+                                   Visibility="{Binding HasNoColumns, Converter={StaticResource BoolToVisibility}}"/>
+                    </Grid>
+                </Border>
+            </DockPanel>
+        </Grid>
+    </DockPanel>
+</Window>
