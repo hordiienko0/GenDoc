@@ -69,6 +69,30 @@ public class DocumentWordingTests
         Assert.Equal("Курсовий офіцер курсів підвищення кваліфікації ХНУПС", form.GetValues()["{{посада_підписанта}}"]);
     }
 
+    // Посада над підписом - з поля «Посада» картки постійного складу; скорочена лишає повну стандартну.
+    [Theory]
+    [InlineData("курсовий офіцер", "Курсовий офіцер курсів підвищення кваліфікації ХНУПС")]
+    [InlineData("курсовий офіцер курсів підвищення кваліфікації", "Курсовий офіцер курсів підвищення кваліфікації ХНУПС")]
+    [InlineData("", "Курсовий офіцер курсів підвищення кваліфікації ХНУПС")]
+    [InlineData("старший викладач курсів підвищення кваліфікації ХНУПС", "Старший викладач курсів підвищення кваліфікації ХНУПС")]
+    [InlineData("Курсовий офіцер курсів перепідготовки та підвищення кваліфікації Харківського національного університету Повітряних Сил",
+                "Курсовий офіцер курсів перепідготовки та підвищення кваліфікації Харківського національного університету Повітряних Сил")]
+    public async Task SignerPosition_OfAStaffMember_IsThePositionFromTheirCard(string cardPosition, string expected)
+    {
+        using var db = new TestDb();
+        var builder = Builder(db, "Начальник курсів підвищення кваліфікації ХНУПС");
+        using (var ctx = db.Factory.CreateDbContext())
+        {
+            ctx.Recipients.Single(r => r.IsCourseOfficer).Position = cardPosition;
+            ctx.SaveChanges();
+        }
+
+        var form = await builder.BuildAsync(SignerTags, "pkg:1");
+        form.Signer!.Selected = form.Signer.Options.Single(o => o.RecipientId != HeadOfCourses.PickerId);
+
+        Assert.Equal(expected, form.GetValues()["{{посада_підписанта}}"]);
+    }
+
     [Theory]
     [InlineData(1, "учасника")]
     [InlineData(3, "учасників")]

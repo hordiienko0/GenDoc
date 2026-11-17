@@ -31,7 +31,7 @@ public class KomplektPackageQaTests : IDisposable
     {
         //            тека                      групових DOCX  відомостей  «аркуш на дату»  персональних
         new object[] { "Стрільби",                 9,           3,          3,               0 },
-        new object[] { "Котлове забезпечення",     4,           0,          0,               2 },
+        new object[] { "Котлове забезпечення",     4,           0,          0,               3 },
         new object[] { "Відрядження",              1,           0,          0,               0 },
         new object[] { "Відпустки та лікування",   0,           0,          0,               3 },
         new object[] { "Стройовий облік",          2,           1,          0,               0 },
@@ -160,7 +160,7 @@ public class KomplektPackageQaTests : IDisposable
         List<int> templateIds;
         using (var ctx = db.NewContext())
             templateIds = ctx.Templates.Where(t => t.Kind == TemplateKind.PerRecipient).Select(t => t.Id).ToList();
-        Assert.Equal(5, templateIds.Count);
+        Assert.Equal(6, templateIds.Count);
 
         var generation = TestServices.Generation(db);
         var values = await FormValues(db, generation.GetManualTagsForTemplates(templateIds, Array.Empty<int>()), Days);
@@ -168,10 +168,10 @@ public class KomplektPackageQaTests : IDisposable
             templateIds, Array.Empty<int>(), seeded.IdBySurname.Values.ToList(), _folder, values, NoProgress);
 
         Assert.Equal(0, result.Errors);
-        Assert.Equal(5 * 4, result.Generated);
+        Assert.Equal(6 * 4, result.Generated);
         Assert.DoesNotContain(result.Issues!, i => i.Message.Contains("не заповнено", StringComparison.Ordinal));
         var files = Files(_folder, ".docx");
-        Assert.Equal(20, files.Length);
+        Assert.Equal(24, files.Length);
         Assert.All(files, f => Assert.DoesNotContain("{{", DocxText(f)));
     }
 

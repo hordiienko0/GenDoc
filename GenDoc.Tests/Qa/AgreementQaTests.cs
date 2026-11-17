@@ -68,6 +68,21 @@ public class AgreementQaTests : IDisposable
         Assert.DoesNotContain("таким", female);
     }
 
+    // Перша постановка мобілізованого на котлове: «прибув з ТЦК та СП …, як такого, що вперше набув право …».
+    // Кінець речення - звичайний текст шаблону: мобілізовані слухачі - лише чоловіки.
+    [Fact]
+    public async Task A6_FirstEnrollmentOfMobilized_ArrivedFromRecruitmentCentre_NoTravelCertificate()
+    {
+        var text = await GenerateReports();
+        const string report = "зарахування на котлове забезпечення (індивідуальний, мобілізовані)";
+
+        var male = text(report, "ШЕВЧЕНКО");
+        Assert.Contains("Прошу Вас, майора ШЕВЧЕНКА Андрія Петровича слухача вважати таким, що", male);
+        Assert.Contains("прибув з ТЦК та СП до місця проведення підготовки - ВКСС ХНУПС", male);
+        Assert.Contains("як такого, що вперше набув право на продовольче забезпечення за рахунок держави.", male);
+        Assert.DoesNotContain("посвідчення про відрядження", male);
+    }
+
     [Fact]
     public async Task A6_ResumedDuty_Verb_AgreesWithGender()
     {

@@ -7,7 +7,8 @@ namespace GenDoc.Services.Staff
         StaffEventKind? CurrentState, int DocsCount, bool IsCourseOfficer);
 
     public record StaffPickerPerson(
-        int Id, string LastName, string FirstName, string Rank, string? MiddleName = null, string? UnitName = null);
+        int Id, string LastName, string FirstName, string Rank, string? MiddleName = null, string? UnitName = null,
+        string? Position = null);
 
     public interface IStaffService
     {

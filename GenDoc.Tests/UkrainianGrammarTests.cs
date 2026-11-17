@@ -210,6 +210,34 @@ public class UkrainianGrammarTests
     public void PositionDative_DeclinesOnlyTheHead(string nominative, string expected)
         => Assert.Equal(expected, UkrainianGrammar.PositionDative(nominative, Gender.Male));
 
+    // Штатні назви з означенням після головного слова: «слухач штатний», «оператор старший».
+    [Theory]
+    [InlineData("слухач штатний курсів перепідготовки та підвищення кваліфікації університету",
+                "слухача штатного курсів перепідготовки та підвищення кваліфікації університету",
+                "слухачу штатному курсів перепідготовки та підвищення кваліфікації університету")]
+    [InlineData("оператор старший 2 відділення", "оператора старшого 2 відділення", "оператору старшому 2 відділення")]
+    // Залежний іменник на «-ій» (родовий множини) - не означення, лишається як є.
+    [InlineData("інженер комунікацій", "інженера комунікацій", "інженеру комунікацій")]
+    public void PositionDeclension_AdjectiveAfterTheHead_AgreesWithIt(string nominative, string accusative, string dative)
+    {
+        Assert.Equal(accusative, UkrainianGrammar.PositionAccusative(nominative, Gender.Male));
+        Assert.Equal(dative, UkrainianGrammar.PositionDative(nominative, Gender.Male));
+    }
+
+    // Посаду в картці можна вписати з великої (так вона стоїть над підписом) - у реченні вона з малої.
+    [Theory]
+    [InlineData("Курсовий офіцер курсів перепідготовки та підвищення кваліфікації",
+                "курсового офіцера курсів перепідготовки та підвищення кваліфікації",
+                "курсовому офіцеру курсів перепідготовки та підвищення кваліфікації")]
+    [InlineData("Начальник служби", "начальника служби", "начальнику служби")]
+    [InlineData("ТВО начальника служби", "ТВО начальника служби", "ТВО начальника служби")]
+    public void PositionDeclension_CapitalizedInTheCard_GoesLowercaseInsideTheSentence(
+        string nominative, string accusative, string dative)
+    {
+        Assert.Equal(accusative, UkrainianGrammar.PositionAccusative(nominative, Gender.Male));
+        Assert.Equal(dative, UkrainianGrammar.PositionDative(nominative, Gender.Male));
+    }
+
     [Fact]
     public void PositionDeclension_EmptyStaysEmpty()
     {

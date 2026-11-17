@@ -124,8 +124,9 @@ namespace GenDoc.Services.Generation
         {
             var head = await GetHeadOfCoursesOptionAsync();
 
-            // Посада над підписом іде за підписантом: курсовим офіцерам - «Курсовий офіцер курсів …».
-            // Запасний список (увесь постійний склад) посади не має - тег лишиться незаповненим і це буде видно.
+            // Посада над підписом іде за підписантом: «Посада» з його картки, а якщо там порожньо чи скорочено -
+            // курсовим офіцерам «Курсовий офіцер курсів …». У запасному списку (увесь постійний склад) стандартної
+            // посади немає: без посади в картці тег лишиться незаповненим і це буде видно.
             var officerPosition = HeadOfCourses.CourseOfficerPosition(await GetOrganizationAsync());
             var staff = await _staffService.GetCourseOfficersForPickerAsync();
             var onlyOfficers = true;
@@ -139,7 +140,7 @@ namespace GenDoc.Services.Generation
                 .Select(s => new StaffPickerOption(
                     s.Id, s.Rank, Services.NameFormatter.SignatureName(s.LastName, s.FirstName),
                     $"{s.Rank} {Services.NameFormatter.SignatureName(s.LastName, s.FirstName)}",
-                    Position: onlyOfficers ? officerPosition : null))
+                    Position: HeadOfCourses.SignerPosition(s.Position, onlyOfficers ? officerPosition : null)))
                 .ToList();
 
             if (head is not null)

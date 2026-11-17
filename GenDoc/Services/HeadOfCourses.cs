@@ -52,6 +52,22 @@ namespace GenDoc.Services
         }
 
         /// <summary>
+        /// {{посада_підписанта}} для людини з постійного складу - «Посада» з її картки, з великої літери.
+        /// Якщо в картці порожньо або посада скорочена («курсовий офіцер», «курсовий офіцер курсів
+        /// перепідготовки та підвищення кваліфікації»), лишається повна стандартна <paramref name="standard"/>.
+        /// </summary>
+        public static string? SignerPosition(string? cardPosition, string? standard)
+        {
+            var own = cardPosition?.Trim();
+            if (string.IsNullOrEmpty(own)) return standard;
+            if (standard is not null && standard.StartsWith(own, StringComparison.OrdinalIgnoreCase)) return standard;
+            return char.ToUpper(own[0], Ukrainian) + own[1..];
+        }
+
+        private static readonly System.Globalization.CultureInfo Ukrainian =
+            System.Globalization.CultureInfo.GetCultureInfo("uk-UA");
+
+        /// <summary>
         /// {{начальник_курсів_дв}} - «полковнику Івану ПЕТРЕНКУ». Ім'я в налаштуваннях буває і «Іван ПЕТРЕНКО»
         /// (прізвище великими), і «Петренко Іван Іванович»: слово великими - прізвище, інакше перше слово -
         /// прізвище, друге - ім'я, третє - по батькові. Рід - за по батькові (-івна/-ївна - жіночий).

@@ -67,6 +67,8 @@ namespace GenDoc.Services
         // Посада: відмінюється тільки головне слово (з означеннями перед ним),
         // залежні слова в родовому лишаються як є:
         // «начальник служби захисту …» → «начальника служби захисту …».
+        // У штатних назвах означення буває й після головного слова - воно теж
+        // узгоджується: «слухач штатний курсів …» → «слухача штатного курсів …».
         // -----------------------------------------------------------------
 
         public static string PositionAccusative(string position, Gender gender)
@@ -93,6 +95,11 @@ namespace GenDoc.Services
             var words = position.Split(' ', StringSplitOptions.RemoveEmptyEntries);
             if (words.Length == 0) return position;
 
+            // У картці посаду пишуть і з великої літери («Курсовий офіцер курсів …» - так вона стоїть над
+            // підписом), а відмінкова форма завжди йде всередині речення - з малої. Абревіатури («ТВО») не чіпаємо.
+            if (words[0].Length > 1 && char.IsUpper(words[0][0]) && char.IsLower(words[0][1]))
+                words[0] = char.ToLower(words[0][0], Ukrainian) + words[0][1..];
+
             var head = 0;
             while (head < words.Length && IsAdjective(words[head]))
             {
@@ -103,12 +110,23 @@ namespace GenDoc.Services
             if (head < words.Length)
                 words[head] = DeclineWord(words[head], GrammaticalKind.Rank, gender, grammaticalCase);
 
+            for (var i = head + 1; i < words.Length && IsPostpositiveAdjective(words[i]); i++)
+                words[i] = DeclineAdjective(words[i], grammaticalCase);
+
             return string.Join(' ', words);
         }
 
         private static bool IsAdjective(string word)
             => word.EndsWith("ий", StringComparison.OrdinalIgnoreCase)
                || word.EndsWith("ій", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Означення після головного слова («слухач штатний», «стрілець старший»). Лише на «-ий»:
+        /// на «-ій» після головного слова стоять залежні іменники в родовому множини
+        /// («начальник станцій», «офіцер комунікацій»), їх чіпати не можна.
+        /// </summary>
+        private static bool IsPostpositiveAdjective(string word)
+            => word.EndsWith("ий", StringComparison.OrdinalIgnoreCase);
 
         private const string NavalRankMarker = "рангу";
 
