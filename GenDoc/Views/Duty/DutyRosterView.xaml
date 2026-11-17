@@ -3,7 +3,15 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:GenDoc.ViewModels.Duty"
+             Focusable="True" FocusVisualStyle="{x:Null}"
              Loaded="DutyRosterView_Loaded">
+
+    <!-- У текстових полях Ctrl+Z - їхнє власне скасування набраного; деінде - крок графіка назад. -->
+    <UserControl.InputBindings>
+        <KeyBinding Gesture="Ctrl+Z" Command="{Binding UndoCommand}"/>
+        <KeyBinding Gesture="Ctrl+Y" Command="{Binding RedoCommand}"/>
+        <KeyBinding Gesture="Ctrl+Shift+Z" Command="{Binding RedoCommand}"/>
+    </UserControl.InputBindings>
 
     <UserControl.Resources>
         <Style x:Key="BrushSegmentStyle" TargetType="RadioButton">
@@ -92,6 +100,7 @@
 
     <Grid Background="{StaticResource BackgroundBrush}">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -199,7 +208,16 @@
                     <TextBlock Text="На добу" Style="{StaticResource FieldLabelStyle}" Margin="16,0,6,0"/>
                     <ComboBox Width="56" ItemsSource="{Binding PeoplePerDayOptions}" SelectedItem="{Binding PeoplePerDay}"
                               ToolTip="Скільки людей у наряді щодоби = скільки змін у легенді"/>
-                    <Button Content="Рандом" Style="{StaticResource SecondaryButtonStyle}" Margin="16,0,0,0"
+                    <Button Content="← Назад" Style="{StaticResource SecondaryButtonStyle}" Margin="16,0,0,0"
+                            Command="{Binding UndoCommand}" ToolTipService.ShowOnDisabled="True"
+                            ToolTip="Скасувати останню дію з графіком (Ctrl+Z). Шапку й підвал листа не повертає"/>
+                    <Button Content="Вперед →" Style="{StaticResource SecondaryButtonStyle}" Margin="6,0,0,0"
+                            Command="{Binding RedoCommand}" ToolTipService.ShowOnDisabled="True"
+                            ToolTip="Повернути скасовану дію (Ctrl+Y)"/>
+                    <Button Content="Перший день" Style="{StaticResource SecondaryButtonStyle}" Margin="16,0,0,0"
+                            Command="{Binding OpenFirstDayCommand}"
+                            ToolTip="Вибрати, хто чергує першого дня; далі програма розподіляє як завжди"/>
+                    <Button Content="Рандом" Style="{StaticResource SecondaryButtonStyle}" Margin="6,0,0,0"
                             Command="{Binding RandomizeCommand}"
                             ToolTip="Новий варіант: ручні «н» лишаються, решта розставляється заново, але так само порівну"/>
                     <Button Content="Зафіксувати" Style="{StaticResource SecondaryButtonStyle}" Margin="6,0,0,0"
@@ -250,7 +268,41 @@
             </StackPanel>
         </Border>
 
-        <Border Grid.Row="4" Background="{StaticResource WarningSoftBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+        <Border Grid.Row="4" Background="{StaticResource AccentSoftBrush}" BorderBrush="{StaticResource BorderLineBrush}"
+                BorderThickness="1,0,1,1" Padding="12,10"
+                Visibility="{Binding IsFirstDayOpen, Converter={StaticResource BoolToVisibility}}">
+            <StackPanel>
+                <TextBlock Text="{Binding FirstDayCaption}" Style="{StaticResource BlockTitleStyle}" Margin="0,0,0,2"/>
+                <TextBlock Text="Відмічені стануть у наряд першого дня, решту днів програма розподілить як завжди - по черзі й порівну."
+                           FontSize="11.5" TextWrapping="Wrap" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,8"/>
+                <ScrollViewer MaxHeight="150" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding FirstDayPeople}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox Width="230" Margin="0,3,8,3" IsChecked="{Binding IsPicked}" IsEnabled="{Binding CanPick}"
+                                          ToolTip="{Binding Unavailable}" ToolTipService.ShowOnDisabled="True">
+                                    <TextBlock Text="{Binding DisplayName}" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                                </CheckBox>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <Button Content="Поставити на перший день" Command="{Binding ApplyFirstDayCommand}"/>
+                    <Button Content="Залишити, як розставила програма" Style="{StaticResource SecondaryButtonStyle}" Margin="8,0,0,0"
+                            Command="{Binding CloseFirstDayCommand}"/>
+                    <TextBlock Text="{Binding FirstDayStatus}" FontSize="11.5" VerticalAlignment="Center" Margin="12,0,0,0"
+                               Foreground="{StaticResource TextSecondaryBrush}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Row="5" Background="{StaticResource WarningSoftBrush}" BorderBrush="{StaticResource BorderLineBrush}"
                 BorderThickness="1,0,1,1" Padding="12,8"
                 Visibility="{Binding HasWarnings, Converter={StaticResource BoolToVisibility}}">
             <ScrollViewer MaxHeight="64" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
@@ -258,7 +310,7 @@
             </ScrollViewer>
         </Border>
 
-        <StackPanel Grid.Row="5" Orientation="Horizontal" Margin="0,10,0,8"
+        <StackPanel Grid.Row="6" Orientation="Horizontal" Margin="0,10,0,8"
                     Visibility="{Binding HasRoster, Converter={StaticResource BoolToVisibility}}">
             <RadioButton GroupName="DutyTab" Content="Графік" Style="{StaticResource BrushSegmentStyle}"
                          IsChecked="{Binding IsSettingsOpen, Converter={StaticResource InverseBoolean}}"/>
@@ -266,7 +318,7 @@
                          IsChecked="{Binding IsSettingsOpen}"/>
         </StackPanel>
 
-        <Border Grid.Row="6" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1"
+        <Border Grid.Row="7" Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource BorderLineBrush}" BorderThickness="1"
                 Visibility="{Binding ShowGridArea, Converter={StaticResource BoolToVisibility}}">
             <Grid>
                 <TextBlock Text="Графіків ще немає - натисніть «+ Новий графік», задайте період і набір."

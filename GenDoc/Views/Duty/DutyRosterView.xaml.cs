@@ -13,10 +13,17 @@ public partial class DutyRosterView : UserControl
     public DutyRosterView()
     {
         InitializeComponent();
+
+        // Клітинки сітки фокус не беруть: без цього Ctrl+Z після мазка йшов би не сюди, а туди, де фокус був раніше.
+        PreviewMouseDown += (_, _) =>
+        {
+            if (!IsKeyboardFocusWithin) Focus();
+        };
     }
 
     private async void DutyRosterView_Loaded(object sender, RoutedEventArgs e)
     {
+        if (!IsKeyboardFocusWithin) Focus();
         if (DataContext is DutyRosterViewModel vm)
             await vm.InitializeCommand.ExecuteAsync(null);
     }

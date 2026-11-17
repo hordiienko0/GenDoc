@@ -363,6 +363,7 @@ public class DutyRosterViewModelTests
         Assert.True(vm.HasRoster);
         Assert.Empty(vm.Rows);
         Assert.True(vm.IsSettingsOpen);
+        Assert.False(vm.IsFirstDayOpen);
         Assert.Equal(3, vm.PeopleToAdd.Count);
 
         foreach (var name in new[] { "ПЕРШИЙ А.А.", "ДРУГИЙ Б.Б.", "ТРЕТІЙ В.В." })
@@ -572,5 +573,236 @@ public class DutyRosterViewModelTests
         Assert.True(vm.HasWarnings);
         Assert.Contains("Неповні дні", vm.WarningsText);
         Assert.All(vm.Days, d => Assert.True(d.IsShort));
+    }
+
+    // ---- Назад / Вперед ----
+
+    /// <summary>Увесь графік одним рядком: хто, що в кожній клітинці і чи поставила це програма.</summary>
+    private static string Picture(DutyRosterViewModel vm)
+        => string.Join("|", vm.Rows.Select(r => r.DisplayName + ":" + string.Join(",", r.Cells.Select(c => c.Text + (c.IsAuto ? "a" : "")))));
+
+    [Fact]
+    public async Task UndoTakesBackAPaintStrokeAndRedoPutsItBack()
+    {
+        using var db = new TestDb();
+        var (vm, service) = await CreatedRoster(db);
+        Assert.False(vm.CanUndo);
+        Assert.False(vm.CanRedo);
+        var before = Picture(vm);
+        var row = vm.Rows.First(r => !r.Cells[0].IsDuty);
+        var index = vm.Rows.IndexOf(row);
+
+        vm.BeginPaint(row.Cells[0]);
+        await vm.EndPaintAsync();
+        var painted = Picture(vm);
+        Assert.True(vm.CanUndo);
+
+        await vm.UndoCommand.ExecuteAsync(null);
+
+        Assert.Equal(before, Picture(vm));
+        Assert.False(vm.CanUndo);
+        Assert.True(vm.CanRedo);
+        Assert.False((await service.LoadAsync(vm.Roster!.Id))!.Members[index].Duties.ContainsKey(From));
+
+        await vm.RedoCommand.ExecuteAsync(null);
+
+        Assert.Equal(painted, Picture(vm));
+        Assert.True(vm.CanUndo);
+        Assert.False(vm.CanRedo);
+        Assert.Equal(DutyCellSource.Manual, (await service.LoadAsync(vm.Roster!.Id))!.Members[index].Duties[From]);
+    }
+
+    [Fact]
+    public async Task UndoStepsBackThroughSeveralActionsAndANewActionDropsRedo()
+    {
+        using var db = new TestDb();
+        var (vm, _) = await CreatedRoster(db);
+        var start = Picture(vm);
+        var seed = vm.Roster!.Seed;
+
+        await vm.RandomizeCommand.ExecuteAsync(null);
+        var randomized = Picture(vm);
+        await vm.ToggleDayExemptCommand.ExecuteAsync(vm.Days[3]);
+
+        await vm.UndoCommand.ExecuteAsync(null);
+        Assert.Equal(randomized, Picture(vm));
+        Assert.False(vm.Days[3].IsExempt);
+
+        await vm.UndoCommand.ExecuteAsync(null);
+        Assert.Equal(start, Picture(vm));
+        Assert.Equal(seed, vm.Roster!.Seed);
+        Assert.True(vm.CanRedo);
+
+        await vm.MoveDownCommand.ExecuteAsync(vm.Rows[0]);
+        Assert.True(vm.CanUndo);
+        Assert.False(vm.CanRedo);
+    }
+
+    [Fact]
+    public async Task UndoBringsBackPeoplePerDayButKeepsTheHeadingText()
+    {
+        using var db = new TestDb();
+        var (vm, service) = await CreatedRoster(db);
+
+        vm.PeoplePerDay = 2;
+        await vm.PendingWork;
+        vm.Heading = "НОВА ШАПКА";
+        await vm.PendingWork;
+
+        await vm.UndoCommand.ExecuteAsync(null);
+
+        Assert.Equal(3, vm.PeoplePerDay);
+        Assert.Equal(3, vm.ShiftBrushes.Count);
+        Assert.All(vm.Days, d => Assert.Equal(3, d.Count));
+        Assert.Equal("НОВА ШАПКА", vm.Heading);
+        var saved = (await service.LoadAsync(vm.Roster!.Id))!;
+        Assert.Equal(3, saved.PeoplePerDay);
+        Assert.Equal("НОВА ШАПКА", saved.Heading);
+    }
+
+    [Fact]
+    public async Task UndoOfAPeriodChangeBringsBackTheOldDays()
+    {
+        using var db = new TestDb();
+        var (vm, service) = await CreatedRoster(db);
+        var before = Picture(vm);
+
+        vm.DateTo = From.AddDays(29).ToDateTime(TimeOnly.MinValue);
+        await vm.PendingWork;
+        await vm.UndoCommand.ExecuteAsync(null);
+
+        Assert.Equal(20, vm.Days.Count);
+        Assert.Equal(From.AddDays(19).ToDateTime(TimeOnly.MinValue), vm.DateTo);
+        Assert.Equal(before, Picture(vm));
+        Assert.Equal("19.09 - 08.10.2026 · Набір №29", vm.SelectedRoster?.Label);
+        Assert.Equal(From.AddDays(19), (await service.LoadAsync(vm.Roster!.Id))!.DateTo);
+    }
+
+    [Fact]
+    public async Task OpeningAnotherRosterForgetsTheHistory()
+    {
+        using var db = new TestDb();
+        var (vm, service) = await CreatedRoster(db);
+        await vm.RandomizeCommand.ExecuteAsync(null);
+        await vm.UndoCommand.ExecuteAsync(null);
+        await vm.RandomizeCommand.ExecuteAsync(null);
+        Assert.True(vm.CanUndo);
+
+        var other = await service.CreateAsync(new DutyRosterCreateRequest(From.AddDays(20), From.AddDays(30), vm.Roster!.FolderIds, true, WeekendsGreen: false));
+        await vm.OpenRosterAsync(other.Id);
+
+        Assert.False(vm.CanUndo);
+        Assert.False(vm.CanRedo);
+    }
+
+    // ---- Хто чергує першого дня ----
+
+    private static DutyRowViewModel RowOf(DutyRosterViewModel vm, DutyFirstDayOption option)
+        => vm.Rows.Single(r => r.Member == option.Member);
+
+    [Fact]
+    public async Task NewRosterOffersToPickWhoStandsOnTheFirstDay()
+    {
+        using var db = new TestDb();
+        var (vm, _) = await CreatedRoster(db);
+
+        Assert.True(vm.IsFirstDayOpen);
+        Assert.Equal(vm.Rows.Select(r => r.DisplayName), vm.FirstDayPeople.Select(p => p.DisplayName));
+        Assert.Equal(vm.Rows.Where(r => r.Cells[0].IsDuty).Select(r => r.DisplayName),
+            vm.FirstDayPeople.Where(p => p.IsPicked).Select(p => p.DisplayName));
+        Assert.Contains("19.09", vm.FirstDayCaption);
+    }
+
+    [Fact]
+    public async Task PickedPeopleStandOnTheFirstDayAndTheRestIsSharedFairly()
+    {
+        using var db = new TestDb();
+        var (vm, service) = await CreatedRoster(db);
+        var chosen = vm.FirstDayPeople.Where(p => !p.IsPicked).Take(3).ToList();
+        foreach (var option in vm.FirstDayPeople) option.IsPicked = false;
+        foreach (var option in chosen) option.IsPicked = true;
+
+        await vm.ApplyFirstDayCommand.ExecuteAsync(null);
+
+        Assert.False(vm.IsFirstDayOpen);
+        Assert.Equal(chosen.Select(p => p.DisplayName), vm.Rows.Where(r => r.Cells[0].IsDuty).Select(r => r.DisplayName));
+        Assert.All(chosen, p => Assert.False(RowOf(vm, p).Cells[0].IsAuto));
+        Assert.DoesNotContain(vm.Rows.SelectMany(r => r.Cells), c => c.IsBlocked);
+        Assert.All(vm.Days, d => Assert.Equal(3, d.Count));
+        Assert.StartsWith("Нарядів на людину: 5 - 5", vm.StatsText);
+
+        var saved = (await service.LoadAsync(vm.Roster!.Id))!;
+        Assert.All(chosen, p => Assert.Equal(DutyCellSource.Manual, saved.Members[vm.Rows.IndexOf(RowOf(vm, p))].Duties[From]));
+    }
+
+    [Fact]
+    public async Task FirstDayPickerStopsAtPeoplePerDayAndTheProgramFillsTheRest()
+    {
+        using var db = new TestDb();
+        var (vm, _) = await CreatedRoster(db);
+        foreach (var option in vm.FirstDayPeople) option.IsPicked = false;
+        Assert.All(vm.FirstDayPeople, p => Assert.True(p.CanPick));
+
+        foreach (var option in vm.FirstDayPeople.Take(3)) option.IsPicked = true;
+        Assert.All(vm.FirstDayPeople.Skip(3), p => Assert.False(p.CanPick));
+        Assert.All(vm.FirstDayPeople.Take(3), p => Assert.True(p.CanPick));
+
+        vm.FirstDayPeople[2].IsPicked = false;
+        Assert.All(vm.FirstDayPeople, p => Assert.True(p.CanPick));
+        var picked = vm.FirstDayPeople.Take(2).ToList();
+
+        await vm.ApplyFirstDayCommand.ExecuteAsync(null);
+
+        Assert.Equal(3, vm.Days[0].Count);
+        Assert.All(picked, p =>
+        {
+            Assert.True(RowOf(vm, p).Cells[0].IsDuty);
+            Assert.False(RowOf(vm, p).Cells[0].IsAuto);
+        });
+    }
+
+    [Fact]
+    public async Task ExemptPeopleCannotBePickedForTheFirstDay()
+    {
+        using var db = new TestDb();
+        var (vm, _) = await CreatedRoster(db);
+        var exemptToday = vm.Rows[1].Member;
+        await vm.ToggleRowExemptCommand.ExecuteAsync(vm.Rows[0]);
+        vm.Brush = DutyBrush.Exempt;
+        vm.BeginPaint(vm.Rows.Single(r => r.Member == exemptToday).Cells[0]);
+        await vm.EndPaintAsync();
+
+        vm.OpenFirstDayCommand.Execute(null);
+
+        Assert.Equal(11, vm.FirstDayPeople.Count);
+        var option = vm.FirstDayPeople.Single(p => p.Member == exemptToday);
+        Assert.False(option.CanPick);
+        Assert.False(option.IsPicked);
+    }
+
+    [Fact]
+    public async Task FirstDayPickIsOneUndoStepAndSkippingChangesNothing()
+    {
+        using var db = new TestDb();
+        var (vm, _) = await CreatedRoster(db);
+        var before = Picture(vm);
+
+        vm.CloseFirstDayCommand.Execute(null);
+        Assert.False(vm.IsFirstDayOpen);
+        Assert.Equal(before, Picture(vm));
+        Assert.False(vm.CanUndo);
+
+        vm.OpenFirstDayCommand.Execute(null);
+        Assert.True(vm.IsFirstDayOpen);
+        var chosen = vm.FirstDayPeople.Where(p => !p.IsPicked).Take(3).ToList();
+        foreach (var option in vm.FirstDayPeople) option.IsPicked = false;
+        foreach (var option in chosen) option.IsPicked = true;
+        await vm.ApplyFirstDayCommand.ExecuteAsync(null);
+        Assert.NotEqual(before, Picture(vm));
+
+        await vm.UndoCommand.ExecuteAsync(null);
+
+        Assert.Equal(before, Picture(vm));
+        Assert.False(vm.CanUndo);
     }
 }

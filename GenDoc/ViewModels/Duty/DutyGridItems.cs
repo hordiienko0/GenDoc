@@ -85,6 +85,32 @@ public partial class DutyDayViewModel : ObservableObject
     [ObservableProperty] private bool _isShort;
 }
 
+/// <summary>Людина в панелі «Хто чергує першого дня»: відмічені стануть у наряд 1-го числа.</summary>
+public partial class DutyFirstDayOption : ObservableObject
+{
+    private readonly Action _changed;
+
+    public DutyFirstDayOption(DutyRosterMemberData member, string? unavailable, bool isPicked, Action changed)
+    {
+        Member = member;
+        Unavailable = unavailable;
+        _isPicked = isPicked;
+        _canPick = unavailable is null;
+        _changed = changed;
+    }
+
+    public DutyRosterMemberData Member { get; }
+    public string DisplayName => Member.DisplayName;
+
+    /// <summary>Чому людину цього дня не можна поставити (звільнений, столова); null - можна.</summary>
+    public string? Unavailable { get; }
+
+    [ObservableProperty] private bool _isPicked;
+    [ObservableProperty] private bool _canPick;
+
+    partial void OnIsPickedChanged(bool value) => _changed();
+}
+
 /// <summary>Пензель «І», «ІІ», «ІІІ»: наряд на цій зміні, проставлений вручну.</summary>
 public partial class DutyShiftBrushViewModel : ObservableObject
 {

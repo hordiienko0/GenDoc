@@ -25,8 +25,10 @@ public partial class DutyRosterViewModel : ObservableObject
     private readonly ActiveIntakeState _activeIntake;
     private readonly SemaphoreSlim _saveLock = new(1, 1);
     private readonly HashSet<DutyCellViewModel> _painted = new();
+    private readonly DutyRosterHistory _history = new();
 
     private DutyRosterData? _roster;
+    private DutyRosterData? _strokeBefore;
     private DutyCarryOver? _carryOver;
     private PaintAction? _paint;
     private int _brushShift = 1;
@@ -65,6 +67,15 @@ public partial class DutyRosterViewModel : ObservableObject
     public ObservableCollection<DutyShiftBrushViewModel> ShiftBrushes { get; } = new();
     public ObservableCollection<DutyPersonOption> PeopleToAdd { get; } = new();
     public IReadOnlyList<int> PeoplePerDayOptions { get; } = new[] { 1, 2, 3, 4, 5, 6 };
+
+    /// <summary>Панель «Хто чергує першого дня»: сама відкривається після створення графіка.</summary>
+    public ObservableCollection<DutyFirstDayOption> FirstDayPeople { get; } = new();
+    [ObservableProperty] private bool _isFirstDayOpen;
+    [ObservableProperty] private string _firstDayCaption = string.Empty;
+    [ObservableProperty] private string _firstDayStatus = string.Empty;
+
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(UndoCommand))] private bool _canUndo;
+    [ObservableProperty, NotifyCanExecuteChangedFor(nameof(RedoCommand))] private bool _canRedo;
 
     [ObservableProperty] private DutyRosterListItem? _selectedRoster;
     [ObservableProperty, NotifyPropertyChangedFor(nameof(ShowEmptyHint), nameof(ShowGridArea), nameof(ShowGrid), nameof(ShowSettings))] private bool _hasRoster;
@@ -213,6 +224,9 @@ public partial class DutyRosterViewModel : ObservableObject
 
     public async Task OpenRosterAsync(int? id)
     {
+        _history.Clear();
+        SyncHistory();
+        IsFirstDayOpen = false;
         if (id is not int rosterId)
         {
             _roster = null;
@@ -349,6 +363,7 @@ public partial class DutyRosterViewModel : ObservableObject
             CreateError = null;
             IsCreating = false;
             await ReloadListAsync(roster.Id);
+            OpenFirstDay();
         }
         catch (ArgumentException ex)
         {
@@ -442,6 +457,9 @@ public partial class DutyRosterViewModel : ObservableObject
             foreach (var day in _roster.Days) row.Cells.Add(new DutyCellViewModel(row, day));
             Rows.Add(row);
         }
+
+        // Склад чи перший день змінились - відкрита панель першого дня показує поточних людей.
+        if (IsFirstDayOpen) OpenFirstDay();
     }
 
     /// <summary>
@@ -612,6 +630,153 @@ public partial class DutyRosterViewModel : ObservableObject
         }
     }
 
+    // ---- Назад / Вперед ----
+
+    /// <summary>Дія з графіком, яку можна скасувати: знімок до неї, а як щось змінилось - крок в історію.</summary>
+    private async Task ChangeAsync(Func<DutyRosterData, Task> action)
+    {
+        if (_roster is null) return;
+        var before = _roster.Clone();
+        await action(_roster);
+        Remember(before);
+    }
+
+    private void Remember(DutyRosterData before)
+    {
+        if (_roster is null) return;
+        _history.Record(before, _roster);
+        SyncHistory();
+    }
+
+    private void SyncHistory()
+    {
+        CanUndo = _history.CanUndo;
+        CanRedo = _history.CanRedo;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanUndo))]
+    private async Task UndoAsync()
+    {
+        if (_roster is null || _history.Undo(_roster) is not { } state) return;
+        await RestoreAsync(state);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanRedo))]
+    private async Task RedoAsync()
+    {
+        if (_roster is null || _history.Redo(_roster) is not { } state) return;
+        await RestoreAsync(state);
+    }
+
+    /// <summary>
+    /// Повертає графік до знімка і зберігає. Шапка й підвал - поточні: це текст, а не дія з графіком.
+    /// Лише години змін, які зникли, коли зменшили «На добу», беруться зі знімка.
+    /// </summary>
+    private async Task RestoreAsync(DutyRosterData state)
+    {
+        if (_roster is null) return;
+        var current = _roster;
+        var footer = current.Footer;
+        for (var i = footer.Shifts.Count; i < state.Footer.Shifts.Count; i++) footer.Shifts.Add(state.Footer.Shifts[i]);
+        state.Heading = current.Heading;
+        state.Footer = footer;
+        var periodChanged = state.DateFrom != current.DateFrom || state.DateTo != current.DateTo;
+
+        _roster = state;
+        SyncHistory();
+        _carryOver = await _service.GetCarryOverAsync(state);
+        LoadEditorFields();
+        BuildGrid();
+        ApplyToGrid(DutyRosterPlanner.Check(state));
+        await SaveAsync();
+        await _service.RememberPrefsAsync(state);
+        await LoadPeopleToAddAsync();
+        if (periodChanged) await RefreshListLabelsAsync();
+    }
+
+    // ---- Хто чергує першого дня ----
+
+    /// <summary>
+    /// Панель з усіма, хто в черзі; відмічені ті, кого вже поставлено на перший день.
+    /// Звільнених цього дня і тих, хто в столовій, вибрати не можна, звільнених на весь період немає зовсім.
+    /// </summary>
+    [RelayCommand]
+    private void OpenFirstDay()
+    {
+        FirstDayPeople.Clear();
+        if (_roster is null || _roster.Members.Count == 0)
+        {
+            IsFirstDayOpen = false;
+            return;
+        }
+
+        var day = _roster.DateFrom;
+        for (var i = 0; i < _roster.Members.Count; i++)
+        {
+            var member = _roster.Members[i];
+            if (member.ExemptWholePeriod) continue;
+            var unavailable = _roster.IsExempt(i, day) ? "Звільнений цього дня"
+                : _roster.IsCanteen(i, day) ? "Цього дня в столовій"
+                : null;
+            FirstDayPeople.Add(new DutyFirstDayOption(member, unavailable, unavailable is null && _roster.IsDuty(i, day), SyncFirstDay));
+        }
+
+        var weekDay = day.ToString("dddd", System.Globalization.CultureInfo.GetCultureInfo("uk-UA"));
+        FirstDayCaption = $"Хто чергує першого дня - {day:dd.MM} ({weekDay})?";
+        SyncFirstDay();
+        IsFirstDayOpen = true;
+    }
+
+    /// <summary>Вибрати можна не більше, ніж людей на добу; лічильник під списком.</summary>
+    private void SyncFirstDay()
+    {
+        var need = _roster?.PeoplePerDay ?? 0;
+        var picked = FirstDayPeople.Count(p => p.IsPicked);
+        foreach (var option in FirstDayPeople)
+            option.CanPick = option.Unavailable is null && (option.IsPicked || picked < need);
+
+        FirstDayStatus = picked == 0
+            ? $"Відмітьте до {need} {PluralHelper.Pluralize(need, "особи", "осіб", "осіб")}. Нікого не відмітите - усіх поставить програма."
+            : picked < need
+                ? $"Вибрано {picked} з {need} - решту поставить програма."
+                : $"Вибрано {picked} з {need}.";
+    }
+
+    /// <summary>
+    /// Відмічені стають на перший день ручним «н» (так «Рандом» їх не переставить), з решти перший день знімається.
+    /// Далі програма розподіляє як завжди: перший наряд зараховується людям у чергу.
+    /// </summary>
+    [RelayCommand]
+    private async Task ApplyFirstDayAsync()
+    {
+        if (_roster is null) return;
+        IsFirstDayOpen = false;
+        var options = FirstDayPeople.Where(p => p.Unavailable is null).ToList();
+
+        await ChangeAsync(async roster =>
+        {
+            var day = roster.DateFrom;
+            foreach (var option in options)
+            {
+                var member = option.Member;
+                if (option.IsPicked)
+                {
+                    member.Blocked.Remove(day);
+                    member.Duties[day] = DutyCellSource.Manual;
+                }
+                else
+                {
+                    member.Duties.Remove(day);
+                    member.Shifts.Remove(day);
+                }
+            }
+            await ReplanAndSaveAsync();
+        });
+    }
+
+    [RelayCommand]
+    private void CloseFirstDay() => IsFirstDayOpen = false;
+
     // ---- Малювання пензлем ----
 
     public void BeginPaint(DutyCellViewModel cell)
@@ -632,6 +797,7 @@ public partial class DutyRosterViewModel : ObservableObject
         _paintShift = _brushShift;
         _painted.Clear();
         _lastPainted = null;
+        _strokeBefore = _roster.Clone();
         ContinuePaint(cell);
     }
 
@@ -751,23 +917,31 @@ public partial class DutyRosterViewModel : ObservableObject
         _paint = null;
         _painted.Clear();
         await ReplanAndSaveAsync();
+        if (_strokeBefore is { } before) Remember(before);
+        _strokeBefore = null;
     }
 
     [RelayCommand]
     private async Task ToggleRowExemptAsync(DutyRowViewModel? row)
     {
         if (_roster is null || row is null) return;
-        row.Member.ExemptWholePeriod = !row.Member.ExemptWholePeriod;
-        if (DutyRosterPlanner.MoveExemptToBottom(_roster)) BuildGrid();
-        await ReplanAndSaveAsync();
+        await ChangeAsync(async roster =>
+        {
+            row.Member.ExemptWholePeriod = !row.Member.ExemptWholePeriod;
+            if (DutyRosterPlanner.MoveExemptToBottom(roster)) BuildGrid();
+            await ReplanAndSaveAsync();
+        });
     }
 
     [RelayCommand]
     private async Task ToggleDayExemptAsync(DutyDayViewModel? day)
     {
         if (_roster is null || day is null) return;
-        if (!_roster.ExemptDays.Remove(day.Date)) _roster.ExemptDays.Add(day.Date);
-        await ReplanAndSaveAsync();
+        await ChangeAsync(async roster =>
+        {
+            if (!roster.ExemptDays.Remove(day.Date)) roster.ExemptDays.Add(day.Date);
+            await ReplanAndSaveAsync();
+        });
     }
 
     [RelayCommand]
@@ -783,11 +957,14 @@ public partial class DutyRosterViewModel : ObservableObject
         var target = index + delta;
         if (index < 0 || target < 0 || target >= Rows.Count) return;
 
-        Rows.Move(index, target);
-        var member = _roster.Members[index];
-        _roster.Members.RemoveAt(index);
-        _roster.Members.Insert(target, member);
-        await ReplanAndSaveAsync();
+        await ChangeAsync(async roster =>
+        {
+            Rows.Move(index, target);
+            var member = roster.Members[index];
+            roster.Members.RemoveAt(index);
+            roster.Members.Insert(target, member);
+            await ReplanAndSaveAsync();
+        });
     }
 
     [RelayCommand]
@@ -803,10 +980,14 @@ public partial class DutyRosterViewModel : ObservableObject
     public async Task RemoveMemberCoreAsync(DutyRowViewModel row)
     {
         if (_roster is null) return;
-        if (row.Member.RecipientId is int removedId) _roster.ExcludedRecipientIds.Add(removedId);
-        _roster.Members.Remove(row.Member);
-        Rows.Remove(row);
-        await ReplanAndSaveAsync();
+        await ChangeAsync(async roster =>
+        {
+            if (row.Member.RecipientId is int removedId) roster.ExcludedRecipientIds.Add(removedId);
+            roster.Members.Remove(row.Member);
+            Rows.Remove(row);
+            if (IsFirstDayOpen) OpenFirstDay();
+            await ReplanAndSaveAsync();
+        });
         await LoadPeopleToAddAsync();
     }
 
@@ -830,13 +1011,16 @@ public partial class DutyRosterViewModel : ObservableObject
     private async Task AddMemberAsync(DutyRosterMemberData member)
     {
         if (_roster is null) return;
-        if (member.RecipientId is int addedId) _roster.ExcludedRecipientIds.Remove(addedId);
-        _roster.Members.Add(member);
-        DutyRosterPlanner.MoveExemptToBottom(_roster);
-        if (_roster.UseEventExemptions && member.RecipientId is not null)
-            await _service.ApplyEventExemptionsAsync(_roster);
-        BuildGrid();
-        await ReplanAndSaveAsync();
+        await ChangeAsync(async roster =>
+        {
+            if (member.RecipientId is int addedId) roster.ExcludedRecipientIds.Remove(addedId);
+            roster.Members.Add(member);
+            DutyRosterPlanner.MoveExemptToBottom(roster);
+            if (roster.UseEventExemptions && member.RecipientId is not null)
+                await _service.ApplyEventExemptionsAsync(roster);
+            BuildGrid();
+            await ReplanAndSaveAsync();
+        });
         await LoadPeopleToAddAsync();
     }
 
@@ -853,23 +1037,29 @@ public partial class DutyRosterViewModel : ObservableObject
     private async Task RandomizeAsync()
     {
         if (_roster is null) return;
-        var seed = _roster.Seed;
-        while (seed == _roster.Seed) seed = Random.Shared.Next(1, 1_000_000);
-        _roster.Seed = seed;
-        await ReplanAndSaveAsync();
+        await ChangeAsync(async roster =>
+        {
+            var seed = roster.Seed;
+            while (seed == roster.Seed) seed = Random.Shared.Next(1, 1_000_000);
+            roster.Seed = seed;
+            await ReplanAndSaveAsync();
+        });
     }
 
     [RelayCommand]
     private async Task FreezeAsync()
     {
         if (_roster is null) return;
-        foreach (var member in _roster.Members)
+        await ChangeAsync(async roster =>
         {
-            foreach (var day in member.Duties.Where(d => d.Value == DutyCellSource.Auto).Select(d => d.Key).ToList())
-                member.Duties[day] = DutyCellSource.Manual;
-        }
-        ApplyToGrid(DutyRosterPlanner.Check(_roster));
-        await SaveAsync();
+            foreach (var member in roster.Members)
+            {
+                foreach (var day in member.Duties.Where(d => d.Value == DutyCellSource.Auto).Select(d => d.Key).ToList())
+                    member.Duties[day] = DutyCellSource.Manual;
+            }
+            ApplyToGrid(DutyRosterPlanner.Check(roster));
+            await SaveAsync();
+        });
     }
 
     [RelayCommand]
@@ -885,21 +1075,27 @@ public partial class DutyRosterViewModel : ObservableObject
     public async Task ClearManualCoreAsync()
     {
         if (_roster is null) return;
-        foreach (var member in _roster.Members)
+        await ChangeAsync(async roster =>
         {
-            foreach (var day in member.Duties.Where(d => d.Value == DutyCellSource.Manual).Select(d => d.Key).ToList())
-                member.Duties.Remove(day);
-            member.Blocked.Clear();
-        }
-        await ReplanAndSaveAsync();
+            foreach (var member in roster.Members)
+            {
+                foreach (var day in member.Duties.Where(d => d.Value == DutyCellSource.Manual).Select(d => d.Key).ToList())
+                    member.Duties.Remove(day);
+                member.Blocked.Clear();
+            }
+            await ReplanAndSaveAsync();
+        });
     }
 
     [RelayCommand]
     private async Task RefreshEventsAsync()
     {
         if (_roster is null) return;
-        await _service.ApplyEventExemptionsAsync(_roster);
-        await ReplanAndSaveAsync();
+        await ChangeAsync(async roster =>
+        {
+            await _service.ApplyEventExemptionsAsync(roster);
+            await ReplanAndSaveAsync();
+        });
     }
 
     [RelayCommand]
@@ -984,46 +1180,58 @@ public partial class DutyRosterViewModel : ObservableObject
         PeriodError = null;
         if (from == _roster.DateFrom && to == _roster.DateTo) return;
 
-        _roster.DateFrom = from;
-        _roster.DateTo = to;
-        _carryOver = await _service.GetCarryOverAsync(_roster);
-        if (_roster.UseEventExemptions) await _service.ApplyEventExemptionsAsync(_roster);
+        await ChangeAsync(async roster =>
+        {
+            roster.DateFrom = from;
+            roster.DateTo = to;
+            _carryOver = await _service.GetCarryOverAsync(roster);
+            if (roster.UseEventExemptions) await _service.ApplyEventExemptionsAsync(roster);
 
-        UpdateCaptions();
-        BuildGrid();
-        await ReplanAndSaveAsync();
+            UpdateCaptions();
+            BuildGrid();
+            await ReplanAndSaveAsync();
+        });
         await RefreshListLabelsAsync();
     }
 
     partial void OnPeoplePerDayChanged(int value)
     {
         if (_loading || _roster is null || value < 1) return;
-        _roster.PeoplePerDay = value;
+        var roster = _roster;
+        var before = roster.Clone();
+        roster.PeoplePerDay = value;
         RebuildShifts();
+        if (IsFirstDayOpen) OpenFirstDay();
         Track(async () =>
         {
             await ReplanAndSaveAsync();
-            await _service.RememberPrefsAsync(_roster);
+            Remember(before);
+            await _service.RememberPrefsAsync(roster);
         });
     }
 
     partial void OnUseEventExemptionsChanged(bool value)
     {
         if (_loading || _roster is null) return;
-        _roster.UseEventExemptions = value;
+        var roster = _roster;
+        var before = roster.Clone();
+        roster.UseEventExemptions = value;
         Track(async () =>
         {
-            await _service.ApplyEventExemptionsAsync(_roster);
+            await _service.ApplyEventExemptionsAsync(roster);
             await ReplanAndSaveAsync();
-            await _service.RememberPrefsAsync(_roster);
+            Remember(before);
+            await _service.RememberPrefsAsync(roster);
         });
     }
 
     partial void OnDutyMarkOnlyChanged(bool value)
     {
         if (_loading || _roster is null) return;
+        var before = _roster.Clone();
         _roster.DutyMarkOnly = value;
         ApplyToGrid(DutyRosterPlanner.Check(_roster));
+        Remember(before);
         Track(SaveSettingsAsync);
     }
 
@@ -1031,21 +1239,26 @@ public partial class DutyRosterViewModel : ObservableObject
     partial void OnWeekendsGreenChanged(bool value)
     {
         if (_loading || _roster is null) return;
+        var before = _roster.Clone();
         _roster.WeekendsGreen = value;
         ApplyToGrid(DutyRosterPlanner.Check(_roster));
+        Remember(before);
         Track(SaveSettingsAsync);
     }
 
     partial void OnCarryOverBalanceChanged(bool value)
     {
         if (_loading || _roster is null) return;
-        _roster.CarryOverBalance = value;
+        var roster = _roster;
+        var before = roster.Clone();
+        roster.CarryOverBalance = value;
         Track(async () =>
         {
-            _carryOver = await _service.GetCarryOverAsync(_roster);
+            _carryOver = await _service.GetCarryOverAsync(roster);
             UpdateCaptions();
             await ReplanAndSaveAsync();
-            await _service.RememberPrefsAsync(_roster);
+            Remember(before);
+            await _service.RememberPrefsAsync(roster);
         });
     }
 

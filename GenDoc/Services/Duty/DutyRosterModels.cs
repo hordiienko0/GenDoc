@@ -65,6 +65,13 @@ public sealed class DutyRosterFooter
         while (Shifts.Count < count) Shifts.Add(new DutyShiftTimes());
         if (Shifts.Count > count) Shifts.RemoveRange(count, Shifts.Count - count);
     }
+
+    public DutyRosterFooter Clone() => new()
+    {
+        Changeover = Changeover,
+        Cleaning = Cleaning,
+        Shifts = Shifts.Select(s => new DutyShiftTimes { Day = s.Day, Night = s.Night }).ToList()
+    };
 }
 
 public sealed class DutyRosterMemberData
@@ -92,6 +99,23 @@ public sealed class DutyRosterMemberData
     public string Key => RecipientId is int id
         ? $"r{id}"
         : "n:" + DisplayName.Trim().ToUpperInvariant();
+
+    public DutyRosterMemberData Clone()
+    {
+        var copy = new DutyRosterMemberData
+        {
+            RecipientId = RecipientId,
+            DisplayName = DisplayName,
+            ExemptWholePeriod = ExemptWholePeriod,
+            AddedByHand = AddedByHand
+        };
+        foreach (var (day, source) in Duties) copy.Duties[day] = source;
+        foreach (var (day, source) in Exemptions) copy.Exemptions[day] = source;
+        foreach (var (day, shift) in Shifts) copy.Shifts[day] = shift;
+        copy.Blocked.UnionWith(Blocked);
+        copy.Canteen.UnionWith(Canteen);
+        return copy;
+    }
 }
 
 public sealed class DutyRosterData
@@ -148,4 +172,31 @@ public sealed class DutyRosterData
         => Members[memberIndex].ExemptWholePeriod
            || ExemptDays.Contains(day)
            || Members[memberIndex].Exemptions.ContainsKey(day);
+
+    /// <summary>Повна копія - знімок для «Назад» / «Вперед».</summary>
+    public DutyRosterData Clone()
+    {
+        var copy = new DutyRosterData
+        {
+            Id = Id,
+            DateFrom = DateFrom,
+            DateTo = DateTo,
+            IntakeId = IntakeId,
+            FoldersLabel = FoldersLabel,
+            PeoplePerDay = PeoplePerDay,
+            Seed = Seed,
+            Heading = Heading,
+            Footer = Footer.Clone(),
+            UseEventExemptions = UseEventExemptions,
+            CarryOverBalance = CarryOverBalance,
+            DutyMarkOnly = DutyMarkOnly,
+            WeekendsGreen = WeekendsGreen,
+            ShiftRotation = ShiftRotation
+        };
+        copy.FolderIds.AddRange(FolderIds);
+        copy.ExemptDays.UnionWith(ExemptDays);
+        copy.ExcludedRecipientIds.UnionWith(ExcludedRecipientIds);
+        copy.Members.AddRange(Members.Select(m => m.Clone()));
+        return copy;
+    }
 }
