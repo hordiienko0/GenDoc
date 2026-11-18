@@ -125,9 +125,11 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
     // «Увага» в таблиці - рядок імпортується з попередженням; пропускаються лише помилки й дублі.
     // Раніше тут стояло «потребують уваги 0» поруч із рядками «УВАГА» - одне одному суперечило.
     public string RowStatsText =>
-        $"Рядків: {TotalRows} · буде імпортовано {ReadyCount}"
+        $"Рядків: {TotalRows} · буде імпортовано {NewCount}"
         + (WarningCount > 0 ? $" (з них з попередженням: {WarningCount})" : string.Empty)
-        + $" · буде пропущено {IssueCount}";
+        + (UpdateCount > 0 ? $" · актуалізовано {UpdateCount}" : string.Empty)
+        + (MoveCount > 0 ? $" · перенесено {MoveCount}" : string.Empty)
+        + $" · буде пропущено {SkipCount}";
 
     private int WarningCount => _validatedRows.Count(r => r.Status == ImportRowStatus.Warning);
 
@@ -307,6 +309,16 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
 
     private List<ImportRowPreview> _validatedRows = new();
 
+    /// <summary>Скільки людей з файлу вже є в особовому складі (у будь-якому наборі чи в постійному складі).</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasExistingPeople))]
+    private int existingCount;
+
+    public bool HasExistingPeople => ExistingCount > 0;
+
+    [ObservableProperty]
+    private string existingSummaryText = string.Empty;
+
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasMovableDuplicates))]
     private int movableDuplicateCount;
@@ -319,14 +331,41 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
     [ObservableProperty]
     private bool moveAllDuplicates;
 
-    partial void OnMoveAllDuplicatesChanged(bool value)
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasUpdatableDuplicates))]
+    private int updatableDuplicateCount;
+
+    public bool HasUpdatableDuplicates => UpdatableDuplicateCount > 0;
+
+    [ObservableProperty]
+    private string updateAllText = string.Empty;
+
+    [ObservableProperty]
+    private bool updateAllDuplicates;
+
+    partial void OnMoveAllDuplicatesChanged(bool value) => ApplyBulkActions();
+
+    partial void OnUpdateAllDuplicatesChanged(bool value) => ApplyBulkActions();
+
+    // Обидві галочки разом: кого можна перенести - переносимо (перенесення й так оновлює дані),
+    // решту з відмінностями - актуалізуємо; зняли галочку - рядок знову «пропустити».
+    private void ApplyBulkActions()
     {
-        foreach (var row in _validatedRows)
-            if (row.ExistingRecipientId is not null) row.Move = value;
+        foreach (var row in _validatedRows.Where(r => r.ExistingRecipientId is not null))
+        {
+            row.Action = MoveAllDuplicates && row.CanMove ? ImportExistingAction.Move
+                : UpdateAllDuplicates && row.CanUpdate ? ImportExistingAction.Update
+                : row.Action == ImportExistingAction.AddAsNew ? ImportExistingAction.AddAsNew
+                : ImportExistingAction.Skip;
+        }
 
-        foreach (var visible in Preview) visible.SyncFromModel();
-
+        SyncPreviewFromModel();
         UpdateImportButton();
+    }
+
+    private void SyncPreviewFromModel()
+    {
+        foreach (var visible in Preview) visible.SyncFromModel();
     }
 
     [ObservableProperty]
@@ -365,26 +404,54 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
     [RelayCommand]
     private void PickAnotherFile() => PickFile();
 
+    /// <summary>Вікна повідомлень імпорту; у тестах підміняється, щоб не відкривати їх.</summary>
+    internal Func<string, string, MessageBoxButton, MessageBoxImage, MessageBoxResult> ShowMessage { get; set; } =
+        MessageBox.Show;
+
     [RelayCommand(CanExecute = nameof(CanRunImport))]
     private void RunImport()
     {
         if (_parsed is null) return;
 
-        var moveRowNumbers = _validatedRows.Where(r => r.Move).Select(r => r.RowNumber).ToList();
+        // Люди вже є в базі, у файлі про них інші дані, а дію не обрано - питаємо, чи актуалізувати.
+        var pending = _validatedRows
+            .Where(r => r.CanUpdate && r.Action == ImportExistingAction.Skip)
+            .ToList();
 
-        var question = moveRowNumbers.Count == 0
-            ? $"Імпортувати {ReadyCount} записів?"
-            : $"Імпортувати {ReadyCount} записів і перенести {moveRowNumbers.Count} людей, "
-              + "які вже є в базі? Їхні наявні картки будуть змінені.";
+        if (pending.Count > 0)
+        {
+            var answer = ShowMessage(BuildPendingUpdateQuestion(pending), "Люди вже є в базі",
+                MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+            if (answer == MessageBoxResult.Cancel) return;
 
-        var confirm = MessageBox.Show(
-            question, "Підтвердження імпорту",
-            MessageBoxButton.YesNo, MessageBoxImage.Question);
-        if (confirm != MessageBoxResult.Yes) return;
+            if (answer == MessageBoxResult.Yes)
+            {
+                foreach (var row in pending) row.Action = ImportExistingAction.Update;
+                SyncPreviewFromModel();
+                UpdateImportButton();
+            }
 
-        var summary = _importService.Import(_parsed, BuildTarget(), moveRowNumbers);
+            if (NewCount + UpdateCount + MoveCount == 0)
+            {
+                ShowMessage("Нових людей у файлі немає, наявні картки залишено як є.", "Імпорт",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+        }
+        else
+        {
+            var confirm = ShowMessage(BuildConfirmQuestion(), "Підтвердження імпорту",
+                MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (confirm != MessageBoxResult.Yes) return;
+        }
 
-        var message = $"Імпортовано {summary.Imported}, перенесено {summary.Moved}, "
+        var rowActions = _validatedRows
+            .Where(r => r.ExistingRecipientId is not null && r.Action != ImportExistingAction.Skip)
+            .ToDictionary(r => r.RowNumber, r => r.Action);
+
+        var summary = _importService.Import(_parsed, BuildTarget(), rowActions);
+
+        var message = $"Імпортовано {summary.Imported}, актуалізовано {summary.Updated}, перенесено {summary.Moved}, "
                       + $"пропущено {summary.Skipped}, помилок {summary.Errors}";
         if (summary.ErrorMessages.Count > 0)
         {
@@ -393,13 +460,53 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
                 message += $"\n…та ще {summary.ErrorMessages.Count - 3}";
         }
 
-        MessageBox.Show(message, "Імпорт завершено", MessageBoxButton.OK,
+        ShowMessage(message, "Імпорт завершено", MessageBoxButton.OK,
             summary.Errors > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
 
         Reset();
     }
 
-    private bool CanRunImport() => HasFile && (ReadyCount > 0 || MoveCount > 0);
+    private string BuildConfirmQuestion()
+    {
+        var parts = new List<string> { $"додати нових: {NewCount}" };
+        if (UpdateCount > 0) parts.Add($"актуалізувати картки: {UpdateCount}");
+        if (MoveCount > 0) parts.Add($"перенести сюди: {MoveCount}");
+
+        var question = $"Імпортувати - {string.Join(", ", parts)}?";
+        if (UpdateCount + MoveCount > 0)
+            question += "\n\nНаявні картки отримають дані з файлу (порожні клітинки нічого не стирають).";
+        return question;
+    }
+
+    private const int PendingNamesShown = 6;
+
+    internal string BuildPendingUpdateQuestion(IReadOnlyList<ImportRowPreview> pending)
+    {
+        var lines = pending.Take(PendingNamesShown).Select(r =>
+        {
+            var fields = string.Join(", ", r.Differences.Take(3).Select(d => d.Field));
+            if (r.Differences.Count > 3) fields += $" і ще {r.Differences.Count - 3}";
+            return $"• {r.FullNameDisplay} ({r.ExistingLocation}): {fields}";
+        }).ToList();
+        if (pending.Count > PendingNamesShown) lines.Add($"…та ще {pending.Count - PendingNamesShown}");
+
+        var people = $"{pending.Count} {PluralHelper.Pluralize(pending.Count, "людина", "людини", "людей")}";
+        var others = new List<string>();
+        if (NewCount > 0) others.Add($"нових буде додано: {NewCount}");
+        if (UpdateCount > 0) others.Add($"актуалізовано: {UpdateCount}");
+        if (MoveCount > 0) others.Add($"перенесено: {MoveCount}");
+
+        return $"{people} з файлу вже є в особовому складі, але у файлі про них інші дані:\n\n"
+               + string.Join("\n", lines)
+               + "\n\nАктуалізувати їхні картки даними з файлу?"
+               + (others.Count > 0
+                   ? $"\n(Крім того, {string.Join(", ", others)}.)"
+                     + "\n\nТак - імпортувати й актуалізувати; Ні - імпортувати, а ці картки залишити як є; "
+                   : "\n\nТак - актуалізувати; Ні - залишити картки як є; ")
+               + "Скасувати - повернутися до перевірки.";
+    }
+
+    private bool CanRunImport() => HasFile && (NewCount > 0 || UpdateCount > 0 || MoveCount > 0 || UpdatableDuplicateCount > 0);
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(HasFileError))]
@@ -473,11 +580,29 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
 
         _validatedRows = rows;
         MoveAllDuplicates = false;
+        UpdateAllDuplicates = false;
 
-        MovableDuplicateCount = rows.Count(r => r.ExistingRecipientId is not null);
+        var existing = rows.Where(r => r.ExistingRecipientId is not null).ToList();
+        ExistingCount = existing.Count;
+        var unchanged = existing.Count(r => !r.CanUpdate);
+        ExistingSummaryText = ExistingCount == 0
+            ? string.Empty
+            : $"{ExistingCount} {PluralHelper.Pluralize(ExistingCount, "людина", "людини", "людей")} з файлу "
+              + "вже є в особовому складі - другої картки не буде, якщо не обрати інше. "
+              + (ExistingCount - unchanged > 0 ? $"З іншими даними у файлі: {ExistingCount - unchanged}. " : string.Empty)
+              + (unchanged > 0 ? $"Без змін: {unchanged}. " : string.Empty)
+              + "Де саме кожна людина - у примітці; що зробити - у колонці «Дія».";
+
+        UpdatableDuplicateCount = existing.Count(r => r.CanUpdate);
+        UpdateAllText = UpdatableDuplicateCount == 1
+            ? "Актуалізувати дані 1 людини, у якої у файлі інші дані"
+            : $"Актуалізувати дані {UpdatableDuplicateCount} людей, у яких у файлі інші дані";
+
+        MovableDuplicateCount = existing.Count(r => r.CanMove);
+        var destination = TargetPermanentStaff ? "у постійний склад" : "у цей набір";
         MoveAllText = MovableDuplicateCount == 1
-            ? "Перенести 1 людину, яка вже є в базі, у цей набір"
-            : $"Перенести {MovableDuplicateCount} людей, які вже є в базі, у цей набір";
+            ? $"Перенести 1 людину з іншого набору {destination}"
+            : $"Перенести {MovableDuplicateCount} людей з інших наборів {destination}";
 
         Preview = new ObservableCollection<ImportPreviewRowViewModel>(
             PreviewRows(rows).Select(r => new ImportPreviewRowViewModel(r)));
@@ -491,8 +616,6 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
         OnPropertyChanged(nameof(MissingColumnsNote));
 
         UpdateImportButton();
-        HasSkippedRows = IssueCount > 0;
-        UpdateSkippedNote();
     }
 
     partial void OnCurrentStepChanged(int value) => UpdateSkippedNote();
@@ -500,13 +623,15 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
     // Таблиця з причинами є лише на кроці «Перевірка»; на «Наборі» і «Зіставленні» вище нічого не видно.
     private void UpdateSkippedNote()
     {
-        if (IssueCount <= 0)
+        var skipped = SkipCount;
+        HasSkippedRows = skipped > 0;
+        if (skipped <= 0)
         {
             SkippedNoteText = string.Empty;
             return;
         }
 
-        var rows = $"{IssueCount} {PluralHelper.Pluralize(IssueCount, "рядок", "рядки", "рядків")} буде пропущено";
+        var rows = $"{skipped} {PluralHelper.Pluralize(skipped, "рядок", "рядки", "рядків")} буде пропущено";
         SkippedNoteText = CurrentStep == 4
             ? $"{rows} - причини в таблиці вище"
             : $"{rows} - причини на кроці «Перевірка»";
@@ -525,18 +650,30 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
 
     private void OnPreviewRowChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ImportPreviewRowViewModel.Move)) UpdateImportButton();
+        if (e.PropertyName == nameof(ImportPreviewRowViewModel.Action)) UpdateImportButton();
     }
 
-    private int MoveCount => _validatedRows.Count(r => r.Move);
+    private int MoveCount => _validatedRows.Count(r => r.Action == ImportExistingAction.Move);
+
+    private int UpdateCount => _validatedRows.Count(r => r.Action == ImportExistingAction.Update);
+
+    /// <summary>Нові картки: готові рядки й ті, кого (збіг лише за ПІБ) вирішили додати як іншу людину.</summary>
+    private int NewCount => ReadyCount + _validatedRows.Count(r => r.Action == ImportExistingAction.AddAsNew);
+
+    private int SkipCount => IssueCount - _validatedRows.Count(r => r.Action != ImportExistingAction.Skip);
 
     private void UpdateImportButton()
     {
-        var moving = MoveCount;
-        ImportButtonText = moving == 0
-            ? $"Імпортувати {ReadyCount} записів"
-            : $"Імпортувати {ReadyCount}, перенести {moving}";
+        var parts = new List<string>();
+        if (UpdateCount > 0) parts.Add($"актуалізувати {UpdateCount}");
+        if (MoveCount > 0) parts.Add($"перенести {MoveCount}");
 
+        ImportButtonText = parts.Count == 0
+            ? $"Імпортувати {NewCount} записів"
+            : $"Імпортувати {NewCount}, {string.Join(", ", parts)}";
+
+        OnPropertyChanged(nameof(RowStatsText));
+        UpdateSkippedNote();
         RunImportCommand.NotifyCanExecuteChanged();
     }
 
@@ -552,9 +689,14 @@ public partial class ImportViewModel : ObservableObject, IGuardedSection
         Columns = new ObservableCollection<ImportColumnViewModel>();
         Preview = new ObservableCollection<ImportPreviewRowViewModel>();
         _validatedRows = new List<ImportRowPreview>();
+        ExistingCount = 0;
+        ExistingSummaryText = string.Empty;
         MovableDuplicateCount = 0;
         MoveAllDuplicates = false;
         MoveAllText = string.Empty;
+        UpdatableDuplicateCount = 0;
+        UpdateAllDuplicates = false;
+        UpdateAllText = string.Empty;
         PreviewHeaderText = string.Empty;
         ImportButtonText = "Імпортувати 0 записів";
         SkippedNoteText = string.Empty;

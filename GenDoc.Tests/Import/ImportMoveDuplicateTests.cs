@@ -94,7 +94,7 @@ public class ImportMoveDuplicateTests
         var summary = Build(db).Import(
             FileWith(("Ковальчук Василь Богданович", "СН0001", "сержант")),
             new ImportTarget(ImportTargetKind.Intake, newIntakeId),
-            moveRowNumbers: new[] { 2 });
+            rowActions: ImportRowActions.MoveRows(2));
 
         Assert.Equal(1, summary.Moved);
         Assert.Equal(0, summary.Skipped);
@@ -137,7 +137,7 @@ public class ImportMoveDuplicateTests
         var summary = Build(db).Import(
             FileWith(("Ковальчук Василь Богданович", "СН0001", "капітан")),
             new ImportTarget(ImportTargetKind.PermanentStaff),
-            moveRowNumbers: new[] { 2 });
+            rowActions: ImportRowActions.MoveRows(2));
 
         Assert.Equal(1, summary.Moved);
 

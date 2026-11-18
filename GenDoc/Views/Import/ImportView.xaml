@@ -369,13 +369,26 @@
                     </Border>
 
                     <Border Style="{StaticResource CardStyle}" Padding="16,12" Margin="0,0,0,14"
-                            Visibility="{Binding HasMovableDuplicates, Converter={StaticResource BoolToVisibility}}">
+                            Visibility="{Binding HasExistingPeople, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel>
+                            <TextBlock Text="{Binding ExistingSummaryText}" FontSize="12" TextWrapping="Wrap"
+                                       FontWeight="SemiBold" Foreground="{StaticResource WarnTextBrush}"/>
+
+                            <CheckBox IsChecked="{Binding UpdateAllDuplicates}" Content="{Binding UpdateAllText}"
+                                      VerticalContentAlignment="Center" Margin="0,10,0,0"
+                                      Visibility="{Binding HasUpdatableDuplicates, Converter={StaticResource BoolToVisibility}}"/>
+                            <TextBlock Text="Картка отримає значення з файлу; людина лишиться там, де є. Порожні клітинки файлу нічого не стирають."
+                                       Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"
+                                       TextWrapping="Wrap" Margin="24,4,0,0"
+                                       Visibility="{Binding HasUpdatableDuplicates, Converter={StaticResource BoolToVisibility}}"/>
+
                             <CheckBox IsChecked="{Binding MoveAllDuplicates}" Content="{Binding MoveAllText}"
-                                      VerticalContentAlignment="Center"/>
+                                      VerticalContentAlignment="Center" Margin="0,10,0,0"
+                                      Visibility="{Binding HasMovableDuplicates, Converter={StaticResource BoolToVisibility}}"/>
                             <TextBlock Text="Наявні картки будуть змінені: набір і гілка - на обрані, решта полів - лише там, де у файлі є значення. Документи, видані в попередньому наборі, лишаться на місці."
                                        Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"
-                                       TextWrapping="Wrap" Margin="24,6,0,0"/>
+                                       TextWrapping="Wrap" Margin="24,4,0,0"
+                                       Visibility="{Binding HasMovableDuplicates, Converter={StaticResource BoolToVisibility}}"/>
                         </StackPanel>
                     </Border>
 
@@ -384,11 +397,11 @@
                             <Grid Background="{StaticResource SkySoftBrush}">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="104"/>
-                                    <ColumnDefinition Width="1.8*"/>
-                                    <ColumnDefinition Width="1.2*"/>
                                     <ColumnDefinition Width="1.6*"/>
-                                    <ColumnDefinition Width="2.2*"/>
-                                    <ColumnDefinition Width="0.9*"/>
+                                    <ColumnDefinition Width="1*"/>
+                                    <ColumnDefinition Width="1.2*"/>
+                                    <ColumnDefinition Width="2.6*"/>
+                                    <ColumnDefinition Width="190"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="СТАТУС" Style="{StaticResource TableHeaderTextStyle}"/>
                                 <TextBlock Grid.Column="1" Text="ПІБ" Style="{StaticResource TableHeaderTextStyle}"/>
@@ -418,15 +431,15 @@
                                             <Grid>
                                                 <Grid.ColumnDefinitions>
                                                     <ColumnDefinition Width="104"/>
-                                                    <ColumnDefinition Width="1.8*"/>
-                                                    <ColumnDefinition Width="1.2*"/>
                                                     <ColumnDefinition Width="1.6*"/>
-                                                    <ColumnDefinition Width="2.2*"/>
-                                                    <ColumnDefinition Width="0.9*"/>
+                                                    <ColumnDefinition Width="1*"/>
+                                                    <ColumnDefinition Width="1.2*"/>
+                                                    <ColumnDefinition Width="2.6*"/>
+                                                    <ColumnDefinition Width="190"/>
                                                 </Grid.ColumnDefinitions>
 
                                                 <Border Grid.Column="0" Padding="6,3"
-                                                        HorizontalAlignment="Left" Margin="16,10">
+                                                        HorizontalAlignment="Left" VerticalAlignment="Center" Margin="16,10">
                                                     <Border.Style>
                                                         <Style TargetType="Border">
                                                             <Setter Property="Background" Value="{StaticResource SuccessSoftBrush}"/>
@@ -454,7 +467,11 @@
                                                                         <Setter Property="Foreground" Value="{StaticResource DangerBrush}"/>
                                                                     </DataTrigger>
                                                                     <DataTrigger Binding="{Binding Status}" Value="Duplicate">
-                                                                        <Setter Property="Text" Value="КОНФЛІКТ"/>
+                                                                        <Setter Property="Text" Value="ДУБЛЬ"/>
+                                                                        <Setter Property="Foreground" Value="{StaticResource WarnTextBrush}"/>
+                                                                    </DataTrigger>
+                                                                    <DataTrigger Binding="{Binding IsExisting}" Value="True">
+                                                                        <Setter Property="Text" Value="Є В БАЗІ"/>
                                                                         <Setter Property="Foreground" Value="{StaticResource WarnTextBrush}"/>
                                                                     </DataTrigger>
                                                                     <DataTrigger Binding="{Binding Status}" Value="Warning">
@@ -474,8 +491,8 @@
                                                 <TextBlock Grid.Column="3" Text="{Binding UnitDisplay}" Margin="16,10"
                                                            VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
 
-                                                <TextBlock Grid.Column="4" Text="{Binding Note}" Margin="16,10"
-                                                           VerticalAlignment="Center" TextWrapping="Wrap">
+                                                <StackPanel Grid.Column="4" Margin="16,10" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Note}" TextWrapping="Wrap">
                                                     <TextBlock.Style>
                                                         <Style TargetType="TextBlock">
                                                             <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}"/>
@@ -501,17 +518,31 @@
                                                     </TextBlock.Style>
                                                 </TextBlock>
 
+                                                <ItemsControl ItemsSource="{Binding DifferenceLines}" Margin="0,4,0,0"
+                                                              ToolTip="{Binding DifferencesTooltip}"
+                                                              Visibility="{Binding HasDifferences, Converter={StaticResource BoolToVisibility}}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock Text="{Binding}" FontSize="11" TextWrapping="Wrap"
+                                                                       Foreground="{StaticResource TextPrimaryBrush}"/>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                                </StackPanel>
+
                                                 <Grid Grid.Column="5" Margin="16,10">
-                                                    <CheckBox IsChecked="{Binding Move}" Content="перенести"
-                                                              VerticalAlignment="Center" FontSize="11"
-                                                              Visibility="{Binding CanMove, Converter={StaticResource BoolToVisibility}}"/>
+                                                    <ComboBox ItemsSource="{Binding ActionOptions}"
+                                                              DisplayMemberPath="Label" SelectedValuePath="Action"
+                                                              SelectedValue="{Binding Action, Mode=TwoWay}"
+                                                              VerticalAlignment="Center" FontSize="11.5"
+                                                              Visibility="{Binding HasActions, Converter={StaticResource BoolToVisibility}}"/>
                                                     <TextBlock Text="-" VerticalAlignment="Center"
                                                                Foreground="{StaticResource TextSecondaryBrush}">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock">
                                                                 <Setter Property="Visibility" Value="Visible"/>
                                                                 <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding CanMove}" Value="True">
+                                                                    <DataTrigger Binding="{Binding HasActions}" Value="True">
                                                                         <Setter Property="Visibility" Value="Collapsed"/>
                                                                     </DataTrigger>
                                                                 </Style.Triggers>

@@ -91,7 +91,7 @@ public class ImportMoveEndToEndTests : IDisposable
         var second = service.Import(
             parsed,
             new ImportTarget(ImportTargetKind.Intake, newIntake),
-            moveRowNumbers: new[] { preview.RowNumber });
+            rowActions: ImportRowActions.MoveRows(preview.RowNumber));
 
         Assert.Equal(1, second.Moved);
         Assert.Equal(0, second.Imported);

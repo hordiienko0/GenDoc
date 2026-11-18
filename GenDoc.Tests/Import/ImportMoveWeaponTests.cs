@@ -73,7 +73,7 @@ public class ImportMoveWeaponTests : IDisposable
 
         var result = service.Import(
             parsed, new ImportTarget(ImportTargetKind.Intake, newIntake),
-            moveRowNumbers: new[] { preview.RowNumber });
+            rowActions: ImportRowActions.MoveRows(preview.RowNumber));
 
         Assert.Equal(1, result.Moved);
 
@@ -100,7 +100,7 @@ public class ImportMoveWeaponTests : IDisposable
 
         service.Import(
             parsed, new ImportTarget(ImportTargetKind.Intake, newIntake),
-            moveRowNumbers: new[] { preview.RowNumber });
+            rowActions: ImportRowActions.MoveRows(preview.RowNumber));
 
         using var ctx = db.Factory.CreateDbContext();
         var person = ctx.Recipients.Include(r => r.Weapons).Single();
@@ -123,7 +123,7 @@ public class ImportMoveWeaponTests : IDisposable
 
         service.Import(
             parsed, new ImportTarget(ImportTargetKind.Intake, newIntake),
-            moveRowNumbers: new[] { preview.RowNumber });
+            rowActions: ImportRowActions.MoveRows(preview.RowNumber));
 
         using var ctx = db.Factory.CreateDbContext();
         var person = ctx.Recipients.Include(r => r.Weapons).Single();
