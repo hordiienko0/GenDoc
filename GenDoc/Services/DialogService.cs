@@ -32,6 +32,7 @@ public class DialogService : IDialogService
         [typeof(StaffDocDialogViewModel)] = typeof(StaffDocDialog),
         [typeof(GenerateDocumentsDialogViewModel)] = typeof(GenerateDocumentsDialog),
         [typeof(PersonnelExportDialogViewModel)] = typeof(PersonnelExportDialog),
+        [typeof(PersonEditDialogViewModel)] = typeof(PersonEditWindow),
         [typeof(GroupParticipantsViewModel)] = typeof(GroupParticipantsWindow),
     };
 

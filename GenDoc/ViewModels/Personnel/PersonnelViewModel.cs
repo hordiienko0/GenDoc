@@ -514,30 +514,67 @@ namespace GenDoc.ViewModels.Personnel
 
         private bool CanAdd => Tree.SelectedNode is not null;
 
+        // Нова особа й редагування - в окремому вікні, яке можна розтягнути й масштабувати;
+        // бічна картка лишається для перегляду й документів.
         [RelayCommand(CanExecute = nameof(CanAdd))]
         private async Task AddAsync()
         {
-            if (Tree.SelectedNode is null) return;
+            if (Tree.SelectedNode is not { } node) return;
             if (!await TryLeaveEditAsync()) return;
 
-            OpenCard(new PersonEditModel
+            var orgNodeId = node.Id;
+            var intakeId = node.IntakeId;
+            PersonCardViewModel NewCard() => CreateCard(new PersonEditModel
             {
-                OrgNodeId = Tree.SelectedNode.Id,
-                IntakeId = Tree.SelectedNode.IntakeId
+                OrgNodeId = orgNodeId,
+                IntakeId = intakeId
             });
+
+            var dialog = PersonEditDialogViewModel.ForNew(NewCard, UnitDisplayFor(orgNodeId));
+            _dialogService.ShowDialog(dialog, Application.Current?.MainWindow);
+        }
+
+        // Олівець у бічній картці: свіжа копія з бази у вікні; після збереження картка перечитується з бази.
+        [RelayCommand]
+        private async Task EditCardAsync()
+        {
+            if (Card is not { IsNew: false } shown) return;
+
+            var model = await _personnelService.GetForEditAsync(shown.Id);
+            if (model is null) return;
+
+            var dialog = PersonEditDialogViewModel.ForExisting(CreateCard(model), UnitDisplayFor(model.OrgNodeId));
+            _dialogService.ShowDialog(dialog, Application.Current?.MainWindow);
+            if (dialog.SavedCount == 0 || Card != shown) return;
+
+            var fresh = await _personnelService.GetForEditAsync(shown.Id);
+            if (fresh is null || Card != shown) return;
+
+            var tab = shown.SelectedTabIndex;
+            OpenCard(fresh);
+            Card!.SelectedTabIndex = tab;
+        }
+
+        private string UnitDisplayFor(int orgNodeId)
+        {
+            var nodeVm = Tree.FindById(orgNodeId);
+            return nodeVm is null
+                ? "-"
+                : nodeVm.DocumentName ?? Tree.GetFullPathNames(nodeVm);
+        }
+
+        private PersonCardViewModel CreateCard(PersonEditModel model)
+        {
+            var card = new PersonCardViewModel(
+                _personnelService, _completenessService, _archiveService, _generationService, _intakeService,
+                _dialogService, _manualTagFormBuilder, _outputFolderService, model, UnitDisplayFor(model.OrgNodeId));
+            card.Saved += OnCardSaved;
+            return card;
         }
 
         private void OpenCard(PersonEditModel model)
         {
-            var nodeVm = Tree.FindById(model.OrgNodeId);
-            var unitDisplay = nodeVm is null
-                ? "-"
-                : nodeVm.DocumentName ?? Tree.GetFullPathNames(nodeVm);
-
-            var card = new PersonCardViewModel(
-                _personnelService, _completenessService, _archiveService, _generationService, _intakeService,
-                _dialogService, _manualTagFormBuilder, _outputFolderService, model, unitDisplay);
-            card.Saved += OnCardSaved;
+            var card = CreateCard(model);
             card.CloseRequested += () => Card = null;
             Card = card;
         }
