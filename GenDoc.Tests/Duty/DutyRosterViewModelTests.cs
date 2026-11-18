@@ -393,6 +393,27 @@ public class DutyRosterViewModelTests
         Assert.DoesNotContain(removed, (await service.LoadAsync(vm.Roster.Id))!.ExcludedRecipientIds);
     }
 
+    /// <summary>Видалений з графіка не йде на лист, а звільнений на весь період лишається на ньому зеленим рядком.</summary>
+    [Fact]
+    public async Task RemovedPersonIsNotOnTheSheetButExemptOneIs()
+    {
+        using var db = new TestDb();
+        var (vm, service) = await CreatedRoster(db);
+        var removed = vm.Rows[2].DisplayName;
+        var exempt = vm.Rows[5].DisplayName;
+
+        await vm.ToggleRowExemptCommand.ExecuteAsync(vm.Rows[5]);
+        await vm.RemoveMemberCoreAsync(vm.Rows.Single(r => r.DisplayName == removed));
+
+        var saved = (await service.LoadAsync(vm.Roster!.Id))!;
+        using var workbook = DutyRosterXlsxExporter.Build(saved);
+        var texts = workbook.Worksheet(DutyRosterXlsxExporter.SheetName).CellsUsed().Select(c => c.GetString()).ToList();
+
+        Assert.DoesNotContain(removed, texts);
+        Assert.Contains(exempt, texts);
+        Assert.Equal(11, saved.Members.Count);
+    }
+
     [Fact]
     public async Task WeekendsCheckboxOnlyColoursSaturdaysAndSundays()
     {

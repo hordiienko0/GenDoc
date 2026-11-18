@@ -971,7 +971,9 @@ public partial class DutyRosterViewModel : ObservableObject
     private async Task RemoveMemberAsync(DutyRowViewModel? row)
     {
         if (_roster is null || row is null) return;
-        if (MessageBox.Show($"Прибрати {row.DisplayName} з графіка? Його позначки в цьому графіку зникнуть, а наступні графіки набору теж його не братимуть.", Caption,
+        if (MessageBox.Show($"Видалити {row.DisplayName} з графіка?\n\n"
+                            + "Рядок зникне з листа - ні в друк, ні в Excel він не піде. Наступні графіки з тих самих папок його теж не братимуть.\n\n"
+                            + "Повернути: «← Назад» або «Додати» на вкладці «Склад, шапка і підвал листа».", Caption,
                 MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
 
         await RemoveMemberCoreAsync(row);

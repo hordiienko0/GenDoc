@@ -390,7 +390,7 @@
                                         <Border x:Name="NameCell" Width="200" Height="24" BorderThickness="0,0,1,1"
                                                 BorderBrush="{StaticResource BorderLineBrush}" Background="{StaticResource PanelBrush}"
                                                 Cursor="Hand" Tag="{Binding DataContext, ElementName=DutyRoot}"
-                                                ToolTip="Клік - звільнити на весь період або повернути; правий клік - порядок і склад">
+                                                ToolTip="Клік - звільнити на весь період (рядок лишається на листі зеленим) або повернути; правий клік - порядок і видалення з графіка">
                                             <Border.InputBindings>
                                                 <MouseBinding Gesture="LeftClick"
                                                               Command="{Binding DataContext.ToggleRowExemptCommand, ElementName=DutyRoot}"
@@ -407,7 +407,7 @@
                                                     <MenuItem Header="Вниз (пізніша зміна)" Style="{StaticResource AppContextMenuItemStyle}"
                                                               Command="{Binding PlacementTarget.Tag.MoveDownCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
-                                                    <MenuItem Header="Прибрати з графіка" Style="{StaticResource AppContextMenuItemStyle}"
+                                                    <MenuItem Header="Видалити з графіка (у друк не піде)" Style="{StaticResource AppContextMenuItemStyle}"
                                                               Command="{Binding PlacementTarget.Tag.RemoveMemberCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}"/>
                                                 </ContextMenu>
@@ -458,6 +458,11 @@
                                             <TextBlock Text="{Binding Total}" FontSize="11" HorizontalAlignment="Center" VerticalAlignment="Center"
                                                        Foreground="{StaticResource TextSecondaryBrush}"/>
                                         </Border>
+                                        <Button Content="&#xE74D;" FontFamily="Segoe MDL2 Assets" Style="{StaticResource CloseButtonStyle}"
+                                                Width="26" Height="24" Margin="4,0,0,0"
+                                                Command="{Binding DataContext.RemoveMemberCommand, ElementName=DutyRoot}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip="Видалити з графіка повністю - рядка не буде ні на листі, ні в друку, ні в Excel"/>
                                     </StackPanel>
                                     <DataTemplate.Triggers>
                                         <DataTrigger Binding="{Binding IsExemptWholePeriod}" Value="True">
@@ -546,6 +551,8 @@
                                 <Button Grid.Column="1" Content="Вписати" Style="{StaticResource SecondaryButtonStyle}" Margin="6,0,0,0"
                                         Command="{Binding AddManualPersonCommand}"/>
                             </Grid>
+                            <TextBlock FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0" Foreground="{StaticResource TextSecondaryBrush}"
+                                       Text="Видалити людину з графіка (і з друку) - кошик у кінці її рядка на вкладці «Графік»."/>
                             <CheckBox Margin="0,14,0,0" IsChecked="{Binding UseEventExemptions}"
                                       Content="Звільняти за подіями (відпустка, шпиталь, відрядження)"/>
                             <CheckBox Margin="0,8,0,0" IsChecked="{Binding CarryOverBalance}"
