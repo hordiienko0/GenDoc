@@ -6,7 +6,7 @@ namespace GenDoc.Services.Personnel
     public sealed class PersonExportPrefs
     {
         public List<string> Fields { get; set; } = new();
-        public PersonExportSort Sort { get; set; } = PersonExportSort.Alphabet;
+        public PersonExportSort Sort { get; set; } = PersonExportSort.Rank;
 
         /// <summary>Вивантаження окремими аркушами, а не одним списком.</summary>
         public bool BySheets { get; set; }

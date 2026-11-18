@@ -125,9 +125,9 @@ public class PersonnelExportTests
         var rows = await TestServices.PersonExport(db).LoadAsync(seed.RootId);
 
         var own = PersonExportQuery.Apply(rows,
-            new PersonExportFilter { NodeId = seed.RootId, IncludeDescendants = false }, PersonExportSort.Alphabet);
+            new PersonExportFilter { NodeId = seed.RootId, IncludeDescendants = false }, PersonExportSort.Rank);
 
-        Assert.Equal(new[] { "ГНАТЮК", "ШЕВЧЕНКО" }, LastNames(own));
+        Assert.Equal(new[] { "ШЕВЧЕНКО", "ГНАТЮК" }, LastNames(own));
     }
 
     [Fact]
@@ -137,11 +137,11 @@ public class PersonnelExportTests
         var seed = SeedTree(db);
         var rows = await TestServices.PersonExport(db).LoadAsync(seed.RootId);
 
-        List<PersonExportRow> Apply(PersonExportFilter filter) => PersonExportQuery.Apply(rows, filter, PersonExportSort.Alphabet);
+        List<PersonExportRow> Apply(PersonExportFilter filter) => PersonExportQuery.Apply(rows, filter, PersonExportSort.Rank);
 
         Assert.Equal(new[] { "ФРАНКО" }, LastNames(Apply(new PersonExportFilter { NodeId = seed.RootId, SearchText = "франк" })));
 
-        Assert.Equal(new[] { "КОВАЛЬ", "ШЕВЧЕНКО" }, LastNames(Apply(new PersonExportFilter
+        Assert.Equal(new[] { "ШЕВЧЕНКО", "КОВАЛЬ" }, LastNames(Apply(new PersonExportFilter
         {
             NodeId = seed.RootId, RankCategories = new[] { RankCategory.Officers }
         })));
@@ -151,7 +151,7 @@ public class PersonnelExportTests
             NodeId = seed.RootId, Fitness = FitnessFilter.LimitedOnly
         })));
 
-        Assert.Equal(new[] { "ГНАТЮК", "КОВАЛЬ", "ФРАНКО" }, LastNames(Apply(new PersonExportFilter
+        Assert.Equal(new[] { "КОВАЛЬ", "ФРАНКО", "ГНАТЮК" }, LastNames(Apply(new PersonExportFilter
         {
             NodeId = seed.RootId,
             Conditions = new[] { new PersonExportCondition(Field("Phone"), PersonExportOperator.IsEmpty, null) }
@@ -191,25 +191,61 @@ public class PersonnelExportTests
         {
             NodeId = seed.RootId,
             Conditions = new[] { new PersonExportCondition(Field("Vos"), PersonExportOperator.Contains, "  ") }
-        }, PersonExportSort.Alphabet);
+        }, PersonExportSort.Rank);
 
         Assert.Equal(5, result.Count);
     }
 
     [Fact]
-    public async Task Sort_ByAlphabetRankOrFolder()
+    public async Task Sort_ByRankThenSurname_OrByFolderThenRankThenSurname()
     {
         using var db = new TestDb();
         var seed = SeedTree(db);
         var rows = await TestServices.PersonExport(db).LoadAsync(seed.RootId);
         var filter = new PersonExportFilter { NodeId = seed.RootId };
 
-        Assert.Equal(new[] { "ГНАТЮК", "ЄРМАК", "КОВАЛЬ", "ФРАНКО", "ШЕВЧЕНКО" },
-            LastNames(PersonExportQuery.Apply(rows, filter, PersonExportSort.Alphabet)));
         Assert.Equal(new[] { "ШЕВЧЕНКО", "КОВАЛЬ", "ФРАНКО", "ЄРМАК", "ГНАТЮК" },
             LastNames(PersonExportQuery.Apply(rows, filter, PersonExportSort.Rank)));
-        Assert.Equal(new[] { "ГНАТЮК", "ШЕВЧЕНКО", "КОВАЛЬ", "ФРАНКО", "ЄРМАК" },
+        // У корені полковник ШЕВЧЕНКО вище за ГНАТЮКА, хоч за абеткою той перший; без звання - у кінці папки.
+        Assert.Equal(new[] { "ШЕВЧЕНКО", "ГНАТЮК", "КОВАЛЬ", "ФРАНКО", "ЄРМАК" },
             LastNames(PersonExportQuery.Apply(rows, filter, PersonExportSort.Folder)));
+    }
+
+    [Fact]
+    public async Task Sort_SameRank_GoesBySurnameAlphabetically()
+    {
+        using var db = new TestDb();
+        var seed = SeedTree(db);
+        using (var ctx = db.Factory.CreateDbContext())
+        {
+            foreach (var (id, lastName) in new[] { (6, "ЯКИМЕНКО"), (7, "АНДРІЄНКО"), (8, "ІВАНЕНКО"), (9, "ҐАВРИЛЮК") })
+            {
+                var person = TemplateFixtures.Person(id, lastName, "Іван", "солдат");
+                person.OrgNodeId = seed.LimitedId;
+                ctx.Recipients.Add(person);
+            }
+            ctx.SaveChanges();
+        }
+
+        var rows = await TestServices.PersonExport(db).LoadAsync(seed.LimitedId);
+        var sorted = PersonExportQuery.Apply(rows, new PersonExportFilter { NodeId = seed.LimitedId }, PersonExportSort.Rank);
+
+        Assert.Equal(new[] { "АНДРІЄНКО", "ҐАВРИЛЮК", "ЄРМАК", "ІВАНЕНКО", "ЯКИМЕНКО" }, LastNames(sorted));
+    }
+
+    [Fact]
+    public async Task Dialog_OrdersRowsByRankThenSurname_EvenIfAlphabetWasRememberedBefore()
+    {
+        using var db = new TestDb();
+        var seed = SeedTree(db);
+        // Колись запам'ятоване «За абеткою» (0) - такого порядку більше немає.
+        await TestServices.PersonExport(db, 1).SavePrefsAsync(new PersonExportPrefs { Sort = (PersonExportSort)0 });
+
+        var vm = await OpenDialogAsync(db, FolderRequest(seed));
+
+        Assert.Equal(PersonExportSort.Rank, vm.SelectedSort.Value);
+        Assert.DoesNotContain(vm.SortOptions, o => o.Value == (PersonExportSort)0);
+        Assert.Equal(new[] { "ШЕВЧЕНКО", "КОВАЛЬ", "ФРАНКО", "ЄРМАК", "ГНАТЮК" }, LastNames(vm.MatchedRows));
     }
 
     // ---------- каталог полів ----------
@@ -287,7 +323,7 @@ public class PersonnelExportTests
         var seed = SeedTree(db);
         var rows = PersonExportQuery.Apply(
             await TestServices.PersonExport(db).LoadAsync(seed.RootId),
-            new PersonExportFilter { NodeId = seed.RootId, SearchText = "шевч" }, PersonExportSort.Alphabet);
+            new PersonExportFilter { NodeId = seed.RootId, SearchText = "шевч" }, PersonExportSort.Rank);
 
         var text = PersonExportTable.Build(rows, new[] { Field("RowNumber"), Field("ShortName"), Field("DateOfBirth"), Field("Vos") })
             .ToClipboardText();
@@ -331,10 +367,10 @@ public class PersonnelExportTests
 
         vm.IncludeDescendants = true;
         vm.RankOptions.Single(o => o.Category == RankCategory.Officers).IsChecked = false;
-        Assert.Equal(new[] { "ГНАТЮК", "ЄРМАК", "ФРАНКО" }, LastNames(vm.MatchedRows));
+        Assert.Equal(new[] { "ФРАНКО", "ЄРМАК", "ГНАТЮК" }, LastNames(vm.MatchedRows));
 
         vm.SelectedFitness = vm.FitnessOptions.Single(o => o.Value == FitnessFilter.RegularOnly);
-        Assert.Equal(new[] { "ГНАТЮК", "ФРАНКО" }, LastNames(vm.MatchedRows));
+        Assert.Equal(new[] { "ФРАНКО", "ГНАТЮК" }, LastNames(vm.MatchedRows));
 
         vm.AddConditionCommand.Execute(null);
         var condition = Assert.Single(vm.Conditions);
@@ -458,7 +494,7 @@ public class PersonnelExportTests
 
         Assert.False(vm.IsFolderScope);
         Assert.Equal("Позначені в списку: 2 · папка «31 набір»", vm.ScopeText);
-        Assert.Equal(new[] { "ЄРМАК", "ФРАНКО" }, LastNames(vm.MatchedRows));
+        Assert.Equal(new[] { "ФРАНКО", "ЄРМАК" }, LastNames(vm.MatchedRows));
         Assert.Equal("31 набір (позначені)", vm.ScopeTitle);
     }
 

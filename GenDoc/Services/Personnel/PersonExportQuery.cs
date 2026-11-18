@@ -2,11 +2,15 @@ using GenDoc.Models.Enums;
 
 namespace GenDoc.Services.Personnel
 {
+    /// <summary>
+    /// Порядок рядків у вивантаженні: завжди за званням (старші вище), а в одному званні - за прізвищем за абеткою;
+    /// «за папками» лише ставить людей блоками папок, усередині блоку порядок той самий.
+    /// Числа лежать у збережених налаштуваннях: 0 колись означав «за абеткою», тож його не займаємо.
+    /// </summary>
     public enum PersonExportSort
     {
-        Alphabet,
-        Rank,
-        Folder
+        Rank = 1,
+        Folder = 2
     }
 
     public enum PersonExportOperator
@@ -104,12 +108,9 @@ namespace GenDoc.Services.Personnel
 
         private static IEnumerable<PersonExportRow> Sort(IEnumerable<PersonExportRow> rows, PersonExportSort sort)
         {
-            var ordered = sort switch
-            {
-                PersonExportSort.Rank => rows.OrderBy(r => RankOrder.Seniority(r.Person.Rank)),
-                PersonExportSort.Folder => rows.OrderBy(r => r.FolderOrder),
-                _ => rows.OrderBy(_ => 0)
-            };
+            var ordered = sort == PersonExportSort.Folder
+                ? rows.OrderBy(r => r.FolderOrder).ThenBy(r => RankOrder.Seniority(r.Person.Rank))
+                : rows.OrderBy(r => RankOrder.Seniority(r.Person.Rank));
 
             return ordered
                 .ThenBy(r => r.Person.LastName, UkrainianCollation.Surname)

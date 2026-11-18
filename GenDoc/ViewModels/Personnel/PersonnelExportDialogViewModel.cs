@@ -381,11 +381,11 @@ namespace GenDoc.ViewModels.Personnel
             };
             selectedFitness = FitnessOptions[0];
 
+            // Список особового складу - за званням (старші вище), у званні - за прізвищем.
             SortOptions = new ExportChoice<PersonExportSort>[]
             {
-                new(PersonExportSort.Alphabet, "За абеткою"),
-                new(PersonExportSort.Rank, "За званням (старші вище), далі за абеткою"),
-                new(PersonExportSort.Folder, "За папками, далі за абеткою")
+                new(PersonExportSort.Rank, "За званням (старші вище), далі за прізвищем"),
+                new(PersonExportSort.Folder, "За папками, у папці - за званням і прізвищем")
             };
             selectedSort = SortOptions[0];
 

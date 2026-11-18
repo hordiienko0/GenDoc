@@ -144,16 +144,16 @@ public class PersonnelExportSheetsTests
         var seed = SeedTree(db);
         var rows = PersonExportQuery.Apply(
             await TestServices.PersonExport(db).LoadAsync(seed.RootId),
-            new PersonExportFilter { NodeId = seed.RootId }, PersonExportSort.Alphabet);
+            new PersonExportFilter { NodeId = seed.RootId }, PersonExportSort.Rank);
         var secondedIds = new HashSet<int> { 4, 5, 6 };
 
         string[] On(PersonExportSheetKind kind) => LastNames(PersonExportSheets.Rows(kind, rows, secondedIds));
 
-        Assert.Equal(new[] { "БОЙКО", "ГНАТЮК", "ЄРМАК", "КОВАЛЬ", "ФРАНКО", "ШЕВЧЕНКО" }, On(PersonExportSheetKind.All));
+        Assert.Equal(new[] { "ШЕВЧЕНКО", "КОВАЛЬ", "БОЙКО", "ФРАНКО", "ГНАТЮК", "ЄРМАК" }, On(PersonExportSheetKind.All));
         // Без позначки придатності - придатний, як і всюди в програмі.
-        Assert.Equal(new[] { "БОЙКО", "КОВАЛЬ" }, On(PersonExportSheetKind.SecondedFit));
+        Assert.Equal(new[] { "КОВАЛЬ", "БОЙКО" }, On(PersonExportSheetKind.SecondedFit));
         Assert.Equal(new[] { "ЄРМАК" }, On(PersonExportSheetKind.SecondedLimited));
-        Assert.Equal(new[] { "ГНАТЮК", "ФРАНКО", "ШЕВЧЕНКО" }, On(PersonExportSheetKind.Intake));
+        Assert.Equal(new[] { "ШЕВЧЕНКО", "ФРАНКО", "ГНАТЮК" }, On(PersonExportSheetKind.Intake));
     }
 
     [Fact]
@@ -366,11 +366,11 @@ public class PersonnelExportSheetsTests
 
             var all = workbook.Worksheet("Усі слухачі");
             Assert.Equal(new[] { "№ з/п", "Прізвище", "Придатність" }, Enumerable.Range(1, 3).Select(c => all.Cell(1, c).GetString()));
-            Assert.Equal(new[] { "БОЙКО", "ГНАТЮК", "ЄРМАК", "КОВАЛЬ", "ФРАНКО", "ШЕВЧЕНКО" }, Column(all, 2));
+            Assert.Equal(new[] { "ШЕВЧЕНКО", "КОВАЛЬ", "БОЙКО", "ФРАНКО", "ГНАТЮК", "ЄРМАК" }, Column(all, 2));
             Assert.Equal(new[] { "1", "2", "3", "4", "5", "6" }, Column(all, 1));
 
             var fit = workbook.Worksheet("Придатні (прикоманд.)");
-            Assert.Equal(new[] { "БОЙКО", "КОВАЛЬ" }, Column(fit, 2));
+            Assert.Equal(new[] { "КОВАЛЬ", "БОЙКО" }, Column(fit, 2));
             Assert.Equal(new[] { "1", "2" }, Column(fit, 1));
 
             var limited = workbook.Worksheet("Обмежено придатні (прикоманд.)");
@@ -379,7 +379,7 @@ public class PersonnelExportSheetsTests
             Assert.Equal(FitnessCategoryHelper.Limited, limited.Cell(2, 3).GetString());
 
             var intake = workbook.Worksheet("Набір");
-            Assert.Equal(new[] { "ГНАТЮК", "ФРАНКО", "ШЕВЧЕНКО" }, Column(intake, 2));
+            Assert.Equal(new[] { "ШЕВЧЕНКО", "ФРАНКО", "ГНАТЮК" }, Column(intake, 2));
             Assert.Equal(new[] { "1", "2", "3" }, Column(intake, 1));
             Assert.Equal(XLPageOrientation.Landscape, intake.PageSetup.PageOrientation);
             Assert.True(intake.AutoFilter.IsEnabled);
