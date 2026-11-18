@@ -25,6 +25,8 @@ public class DutyRosterViewModelTests
         public Task CloseAsync(IntakeCloseRequest request) => throw new NotSupportedException();
         public Task<string?> GetReopenConflictAsync(int intakeId) => throw new NotSupportedException();
         public Task ReopenAsync(int intakeId) => throw new NotSupportedException();
+        public Task<IntakeUpdateResult> UpdateAsync(IntakeUpdateRequest request) => throw new NotSupportedException();
+        public Task<int?> GetBaseNodeIdAsync(int intakeId) => throw new NotSupportedException();
     }
 
     private static int SeedIntake(TestDb db, int people)

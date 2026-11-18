@@ -62,6 +62,7 @@ namespace GenDoc.ViewModels.Personnel
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(StatusGlyph))]
         [NotifyPropertyChangedFor(nameof(CanMove))]
+        [NotifyPropertyChangedFor(nameof(CanRename))]
         private bool isIntakeRoot;
 
         [ObservableProperty]

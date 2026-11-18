@@ -168,6 +168,10 @@
                                                     CommandParameter="{Binding}"
                                                     ToolTip="Екран «Генерація» працює з активним набором"
                                                     Visibility="{Binding IsActiveIntake, Converter={StaticResource BoolToVisibility}}"/>
+                                            <Button Content="Редагувати" Style="{StaticResource CardActionButtonStyle}"
+                                                    Command="{Binding DataContext.EditIntakeCommand, ElementName=IntakesRoot}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="Назва, папка-основа, дати початку й завершення"/>
                                             <Button Content="Закрити набір" Style="{StaticResource CardActionButtonStyle}"
                                                     Foreground="{StaticResource DangerBrush}"
                                                     Command="{Binding DataContext.CloseIntakeCommand, ElementName=IntakesRoot}"

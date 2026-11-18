@@ -176,6 +176,207 @@ namespace GenDoc.Services.Intakes
         private static async Task<int> GetNextNumberInternalAsync(AppDbContext db)
             => (await db.Intakes.IgnoreQueryFilters().MaxAsync(i => (int?)i.Number) ?? 0) + 1;
 
+        public async Task<int?> GetBaseNodeIdAsync(int intakeId)
+        {
+            using var db = _dbFactory.CreateDbContext();
+            var rootId = await db.Intakes.Where(i => i.Id == intakeId)
+                .Select(i => (int?)i.RootOrgNodeId).FirstOrDefaultAsync();
+            if (rootId is not int id) return null;
+            return await db.OrgNodes.Where(n => n.Id == id).Select(n => n.ParentId).FirstOrDefaultAsync();
+        }
+
+        /// <summary>Статус за періодом: ще не почався - запланований, триває - активний, минув - завершений.</summary>
+        internal static IntakeStatus StatusForPeriod(DateOnly start, DateOnly end, DateOnly today)
+            => today < start ? IntakeStatus.Planned
+             : today > end ? IntakeStatus.Completed
+             : IntakeStatus.Active;
+
+        private static string StatusName(IntakeStatus status) => status switch
+        {
+            IntakeStatus.Active => "активний",
+            IntakeStatus.Completed => "завершений",
+            _ => "запланований"
+        };
+
+        /// <summary>
+        /// Змінює назву, період і папку-основу набору. Назва набору - це й назва його кореневої папки,
+        /// тож папка перейменовується разом із ним; решта розділів (журнал, архів, графіки, генерація)
+        /// читають назву й дати з набору, тому бачать нові значення одразу.
+        /// </summary>
+        public async Task<IntakeUpdateResult> UpdateAsync(IntakeUpdateRequest request)
+        {
+            var displayNumber = request.DisplayNumber?.Trim() ?? string.Empty;
+            if (displayNumber.Length == 0)
+                throw new InvalidOperationException("Вкажіть номер набору.");
+            if (request.DateEnd < request.DateStart)
+                throw new InvalidOperationException("Дата завершення не може бути раніше за дату початку.");
+
+            using var db = _dbFactory.CreateDbContext();
+            var intake = await db.Intakes.FirstOrDefaultAsync(i => i.Id == request.IntakeId)
+                ?? throw new InvalidOperationException("Набір не знайдено.");
+            var root = await db.OrgNodes.FirstOrDefaultAsync(n => n.Id == intake.RootOrgNodeId)
+                ?? throw new InvalidOperationException("Не знайдено папку набору.");
+            var newBase = await db.OrgNodes.FirstOrDefaultAsync(n => n.Id == request.BaseNodeId)
+                ?? throw new InvalidOperationException("Папку-основу не знайдено.");
+            if (newBase.IntakeId is not null || newBase.Path.StartsWith(root.Path, StringComparison.Ordinal))
+                throw new InvalidOperationException("Папкою-основою не може бути папка набору.");
+
+            var oldLabel = IntakeLabel.Of(intake.Number, intake.DisplayNumber);
+            var oldDisplayNumber = intake.DisplayNumber;
+            var oldRootPath = await OrgTree.OrgPathBuilder.BuildAsync(db, root.Id);
+            var newBasePath = await OrgTree.OrgPathBuilder.BuildAsync(db, newBase.Id);
+            var newRootPath = newBasePath is null ? displayNumber : $"{newBasePath} / {displayNumber}";
+            var changes = new List<string>();
+
+            async Task ApplyAsync()
+            {
+                if (oldRootPath is not null && oldRootPath != newRootPath)
+                    await RewriteOrgPathSnapshotsAsync(db, intake.Id, oldRootPath, newRootPath);
+
+                if (intake.DisplayNumber != displayNumber)
+                {
+                    changes.Add($"назва: «{intake.DisplayNumber}» → «{displayNumber}»");
+                    intake.DisplayNumber = displayNumber;
+                }
+                root.Name = displayNumber;
+
+                if (intake.DateStart != request.DateStart || intake.DateEnd != request.DateEnd)
+                {
+                    changes.Add($"період: {intake.DateStart:dd.MM.yyyy} - {intake.DateEnd:dd.MM.yyyy} → "
+                        + $"{request.DateStart:dd.MM.yyyy} - {request.DateEnd:dd.MM.yyyy}");
+                    intake.DateStart = request.DateStart;
+                    intake.DateEnd = request.DateEnd;
+
+                    // Закритий вручну набір лишається закритим; інакше статус іде за новим періодом.
+                    if (intake.DateClosed is null)
+                    {
+                        var status = StatusForPeriod(request.DateStart, request.DateEnd, DateOnly.FromDateTime(DateTime.Today));
+                        if (status != intake.Status)
+                            changes.Add($"статус: {StatusName(intake.Status)} → {StatusName(status)}");
+                        intake.Status = status;
+                        intake.StatusIsPinned = false;
+                    }
+                }
+
+                if (root.ParentId != newBase.Id)
+                {
+                    var oldBaseName = root.ParentId is int oldBaseId
+                        ? await db.OrgNodes.IgnoreQueryFilters().Where(n => n.Id == oldBaseId)
+                            .Select(n => n.Name).FirstOrDefaultAsync()
+                        : null;
+                    await MoveBranchAsync(db, root, newBase);
+                    changes.Add($"папка-основа: «{oldBaseName}» → «{newBase.Name}»");
+                }
+
+                if (changes.Count > 0)
+                    _auditLogService.Log(db, "Змінено набір", "Intake", intake.Id, oldLabel,
+                        IntakeLabel.Of(intake.Number, intake.DisplayNumber), string.Join("; ", changes));
+                await db.SaveChangesAsync();
+            }
+
+            if (db.Database.CurrentTransaction is null)
+            {
+                using var tx = await db.Database.BeginTransactionAsync();
+                await ApplyAsync();
+                await tx.CommitAsync();
+            }
+            else
+            {
+                await ApplyAsync();
+            }
+
+            var warning = oldDisplayNumber == displayNumber
+                ? null
+                : await RenameDocumentFolderAsync(intake, oldDisplayNumber);
+
+            try
+            {
+                await _serviceProvider.GetRequiredService<ActiveIntakeState>().RefreshAsync();
+            }
+            catch (Exception ex)
+            {
+                ErrorLog.Write(ex, _currentUserContext.CurrentUserFullName);
+            }
+
+            return new IntakeUpdateResult(intake, warning);
+        }
+
+        /// <summary>
+        /// «Підрозділ» документів набору - знімок шляху в дереві на момент генерації. Частина шляху до кореневої
+        /// папки набору (папка-основа й назва) береться нова, підпапки всередині набору лишаються як були.
+        /// </summary>
+        private static async Task RewriteOrgPathSnapshotsAsync(AppDbContext db, int intakeId, string oldRootPath, string newRootPath)
+        {
+            var docs = await db.GeneratedDocuments.IgnoreQueryFilters()
+                .Where(d => d.IntakeId == intakeId && d.OrgPathSnapshot != null)
+                .ToListAsync();
+            foreach (var doc in docs)
+            {
+                if (doc.OrgPathSnapshot == oldRootPath)
+                    doc.OrgPathSnapshot = newRootPath;
+                else if (doc.OrgPathSnapshot!.StartsWith(oldRootPath + " / ", StringComparison.Ordinal))
+                    doc.OrgPathSnapshot = newRootPath + doc.OrgPathSnapshot[oldRootPath.Length..];
+            }
+        }
+
+        /// <summary>
+        /// Після перейменування набору переносить теку з його документами у вихідній теці й переписує шляхи в базі.
+        /// Помилка тут не скасовує вже збережених змін набору - лише повертає попередження.
+        /// </summary>
+        private async Task<string?> RenameDocumentFolderAsync(Intake intake, string oldDisplayNumber)
+        {
+            if (_serviceProvider.GetService<Generation.IOutputFolderService>() is not { } outputFolders) return null;
+
+            Documents.IntakeFolderRename? rename = null;
+            try
+            {
+                var root = await outputFolders.GetDefaultAsync();
+                using var db = _dbFactory.CreateDbContext();
+                rename = await Documents.IntakeDocumentFolder.RenameAsync(
+                    db, root, intake.Id, oldDisplayNumber, intake.DisplayNumber);
+                if (rename is null || !rename.HasChanges) return rename?.Warning;
+
+                var details = rename.FolderMoved
+                    ? "теку перейменовано"
+                    : $"перенесено файлів: {rename.MovedFiles}";
+                if (rename.KeptFiles.Count > 0) details += $", лишилось у старій теці: {rename.KeptFiles.Count}";
+                _auditLogService.Log(db, "Перейменовано теку документів набору", "Intake", intake.Id,
+                    rename.OldDirectory, rename.NewDirectory, details);
+                await db.SaveChangesAsync();
+                return rename.Warning;
+            }
+            catch (Exception ex)
+            {
+                rename?.Undo();
+                ErrorLog.Write(ex, _currentUserContext.CurrentUserFullName);
+                return $"Набір збережено, але теку з його документами перейменувати не вдалося: {ex.Message}";
+            }
+        }
+
+        /// <summary>Переносить кореневу папку набору з усією гілкою (і видаленими в кошик теж) під іншу папку; набір гілки не змінюється.</summary>
+        private static async Task MoveBranchAsync(AppDbContext db, OrgNode root, OrgNode newBase)
+        {
+            var oldPrefix = root.Path;
+            var newPrefix = $"{newBase.Path}{root.Id}/";
+            var depthDelta = newBase.Depth + 1 - root.Depth;
+
+            var subtree = await db.OrgNodes.IgnoreQueryFilters()
+                .Where(n => n.Path.StartsWith(oldPrefix) && n.Id != root.Id)
+                .ToListAsync();
+
+            root.SortOrder = (await db.OrgNodes.Where(n => n.ParentId == newBase.Id)
+                .Select(n => (int?)n.SortOrder).MaxAsync() ?? -1) + 1;
+            root.ParentId = newBase.Id;
+            root.Path = newPrefix;
+            root.Depth = newBase.Depth + 1;
+
+            foreach (var node in subtree)
+            {
+                node.Path = string.Concat(newPrefix, node.Path.AsSpan(oldPrefix.Length));
+                node.Depth += depthDelta;
+            }
+        }
+
         public async Task<IReadOnlyList<IntakeOverview>> GetOverviewsAsync()
         {
             using var db = _dbFactory.CreateDbContext();

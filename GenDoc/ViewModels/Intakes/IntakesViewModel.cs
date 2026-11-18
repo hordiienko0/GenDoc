@@ -174,6 +174,22 @@ namespace GenDoc.ViewModels.Intakes
         }
 
         [RelayCommand]
+        private async Task EditIntakeAsync(IntakeCardViewModel? card)
+        {
+            if (card is null) return;
+            try
+            {
+                await _tree.EnsureLoadedAsync();
+                if (await _tree.EditIntakeByIdAsync(card.Id)) await RefreshAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Не вдалося змінити набір: {ex.Message}", "Редагування набору",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        [RelayCommand]
         private void OpenMatrix(IntakeCardViewModel? card)
         {
             if (card is null) return;

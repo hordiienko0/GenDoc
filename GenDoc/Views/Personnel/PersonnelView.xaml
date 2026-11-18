@@ -71,9 +71,16 @@
                                   IsEnabled="{Binding CanAddChild}"
                                   Command="{Binding PlacementTarget.Tag.AddChildCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                   CommandParameter="{Binding}"/>
+                        <MenuItem Header="Редагувати набір…"
+                                  Style="{StaticResource AppContextMenuItemStyle}"
+                                  Visibility="{Binding IsIntakeRoot, Converter={StaticResource BoolToVisibility}}"
+                                  ToolTip="Назва, папка-основа, дати початку й завершення"
+                                  Command="{Binding PlacementTarget.Tag.EditIntakeCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  CommandParameter="{Binding}"/>
                         <MenuItem Header="Перейменувати"
                                   Style="{StaticResource AppContextMenuItemStyle}"
                                   IsEnabled="{Binding CanRename}"
+                                  Visibility="{Binding IsIntakeRoot, Converter={StaticResource BoolToVisibility}, ConverterParameter=Invert}"
                                   Command="{Binding PlacementTarget.Tag.RenameCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                   CommandParameter="{Binding}"/>
                         <MenuItem Header="Перемістити до…"

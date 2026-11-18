@@ -64,7 +64,7 @@ namespace GenDoc.Services.Documents
             return ForPerson(intakeName, templateName, runStamp, personName, serviceNumber).RelativePath(extension);
         }
 
-        private static string IntakeFolder(string? intakeName)
+        internal static string IntakeFolder(string? intakeName)
             => string.IsNullOrWhiteSpace(intakeName) ? PermanentStaffFolder : Sanitize(intakeName);
 
         internal static string Sanitize(string? name)

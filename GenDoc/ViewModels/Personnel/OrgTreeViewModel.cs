@@ -411,6 +411,56 @@ namespace GenDoc.ViewModels.Personnel
                 RemoveSubtreeFromIndex(child);
         }
 
+        /// <summary>«Редагувати набір…» на кореневій папці набору.</summary>
+        [RelayCommand]
+        private async Task EditIntakeAsync(OrgNodeViewModel? node)
+        {
+            if (node is null || !node.IsIntakeRoot || node.IntakeId is not int intakeId) return;
+            await EditIntakeByIdAsync(intakeId);
+        }
+
+        /// <summary>
+        /// Відкриває вікно набору в режимі редагування; після збереження перечитує дерево
+        /// (назва й місце папки, статус, фільтр) і повідомляє решту розділів.
+        /// </summary>
+        public async Task<bool> EditIntakeByIdAsync(int intakeId)
+        {
+            var intake = await _intakeService.GetByIdAsync(intakeId);
+            if (intake is null) return false;
+
+            var wizard = new IntakeWizardViewModel(_intakeService, this);
+            await wizard.InitializeForEditAsync(intake);
+            if (_dialogService.ShowDialog(wizard, Application.Current?.MainWindow) != true
+                || wizard.UpdatedIntake is not { } updated) return false;
+
+            // Набір, що після правки випав би з поточного фільтра, не повинен «зникнути» з дерева.
+            var hiddenByFilter = FilterMode switch
+            {
+                TreeFilterMode.Active => updated.Status == IntakeStatus.Completed,
+                TreeFilterMode.Archived => updated.Status != IntakeStatus.Completed,
+                _ => false
+            };
+            if (hiddenByFilter) FilterMode = TreeFilterMode.All;
+
+            await ReloadAsync();
+            WeakReferenceMessenger.Default.Send(new CountsChangedMessage());
+
+            if (_byId.GetValueOrDefault(updated.RootOrgNodeId) is { } rootVm)
+            {
+                for (var current = rootVm.ParentId is int pid ? _byId.GetValueOrDefault(pid) : null;
+                     current is not null;
+                     current = current.ParentId is int apid ? _byId.GetValueOrDefault(apid) : null)
+                {
+                    current.IsExpanded = true;
+                }
+                NodeRenamed?.Invoke(rootVm);
+            }
+
+            if (wizard.SaveWarning is { } warning)
+                MessageBox.Show(warning, "Редагування набору", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return true;
+        }
+
         [RelayCommand]
         private async Task NewIntakeAsync()
         {
